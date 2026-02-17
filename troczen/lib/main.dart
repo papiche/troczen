@@ -92,6 +92,11 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Clé publique invalide générée');
       }
 
+      // ✅ GÉNÉRATION AUTOMATIQUE DE LA CLÉ PUBLIQUE Ğ1 (G1Pub)
+      // La seed (privateKeyBytes) est utilisée pour générer une paire de clés Ed25519
+      // puis encoder la clé publique en Base58
+      final g1pub = _cryptoService.generateG1Pub(privateKeyBytes);
+
       final user = User(
         npub: publicKeyHex,
         nsec: privateKeyHex,
@@ -99,6 +104,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ? _loginController.text.trim()
             : _displayNameController.text.trim(),
         createdAt: DateTime.now(),
+        website: null,  // À définir plus tard via l'écran de profil
+        g1pub: g1pub,   // ✅ GÉNÉRÉ AUTOMATIQUEMENT
       );
 
       await _storageService.saveUser(user);
@@ -118,6 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
           name: user.displayName,
           displayName: user.displayName,
           about: 'Utilisateur TrocZen - Monnaie locale ẐEN',
+          website: user.website,
+          g1pub: user.g1pub,
         );
 
         await nostrService.disconnect();

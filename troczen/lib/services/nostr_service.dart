@@ -160,6 +160,9 @@ class NostrService {
     String? displayName,
     String? about,
     String? picture,
+    String? banner,
+    String? website,
+    String? g1pub,
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
@@ -173,6 +176,9 @@ class NostrService {
         displayName: displayName,
         about: about,
         picture: picture,
+        banner: banner,
+        website: website,
+        g1pub: g1pub,
       );
 
       final event = {
@@ -456,6 +462,54 @@ class NostrService {
 
     final hash = sha256.convert(utf8.encode(serialized));
     return HEX.encode(hash.bytes);
+  }
+
+  /// ✅ PUBLIER LISTE DES RELAIS (kind 10002)
+  Future<bool> publishRelayList({
+    required String npub,
+    required String nsec,
+    required List<String> relays,
+  }) async {
+    if (!_isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      // Créer le relay list
+      final relayList = <String, dynamic>{};
+      for (final relay in relays) {
+        relayList[relay] = {
+          'read': true,
+          'write': true,
+        };
+      }
+
+      // Créer les tags
+      final relayTags = relays.map((relay) => ['r', relay]).toList();
+
+      final event = {
+        'kind': 10002,
+        'pubkey': npub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': relayTags,
+        'content': jsonEncode(relayList),
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+
+      final signature = _cryptoService.signMessage(eventId, nsec);
+      event['sig'] = signature;
+
+      final message = jsonEncode(['EVENT', event]);
+      _channel!.sink.add(message);
+
+      return true;
+    } catch (e) {
+      onError?.call('Erreur publication relay list: $e');
+      return false;
+    }
   }
 
   bool get isConnected => _isConnected;

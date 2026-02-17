@@ -30,6 +30,7 @@ class NostrProfile {
   final String? nip05;
   final String? lud16;
   final String? website;
+  final String? g1pub;  // Clé publique Duniter Ğ1 en Base58
 
   NostrProfile({
     required this.npub,
@@ -41,6 +42,7 @@ class NostrProfile {
     this.nip05,
     this.lud16,
     this.website,
+    this.g1pub,
   });
 
   Map<String, dynamic> toJson() {
@@ -53,6 +55,7 @@ class NostrProfile {
       if (nip05 != null) 'nip05': nip05,
       if (lud16 != null) 'lud16': lud16,
       if (website != null) 'website': website,
+      if (g1pub != null) 'g1pub': g1pub,
     };
   }
 
@@ -67,6 +70,7 @@ class NostrProfile {
       nip05: json['nip05'],
       lud16: json['lud16'],
       website: json['website'],
+      g1pub: json['g1pub'],
     );
   }
 }

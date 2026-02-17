@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:io';
 import '../models/bon.dart';
 import '../models/user.dart';
 import '../models/market.dart';
@@ -34,11 +35,16 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   Color _selectedColor = Colors.blue; // Couleur par défaut
   String _selectedRarity = 'common'; // Rareté sélectionnée
   bool _useAutoRarity = true; // Utiliser la génération automatique
+  File? _selectedImage;
+  bool _isUploading = false;
+  final _websiteController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _issuerNameController.text = widget.user.displayName;
+    // Valeur par défaut: website du profil utilisateur
+    _websiteController.text = widget.user.website ?? '';
     _loadMarket();
     _detectNetwork();
   }
@@ -50,12 +56,43 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
   /// ✅ Détection automatique réseau local (borne wifi)
   Future<void> _detectNetwork() async {
-    final isLocal = await _apiService.detectLocalNetwork();
-    setState(() => _isLocalNetwork = isLocal);
+    // La détection réseau n'est plus nécessaire pour l'API
+    // Tout passe par Nostr maintenant
+    setState(() => _isLocalNetwork = false);
+  }
+
+  /// Sélectionner une image pour le bon
+  Future<void> _selectImage() async {
+    // Pour l'instant, on simule avec un fichier test
+    // En production, utiliser image_picker
+    setState(() {
+      _selectedImage = File('/path/to/bon_image.jpg');
+    });
+  }
+
+  /// Uploader l'image du bon vers IPFS
+  Future<String?> _uploadImage() async {
+    if (_selectedImage == null) return null;
     
-    if (isLocal) {
-      debugPrint('✅ Borne locale détectée: ${_apiService.apiUrl}');
+    setState(() => _isUploading = true);
+    
+    try {
+      final result = await _apiService.uploadImage(
+        npub: widget.user.npub,
+        imageFile: _selectedImage!,
+        type: 'logo',
+      );
+      
+      if (result != null) {
+        return result['url'] ?? result['ipfs_url'];
+      }
+    } catch (e) {
+      debugPrint('Erreur upload image bon: $e');
+    } finally {
+      setState(() => _isUploading = false);
     }
+    
+    return null;
   }
 
   Color _getRarityColor(String rarity) {
@@ -133,7 +170,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       // 6. Sauvegarder le bon
       await _storageService.saveBon(bon);
 
-      // 7. ✅ PUBLIER P3 SUR NOSTR (kind 30303)
+      // 7. ✅ Uploader l'image du bon (si sélectionnée)
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+
+      // 8. ✅ PUBLIER PROFIL DU BON SUR NOSTR (kind 0)
       // SIGNÉ PAR LE BON LUI-MÊME (reconstruction éphémère P2+P3)
       try {
         final nostrService = NostrService(
@@ -146,6 +189,22 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         final connected = await nostrService.connect(relayUrl);
 
         if (connected) {
+          // Publication du profil du bon (kind 0)
+          // Utilise les informations du profil utilisateur par défaut
+          await nostrService.publishUserProfile(
+            npub: bonNpub,
+            nsec: _cryptoService.shamirCombine(null, p2, p3),
+            name: _issuerNameController.text,
+            displayName: _issuerNameController.text,
+            about: 'Bon ${_valueController.text} ẐEN - ${_market!.name}',
+            picture: imageUrl,
+            banner: imageUrl,  // Utilise la même image pour le bandeau
+            website: _websiteController.text.trim().isNotEmpty
+                ? _websiteController.text.trim()
+                : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
+            g1pub: widget.user.g1pub,  // ✅ GÉNÉRÉ AUTOMATIQUEMENT
+          );
+
           // Publication P3 chiffrée - AVEC P2 pour signature par le bon
           final published = await nostrService.publishP3(
             bonId: bonNpub,
@@ -166,18 +225,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           await nostrService.disconnect();
         }
 
-        // 8. ✅ Créer profil du bon sur l'API (pour dashboard web)
-        if (_isLocalNetwork || _market!.relayUrl != null) {
-          await _apiService.createBonProfile(
-            bonId: bonNpub,
-            issuerNpub: widget.user.npub,
-            issuerName: _issuerNameController.text,
-            value: double.parse(_valueController.text),
-            marketName: _market!.name,
-            rarity: Bon.generateRarity(),
-            category: 'generic',
-          );
-        }
+        // 9. ✅ Profil du bon créé uniquement sur Nostr (kind 0 et 30303)
+        // L'API backend n'est plus utilisée pour les profils
 
       } catch (e) {
         debugPrint('⚠️ Erreur publication Nostr: $e');
@@ -519,6 +568,94 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   ),
                 )).toList(),
               ),
+
+              const SizedBox(height: 24),
+
+              // Section Website du bon
+              Text(
+                'Website du bon (optionnel)',
+                style: TextStyle(
+                  color: Colors.grey[300],
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _websiteController,
+                keyboardType: TextInputType.url,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Site web',
+                  hintText: 'https://votre-site.com',
+                  labelStyle: TextStyle(color: Colors.grey[400]),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFFFFB347)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Section Image du bon
+              Text(
+                'Image du bon (optionnel)',
+                style: TextStyle(
+                  color: Colors.grey[300],
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUploading ? null : _selectImage,
+                      icon: const Icon(Icons.image),
+                      label: Text(_selectedImage != null
+                          ? 'Changer l\'image'
+                          : 'Sélectionner une image'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0A7EA4),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  if (_selectedImage != null)
+                    const SizedBox(width: 12),
+                  if (_selectedImage != null)
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[700]!),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.image, color: Colors.white70),
+                      ),
+                    ),
+                ],
+              ),
+
+              if (_isUploading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
 
               const SizedBox(height: 24),
 

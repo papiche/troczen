@@ -74,25 +74,16 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
       // 1. Upload image vers IPFS si sélectionnée
       String? imageUrl;
       if (_selectedImage != null) {
-        final result = await _apiService.uploadLogo(
+        final result = await _apiService.uploadImage(
           npub: widget.user.npub,
           imageFile: _selectedImage!,
+          type: 'logo',
         );
         imageUrl = result?['ipfs_url'] ?? result?['url'];
       }
 
-      // 2. Mettre à jour profil via API
-      await _apiService.createBonProfile(
-        bonId: widget.bon.bonId,
-        issuerNpub: widget.user.npub,
-        issuerName: widget.bon.issuerName,
-        value: widget.bon.value,
-        marketName: widget.bon.marketName,
-        imageUrl: imageUrl,
-        description: _descriptionController.text.trim(),
-        category: _selectedCategory,
-        rarity: widget.bon.rarity,
-      );
+      // 2. ✅ Profil mis à jour uniquement sur Nostr (kind 0 et 30303)
+      // L'API backend n'est plus utilisée pour les profils
 
       // 3. Republier sur Nostr avec métadonnées mises à jour
       final market = await _storage.getMarket();
@@ -107,7 +98,20 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
 
           await nostrService.connect(market.relayUrl ?? 'wss://relay.copylaradio.com');
           
-          // Republier avec nouvelles métadonnées
+          // Publication du profil du bon (kind 0)
+          await nostrService.publishUserProfile(
+            npub: widget.bon.bonId,
+            nsec: _crypto.shamirCombine(null, widget.bon.p2!, p3),
+            name: widget.bon.issuerName,
+            displayName: widget.bon.issuerName,
+            about: 'Bon ${widget.bon.value} ẐEN - ${market.name}',
+            picture: imageUrl,
+            banner: imageUrl,  // Utilise la même image pour le bandeau
+            website: widget.user.website,  // Par défaut: site du profil utilisateur
+            g1pub: widget.user.g1pub,  // Par défaut: g1pub du profil utilisateur
+          );
+
+          // Republier P3 avec nouvelles métadonnées
           await nostrService.publishP3(
             bonId: widget.bon.bonId,
             p2Hex: widget.bon.p2!,

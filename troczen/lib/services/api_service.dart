@@ -2,7 +2,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-/// Service API TrocZen pour upload logos, profils, stats
+/// Service API TrocZen pour upload logos uniquement
+/// Toutes les opérations Nostr se font directement via le relais
 class ApiService {
   // URLs par défaut (production)
   static const String defaultApiUrl = 'https://troczen.copylaradio.com';
@@ -58,16 +59,19 @@ class ApiService {
     return false;
   }
 
-  /// Upload logo commerçant
-  Future<Map<String, dynamic>?> uploadLogo({
+  /// Upload image (logo, bandeau, avatar) pour profils Nostr
+  /// Seule opération API nécessaire - pour stocker l'image
+  Future<Map<String, dynamic>?> uploadImage({
     required String npub,
     required File imageFile,
+    required String type,  // 'logo', 'banner', ou 'avatar'
   }) async {
     try {
-      final uri = Uri.parse('$_currentApiUrl/api/upload/logo');
+      final uri = Uri.parse('$_currentApiUrl/api/upload/image');
       final request = http.MultipartRequest('POST', uri);
       
       request.fields['npub'] = npub;
+      request.fields['type'] = type;
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         imageFile.path,
@@ -83,131 +87,17 @@ class ApiService {
         return null;
       }
     } catch (e) {
-      print('Erreur upload logo: $e');
+      print('Erreur upload image ($type): $e');
       return null;
     }
   }
 
-  /// Créer/mettre à jour profil utilisateur
-  Future<bool> updateUserProfile({
+  /// Méthode alias pour compatibilité avec l'ancien nom
+  Future<Map<String, dynamic>?> uploadLogo({
     required String npub,
-    required String name,
-    String? displayName,
-    String? about,
-    String? picture,
-    String? location,
+    required File imageFile,
   }) async {
-    try {
-      final uri = Uri.parse('$_currentApiUrl/api/profile/user/$npub');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'name': name,
-          'display_name': displayName,
-          'about': about,
-          'picture': picture,
-          'location': location,
-        }),
-      );
-
-      return response.statusCode == 201;
-    } catch (e) {
-      print('Erreur update profil: $e');
-      return false;
-    }
-  }
-
-  /// Créer métadonnées pour un bon
-  Future<bool> createBonProfile({
-    required String bonId,
-    required String issuerNpub,
-    required String issuerName,
-    required double value,
-    required String marketName,
-    String? logoUrl,
-    String? imageUrl,
-    String? color,
-    String? rarity,
-    String? description,
-    String? category,
-  }) async {
-    try {
-      final uri = Uri.parse('$_currentApiUrl/api/profile/bon/$bonId');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'issuer_npub': issuerNpub,
-          'issuer_name': issuerName,
-          'value': value,
-          'market_name': marketName,
-          'logo_url': logoUrl,
-          'image_url': imageUrl,
-          'color': color ?? '#FFB347',
-          'rarity': rarity ?? 'common',
-          'description': description ?? '',
-          'category': category ?? 'generic',
-        }),
-      );
-
-      return response.statusCode == 201;
-    } catch (e) {
-      print('Erreur création profil bon: $e');
-      return false;
-    }
-  }
-
-  /// Incrémenter compteur de transferts
-  Future<bool> incrementBonTransfers(String bonId) async {
-    try {
-      final uri = Uri.parse('$_currentApiUrl/api/profile/bon/$bonId/stats');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'increment_transfers': true}),
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Erreur update stats: $e');
-      return false;
-    }
-  }
-
-  /// Récupérer statistiques globales
-  Future<Map<String, dynamic>?> getStats() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_currentApiUrl/api/stats'),
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return null;
-    } catch (e) {
-      print('Erreur récupération stats: $e');
-      return null;
-    }
-  }
-
-  /// Lister bons du marché (pour dashboard)
-  Future<List<dynamic>?> getMarketBons(String marketName) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_currentApiUrl/api/profiles/bons?market=$marketName'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['bons'];
-      }
-      return null;
-    } catch (e) {
-      print('Erreur récupération bons: $e');
-      return null;
-    }
+    return uploadImage(npub: npub, imageFile: imageFile, type: 'logo');
   }
 
   // Getters

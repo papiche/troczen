@@ -8,6 +8,7 @@ import '../widgets/panini_card.dart';
 import '../screens/gallery_screen.dart';
 import '../screens/scan_screen.dart';
 import '../screens/create_bon_screen.dart';
+import '../screens/user_profile_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   final User user;
@@ -42,6 +43,20 @@ class _WalletScreenState extends State<WalletScreen> {
       appBar: AppBar(
         title: const Text('Mon Portefeuille'),
         backgroundColor: const Color(0xFF0A7EA4),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(user: widget.user),
+                ),
+              );
+            },
+            tooltip: 'Mon Profil',
+          ),
+        ],
       ),
       body: ListView.builder(
         itemCount: bons.length,
@@ -83,7 +98,7 @@ class _WalletScreenState extends State<WalletScreen> {
             child: const Icon(Icons.add),
           ),
 
-          // → NOUVEAU : Bouton collections
+          // Bouton collections
           FloatingActionButton(
             heroTag: 'collections',
             onPressed: () {
