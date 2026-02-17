@@ -379,7 +379,7 @@ A-GPL License - Voir le fichier LICENSE
 
 ### 📂 API et Backend
 
-- **[Documentation API](api/API_README.md)** - Endpoints et utilisation
+- **[Documentation API](api/README.md)** - Endpoints et utilisation
 - **[Configuration IPFS](api/IPFS_CONFIG.md)** - Stockage décentralisé
 
 Pour plus de détails, explorez tous les documents via l'[Index des Fichiers](FILE_INDEX.md).

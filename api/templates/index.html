@@ -159,6 +159,54 @@
                     <div class="stat-value" id="stat-profiles">-</div>
                     <div class="stat-label">Profils commerçants</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-markets">-</div>
+                    <div class="stat-label">Marchés détectés</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liens rapides -->
+        <div class="section">
+            <h2>🔗 Liens rapides</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="path">/api/apk/latest</span>
+                <div class="description">Télécharger la dernière version APK</div>
+                <div style="margin-top: 10px;">
+                    <a href="/api/apk/latest" target="_blank" style="display: inline-block; background: #4CAF50; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">⬇️ Télécharger APK</a>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="path">/api/apk/qr</span>
+                <div class="description">Obtenir le QR code pour le téléchargement</div>
+                <div style="margin-top: 10px;">
+                    <a href="/api/apk/qr" target="_blank" style="display: inline-block; background: #2196F3; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">📱 Voir QR Code</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Marchés détectés -->
+        <div class="section">
+            <h2>🏪 Marchés détectés</h2>
+            
+            <div style="background: #f0f8ff; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.9em; color: #333;">
+                    <strong>📡 Comment les marchés sont détectés :</strong>
+                    <br><small style="color: #666;">
+                        L'API se connecte au relai Nostr Strfry local (ws://127.0.0.1:7777) et récupère :
+                        <br>• <strong>kind 0</strong> : Profils marchands (name, about, picture, website, etc.)
+                        <br>• <strong>kind 30303</strong> : Bons (valeur, catégorie, rareté, expiration)
+                        <br>• Les marchés sont identifiés par le tag <code>market</code> dans les events
+                    </small>
+                </p>
+            </div>
+
+            <div id="markets-list" style="margin-top: 20px;">
+                <p style="color: #999;">Chargement des marchés...</p>
             </div>
         </div>
 
@@ -168,8 +216,14 @@
             
             <div class="endpoint">
                 <span class="method post">POST</span>
-                <span class="path">/api/upload/logo</span>
-                <div class="description">Upload logo commerçant (multipart/form-data avec file + npub)</div>
+                <span class="path">/api/upload/image</span>
+                <div class="description">Upload image (logo, banner, avatar) pour profils Nostr (multipart/form-data avec file + npub + type)</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="path">/uploads/{filename}</span>
+                <div class="description">Servir les fichiers uploadés localement</div>
             </div>
         </div>
 
@@ -196,26 +250,31 @@
             </div>
         </div>
 
-        <!-- Endpoints Profils -->
+        <!-- Endpoints Pages -->
         <div class="section">
-            <h2>👤 Profils Nostr</h2>
+            <h2>🌐 Pages Web</h2>
             
             <div class="endpoint">
                 <span class="method get">GET</span>
-                <span class="path">/api/profile/{npub}</span>
-                <div class="description">Récupérer profil commerçant</div>
+                <span class="path">/market/{market_name}</span>
+                <div class="description">Page de présentation d'un marché avec marchands et bons Nostr</div>
+            </div>
+        </div>
+
+        <!-- Endpoints Nostr -->
+        <div class="section">
+            <h2>📡 Nostr (Strfry Relay)</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span class="path">/api/nostr/marche/{market_name}</span>
+                <div class="description">Récupérer les données d'un marché depuis Nostr (kind 0 + kind 30303)</div>
             </div>
 
             <div class="endpoint">
                 <span class="method post">POST</span>
-                <span class="path">/api/profile/{npub}</span>
-                <div class="description">Créer/Mettre à jour profil (JSON)</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method get">GET</span>
-                <span class="path">/api/profiles</span>
-                <div class="description">Lister tous les profils</div>
+                <span class="path">/api/nostr/sync?market={market_name}</span>
+                <div class="description">Synchroniser les données depuis le relai Strfry</div>
             </div>
         </div>
 
@@ -223,41 +282,71 @@
         <div class="section">
             <h2>💻 Exemple d'utilisation</h2>
             
-            <p><strong>Upload logo :</strong></p>
-            <div class="code">curl -X POST http://localhost:5000/api/upload/logo \
+            <p><strong>Upload image :</strong></p>
+            <div class="code">curl -X POST http://localhost:5000/api/upload/image \
   -F "file=@logo.png" \
-  -F "npub=npub1abc123..."</div>
+  -F "npub=npub1abc123..." \
+  -F "type=logo"</div>
 
             <br>
             <p><strong>Télécharger APK :</strong></p>
             <div class="code">curl -O http://localhost:5000/api/apk/download/troczen-latest.apk</div>
 
             <br>
-            <p><strong>Créer profil :</strong></p>
-            <div class="code">curl -X POST http://localhost:5000/api/profile/npub1abc... \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "La Miellerie",
-    "description": "Miel local bio",
-    "location": "Marché de Toulouse"
-  }'</div>
+            <p><strong>Obtenir QR code APK :</strong></p>
+            <div class="code">curl -o qr.png http://localhost:5000/api/apk/qr</div>
+
+            <br>
+            <p><strong>Récupérer données marché Nostr :</strong></p>
+            <div class="code">curl http://localhost:5000/api/nostr/marche/marche-toulouse</div>
         </div>
 
         <div class="footer">
-            TrocZen Backend v1.0.0 | <a href="https://github.com/troczen/troczen">GitHub</a>
+            TrocZen Backend v1.0.0 | <a href="https://github.com/papiche/troczen">GitHub</a>
         </div>
     </div>
 
     <script>
-        // Charger stats au démarrage
+        // Charger les statistiques au démarrage
         fetch('/api/stats')
             .then(r => r.json())
             .then(data => {
-                document.getElementById('stat-apks').textContent = data.apks;
-                document.getElementById('stat-logos').textContent = data.logos;
-                document.getElementById('stat-profiles').textContent = data.profiles;
+                document.getElementById('stat-apks').textContent = data.apk_count;
+                document.getElementById('stat-logos').textContent = data.logo_count;
+                document.getElementById('stat-profiles').textContent = data.profile_count;
+                document.getElementById('stat-markets').textContent = data.market_count;
+                
+                // Afficher la liste des marchés avec liens
+                if (data.markets && data.markets.length > 0) {
+                    const marketsList = document.getElementById('markets-list');
+                    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">';
+                    
+                    data.markets.forEach(market => {
+                        html += `
+                            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                                <div style="font-weight: bold; color: #333; margin-bottom: 8px; font-size: 1.1em;">🏪 ${market}</div>
+                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                    <a href="/market/${market}" target="_blank" style="display: inline-block; background: #667eea; color: white; padding: 8px 15px; border-radius: 6px; text-decoration: none; font-size: 0.9em; font-weight: bold;">Voir la page →</a>
+                                    <a href="/api/nostr/marche/${market}" target="_blank" style="display: inline-block; background: #2196F3; color: white; padding: 8px 15px; border-radius: 6px; text-decoration: none; font-size: 0.9em; font-weight: bold;">API JSON</a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    marketsList.innerHTML = html;
+                } else {
+                    document.getElementById('markets-list').innerHTML = '<p style="color: #999;">Aucun marché détecté pour le moment. Les marchés sont détectés via les events Nostr (kind 0 et kind 30303) avec le tag <code>market</code>.</p>';
+                }
             })
-            .catch(err => console.error('Erreur chargement stats:', err));
+            .catch(err => {
+                console.error('Erreur chargement stats:', err);
+                document.getElementById('stat-apks').textContent = '0';
+                document.getElementById('stat-logos').textContent = '0';
+                document.getElementById('stat-profiles').textContent = '0';
+                document.getElementById('stat-markets').textContent = '0';
+                document.getElementById('markets-list').innerHTML = '<p style="color: #999;">Erreur de chargement des marchés. Vérifiez que le relai Nostr Strfry est démarré.</p>';
+            });
     </script>
 </body>
 </html>

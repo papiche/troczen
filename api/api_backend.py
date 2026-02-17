@@ -3,6 +3,7 @@
 TrocZen API Backend
 Gère l'upload des logos commerçants et la distribution d'APK
 Intégration IPFS pour stockage décentralisé des images
+Intégration Nostr pour récupération des profils marchands (kind 0) et bons (kind 30303)
 """
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
@@ -15,6 +16,9 @@ from pathlib import Path
 import qrcode
 from io import BytesIO
 import requests
+import base64
+import asyncio
+from nostr_client import NostrClient
 
 app = Flask(__name__)
 CORS(app)
@@ -48,7 +52,7 @@ def generate_checksum(filepath):
     """Générer SHA256 checksum"""
     sha256_hash = hashlib.sha256()
     with open(filepath, "rb") as f:
-        for byte_block in iter(lambda f.read(4096), b""):
+        for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
 
@@ -260,25 +264,239 @@ def apk_qr_code():
     return send_file(img_io, mimetype='image/png')
 
 
+# ==================== NOSTR CLIENT ====================
+
+def fetch_marche_data(market_name):
+    """
+    Récupère les données d'un marché depuis Nostr (relai Strfry)
+    
+    Structure retournée :
+    {
+        "market_name": "marche-toulouse",
+        "merchants": [
+            {
+                "pubkey": "npub1...",
+                "name": "Nom du marchand",
+                "about": "Description",
+                "picture": "URL logo",
+                "banner": "URL banner",
+                "website": "URL site",
+                "lud16": "LNURL",
+                "nip05": "nip05",
+                "bons": [...],
+                "bons_count": 5
+            }
+        ],
+        "total_bons": 10,
+        "total_merchants": 3
+    }
+    """
+    
+    # Configuration
+    NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
+    NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+    
+    if not NOSTR_ENABLED:
+        # Fallback: lire depuis les fichiers JSON locaux
+        return fetch_local_marche_data(market_name)
+    
+    try:
+        # Créer le client Nostr
+        client = NostrClient(relay_url=NOSTR_RELAY)
+        
+        # Exécuter de manière asynchrone
+        async def fetch_data():
+            await client.connect()
+            data = await client.get_merchants_with_bons(market_name)
+            await client.disconnect()
+            return data
+        
+        # Exécuter la coroutine
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        data = loop.run_until_complete(fetch_data())
+        loop.close()
+        
+        return data
+        
+    except Exception as e:
+        print(f"❌ Erreur récupération Nostr: {e}")
+        # Fallback: lire depuis les fichiers JSON locaux
+        return fetch_local_marche_data(market_name)
+
+
+def fetch_local_marche_data(market_name):
+    """
+    Fallback: lire les données depuis les fichiers JSON locaux
+    """
+    profiles = []
+    bons = []
+    
+    # Lire les profils
+    for profile_file in UPLOAD_FOLDER.glob('*.json'):
+        try:
+            with open(profile_file, 'r') as f:
+                profile = json.load(f)
+                if profile.get('market') == market_name:
+                    profiles.append(profile)
+        except Exception as e:
+            print(f"Erreur lecture profil {profile_file}: {e}")
+            continue
+    
+    # Lire les bons (simulés)
+    # Dans une vraie implémentation, on lirait depuis Nostr
+    for bon_file in UPLOAD_FOLDER.glob('*.json'):
+        try:
+            with open(bon_file, 'r') as f:
+                data = json.load(f)
+                if data.get('market') == market_name:
+                    # Simuler un bon
+                    bons.append({
+                        'id': f"bon_{len(bons)}",
+                        'pubkey': data.get('npub', ''),
+                        'value': data.get('value', 10),
+                        'status': 'active',
+                        'category': data.get('category', 'autre'),
+                        'rarity': data.get('rarity', 'common')
+                    })
+        except Exception as e:
+            continue
+    
+    # Associer les marchands à leurs bons
+    merchant_bons = {}
+    for bon in bons:
+        pubkey = bon["pubkey"]
+        if pubkey not in merchant_bons:
+            merchant_bons[pubkey] = []
+        merchant_bons[pubkey].append(bon)
+    
+    # Construire la réponse
+    result = {
+        "market_name": market_name,
+        "merchants": [],
+        "total_bons": len(bons),
+        "total_merchants": 0
+    }
+    
+    for profile in profiles:
+        pubkey = profile.get('npub', '')
+        if pubkey in merchant_bons:
+            merchant_data = {
+                "pubkey": pubkey,
+                "name": profile.get('name', 'Anonyme'),
+                "about": profile.get('description', ''),
+                "picture": profile.get('logo_url', ''),
+                "banner": profile.get('banner_url', ''),
+                "website": profile.get('website', ''),
+                "lud16": profile.get('lud16', ''),
+                "nip05": profile.get('nip05', ''),
+                "bons": merchant_bons[pubkey],
+                "bons_count": len(merchant_bons[pubkey])
+            }
+            result["merchants"].append(merchant_data)
+    
+    result["total_merchants"] = len(result["merchants"])
+    
+    return result
+
+
 # ==================== PAGE PRESENTATION ====================
 
 @app.route('/market/<market_name>')
 def market_page(market_name):
     """Page de présentation du marché"""
     
-    # Récupérer profils du marché
-    profiles = []
-    for profile_file in UPLOAD_FOLDER.glob('*.json'):
-        with open(profile_file, 'r') as f:
-            profile = json.load(f)
-            profiles.append(profile)
+    # Récupérer les données du marché depuis Nostr
+    marche_data = fetch_marche_data(market_name)
     
     return render_template(
         'market.html',
-        market_name=market_name,
-        profiles=profiles,
+        market_name=marche_data.get('market_name', market_name),
+        merchants=marche_data.get('merchants', []),
+        total_bons=marche_data.get('total_bons', 0),
+        total_merchants=marche_data.get('total_merchants', 0),
         apk_info=get_latest_apk().get_json()
     )
+
+
+@app.route('/api/nostr/marche/<market_name>', methods=['GET'])
+def get_marche_data(market_name):
+    """
+    API pour récupérer les données d'un marché depuis Nostr
+    """
+    marche_data = fetch_marche_data(market_name)
+    return jsonify({
+        'success': True,
+        'data': marche_data,
+        'source': 'nostr_strfry'
+    })
+
+
+@app.route('/api/nostr/sync', methods=['POST'])
+def sync_nostr_profiles():
+    """
+    Synchroniser les données depuis Nostr
+    """
+    market_name = request.args.get('market', 'marche-toulouse')
+    
+    try:
+        # Récupérer les données
+        marche_data = fetch_marche_data(market_name)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Synchronisation terminée pour {market_name}',
+            'data': {
+                'merchants': marche_data.get('total_merchants', 0),
+                'bons': marche_data.get('total_bons', 0)
+            },
+            'source': 'nostr_strfry'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Retourne les statistiques globales de l'API"""
+    
+    # Compter les APK disponibles
+    apk_files = list(APK_FOLDER.glob('*.apk'))
+    apk_count = len(apk_files)
+    
+    # Compter les logos uploadés
+    logo_files = list(UPLOAD_FOLDER.glob('*_logo.*'))
+    logo_count = len(logo_files)
+    
+    # Compter les profils commerçants (fichiers JSON)
+    profile_files = list(UPLOAD_FOLDER.glob('*.json'))
+    profile_count = len(profile_files)
+    
+    # Compter les marchés détectés via Nostr
+    # Pour l'instant, on compte les fichiers JSON avec un champ market
+    market_count = 0
+    markets = set()
+    for profile_file in profile_files:
+        try:
+            with open(profile_file, 'r') as f:
+                profile = json.load(f)
+                if 'market' in profile:
+                    markets.add(profile['market'])
+        except:
+            continue
+    market_count = len(markets)
+    
+    return jsonify({
+        'apk_count': apk_count,
+        'logo_count': logo_count,
+        'profile_count': profile_count,
+        'market_count': market_count,
+        'markets': list(markets),
+        'timestamp': datetime.now().isoformat()
+    })
 
 
 if __name__ == '__main__':

@@ -223,46 +223,88 @@
             {% endif %}
         </div>
 
-        <!-- Commerçants participants -->
+        <!-- Statistiques du marché -->
+        <div class="download-card">
+            <h2>📊 Statistiques du marché</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_merchants }}</div>
+                    <div class="stat-label">Marchands</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_bons }}</div>
+                    <div class="stat-label">Bons actifs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Marchands participants -->
         <div class="profiles-section">
-            <h2>🏪 Commerçants participants</h2>
+            <h2>🏪 Marchands participants</h2>
             
-            {% if profiles %}
+            <!-- Source des données -->
+            <div style="background: #f0f8ff; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.9em; color: #333;">
+                    <strong>📡 Source:</strong> Relai Nostr Strfry (ws://127.0.0.1:7777)
+                    <br><small style="color: #666;">kind 0 (profils) + kind 30303 (bons)</small>
+                </p>
+            </div>
+            
+            {% if merchants %}
                 <div class="profiles-grid">
-                    {% for profile in profiles %}
+                    {% for merchant in merchants %}
                     <div class="profile-card">
                         <div class="profile-header">
-                            {% if profile.logo_url %}
-                                <img src="{{ profile.logo_url }}" alt="{{ profile.name }}" class="profile-logo">
+                            {% if merchant.picture %}
+                                <img src="{{ merchant.picture }}" alt="{{ merchant.name }}" class="profile-logo">
                             {% else %}
                                 <div class="profile-logo-placeholder">
-                                    {{ profile.name[0]|upper }}
+                                    {{ merchant.name[0]|upper if merchant.name else '?' }}
                                 </div>
                             {% endif %}
-                            <div class="profile-name">{{ profile.name }}</div>
+                            <div class="profile-name">{{ merchant.name or 'Marchand inconnu' }}</div>
                         </div>
                         <div class="profile-body">
                             <div class="profile-description">
-                                {{ profile.description or 'Aucune description' }}
+                                {{ merchant.about or 'Aucune description' }}
                             </div>
                             
-                            {% if profile.location or profile.hours or profile.phone %}
-                            <div class="profile-info">
-                                {% if profile.location %}
-                                <div>📍 <span>{{ profile.location }}</span></div>
+                            <!-- Bons du marchand -->
+                            {% if merchant.bons %}
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                                <strong style="color: #667eea;">Bons actifs: {{ merchant.bons_count }}</strong>
+                                <div style="margin-top: 10px; font-size: 0.85em; color: #666;">
+                                    {% for bon in merchant.bons[:3] %}
+                                    <div style="margin-bottom: 5px;">
+                                        💰 {{ bon.value }} ẐEN
+                                        <span style="color: #999;">({{ bon.category }})</span>
+                                        {% if bon.rarity != 'common' %}
+                                        <span style="color: #ff6b6b;">★ {{ bon.rarity }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                    {% if merchant.bons_count > 3 %}
+                                    <div style="color: #999;">... et {{ merchant.bons_count - 3 }} autres</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Info Nostr -->
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.8em; color: #888;">
+                                <strong>Nostr:</strong> {{ merchant.pubkey[:16] }}...
+                                {% if merchant.nip05 %}
+                                <br><strong>NIP-05:</strong> {{ merchant.nip05 }}
                                 {% endif %}
-                                
-                                {% if profile.hours %}
-                                <div>🕐 <span>{{ profile.hours }}</span></div>
+                                {% if merchant.lud16 %}
+                                <br><strong>LNURL:</strong> {{ merchant.lud16 }}
                                 {% endif %}
-                                
-                                {% if profile.phone %}
-                                <div>📞 <span>{{ profile.phone }}</span></div>
-                                {% endif %}
-
-                                {% if profile.website %}
-                                <div>🌐 <a href="{{ profile.website }}" target="_blank">Site web</a></div>
-                                {% endif %}
+                            </div>
+                            
+                            <!-- Liens -->
+                            {% if merchant.website %}
+                            <div style="margin-top: 10px;">
+                                <a href="{{ merchant.website }}" target="_blank" style="color: #667eea;">🌐 Site web</a>
                             </div>
                             {% endif %}
                         </div>
@@ -274,7 +316,10 @@
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                     </svg>
-                    <p>Aucun commerçant enregistré pour le moment</p>
+                    <p>Aucun marchand enregistré pour le moment</p>
+                    <p style="font-size: 0.9em; color: #999; margin-top: 10px;">
+                        Les marchands doivent publier leurs profils sur Nostr (kind 0)
+                    </p>
                 </div>
             {% endif %}
         </div>
@@ -284,7 +329,7 @@
         <p>TrocZen - Système de bons locaux décentralisé</p>
         <p style="margin-top: 10px;">
             <a href="/">API Backend</a> |
-            <a href="https://github.com/troczen/troczen">GitHub</a>
+            <a href="https://github.com/papiche/troczen">GitHub</a>
         </p>
     </div>
 </body>

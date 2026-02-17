@@ -26,7 +26,7 @@
 - **[NOUVELLES_FEATURES.md](NOUVELLES_FEATURES.md)** - Liste des nouvelles fonctionnalités
 
 ### 📂 Documentation API
-- **[api/API_README.md](api/API_README.md)** - Documentation de l'API backend
+- **[api/README.md](api/README.md)** - Documentation de l'API backend
 - **[api/IPFS_CONFIG.md](api/IPFS_CONFIG.md)** - Configuration IPFS pour le stockage décentralisé
 
 ## 📁 Structure des Fichiers
@@ -49,7 +49,7 @@
 ├── NOUVELLES_FEATURES.md         # Nouvelles fonctionnalités
 ├── FILE_INDEX.md                 # Cet index (vous êtes ici)
 ├── api/
-│   ├── API_README.md             # Documentation API
+│   ├── README.md                 # Documentation API
 │   └── IPFS_CONFIG.md            # Configuration IPFS
 └── troczen/
     ├── RECAPITULATIF_FINAL.md     # Récapitulatif technique
