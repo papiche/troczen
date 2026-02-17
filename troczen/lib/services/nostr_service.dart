@@ -5,7 +5,6 @@ import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import '../models/market.dart';
 import '../models/nostr_profile.dart';
-import '../models/user.dart';
 import 'crypto_service.dart';
 import 'storage_service.dart';
 

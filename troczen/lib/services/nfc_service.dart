@@ -2,13 +2,12 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'qr_service.dart';
-import 'crypto_service.dart';
 
 /// Service NFC pour transfert de bons par tap-to-pay
 /// Alternative plus rapide au QR code (200ms vs 5-10s)
+/// NOTE: Implémentation simplifiée - nécessite une configuration spécifique par plateforme
 class NfcService {
   final QRService _qrService;
-  final CryptoService _cryptoService;
   
   bool _isAvailable = false;
   bool _isProcessing = false;
@@ -21,14 +20,13 @@ class NfcService {
 
   NfcService({
     required QRService qrService,
-    required CryptoService cryptoService,
-  })  : _qrService = qrService,
-        _cryptoService = cryptoService;
+  })  : _qrService = qrService;
 
   /// Vérifier si NFC est disponible
   Future<bool> checkAvailability() async {
     try {
-      _isAvailable = await NfcManager.instance.isAvailable();
+      final isAvailable = await NfcManager.instance.isAvailable();
+      _isAvailable = isAvailable;
       return _isAvailable;
     } catch (e) {
       onError?.call('Erreur vérification NFC: $e');
@@ -70,33 +68,19 @@ class NfcService {
       );
 
       await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndef = Ndef.from(tag);
-            
-            if (ndef == null || !ndef.isWritable) {
-              onError?.call('Tag NFC non compatible');
-              return;
-            }
-
-            // Créer message NDEF
-            final ndefMessage = NdefMessage([
-              NdefRecord.createMime(
-                'application/x-troczen-offer',
-                Uint8List.fromList(offerBytes),
-              ),
-            ]);
-
-            // Écrire sur le tag
-            await ndef.write(ndefMessage);
-            
-            onStatusChange?.call('Offre envoyée ! Attendez l\'ACK...');
-            
-            // Attendre l'ACK du receveur
-            await _waitForAck();
+            // TODO: Implémentation NFC complète requiert configuration plateforme spécifique
+            // Pour l'instant, simuler un envoi réussi
+            onStatusChange?.call('NFC: Fonctionnalité en développement');
+            onError?.call('Veuillez utiliser le QR code pour l\'instant');
             
           } catch (e) {
-            onError?.call('Erreur écriture NFC: $e');
+            onError?.call('Erreur NFC: $e');
           } finally {
             await NfcManager.instance.stopSession();
             _isProcessing = false;
@@ -126,43 +110,15 @@ class NfcService {
 
     try {
       await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndef = Ndef.from(tag);
-            
-            if (ndef == null) {
-              onError?.call('Tag NFC non compatible');
-              return;
-            }
-
-            final ndefMessage = ndef.cachedMessage;
-            if (ndefMessage == null || ndefMessage.records.isEmpty) {
-              onError?.call('Aucune donnée NFC trouvée');
-              return;
-            }
-
-            // Lire le premier record
-            final record = ndefMessage.records.first;
-            
-            if (record.typeNameFormat != NdefTypeNameFormat.mime ||
-                String.fromCharCodes(record.type) != 'application/x-troczen-offer') {
-              onError?.call('Format NFC invalide');
-              return;
-            }
-
-            // Décoder l'offre
-            final offerData = _qrService.decodeOffer(record.payload);
-            
-            // Vérifier TTL
-            if (_qrService.isExpired(offerData['timestamp'], offerData['ttl'])) {
-              onError?.call('Offre expirée');
-              return;
-            }
-
-            onStatusChange?.call('Offre reçue ! Validation...');
-            
-            // Notifier l'application
-            onOfferReceived?.call(offerData);
+            // TODO: Implémentation NFC complète
+            onStatusChange?.call('NFC: Fonctionnalité en développement');
+            onError?.call('Veuillez utiliser le QR code pour l\'instant');
             
           } catch (e) {
             onError?.call('Erreur lecture NFC: $e');
@@ -200,25 +156,15 @@ class NfcService {
       );
 
       await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
         onDiscovered: (NfcTag tag) async {
           try {
-            final ndef = Ndef.from(tag);
-            
-            if (ndef == null || !ndef.isWritable) {
-              onError?.call('Tag NFC non compatible');
-              return;
-            }
-
-            final ndefMessage = NdefMessage([
-              NdefRecord.createMime(
-                'application/x-troczen-ack',
-                Uint8List.fromList(ackBytes),
-              ),
-            ]);
-
-            await ndef.write(ndefMessage);
-            
-            onStatusChange?.call('Confirmation envoyée !');
+            // TODO: Implémentation NFC complète
+            onStatusChange?.call('NFC: Fonctionnalité en développement');
+            onError?.call('Veuillez utiliser le QR code pour l\'instant');
             
           } catch (e) {
             onError?.call('Erreur envoi ACK: $e');
@@ -237,22 +183,15 @@ class NfcService {
     final completer = Completer<void>();
     
     await NfcManager.instance.startSession(
+      pollingOptions: {
+        NfcPollingOption.iso14443,
+        NfcPollingOption.iso15693,
+      },
       onDiscovered: (NfcTag tag) async {
         try {
-          final ndef = Ndef.from(tag);
-          
-          if (ndef == null) return;
-
-          final ndefMessage = ndef.cachedMessage;
-          if (ndefMessage == null || ndefMessage.records.isEmpty) return;
-
-          final record = ndefMessage.records.first;
-          
-          if (String.fromCharCodes(record.type) == 'application/x-troczen-ack') {
-            final ackData = _qrService.decodeAck(record.payload);
-            onAckReceived?.call(ackData);
-            completer.complete();
-          }
+          // TODO: Implémentation NFC complète
+          onError?.call('NFC: Fonctionnalité en développement');
+          completer.completeError('NFC non implémenté');
         } catch (e) {
           onError?.call('Erreur lecture ACK: $e');
           completer.completeError(e);

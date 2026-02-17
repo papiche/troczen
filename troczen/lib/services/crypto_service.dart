@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:pointycastle/export.dart';
 import 'package:hex/hex.dart';
-import 'package:convert/convert.dart';
 
 class CryptoService {
   final Random _secureRandom = Random.secure();
@@ -68,11 +67,19 @@ class CryptoService {
 
   /// Dérive la clé publique depuis une clé privée secp256k1
   String derivePublicKey(Uint8List privateKeyBytes) {
-    final privateKeyBigInt = _bytesToBigInt(privateKeyBytes);
-    final privateKey = ECPrivateKey(privateKeyBigInt, ECCurve_secp256k1());
-    
+    var privateKeyBigInt = _bytesToBigInt(privateKeyBytes);
     final domainParams = ECDomainParameters('secp256k1');
-    final publicKeyPoint = domainParams.G * privateKeyBigInt;
+    final n = domainParams.n;
+    
+    var publicKeyPoint = domainParams.G * privateKeyBigInt;
+    
+    // BIP-340: Normaliser pour avoir y pair
+    final yBigInt = publicKeyPoint!.y!.toBigInteger()!;
+    if (yBigInt.isOdd) {
+      // Si y est impair, utiliser -privateKey (qui donnera le point opposé avec y pair)
+      privateKeyBigInt = n - privateKeyBigInt;
+      publicKeyPoint = domainParams.G * privateKeyBigInt;
+    }
     
     return _pointToHex(publicKeyPoint!);
   }
@@ -80,8 +87,19 @@ class CryptoService {
   /// Génère une paire de clés Nostr (secp256k1)
   Map<String, String> generateNostrKeyPair() {
     final keyPair = _generateSecp256k1KeyPair();
-    final privateKey = (keyPair.privateKey as ECPrivateKey).d!;
-    final publicKey = (keyPair.publicKey as ECPublicKey).Q!;
+    var privateKey = (keyPair.privateKey as ECPrivateKey).d!;
+    var publicKey = (keyPair.publicKey as ECPublicKey).Q!;
+    
+    // BIP-340: Normaliser pour avoir y pair
+    final domainParams = ECDomainParameters('secp256k1');
+    final n = domainParams.n;
+    final yBigInt = publicKey.y!.toBigInteger()!;
+    
+    if (yBigInt.isOdd) {
+      // Si y est impair, utiliser -privateKey (qui donnera le point opposé avec y pair)
+      privateKey = n - privateKey;
+      publicKey = (domainParams.G * privateKey)!;
+    }
     
     // Convertir en hex
     final privateKeyHex = _bigIntToHex(privateKey, 32);
@@ -120,23 +138,23 @@ class CryptoService {
       throw ArgumentError('Secret doit faire 32 octets');
     }
     
-    // Shamir (2,3) : Pour chaque octet, créer un polynôme de degré 1
-    // f(x) = a0 + a1*x (mod 256)
-    // où a0 = secret[i], a1 = random
+    // Shamir (2,3) : Utilisation de polynômes mod 257
+    // f(x) = a0 + a1*x où a0 = secret byte, a1 = random
     // P1 = f(1), P2 = f(2), P3 = f(3)
     
     final p1Bytes = Uint8List(32);
     final p2Bytes = Uint8List(32);
     final p3Bytes = Uint8List(32);
+    final mod = BigInt.from(257);
     
     for (int i = 0; i < 32; i++) {
-      final a0 = secretBytes[i]; // Le secret
-      final a1 = _secureRandom.nextInt(256); // Coefficient aléatoire
+      final a0 = BigInt.from(secretBytes[i]); // secret
+      final a1 = BigInt.from(_secureRandom.nextInt(257)); // coefficient aléatoire
       
-      // Évaluation du polynôme pour x=1, x=2, x=3 (mod 256)
-      p1Bytes[i] = (a0 + a1 * 1) % 256;
-      p2Bytes[i] = (a0 + a1 * 2) % 256;
-      p3Bytes[i] = (a0 + a1 * 3) % 256;
+      // Calculer f(1), f(2), f(3) mod 257
+      p1Bytes[i] = ((a0 + a1 * BigInt.one) % mod).toInt();
+      p2Bytes[i] = ((a0 + a1 * BigInt.two) % mod).toInt();
+      p3Bytes[i] = ((a0 + a1 * BigInt.from(3)) % mod).toInt();
     }
     
     return [
@@ -147,7 +165,6 @@ class CryptoService {
   }
 
   /// Reconstruit le secret à partir de 2 parts quelconques (sur 3)
-  /// ✅ CORRECTION: Interpolation de Lagrange pour reconstruction Shamir
   String shamirCombine(String? part1Hex, String? part2Hex, String? part3Hex) {
     // Vérifier qu'on a au moins 2 parts
     final parts = <int, Uint8List>{};
@@ -161,46 +178,72 @@ class CryptoService {
     
     // Prendre les 2 premières parts disponibles
     final indices = parts.keys.toList().take(2).toList();
+    final y1 = parts[indices[0]]!;
+    final y2 = parts[indices[1]]!;
     final x1 = indices[0];
     final x2 = indices[1];
-    final y1 = parts[x1]!;
-    final y2 = parts[x2]!;
     
     final secretBytes = Uint8List(32);
+    final mod = BigInt.from(257);
     
     for (int i = 0; i < 32; i++) {
-      // Interpolation de Lagrange pour retrouver f(0) = a0 = secret
-      // f(0) = y1 * (0-x2)/(x1-x2) + y2 * (0-x1)/(x2-x1)
-      // f(0) = y1 * (-x2)/(x1-x2) + y2 * (-x1)/(x2-x1)
+      // Interpolation de Lagrange mod 257
+      // f(0) = y1 * L1(0) + y2 * L2(0)
+      // où L1(0) = (0-x2)/(x1-x2) et L2(0) = (0-x1)/(x2-x1)
       
-      // Calcul mod 256
-      final num1 = (y1[i] * _modInverse(-x2, x1 - x2, 256)) % 256;
-      final num2 = (y2[i] * _modInverse(-x1, x2 - x1, 256)) % 256;
+      final y1Big = BigInt.from(y1[i]);
+      final y2Big = BigInt.from(y2[i]);
+      final x1Big = BigInt.from(x1);
+      final x2Big = BigInt.from(x2);
       
-      secretBytes[i] = (num1 + num2) % 256;
+      // L1 = (0 - x2) / (x1 - x2) mod 257
+      var num1 = (BigInt.zero - x2Big) % mod;
+      if (num1.isNegative) num1 = num1 + mod;
+      
+      var den1 = (x1Big - x2Big) % mod;
+      if (den1.isNegative) den1 = den1 + mod;
+      
+      final invDen1 = _modInverseBigInt(den1, mod);
+      final l1 = (num1 * invDen1) % mod;
+      
+      // L2 = (0 - x1) / (x2 - x1) mod 257
+      var num2 = (BigInt.zero - x1Big) % mod;
+      if (num2.isNegative) num2 = num2 + mod;
+      
+      var den2 = (x2Big - x1Big) % mod;
+      if (den2.isNegative) den2 = den2 + mod;
+      
+      final invDen2 = _modInverseBigInt(den2, mod);
+      final l2 = (num2 * invDen2) % mod;
+      
+      // f(0) = y1 * L1 + y2 * L2 mod 257
+      var result = (y1Big * l1 + y2Big * l2) % mod;
+      if (result.isNegative) result = result + mod;
+      
+      // Ramener dans [0, 255] - le secret original était mod 256
+      secretBytes[i] = result.toInt() % 256;
     }
     
     return HEX.encode(secretBytes);
   }
 
-  /// Calcul de (a/b) mod m = a * b^(-1) mod m
-  int _modInverse(int a, int b, int m) {
-    // Normaliser a et b dans [0, m)
-    a = ((a % m) + m) % m;
-    b = ((b % m) + m) % m;
+  /// Calcul de l'inverse modulaire pour BigInt
+  BigInt _modInverseBigInt(BigInt a, BigInt m) {
+    // Algorithme d'Euclide étendu pour trouver l'inverse modulaire
+    final result = _extendedGCDBigInt(a, m);
+    final x = result[0];
     
-    // Trouver l'inverse modulaire de b mod m (algorithme d'Euclide étendu)
-    int bInv = _extendedGCD(b, m)[0];
-    bInv = ((bInv % m) + m) % m;
-    
-    return (a * bInv) % m;
+    // Normaliser dans [0, m)
+    return (x % m + m) % m;
   }
 
-  /// Algorithme d'Euclide étendu pour trouver l'inverse modulaire
-  List<int> _extendedGCD(int a, int b) {
-    if (b == 0) return [1, 0];
+  /// Algorithme d'Euclide étendu pour BigInt
+  List<BigInt> _extendedGCDBigInt(BigInt a, BigInt b) {
+    if (b == BigInt.zero) {
+      return [BigInt.one, BigInt.zero];
+    }
     
-    final result = _extendedGCD(b, a % b);
+    final result = _extendedGCDBigInt(b, a % b);
     final x = result[1];
     final y = result[0] - (a ~/ b) * result[1];
     
@@ -317,13 +360,23 @@ class CryptoService {
     final privateKeyBigInt = _bytesToBigInt(privateKeyBytes);
     
     // ✅ SÉCURITÉ 100%: Générer k déterministe (RFC 6979)
-    final k = _deriveNonceDeterministic(privateKeyBytes, Uint8List.fromList(message));
+    var k = _deriveNonceDeterministic(privateKeyBytes, Uint8List.fromList(message));
     
     final domainParams = ECDomainParameters('secp256k1');
-    final R = (domainParams.G * k)!;
+    final n = domainParams.n;
+    var R = (domainParams.G * k)!;
+    
+    // BIP-340: Normaliser R pour avoir y pair
+    final yBigInt = R.y!.toBigInteger()!;
+    if (yBigInt.isOdd) {
+      // Si y est impair, prendre -k (qui donnera le point opposé avec y pair)
+      k = n - k;
+      R = (domainParams.G * k)!;
+    }
+    
     final r = R.x!.toBigInteger()!;
     
-    // e = hash(R || message)
+    // e = hash(r || message)
     final eBytes = sha256.convert([
       ...HEX.decode(_bigIntToHex(r, 32)),
       ...message,
@@ -331,7 +384,6 @@ class CryptoService {
     final e = _bytesToBigInt(Uint8List.fromList(eBytes));
     
     // s = k + e*privateKey mod n
-    final n = domainParams.n;
     final s = (k + e * privateKeyBigInt) % n;
     
     // Signature = r || s (64 octets)
@@ -342,31 +394,43 @@ class CryptoService {
   bool verifySignature(String messageHex, String signatureHex, String publicKeyHex) {
     if (signatureHex.length != 128) return false; // 64 octets
     
-    final message = HEX.decode(messageHex);
-    final r = _hexToBigInt(signatureHex.substring(0, 64));
-    final s = _hexToBigInt(signatureHex.substring(64));
-    final publicKeyBytes = HEX.decode(publicKeyHex);
-    
-    final domainParams = ECDomainParameters('secp256k1');
-    
-    // Reconstruire le point public depuis x uniquement (supposer y pair)
-    final publicKeyX = _hexToBigInt(publicKeyHex);
-    final publicKeyPoint = _decompressPoint(publicKeyX, true, domainParams.curve);
-    
-    // e = hash(r || message)
-    final eBytes = sha256.convert([
-      ...HEX.decode(_bigIntToHex(r, 32)),
-      ...message,
-    ]).bytes;
-    final e = _bytesToBigInt(Uint8List.fromList(eBytes));
-    
-    // Vérifier: s*G == R + e*publicKey
-    final sG = domainParams.G * s;
-    final ePub = publicKeyPoint! * e;
-    final R = _decompressPoint(r, true, domainParams.curve);
-    final RePlus = R! + ePub!;
-    
-    return sG == RePlus;
+    try {
+      final message = HEX.decode(messageHex);
+      final r = _hexToBigInt(signatureHex.substring(0, 64));
+      final s = _hexToBigInt(signatureHex.substring(64));
+      
+      final domainParams = ECDomainParameters('secp256k1');
+      final n = domainParams.n;
+      
+      // Vérifier que r et s sont dans [1, n-1]
+      if (r <= BigInt.zero || r >= n) return false;
+      if (s <= BigInt.zero || s >= n) return false;
+      
+      // Reconstruire le point public depuis x uniquement (supposer y pair - BIP-340)
+      final publicKeyX = _hexToBigInt(publicKeyHex);
+      final publicKeyPoint = _decompressPoint(publicKeyX, true, domainParams.curve);
+      if (publicKeyPoint == null) return false;
+      
+      // Reconstruire R depuis r (supposer y pair - BIP-340)
+      final R = _decompressPoint(r, true, domainParams.curve);
+      if (R == null) return false;
+      
+      // e = hash(r || message)
+      final eBytes = sha256.convert([
+        ...HEX.decode(_bigIntToHex(r, 32)),
+        ...message,
+      ]).bytes;
+      final e = _bytesToBigInt(Uint8List.fromList(eBytes));
+      
+      // Vérifier: s*G == R + e*publicKey
+      final sG = domainParams.G * s;
+      final ePub = publicKeyPoint * e;
+      final RePlus = R + ePub!;
+      
+      return sG == RePlus;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// ✅ SÉCURITÉ 100%: Dérivation déterministe de nonce (RFC 6979)

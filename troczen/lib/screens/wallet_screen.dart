@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/bon.dart';
 import '../models/user.dart';
 import '../services/storage_service.dart';
-import '../services/nostr_service.dart';
-import '../services/crypto_service.dart';
 import '../widgets/panini_card.dart';
 import '../screens/gallery_screen.dart';
 import '../screens/scan_screen.dart';

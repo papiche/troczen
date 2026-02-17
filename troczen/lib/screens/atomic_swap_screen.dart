@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:nfc_manager/nfc_manager.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
@@ -36,7 +35,6 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
   // Services
   final _nfcService = NfcService(
     qrService: QRService(),
-    cryptoService: CryptoService(),
   );
   final _qrService = QRService();
   final _cryptoService = CryptoService();

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/market.dart';
-import '../models/nostr_profile.dart';
 import '../services/storage_service.dart';
 
 class MarketScreen extends StatefulWidget {

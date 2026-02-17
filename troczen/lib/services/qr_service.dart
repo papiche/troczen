@@ -161,7 +161,7 @@ class QRService {
   /// Vérifie si un QR a expiré
   bool isExpired(int timestamp, int ttl) {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    return now > (timestamp + ttl);
+    return now >= (timestamp + ttl);
   }
 
   /// Calcule le temps restant en secondes
