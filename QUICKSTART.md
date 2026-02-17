@@ -1,6 +1,11 @@
 # Guide de Démarrage Rapide - TrocZen
 
+**Retour à la [Documentation Principale](README.md)** | [Index des Fichiers](FILE_INDEX.md) | [Architecture Technique](ARCHITECTURE.md)
+
 ## 🚀 Installation en 5 minutes
+
+> 📄 Ce guide suppose que vous avez déjà lu le [README principal](README.md).
+> 🛠️ Pour une installation complète avec toutes les options, consultez le [Résumé du Projet](PROJECT_SUMMARY.md).
 
 ### 1. Vérifier Flutter
 
@@ -16,6 +21,8 @@ Si Flutter n'est pas installé : https://docs.flutter.dev/get-started/install
 cd troczen
 flutter pub get
 ```
+
+> ⚠️ Note : Le fichier `build.sh` mentionné dans certaines documentations n'existe pas. Utilisez directement les commandes Flutter ci-dessus.
 
 ### 3. Lancer sur Android
 

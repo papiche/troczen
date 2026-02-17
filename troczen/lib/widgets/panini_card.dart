@@ -20,6 +20,7 @@ class PaniniCard extends StatefulWidget {
 
 class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
+  bool _showDetails = false; // Pour afficher/masquer les détails
 
   @override
   void initState() {
@@ -43,11 +44,13 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.bon.color != null 
-        ? Color(widget.bon.color!) 
+    final color = widget.bon.color != null
+        ? Color(widget.bon.color!)
         : _getColorByStatus(widget.bon.status);
     
     final isActive = widget.bon.status == BonStatus.active && !widget.bon.isExpired;
+    final hasP2 = widget.bon.p2 != null && widget.bon.p2!.isNotEmpty;
+    final hasP1 = widget.bon.p1 != null && widget.bon.p1!.isNotEmpty;
     final isPending = widget.bon.status == BonStatus.pending;
     final isRare = widget.bon.isRare;
     final rarity = widget.bon.rarity ?? 'common';
@@ -494,5 +497,22 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  Widget _buildStat(String icon, String value, String label) {
+    return Column(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 16)),
+        Text(value, style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        )),
+        Text(label, style: const TextStyle(
+          color: Colors.grey,
+          fontSize: 10,
+        )),
+      ],
+    );
   }
 }

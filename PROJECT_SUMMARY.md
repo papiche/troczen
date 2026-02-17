@@ -1,8 +1,14 @@
 # TrocZen - Synthèse du Projet
 
+**Retour à la [Documentation Principale](README.md)** | [Index des Fichiers](FILE_INDEX.md) | [Whitepaper Technique](007.md)
+
 ## 📋 Résumé Exécutif
 
 **TrocZen** est une application mobile Flutter permettant de créer, transférer et encaisser des bons de valeur locale (ẐEN) de manière sécurisée et 100% offline après synchronisation.
+
+> 📄 Pour une vue d'ensemble du projet, consultez le [README principal](README.md).
+> 📊 Pour les détails techniques complets, voir le [Whitepaper Technique](007.md).
+> 🔐 Pour les informations de sécurité, consultez l'[Audit de Sécurité](AUDIT_SECURITE_FINAL.md).
 
 ### Caractéristiques Principales
 
@@ -48,99 +54,19 @@
 
 ## 🏗️ Structure du Code
 
-```
-troczen/
-├── lib/
-│   ├── main.dart                    # Point d'entrée + Login
-│   ├── models/                      # Modèles de données
-│   │   ├── user.dart
-│   │   ├── bon.dart
-│   │   └── market.dart
-│   ├── services/                    # Logique métier
-│   │   ├── crypto_service.dart      # SSSS, chiffrement
-│   │   ├── qr_service.dart          # QR binaire
-│   │   └── storage_service.dart     # SecureStorage
-│   ├── screens/                     # Interface utilisateur
-│   │   ├── wallet_screen.dart
-│   │   ├── create_bon_screen.dart
-│   │   ├── offer_screen.dart
-│   │   ├── scan_screen.dart
-│   │   └── market_screen.dart
-│   └── widgets/                     # Composants réutilisables
-│       └── panini_card.dart
-├── android/                         # Configuration Android
-├── pubspec.yaml                     # Dépendances
-├── README.md                        # Documentation principale
-├── QUICKSTART.md                    # Guide démarrage rapide
-├── ARCHITECTURE.md                  # Doc technique détaillée
-└── build.sh                         # Script de build
-
-Total : ~2500 lignes de code Dart
-```
+> 📄 Pour la structure complète et à jour du code, consultez le [README principal](README.md#🏗️-architecture).
 
 ## 🔐 Sécurité Cryptographique
 
-### Découpage SSSS
-
-```
-Bon créé → nsec_bon généré
-           ↓
-     SSSS (2/3) split
-           ↓
-    [P1] [P2] [P3]
-     ↓    ↓    ↓
-  Émetteur Porteur Réseau
-  (local) (transfert) (Nostr)
-```
-
-### Chiffrement Multi-Couches
-
-1. **P2** (transfert) : `AES-GCM(SHA256(P3), P2)`
-2. **P3** (Nostr) : `AES-GCM(K_market, P3)`
-3. **Stockage** : FlutterSecureStorage (Keystore/Keychain)
-
-### Format QR Binaire
-
-- Taille fixe : **113 octets**
-- Version QR : 6 (41×41 modules)
-- Lisibilité : > 99% avec caméras standards
-- TTL : 30 secondes
+> 📊 Pour les détails techniques complets sur la cryptographie, le chiffrement et les formats, consultez le [Whitepaper Technique](007.md).
 
 ## 📱 Interface Utilisateur
 
-### Palette de Couleurs
-
-```css
-Background: #121212 (noir doux)
-Cards: #1E1E1E (gris foncé)
-Primary: #FFB347 (jaune miel)
-Secondary: #0A7EA4 (bleu-vert)
-Success: #4CAF50 (vert)
-Error: #F44336 (rouge)
-```
-
-### Flow Utilisateur
-
-```
-1. Login (identifiant/mot de passe)
-   ↓
-2. Wallet (liste des bons)
-   ↓
-3a. Créer bon → Preview → Valider
-   OU
-3b. Donner bon → QR (30s TTL) → Attente ACK
-   OU
-3c. Scanner → Validation → Confirmation
-```
+> 🎨 Pour les détails sur l'interface utilisateur et les flux, consultez le [README](README.md#📱-utilisation).
 
 ## 🎯 Démo Rapide
 
-### Scénario de Test (2 appareils)
-
-**Appareil A (Alice - Émetteur)**
-```bash
-1. Login : alice / password123
-2. Config marché : marche-test + K_market
+> 🚀 Pour un guide de démarrage rapide avec des scénarios de test, consultez le [Guide de Démarrage Rapide](QUICKSTART.md).
 3. Créer bon : 5 ẐEN "Miel"
 4. Donner → Afficher QR
 ```

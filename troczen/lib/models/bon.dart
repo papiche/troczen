@@ -28,6 +28,10 @@ class Bon {
   final String? rarity;         // 'common', 'uncommon', 'rare', 'legendary'
   final int? transferCount;     // Nombre de transferts effectués
   final String? issuerNostrProfile; // URL profil Nostr du commerçant
+  final String? uniqueId;       // Identifiant unique pour la carte (comme Pokémon)
+  final String? cardType;       // Type de carte (ex: "commerce", "service", "artisan")
+  final String? specialAbility; // Capacité spéciale (ex: "double valeur", "résistant")
+  final Map<String, dynamic>? stats; // Statistiques (ex: {"power": 5, "defense": 3})
 
   Bon({
     required this.bonId,
@@ -47,6 +51,10 @@ class Bon {
     this.rarity = 'common',
     this.transferCount = 0,
     this.issuerNostrProfile,
+    this.uniqueId,
+    this.cardType = 'commerce',
+    this.specialAbility,
+    this.stats,
   });
 
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
@@ -60,6 +68,135 @@ class Bon {
     if (random < 6) return 'rare';       // 5%
     if (random < 21) return 'uncommon';  // 15%
     return 'common';                     // 79%
+  }
+
+  // Générer un identifiant unique pour la carte (style Pokémon)
+  static String generateUniqueId(String bonId) {
+    final hash = bonId.substring(0, 6).toUpperCase();
+    return 'ZEN-$hash';
+  }
+
+  // Générer un type de carte aléatoire
+  static String generateCardType() {
+    final types = ['commerce', 'service', 'artisan', 'culture', 'technologie', 'alimentation'];
+    final random = DateTime.now().millisecondsSinceEpoch % types.length;
+    return types[random];
+  }
+
+  // Générer une capacité spéciale aléatoire
+  static String generateSpecialAbility(String rarity) {
+    final commonAbilities = [
+      'Résistant aux copies',
+      'Valable 2x plus longtemps',
+      'Accepté partout',
+    ];
+    
+    final uncommonAbilities = [
+      'Double valeur les week-ends',
+      'Résistant à l\'inflation',
+      'Transférable instantanément',
+      'Échangeable contre services',
+    ];
+    
+    final rareAbilities = [
+      'Triple valeur en période de fête',
+      'Création de bons illimitée',
+      'Accès VIP aux événements',
+      'Immunité aux frais',
+    ];
+    
+    final legendaryAbilities = [
+      'Multiplicateur de valeur x10',
+      'Création de marché autorisée',
+      'Statut de super-utilisateur',
+      'Bénéfices à vie',
+    ];
+    
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    
+    switch (rarity) {
+      case 'legendary':
+        return legendaryAbilities[random % legendaryAbilities.length];
+      case 'rare':
+        return rareAbilities[random % rareAbilities.length];
+      case 'uncommon':
+        return uncommonAbilities[random % uncommonAbilities.length];
+      default:
+        return commonAbilities[random % commonAbilities.length];
+    }
+  }
+
+  // Générer des statistiques pour la carte
+  static Map<String, dynamic> generateStats(String rarity) {
+    final random = DateTime.now().millisecondsSinceEpoch;
+    
+    int basePower = 1;
+    int baseDefense = 1;
+    int baseSpeed = 1;
+    
+    switch (rarity) {
+      case 'legendary':
+        basePower = 10;
+        baseDefense = 8;
+        baseSpeed = 5;
+        break;
+      case 'rare':
+        basePower = 7;
+        baseDefense = 5;
+        baseSpeed = 3;
+        break;
+      case 'uncommon':
+        basePower = 4;
+        baseDefense = 3;
+        baseSpeed = 2;
+        break;
+      default:
+        basePower = 2;
+        baseDefense = 2;
+        baseSpeed = 1;
+    }
+    
+    // Ajouter une variation aléatoire
+    final power = (basePower + (random % 3)).clamp(1, 15);
+    final defense = (baseDefense + (random % 2)).clamp(1, 10);
+    final speed = (baseSpeed + (random % 2)).clamp(1, 7);
+    
+    return {
+      'power': power,
+      'defense': defense,
+      'speed': speed,
+      'durability': (power + defense) ~/ 2,
+      'valueMultiplier': 1.0 + (power * 0.1),
+    };
+  }
+
+  // Calculer la durée restante du bon
+  String getDurationRemaining() {
+    if (expiresAt == null) return 'Illimité';
+    
+    final remaining = expiresAt!.difference(DateTime.now());
+    if (remaining.isNegative) return 'Expiré';
+    
+    final days = remaining.inDays;
+    final hours = remaining.inHours % 24;
+    
+    if (days > 30) return '${(days/30).floor()} mois restants';
+    if (days > 0) return '$days jours restants';
+    return '$hours heures restantes';
+  }
+
+  // Obtenir les caractéristiques pour l'affichage
+  Map<String, String> getCharacteristics() {
+    return {
+      'ID Unique': uniqueId ?? 'Non défini',
+      'Type': cardType ?? 'Standard',
+      'Rareté': rarity ?? 'common',
+      'Valeur': '${value.toStringAsFixed(0)} ẐEN',
+      'Durée': getDurationRemaining(),
+      'Transfers': '${transferCount ?? 0}',
+      'Capacité': specialAbility ?? 'Aucune',
+      'Émetteur': issuerName,
+    };
   }
 
   Bon copyWith({
@@ -80,6 +217,10 @@ class Bon {
     String? rarity,
     int? transferCount,
     String? issuerNostrProfile,
+    String? uniqueId,
+    String? cardType,
+    String? specialAbility,
+    Map<String, dynamic>? stats,
   }) {
     return Bon(
       bonId: bonId ?? this.bonId,
@@ -99,6 +240,10 @@ class Bon {
       rarity: rarity ?? this.rarity,
       transferCount: transferCount ?? this.transferCount,
       issuerNostrProfile: issuerNostrProfile ?? this.issuerNostrProfile,
+      uniqueId: uniqueId ?? this.uniqueId,
+      cardType: cardType ?? this.cardType,
+      specialAbility: specialAbility ?? this.specialAbility,
+      stats: stats ?? this.stats,
     );
   }
 

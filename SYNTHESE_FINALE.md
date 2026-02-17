@@ -70,31 +70,16 @@
 
 ---
 
-## 📁 Nouveaux Fichiers Créés (14)
+## 📁 Nouveaux Fichiers Créés
 
-### Services
-1. [`crypto_service.dart`](troczen/lib/services/crypto_service.dart) - Crypto sécurisé (488 lignes)
-2. [`nostr_service.dart`](troczen/lib/services/nostr_service.dart) - Service Nostr complet (340 lignes)
-3. [`api_service.dart`](troczen/lib/services/api_service.dart) - Détection réseau + API (220 lignes)
-4. [`burn_service.dart`](troczen/lib/services/burn_service.dart) - Révocation bons (80 lignes)
+> 📋 Pour une liste complète et organisée de tous les fichiers du projet, consultez l'[Index des Fichiers](FILE_INDEX.md).
 
-### Screens
-5. [`ack_screen.dart`](troczen/lib/screens/ack_screen.dart) - QR confirmation (300 lignes)
-6. [`ack_scanner_screen.dart`](troczen/lib/screens/ack_scanner_screen.dart) - Scanner ACK (180 lignes)
-
-### Models
-7. [`nostr_profile.dart`](troczen/lib/models/nostr_profile.dart) - Constantes + profils (70 lignes)
-
-### Tests
-8. [`crypto_service_test.dart`](troczen/test/crypto_service_test.dart) - 15 tests unitaires (176 lignes)
-
-### Documentation
-9. [`ANALYSE_CODE.md`](ANALYSE_CODE.md) - Analyse complète (500 lignes)
-10. [`CORRECTIONS_SECURITE.md`](CORRECTIONS_SECURITE.md) - Détails corrections (250 lignes)
-11. [`IMPLEMENTATION_FINALE.md`](IMPLEMENTATION_FINALE.md) - Synthèse impl (300 lignes)
-12. [`VERIFICATION_CONFORMITE.md`](VERIFICATION_CONFORMITE.md) - Conformité 007.md (400 lignes)
-13. [`AUDIT_SECURITE_FINAL.md`](AUDIT_SECURITE_FINAL.md) - Audit final (350 lignes)
-14. [`api/IPFS_CONFIG.md`](api/IPFS_CONFIG.md) - Config IPFS (200 lignes)
+**Fichiers clés ajoutés** :
+- Services : `crypto_service.dart`, `nostr_service.dart`, `api_service.dart`, `burn_service.dart`
+- Écrans : `ack_screen.dart`, `ack_scanner_screen.dart`
+- Modèles : `nostr_profile.dart`
+- Tests : `crypto_service_test.dart`
+- Documentation : Voir [FILE_INDEX.md](FILE_INDEX.md) pour la liste complète
 
 ---
 

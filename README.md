@@ -10,6 +10,11 @@ Application Flutter pour la création, le transfert et l'encaissement de bons de
 - **QR codes binaires**: Format compact (113 octets) pour une lecture fiable
 - **Interface Panini**: Cartes à collectionner ludiques et intuitives
 - **Synchronisation Nostr**: Publication et récupération via kind 30303
+- **Support NFC**: Transfert de bons via NFC pour une expérience sans contact
+- **Tableau de bord marchand**: Suivi des transactions et gestion des bons
+- **Gestion des retours utilisateurs**: Système intégré pour les retours et améliorations
+- **Échanges atomiques**: Transfert sécurisé et instantané de bons
+- **Gestion des ACK**: Confirmation sécurisée des transferts via QR codes ACK
 
 ## 📋 Prérequis
 
@@ -159,6 +164,7 @@ Chaque bon est une identité Nostr dont la clé privée est divisée en 3 parts 
 2. Choisir "Donner ce bon"
 3. Montrer le QR code au receveur (TTL 30s)
 4. Attendre la confirmation
+5. Scanner le QR code ACK du receveur pour finaliser le transfert
 
 ### Recevoir un bon
 
@@ -166,6 +172,19 @@ Chaque bon est une identité Nostr dont la clé privée est divisée en 3 parts 
 2. Scanner le QR code de l'offre
 3. Vérification automatique avec P3
 4. Afficher la confirmation au donneur
+5. Générer un QR code ACK pour finaliser le transfert
+
+### Utiliser le NFC
+
+1. Activer le NFC dans les paramètres
+2. Approcher deux appareils pour transférer un bon
+3. Confirmer le transfert sur les deux appareils
+
+### Tableau de bord marchand
+
+1. Accéder au tableau de bord via l'icône 📊
+2. Visualiser les transactions et l'historique des bons
+3. Exporter les données si nécessaire
 
 ## 🛠️ Configuration avancée
 
@@ -197,7 +216,20 @@ flutter test
 
 # Tests d'intégration
 flutter drive --target=test_driver/app.dart
+
+# Tests spécifiques pour les services
+flutter test test/crypto_service_test.dart
+flutter test test/storage_service_test.dart
+flutter test test/qr_service_test.dart
 ```
+
+### Couverture des tests
+
+- **crypto_service_test.dart**: Tests pour les fonctions cryptographiques (SSSS, chiffrement/déchiffrement)
+- **storage_service_test.dart**: Tests pour le stockage sécurisé des données
+- **qr_service_test.dart**: Tests pour la génération et le décodage des QR codes
+- **api_service**: Tests pour les appels API et la synchronisation Nostr
+- **nfc_service**: Tests pour les fonctionnalités NFC
 
 ## 🐛 Debugging
 
@@ -258,6 +290,16 @@ Utiliser Xcode > Window > Devices and Simulators
    - Génère QR ACK
    - Donneur scanne ACK et supprime P2
 
+4. **Handshake ACK**
+   - Le receveur génère un QR code ACK contenant la confirmation
+   - Le donneur scanne le QR code ACK pour finaliser le transfert
+   - Les deux parties reçoivent une confirmation visuelle et sonore
+
+5. **Échanges atomiques**
+   - Permet des échanges simultanés de plusieurs bons
+   - Garantit que tous les transferts sont effectués ou aucun
+   - Utilisé pour les transactions complexes entre commerçants
+
 ## 🤝 Contribution
 
 1. Fork le projet
@@ -278,14 +320,46 @@ MIT License - Voir le fichier LICENSE
 
 ## 🔮 Roadmap
 
-- [ ] Implémentation complète du handshake ACK
-- [ ] Intégration Nostr (publication/sync kind 30303)
+- [x] Implémentation complète du handshake ACK
+- [x] Intégration Nostr (publication/sync kind 30303)
+- [x] Support NFC pour les transferts sans contact
+- [x] Tableau de bord marchand avec statistiques
+- [x] Système de feedback utilisateur
 - [ ] Service de synchronisation automatique
 - [ ] Gestion des bons expirés
-- [ ] Statistiques et graphiques
+- [ ] Statistiques et graphiques avancés
 - [ ] Export PDF des transactions
 - [ ] Support multi-marchés
 - [ ] PWA (Progressive Web App)
+- [ ] Intégration avec d'autres protocoles de paiement local
+
+## 📚 Documentation
+
+### 📋 Documents Techniques
+
+- **[Whitepaper Technique](007.md)** - Modèle cryptographique complet et spécifications
+- **[Architecture Détaillée](ARCHITECTURE.md)** - Description technique approfondie
+- **[Résumé du Projet](PROJECT_SUMMARY.md)** - État d'avancement et roadmap
+- **[Guide de Démarrage Rapide](QUICKSTART.md)** - Installation et configuration
+
+### 🔐 Sécurité et Audit
+
+- **[Audit de Sécurité](AUDIT_SECURITE_FINAL.md)** - Analyse complète de la sécurité
+- **[Corrections de Sécurité](CORRECTIONS_SECURITE.md)** - Améliorations apportées
+- **[Vérification de Conformité](VERIFICATION_CONFORMITE.md)** - Conformité aux standards
+
+### 🛠️ Guides Développeurs
+
+- **[Guide des Tests](GUIDE_TESTS.md)** - Comment exécuter les tests
+- **[Analyse du Code](ANALYSE_CODE.md)** - Structure et qualité du code
+- **[Nouvelles Fonctionnalités](NOUVELLES_FEATURES.md)** - Liste des ajouts récents
+
+### 📂 API et Backend
+
+- **[Documentation API](api/API_README.md)** - Endpoints et utilisation
+- **[Configuration IPFS](api/IPFS_CONFIG.md)** - Stockage décentralisé
+
+Pour plus de détails, consultez notre [documentation en ligne](https://docs.troczen.org) ou explorez tous les documents via l'[Index des Fichiers](FILE_INDEX.md).
 
 ## 💡 Crédits
 

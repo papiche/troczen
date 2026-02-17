@@ -1,5 +1,7 @@
 # Architecture Technique - TrocZen
 
+**Retour à la [Documentation Principale](README.md)** | [Index des Fichiers](FILE_INDEX.md)
+
 ## 📐 Vue d'ensemble
 
 TrocZen est une application Flutter qui implémente un système de monnaie locale (ẐEN) avec les caractéristiques suivantes :
@@ -8,6 +10,9 @@ TrocZen est une application Flutter qui implémente un système de monnaie local
 - **Cryptographiquement sécurisé** : SSSS, AES-GCM, secp256k1
 - **Décentralisé** : Pas de serveur central, utilise Nostr
 - **Atomique** : Handshake en deux étapes pour éviter la double dépense
+
+> 📄 Pour une vue d'ensemble complète du projet, consultez le [README principal](README.md).
+> 📊 Pour l'état d'avancement et la roadmap, voir le [Résumé du Projet](PROJECT_SUMMARY.md).
 
 ## 🏗️ Architecture en couches
 
