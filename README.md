@@ -310,28 +310,51 @@ Utiliser Xcode > Window > Devices and Simulators
 
 ## 📝 Licence
 
-MIT License - Voir le fichier LICENSE
+A-GPL License - Voir le fichier LICENSE
 
 ## 🆘 Support
 
-- Issues GitHub: https://github.com/votre-repo/troczen/issues
-- Documentation: https://docs.troczen.org
-- Email: support@troczen.org
+- Issues GitHub: https://github.com/papiche/troczen/issues
+
 
 ## 🔮 Roadmap
+
+### ✅ Fonctionnalités Implémentées
 
 - [x] Implémentation complète du handshake ACK
 - [x] Intégration Nostr (publication/sync kind 30303)
 - [x] Support NFC pour les transferts sans contact
 - [x] Tableau de bord marchand avec statistiques
 - [x] Système de feedback utilisateur
-- [ ] Service de synchronisation automatique
-- [ ] Gestion des bons expirés
-- [ ] Statistiques et graphiques avancés
-- [ ] Export PDF des transactions
-- [ ] Support multi-marchés
-- [ ] PWA (Progressive Web App)
-- [ ] Intégration avec d'autres protocoles de paiement local
+- [x] **PaniniCard uniques** avec caractéristiques Pokémon (2026)
+- [x] **Sélection de couleur** dans la création de bons
+- [x] **Expiration configurable** (remplace les 90 jours fixes)
+- [x] **Affichage des caractéristiques** pour détenteurs de P2/P1
+- [x] **Optimisation des performances** avec RepaintBoundary
+
+### 🚧 En cours de développement
+
+- [ ] Service de synchronisation automatique (priorité haute)
+- [ ] Gestion avancée des bons expirés (avec notifications)
+- [ ] Statistiques et graphiques avancés (dashboard analytique)
+
+### 🔮 Futures Améliorations
+
+- [ ] Export PDF/CSV des transactions
+- [ ] Support multi-marchés (switch entre marchés)
+- [ ] PWA (Progressive Web App) pour accès web
+- [ ] Intégration avec la Monnaie Libre Ğ1 (equilibre la création et la propagation du ẐEN)
+- [ ] Système de récompenses et badges pour les utilisateurs actifs
+- [ ] Marketplace intégré pour échange de bons entre utilisateurs
+
+### 📊 État du Projet (Février 2026)
+
+- **Version actuelle** : 1.2.0 (Production-Ready)
+- **Couverture fonctionnelle** : 85% des fonctionnalités principales
+- **Prochaine version** : 1.3.0 (Prévue Mars 2026)
+- **Focus** : Automatisation, analytics et expérience utilisateur
+
+> 📄 Pour plus de détails sur les fonctionnalités implémentées, consultez la [Documentation Technique](DOCUMENTATION_TECHNIQUE.md)
 
 ## 📚 Documentation
 
@@ -359,12 +382,11 @@ MIT License - Voir le fichier LICENSE
 - **[Documentation API](api/API_README.md)** - Endpoints et utilisation
 - **[Configuration IPFS](api/IPFS_CONFIG.md)** - Stockage décentralisé
 
-Pour plus de détails, consultez notre [documentation en ligne](https://docs.troczen.org) ou explorez tous les documents via l'[Index des Fichiers](FILE_INDEX.md).
+Pour plus de détails, explorez tous les documents via l'[Index des Fichiers](FILE_INDEX.md).
 
 ## 💡 Crédits
 
 - Protocole Nostr: https://github.com/nostr-protocol/nostr
-- Spécification TrocZen/ẐEN: [Lien vers le document de spécification]
 - Design inspiré par les vignettes Panini
 
 ---
