@@ -1,0 +1,231 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+/// Service API TrocZen pour upload logos, profils, stats
+class ApiService {
+  // URLs par défaut (production)
+  static const String defaultApiUrl = 'https://troczen.copylaradio.com';
+  static const String defaultRelayUrl = 'wss://relay.copylaradio.com';
+  
+  // URLs locales (borne wifi/portail captif)
+  static const String localApiUrl = 'http://zen.local:5000';
+  static const String localRelayUrl = 'ws://zen.local:7777';
+  static const List<String> localHosts = [
+    'http://192.168.101.1:5000',  // AP direct
+    'http://10.0.0.1:5000',     // Routeur standard
+    'http://zen.local:5000',    // mDNS
+  ];
+
+  String _currentApiUrl = defaultApiUrl;
+  String _currentRelayUrl = defaultRelayUrl;
+  bool _isLocal = false;
+
+  /// Détecte automatiquement si connecté à une borne locale
+  Future<bool> detectLocalNetwork() async {
+    // Tester chaque URL locale
+    for (final url in localHosts) {
+      try {
+        final response = await http.get(
+          Uri.parse('$url/health'),
+        ).timeout(const Duration(seconds: 2));
+
+        if (response.statusCode == 200) {
+          // Borne locale détectée !
+          _currentApiUrl = url;
+          _isLocal = true;
+          
+          // Extraire l'IP/host pour le relay WebSocket
+          final host = Uri.parse(url).host;
+          final port = Uri.parse(url).port;
+          _currentRelayUrl = 'ws://$host:7777';  // Port relay local
+
+          print('✅ Borne locale détectée: $_currentApiUrl');
+          return true;
+        }
+      } catch (e) {
+        // Timeout ou erreur - pas cette URL
+        continue;
+      }
+    }
+
+    // Aucune borne locale - utiliser l'API publique
+    _currentApiUrl = defaultApiUrl;
+    _currentRelayUrl = defaultRelayUrl;
+    _isLocal = false;
+    
+    print('📡 Utilisation API publique: $_currentApiUrl');
+    return false;
+  }
+
+  /// Upload logo commerçant
+  Future<Map<String, dynamic>?> uploadLogo({
+    required String npub,
+    required File imageFile,
+  }) async {
+    try {
+      final uri = Uri.parse('$_currentApiUrl/api/upload/logo');
+      final request = http.MultipartRequest('POST', uri);
+      
+      request.fields['npub'] = npub;
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        print('Erreur upload: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Erreur upload logo: $e');
+      return null;
+    }
+  }
+
+  /// Créer/mettre à jour profil utilisateur
+  Future<bool> updateUserProfile({
+    required String npub,
+    required String name,
+    String? displayName,
+    String? about,
+    String? picture,
+    String? location,
+  }) async {
+    try {
+      final uri = Uri.parse('$_currentApiUrl/api/profile/user/$npub');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'name': name,
+          'display_name': displayName,
+          'about': about,
+          'picture': picture,
+          'location': location,
+        }),
+      );
+
+      return response.statusCode == 201;
+    } catch (e) {
+      print('Erreur update profil: $e');
+      return false;
+    }
+  }
+
+  /// Créer métadonnées pour un bon
+  Future<bool> createBonProfile({
+    required String bonId,
+    required String issuerNpub,
+    required String issuerName,
+    required double value,
+    required String marketName,
+    String? logoUrl,
+    String? imageUrl,
+    String? color,
+    String? rarity,
+    String? description,
+    String? category,
+  }) async {
+    try {
+      final uri = Uri.parse('$_currentApiUrl/api/profile/bon/$bonId');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'issuer_npub': issuerNpub,
+          'issuer_name': issuerName,
+          'value': value,
+          'market_name': marketName,
+          'logo_url': logoUrl,
+          'image_url': imageUrl,
+          'color': color ?? '#FFB347',
+          'rarity': rarity ?? 'common',
+          'description': description ?? '',
+          'category': category ?? 'generic',
+        }),
+      );
+
+      return response.statusCode == 201;
+    } catch (e) {
+      print('Erreur création profil bon: $e');
+      return false;
+    }
+  }
+
+  /// Incrémenter compteur de transferts
+  Future<bool> incrementBonTransfers(String bonId) async {
+    try {
+      final uri = Uri.parse('$_currentApiUrl/api/profile/bon/$bonId/stats');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'increment_transfers': true}),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Erreur update stats: $e');
+      return false;
+    }
+  }
+
+  /// Récupérer statistiques globales
+  Future<Map<String, dynamic>?> getStats() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_currentApiUrl/api/stats'),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return null;
+    } catch (e) {
+      print('Erreur récupération stats: $e');
+      return null;
+    }
+  }
+
+  /// Lister bons du marché (pour dashboard)
+  Future<List<dynamic>?> getMarketBons(String marketName) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_currentApiUrl/api/profiles/bons?market=$marketName'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['bons'];
+      }
+      return null;
+    } catch (e) {
+      print('Erreur récupération bons: $e');
+      return null;
+    }
+  }
+
+  // Getters
+  String get apiUrl => _currentApiUrl;
+  String get relayUrl => _currentRelayUrl;
+  bool get isLocal => _isLocal;
+
+  /// Force l'utilisation de l'API publique
+  void usePublicApi() {
+    _currentApiUrl = defaultApiUrl;
+    _currentRelayUrl = defaultRelayUrl;
+    _isLocal = false;
+  }
+
+  /// Force l'utilisation d'une URL personnalisée
+  void setCustomApi(String apiUrl, String relayUrl) {
+    _currentApiUrl = apiUrl;
+    _currentRelayUrl = relayUrl;
+    _isLocal = false;
+  }
+}

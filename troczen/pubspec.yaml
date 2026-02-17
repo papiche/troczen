@@ -1,0 +1,69 @@
+name: troczen
+description: Système de bons ẐEN offline-first pour marchés locaux
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Crypto
+  pointycastle: ^3.7.3
+  crypto: ^3.0.3
+  convert: ^3.1.1
+  bip39: ^1.0.6
+  hex: ^0.2.0
+
+  # Nostr
+  nostr_core_dart: ^1.0.1
+  web_socket_channel: ^3.0.3
+
+  # QR Code
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.1.4
+
+  # NFC
+  nfc_manager: ^4.1.1
+
+  # Storage
+  flutter_secure_storage: ^10.0.0
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
+
+  # State Management
+  provider: ^6.1.1
+
+  # UI
+  cupertino_icons: ^1.0.2
+  fl_chart: ^1.1.1
+
+  # Audio
+  audioplayers: ^6.5.1
+
+  # Utils
+  uuid: ^4.2.1
+  intl: ^0.20.2
+  bip39_mnemonic: ^4.0.1
+  crypto_keys: ^0.3.0+1
+  http: ^0.13.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Roboto
+    - fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
+  assets:
+    - assets/images/
+
+    

@@ -1,0 +1,7 @@
+Flask==3.0.0
+Flask-CORS==4.0.0
+qrcode[pil]==7.4.2
+Pillow==10.1.0
+Werkzeug==3.0.1
+gunicorn==21.2.0
+requests
