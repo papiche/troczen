@@ -82,17 +82,33 @@ lib/
 ├── models/
 │   ├── user.dart            # Modèle utilisateur
 │   ├── bon.dart             # Modèle bon ẐEN
-│   └── market.dart          # Modèle marché
+│   ├── market.dart          # Modèle marché
+│   └── nostr_profile.dart   # Modèle pour les profils Nostr
 ├── services/
 │   ├── crypto_service.dart  # Cryptographie (SSSS, chiffrement)
 │   ├── qr_service.dart      # Génération/décodage QR binaire
-│   └── storage_service.dart # Stockage sécurisé
+│   ├── storage_service.dart # Stockage sécurisé
+│   ├── api_service.dart      # Service pour les appels API
+│   ├── audit_trail_service.dart # Service pour l'audit des transactions
+│   ├── burn_service.dart     # Service pour brûler les bons
+│   ├── feedback_service.dart # Service pour gérer les retours utilisateurs
+│   ├── nfc_service.dart      # Service pour la gestion NFC
+│   ├── nostr_service.dart    # Service pour les interactions Nostr
+│   └── crypto_service_old.dart # Ancienne version du service de cryptographie
 ├── screens/
 │   ├── wallet_screen.dart   # Liste des bons
 │   ├── create_bon_screen.dart  # Création de bon
 │   ├── offer_screen.dart    # Affichage QR d'offre
 │   ├── scan_screen.dart     # Scan QR
-│   └── market_screen.dart   # Configuration marché
+│   ├── market_screen.dart   # Configuration marché
+│   ├── ack_scanner_screen.dart # Écran pour scanner les QR codes ACK
+│   ├── ack_screen.dart      # Écran pour afficher les QR codes ACK
+│   ├── atomic_swap_screen.dart # Écran pour les échanges atomiques
+│   ├── bon_profile_screen.dart # Écran pour afficher le profil d'un bon
+│   ├── feedback_screen.dart # Écran pour les retours utilisateurs
+│   ├── gallery_screen.dart  # Écran pour la galerie
+│   ├── help_screen.dart     # Écran d'aide
+│   └── merchant_dashboard_screen.dart # Tableau de bord pour les commerçants
 └── widgets/
     └── panini_card.dart     # Carte Panini
 ```
