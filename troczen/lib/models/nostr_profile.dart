@@ -1,7 +1,7 @@
 /// Constantes Nostr et API pour TrocZen
 class NostrConstants {
   // API Backend
-  static const String defaultApiUrl = 'https://troczen.copylaradio.com';
+  static const String defaultApiUrl = 'https://https://zen.copylaradio.com';
   static const String localApiUrl = 'http://zen.local:5000';
   static const String localRelayUrl = 'ws://zen.local:7777';
   

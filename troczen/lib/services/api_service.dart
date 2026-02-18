@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 /// Toutes les opérations Nostr se font directement via le relais
 class ApiService {
   // URLs par défaut (production)
-  static const String defaultApiUrl = 'https://troczen.copylaradio.com';
+  static const String defaultApiUrl = 'https://https://zen.copylaradio.com';
   static const String defaultRelayUrl = 'wss://relay.copylaradio.com';
   
   // URLs locales (borne wifi/portail captif)

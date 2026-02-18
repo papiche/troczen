@@ -82,7 +82,7 @@ Voir [ARCHITECTURE.md](ARCHITECTURE.md) pour le détail complet des flux et du p
 
 ### Pilote (< 500 utilisateurs)
 - Relay Nostr : `wss://relay.copylaradio.com`
-- API : `https://troczen.copylaradio.com`
+- API : `https://https://zen.copylaradio.com`
 - Marché unique, monitoring basique
 
 ### Bêta publique (500–5 000 utilisateurs)
