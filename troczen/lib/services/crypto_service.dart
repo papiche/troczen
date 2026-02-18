@@ -4,6 +4,9 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:pointycastle/export.dart';
 import 'package:hex/hex.dart';
+import 'package:pinenacl/ed25519.dart' as nacl;
+import 'package:bip39/bip39.dart' as bip39;
+import 'package:bs58/bs58.dart';
 
 class CryptoService {
   final Random _secureRandom = Random.secure();
@@ -49,20 +52,32 @@ class CryptoService {
     }
   }
   
-  /// Dérive une clé privée à partir d'un login et mot de passe (Scrypt)
-  Future<Uint8List> derivePrivateKey(String login, String password) async {
+  /// Dérive une seed (32 octets) à partir d'un login et mot de passe (Scrypt)
+  /// Utilise les paramètres standards Duniter v1: N=4096, r=16, p=1
+  /// Cette seed peut être utilisée directement pour G1/IPFS (Ed25519)
+  Future<Uint8List> deriveSeed(String login, String password) async {
     final salt = utf8.encode(login);
     final passwordBytes = utf8.encode(password);
     
-    // Scrypt avec N=16384 (plus sécurisé), r=8, p=1
+    // Scrypt avec paramètres compatibles Duniter v1 / Astroport: N=4096, r=16, p=1
     final scrypt = Scrypt();
-    scrypt.init(ScryptParameters(16384, 8, 1, 32, salt));
+    scrypt.init(ScryptParameters(4096, 16, 1, 32, salt));
     
     final derivedKey = scrypt.process(Uint8List.fromList(passwordBytes));
-    
-    // SHA256 du résultat pour obtenir la clé privée finale
-    final digest = sha256.convert(derivedKey);
+    return derivedKey; // Seed brute de 32 octets
+  }
+
+  /// Dérive une clé privée Nostr (SHA256 de la seed)
+  Future<Uint8List> deriveNostrPrivateKey(Uint8List seed) async {
+    final digest = sha256.convert(seed);
     return Uint8List.fromList(digest.bytes);
+  }
+
+  /// Dérive une clé privée à partir d'un login et mot de passe (Scrypt)
+  /// (Maintenue pour compatibilité, mais utilise désormais deriveSeed + deriveNostrPrivateKey)
+  Future<Uint8List> derivePrivateKey(String login, String password) async {
+    final seed = await deriveSeed(login, password);
+    return await deriveNostrPrivateKey(seed);
   }
 
   /// Dérive la clé publique depuis une clé privée secp256k1
@@ -465,13 +480,6 @@ class CryptoService {
     return BigInt.parse(hex, radix: 16);
   }
 
-  BigInt _generateRandomBigInt(int byteLength) {
-    final bytes = Uint8List.fromList(
-      List.generate(byteLength, (_) => _secureRandom.nextInt(256))
-    );
-    return _bytesToBigInt(bytes);
-  }
-
   String _bigIntToHex(BigInt value, int length) {
     final hex = value.toRadixString(16).padLeft(length * 2, '0');
     return hex;
@@ -501,6 +509,30 @@ class CryptoService {
     return curve.createPoint(x, y);
   }
 
+  /// Encode un tableau d'octets en Base36 (Alphabet: 0-9a-z)
+  /// Nécessaire pour le format CIDv1 d'IPFS (préfixe 'k')
+  String _encodeBase36(Uint8List bytes) {
+    const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
+    var value = BigInt.zero;
+    
+    // Conversion Bytes -> BigInt
+    for (var byte in bytes) {
+      value = (value << 8) | BigInt.from(byte);
+    }
+    
+    var output = '';
+    final big36 = BigInt.from(36);
+    
+    while (value > BigInt.zero) {
+      final remainder = value % big36;
+      value = value ~/ big36;
+      output = alphabet[remainder.toInt()] + output;
+    }
+    
+    // Gestion du cas vide
+    return output.isEmpty ? '0' : output;
+  }
+
   /// ✅ GÉNÉRATION AUTOMATIQUE DE LA CLÉ PUBLIQUE Ğ1 (G1Pub)
   /// Génère une clé publique Ğ1 en Base58 à partir d'une seed (32 octets)
   /// Format: Base58 (32 octets encodés)
@@ -514,56 +546,106 @@ class CryptoService {
     final keyPair = _generateEd25519KeyPair(seed);
     
     // Encoder la clé publique en Base58
-    final pubKeyBase58 = _encodeBase58(keyPair['publicKey']!);
+    return base58.encode(keyPair['publicKey']!);
+  }
+
+  /// ✅ GÉNÉRATION CLÉ IPNS (IPFS Peer ID)
+  /// Génère une clé IPNS au format CIDv1 Base36 (ex: k51...)
+  /// Utilise la même clé Ed25519 que Duniter G1.
+  String generateIpnsKey(Uint8List seed) {
+    if (seed.length != 32) {
+      throw Exception('La seed doit faire exactement 32 octets');
+    }
+
+    // 1. Récupérer la clé publique Ed25519 (32 octets)
+    final keyPair = _generateEd25519KeyPair(seed);
+    final pubKeyBytes = keyPair['publicKey']!;
+
+    // 2. Construire le Header IPFS/Libp2p
+    // Structure du header (8 octets) :
+    // 0x01 : CID Version 1
+    // 0x72 : Codec 'libp2p-key'
+    // 0x00 : Multihash function 'identity' (pas de hashage, donnée brute)
+    // 0x24 : Multihash length (36 octets = 4 header protobuf + 32 key)
+    // 0x08 : Protobuf field type (Ed25519)
+    // 0x01 : Protobuf field type value
+    // 0x12 : Protobuf field length type
+    // 0x20 : Protobuf key length (32 octets)
+    final header = [0x01, 0x72, 0x00, 0x24, 0x08, 0x01, 0x12, 0x20];
+
+    // 3. Concaténer Header + Clé Publique
+    final ipnsBytes = Uint8List.fromList([
+      ...header,
+      ...pubKeyBytes
+    ]);
+
+    // 4. Encoder en Base36 et ajouter le préfixe 'k' (multibase code pour base36)
+    return 'k' + _encodeBase36(ipnsBytes);
+  }
+
+  // --- SECTION DUNITER V2 (SUBSTRATE / BIP39) ---
+
+  /// Génère une nouvelle phrase mnémonique aléatoire (12 mots)
+  String generateMnemonic() {
+    return bip39.generateMnemonic();
+  }
+
+  /// Convertit un mnémonique en Seed de 32 octets (Compatible avec votre JS)
+  /// Note: BIP39 produit 64 octets. Pour Ed25519 "MiniSecret", on prend les 32 premiers.
+  Uint8List mnemonicToSeed(String mnemonic) {
+    if (!bip39.validateMnemonic(mnemonic)) {
+      throw ArgumentError("Mnémonique invalide");
+    }
+    // Génère 64 octets (512 bits)
+    final seed64 = bip39.mnemonicToSeed(mnemonic);
     
-    return pubKeyBase58;
+    // On garde les 32 premiers pour la compatibilité avec la dérivation Ed25519 simple
+    return seed64.sublist(0, 32);
+  }
+
+  /// Convertit une clé publique Ed25519 en adresse Duniter v2 (Format SS58)
+  /// [publicKeyBytes] : Les 32 octets de la clé publique
+  /// [prefix] : 42 pour le format Substrate générique (utilisé par défaut sur Duniter v2)
+  String encodeSS58(Uint8List publicKeyBytes, {int prefix = 42}) {
+    if (publicKeyBytes.length != 32) {
+      throw ArgumentError("La clé publique doit faire 32 octets");
+    }
+
+    // 1. Concaténer le préfixe et la clé publique
+    List<int> data = [prefix];
+    data.addAll(publicKeyBytes);
+
+    // 2. Calculer le checksum (Blake2b-512)
+    final ss58Prefix = utf8.encode("SS58PRE");
+    final checkData = Uint8List.fromList([...ss58Prefix, ...data]);
+    
+    // CORRECTION ICI : digestSize est en OCTETS. 
+    // On veut 512 bits, donc 64 octets.
+    final blake2b = Blake2bDigest(digestSize: 64); 
+    
+    final checksumFull = Uint8List(64);
+    
+    blake2b.update(checkData, 0, checkData.length);
+    blake2b.doFinal(checksumFull, 0);
+
+    // On prend les 2 premiers octets du hash pour le checksum
+    final checksum = checksumFull.sublist(0, 2);
+
+    // 3. Concaténer tout : [Prefix] + [PubKey] + [Checksum]
+    final finalBytes = Uint8List.fromList([...data, ...checksum]);
+
+    // 4. Encoder en Base58
+    return base58.encode(finalBytes);
   }
 
   /// Génère une paire de clés Ed25519 à partir d'une seed
   Map<String, Uint8List> _generateEd25519KeyPair(Uint8List seed) {
-    // Pour Ed25519, on utilise la seed pour dériver la clé privée
-    // La clé publique est dérivée de la clé privée
-    
-    // Utiliser SHA-512 pour dériver la clé privée
-    final digest = sha512.convert(seed).bytes;
-    final privateKey = Uint8List.fromList(digest.sublist(0, 32));
-    
-    // Générer la clé publique à partir de la clé privée
-    // Note: Ceci est une simplification
-    // En production, utiliser une implémentation Ed25519 complète
-    final publicKey = Uint8List.fromList(
-      List.generate(32, (i) => (privateKey[i] ^ 0x80) & 0xFF)
-    );
-    
+    // Utilisation de pinenacl pour une vraie génération Ed25519
+    final signingKey = nacl.SigningKey.fromSeed(seed);
     return {
-      'privateKey': privateKey,
-      'publicKey': publicKey,
+      'privateKey': signingKey.asTypedList, // 64 bytes (seed + pub)
+      'publicKey': signingKey.publicKey.asTypedList,   // 32 bytes
     };
   }
 
-  /// Encode un tableau de bytes en Base58
-  String _encodeBase58(Uint8List bytes) {
-    const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    final result = StringBuffer();
-    
-    // Convertir en BigInt
-    var value = BigInt.zero;
-    for (var i = 0; i < bytes.length; i++) {
-      value = (value << 8) + BigInt.from(bytes[i]);
-    }
-    
-    // Encoder en Base58
-    while (value > BigInt.zero) {
-      final remainder = value % BigInt.from(58);
-      value = value ~/ BigInt.from(58);
-      result.write(alphabet[remainder.toInt()]);
-    }
-    
-    // Ajouter les zéros de début
-    for (var i = 0; i < bytes.length && bytes[i] == 0; i++) {
-      result.write('1');
-    }
-    
-    return result.toString().split('').reversed.join();
-  }
 }

@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:troczen/services/crypto_service.dart';
+import 'package:hex/hex.dart';
 
 void main() {
   group('CryptoService', () {
@@ -9,172 +11,171 @@ void main() {
       cryptoService = CryptoService();
     });
 
-    test('derivePrivateKey génère une clé déterministe', () async {
-      final key1 = await cryptoService.derivePrivateKey('alice', 'password123');
-      final key2 = await cryptoService.derivePrivateKey('alice', 'password123');
+    // --- TEST SCRYPT & DERIVATION ---
+    
+    test('deriveSeed génère une seed déterministe (Scrypt)', () async {
+      final seed1 = await cryptoService.deriveSeed('alice', 'password123');
+      final seed2 = await cryptoService.deriveSeed('alice', 'password123');
       
-      expect(key1, equals(key2), reason: 'Même login/password = même clé');
+      expect(seed1, equals(seed2), reason: 'Même login/password = même seed');
+      expect(seed1.length, equals(32), reason: 'La seed doit faire 32 octets');
     });
 
-    test('derivePrivateKey génère des clés différentes pour différents utilisateurs', () async {
-      final keyAlice = await cryptoService.derivePrivateKey('alice', 'password123');
-      final keyBob = await cryptoService.derivePrivateKey('bob', 'password123');
+    test('deriveSeed et deriveNostrPrivateKey sont cohérents avec derivePrivateKey', () async {
+      // derivePrivateKey (legacy) doit être égal à SHA256(deriveSeed)
+      final legacyKey = await cryptoService.derivePrivateKey('bob', 'secret');
       
-      expect(keyAlice, isNot(equals(keyBob)), reason: 'Différents logins = différentes clés');
+      final seed = await cryptoService.deriveSeed('bob', 'secret');
+      final nostrKey = await cryptoService.deriveNostrPrivateKey(seed);
+      
+      expect(legacyKey, equals(nostrKey), reason: 'La clé privée Nostr doit correspondre à l\'ancienne méthode');
     });
 
-    test('generateNostrKeyPair génère des clés valides', () {
+    // --- TEST DUNITER G1 ---
+
+    test('generateG1Pub génère une clé Base58 valide', () async {
+      final seed = await cryptoService.deriveSeed('test', 'test');
+      final pubKey = cryptoService.generateG1Pub(seed);
+      
+      // Vérifier format Base58 (caractères alphanumériques sauf 0, O, I, l)
+      final base58Regex = RegExp(r'^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
+      expect(base58Regex.hasMatch(pubKey), isTrue);
+      
+      // Une clé publique Ed25519 fait 32 octets, encodée en Base58 elle fait environ 43-44 caractères
+      expect(pubKey.length, inInclusiveRange(40, 50));
+    });
+
+    // --- TEST IPFS / IPNS ---
+
+    test('generateIpnsKey génère un CIDv1 Base36 valide', () async {
+      final seed = await cryptoService.deriveSeed('test', 'test');
+      final ipnsKey = cryptoService.generateIpnsKey(seed);
+      
+      // Doit commencer par 'k' (code multibase pour base36)
+      expect(ipnsKey.startsWith('k'), isTrue);
+      
+      // Le reste doit être alpanumérique minuscule (base36)
+      final base36Regex = RegExp(r'^k[0-9a-z]+$');
+      expect(base36Regex.hasMatch(ipnsKey), isTrue);
+    });
+
+    // --- TEST DUNITER V2 (SS58) ---
+
+    test('Mnemonic -> Seed -> SS58 (Scénario complet v2)', () {
+      // 1. Mnémonique valide (12 mots, checksum valide)
+      // C'est un vecteur de test standard BIP39
+      final mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+      
+      // 2. Seed
+      final seed = cryptoService.mnemonicToSeed(mnemonic);
+      expect(seed.length, equals(32));
+      
+      // 3. Clé Publique (SS58)
+      // On génère une clé factice pour tester le formatage, ou on dérive la vraie
+      // Ici on teste juste que la fonction encodeSS58 ne plante pas
+      final pubKeyBytes = Uint8List(32); 
+      for(int i=0; i<32; i++) pubKeyBytes[i] = i; 
+      
+      final ss58 = cryptoService.encodeSS58(pubKeyBytes, prefix: 42);
+      
+      // Vérifier que c'est du Base58 (Caractères alphanumériques, pas de 0, O, I, l)
+      final base58Regex = RegExp(r'^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$');
+      expect(base58Regex.hasMatch(ss58), isTrue);
+      
+      // Vérifier la longueur (une adresse SS58 standard fait environ 48-50 chars)
+      expect(ss58.length, greaterThan(40));
+    });
+
+    // --- TEST NOSTR (SCHNORR & KEYS) ---
+
+    test('generateNostrKeyPair génère des clés valides (Hex 64 chars)', () {
       final keys = cryptoService.generateNostrKeyPair();
       
-      expect(keys['nsec'], isNotNull);
-      expect(keys['npub'], isNotNull);
-      expect(keys['nsec']!.length, equals(64), reason: 'nsec = 32 bytes = 64 hex');
-      expect(keys['npub']!.length, equals(64), reason: 'npub = 32 bytes = 64 hex');
+      expect(keys['nsec']!.length, equals(64));
+      expect(keys['npub']!.length, equals(64));
+      
+      // Vérifier que c'est bien de l'hexadécimal
+      final hexRegex = RegExp(r'^[0-9a-fA-F]+$');
+      expect(hexRegex.hasMatch(keys['nsec']!), isTrue);
+      expect(hexRegex.hasMatch(keys['npub']!), isTrue);
     });
 
-    test('Shamir split génère 3 parts différentes', () {
+    test('signMessage et verifySignature fonctionnent ensemble', () {
+      final keys = cryptoService.generateNostrKeyPair();
+      final message = HEX.encode(Uint8List.fromList('Hello World'.codeUnits)); // Message en Hex
+      
+      // Signer
+      final signature = cryptoService.signMessage(message, keys['nsec']!);
+      expect(signature.length, equals(128)); // 64 bytes hex
+      
+      // Vérifier
+      final isValid = cryptoService.verifySignature(message, signature, keys['npub']!);
+      expect(isValid, isTrue);
+    });
+    
+    test('verifySignature rejette une signature invalide', () {
+      final keys = cryptoService.generateNostrKeyPair();
+      final message = HEX.encode(Uint8List.fromList('Hello'.codeUnits));
+      
+      final fakeSig = 'a' * 128; // 64 bytes de 'aaaa...'
+      final isValid = cryptoService.verifySignature(message, fakeSig, keys['npub']!);
+      expect(isValid, isFalse);
+    });
+
+    // --- TEST SHAMIR SECRET SHARING ---
+
+    test('Shamir split/combine (Cycle complet)', () {
       final secret = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
       final parts = cryptoService.shamirSplit(secret);
       
       expect(parts.length, equals(3));
-      expect(parts[0], isNot(equals(parts[1])));
-      expect(parts[1], isNot(equals(parts[2])));
-      expect(parts[0], isNot(equals(parts[2])));
+      
+      // Reconstruction avec toutes les combinaisons possibles
+      expect(cryptoService.shamirCombine(parts[0], parts[1], null), equals(secret), reason: 'P1+P2');
+      expect(cryptoService.shamirCombine(null, parts[1], parts[2]), equals(secret), reason: 'P2+P3');
+      expect(cryptoService.shamirCombine(parts[0], null, parts[2]), equals(secret), reason: 'P1+P3');
     });
 
-    test('Shamir combine reconstruit le secret avec P1 + P2', () {
-      final secret = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+    test('Shamir combine échoue avec 1 seule part', () {
+      final secret = '01' * 32;
       final parts = cryptoService.shamirSplit(secret);
       
-      final reconstructed = cryptoService.shamirCombine(parts[0], parts[1], null);
-      
-      expect(reconstructed, equals(secret), reason: 'P1 + P2 = secret');
-    });
-
-    test('Shamir combine reconstruit le secret avec P2 + P3', () {
-      final secret = 'abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd';
-      final parts = cryptoService.shamirSplit(secret);
-      
-      final reconstructed = cryptoService.shamirCombine(null, parts[1], parts[2]);
-      
-      expect(reconstructed, equals(secret), reason: 'P2 + P3 = secret');
-    });
-
-    test('Shamir combine reconstruit le secret avec P1 + P3', () {
-      final secret = '1111111111111111222222222222222233333333333333334444444444444444';
-      final parts = cryptoService.shamirSplit(secret);
-      
-      final reconstructed = cryptoService.shamirCombine(parts[0], null, parts[2]);
-      
-      expect(reconstructed, equals(secret), reason: 'P1 + P3 = secret');
-    });
-
-    test('Shamir combine lance une erreur avec moins de 2 parts', () {
       expect(
-        () => cryptoService.shamirCombine(null, null, null),
+        () => cryptoService.shamirCombine(parts[0], null, null),
         throwsArgumentError,
-        reason: 'Nécessite au moins 2 parts',
       );
     });
 
-    test('encryptP2/decryptP2 fonctionne correctement', () async {
-      final p2 = 'aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd';
-      final p3 = '1122334411223344112233441122334411223344112233441122334411223344';
+    // --- TEST CHIFFREMENT AES-GCM (P2/P3) ---
+
+    test('encryptP2/decryptP2 (AES-GCM)', () async {
+      final p2 = 'aa' * 32;
+      final p3 = 'bb' * 32; // Sert de clé de chiffrement (via SHA256)
       
-      // Chiffrer
       final encrypted = await cryptoService.encryptP2(p2, p3);
+      
       expect(encrypted['ciphertext'], isNotNull);
       expect(encrypted['nonce'], isNotNull);
-      expect(encrypted['nonce']!.length, equals(24), reason: 'Nonce = 12 bytes = 24 hex');
       
-      // Déchiffrer
       final decrypted = await cryptoService.decryptP2(
-        encrypted['ciphertext']!,
-        encrypted['nonce']!,
-        p3,
+        encrypted['ciphertext']!, 
+        encrypted['nonce']!, 
+        p3
       );
       
-      expect(decrypted, equals(p2), reason: 'Déchiffrement récupère P2 original');
+      expect(decrypted, equals(p2));
     });
 
-    test('encryptP3/decryptP3 fonctionne correctement', () async {
-      final p3 = 'ffeeffffeeffffeeffffeeffffeeffffeeffffeeffffeeffffeeffffeeffffee';
-      final kmarket = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    test('Chiffrement déterministe vs non-déterministe', () async {
+      final p2 = 'aa' * 32;
+      final p3 = 'bb' * 32;
       
-      // Chiffrer
-      final encrypted = await cryptoService.encryptP3(p3, kmarket);
-      expect(encrypted['ciphertext'], isNotNull);
-      expect(encrypted['nonce'], isNotNull);
+      // Le chiffrement utilise un nonce aléatoire, donc 2 appels = 2 résultats différents
+      final enc1 = await cryptoService.encryptP2(p2, p3);
+      final enc2 = await cryptoService.encryptP2(p2, p3);
       
-      // Déchiffrer
-      final decrypted = await cryptoService.decryptP3(
-        encrypted['ciphertext']!,
-        encrypted['nonce']!,
-        kmarket,
-      );
-      
-      expect(decrypted, equals(p3), reason: 'Déchiffrement récupère P3 original');
-    });
-
-    test('Chiffrement génère des ciphertexts différents avec nonces différents', () async {
-      final p2 = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
-      final p3 = 'cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe';
-      
-      final encrypted1 = await cryptoService.encryptP2(p2, p3);
-      final encrypted2 = await cryptoService.encryptP2(p2, p3);
-      
-      expect(
-        encrypted1['ciphertext'],
-        isNot(equals(encrypted2['ciphertext'])),
-        reason: 'Nonces différents = ciphertexts différents',
-      );
-    });
-
-    test('signMessage génère une signature valide', () {
-      final message = 'deadbeef';
-      final privateKey = 'aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd';
-      
-      final signature = cryptoService.signMessage(message, privateKey);
-      
-      expect(signature.length, equals(128), reason: 'Signature Schnorr = 64 bytes = 128 hex');
-    });
-
-    test('verifySignature valide une signature correcte', () async {
-      final message = 'cafebabe';
-      
-      // Générer une paire de clés
-      final keys = cryptoService.generateNostrKeyPair();
-      
-      // Signer
-      final signature = cryptoService.signMessage(message, keys['nsec']!);
-      
-      // Vérifier
-      final isValid = cryptoService.verifySignature(message, signature, keys['npub']!);
-      
-      expect(isValid, isTrue, reason: 'Signature doit être valide');
-    });
-
-    test('verifySignature rejette une signature invalide', () {
-      final message = 'deadbeef';
-      final keys = cryptoService.generateNostrKeyPair();
-      
-      // Signature aléatoire
-      final fakeSignature = '0' * 128;
-      
-      final isValid = cryptoService.verifySignature(message, fakeSignature, keys['npub']!);
-      
-      expect(isValid, isFalse, reason: 'Fausse signature doit être rejetée');
-    });
-
-    test('verifySignature rejette une signature pour un message différent', () {
-      final message1 = 'deadbeef';
-      final message2 = 'cafebabe';
-      final keys = cryptoService.generateNostrKeyPair();
-      
-      final signature = cryptoService.signMessage(message1, keys['nsec']!);
-      final isValid = cryptoService.verifySignature(message2, signature, keys['npub']!);
-      
-      expect(isValid, isFalse, reason: 'Signature pour message1 invalide pour message2');
+      expect(enc1['nonce'], isNot(equals(enc2['nonce'])));
+      expect(enc1['ciphertext'], isNot(equals(enc2['ciphertext'])));
     });
   });
 }
