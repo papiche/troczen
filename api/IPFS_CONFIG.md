@@ -196,7 +196,7 @@ curl http://127.0.0.1:5001/api/v0/version
 
 ```bash
 curl -F "file=@test.png" -F "npub=abc123" \
-  http://localhost:5000/api/upload/logo
+  http://localhost:5000/api/upload/image
 ```
 
 ### Récupérer via IPFS

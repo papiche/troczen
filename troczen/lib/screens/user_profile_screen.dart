@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import 'feedback_screen.dart';
 
 /// Écran de gestion du profil utilisateur
 /// Permet à l'utilisateur de modifier son profil et d'uploader des images
@@ -166,11 +167,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         await nostrService.disconnect();
       }
 
+      // 4. Mettre à jour l'utilisateur local
+      final updatedUser = User(
+        npub: widget.user.npub,
+        nsec: widget.user.nsec,
+        displayName: _displayNameController.text.trim().isNotEmpty
+            ? _displayNameController.text.trim()
+            : widget.user.displayName,
+        createdAt: widget.user.createdAt,
+        website: _websiteController.text.trim().isNotEmpty
+            ? _websiteController.text.trim()
+            : widget.user.website,
+        g1pub: _g1pubController.text.trim().isNotEmpty
+            ? _g1pubController.text.trim()
+            : widget.user.g1pub,
+      );
+      await _storageService.saveUser(updatedUser);
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Profil mis à jour sur Nostr !'),
+          content: Text('✅ Profil mis à jour localement et sur Nostr !'),
           backgroundColor: Colors.green,
         ),
       );
@@ -181,6 +199,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         SnackBar(
           content: Text('Erreur: $e'),
           backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'Signaler',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FeedbackScreen(user: widget.user),
+                ),
+              );
+            },
+          ),
         ),
       );
     } finally {

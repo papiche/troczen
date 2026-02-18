@@ -148,4 +148,20 @@ class StorageService {
     final bons = await getBons();
     return bons.where((b) => b.status == status).toList();
   }
+
+  /// Initialise un marché par défaut si aucun n'existe
+  Future<Market> initializeDefaultMarket() async {
+    final existing = await getMarket();
+    if (existing != null) return existing;
+
+    final defaultMarket = Market(
+      name: 'Marché Local',
+      kmarket: '0000000000000000000000000000000000000000000000000000000000000000', // 64 zéros (32 bytes)
+      validUntil: DateTime.now().add(const Duration(days: 365)),
+      relayUrl: 'wss://relay.copylaradio.com',
+    );
+
+    await saveMarket(defaultMarket);
+    return defaultMarket;
+  }
 }
