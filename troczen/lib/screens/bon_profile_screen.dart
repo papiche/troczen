@@ -116,7 +116,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             bonId: widget.bon.bonId,
             p2Hex: widget.bon.p2!,
             p3Hex: p3,
-            kmarketHex: market.kmarket,
+            seedMarket: market.seedMarket,
             issuerNpub: widget.user.npub,
             marketName: market.name,
             value: widget.bon.value,

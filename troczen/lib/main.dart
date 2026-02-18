@@ -4,7 +4,8 @@ import 'models/nostr_profile.dart';
 import 'services/crypto_service.dart';
 import 'services/storage_service.dart';
 import 'services/nostr_service.dart';
-import 'screens/wallet_screen.dart';
+import 'screens/main_shell.dart';
+import 'screens/onboarding/onboarding_flow.dart';
 
 void main() {
   runApp(const TrocZenApp());
@@ -56,12 +57,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkExistingUser() async {
+    // Vérifier d'abord si c'est un premier lancement
+    final isFirstLaunch = await _storageService.isFirstLaunch();
+    
+    if (isFirstLaunch && mounted) {
+      // Rediriger vers l'onboarding
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const OnboardingFlow(),
+        ),
+      );
+      return;
+    }
+    
+    // Sinon, vérifier l'utilisateur existant
     final user = await _storageService.getUser();
     if (user != null && mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => WalletScreen(user: user),
+          builder: (context) => MainShell(user: user),
         ),
       );
     } else {
@@ -139,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => WalletScreen(user: user),
+          builder: (context) => MainShell(user: user),
         ),
       );
     } catch (e) {

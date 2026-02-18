@@ -56,10 +56,19 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
     setState(() => _isGenerating = true);
 
     try {
+      // ✅ CORRECTION BUG P0: Récupérer P3 depuis le cache
+      // widget.bon.p3 est presque toujours null (P3 est dans le cache, pas dans l'objet Bon)
+      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
+      
+      if (p3 == null) {
+        _showError('Erreur: P3 non trouvée dans le cache.\nSynchronisez avec le marché.');
+        return;
+      }
+      
       // ✅ Reconstruire ÉPHÉMÈRE nsec_bon pour signer le challenge
       final nsecBon = _cryptoService.shamirCombine(
         widget.bon.p2,
-        widget.bon.p3,
+        p3,
         null,
       );
 
@@ -120,7 +129,11 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
 
     try {
       final market = await _storageService.getMarket();
-      if (market == null || widget.bon.p2 == null || widget.bon.p3 == null) {
+      
+      // ✅ CORRECTION BUG P0: Récupérer P3 depuis le cache
+      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
+      
+      if (market == null || widget.bon.p2 == null || p3 == null) {
         return;
       }
 
@@ -137,7 +150,7 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
         await nostrService.publishTransfer(
           bonId: widget.bon.bonId,
           bonP2: widget.bon.p2!,  // Pour reconstruction
-          bonP3: widget.bon.p3!,
+          bonP3: p3,  // ✅ Utiliser P3 depuis le cache
           receiverNpub: widget.user.npub,
           value: widget.bon.value,
           marketName: market.name,

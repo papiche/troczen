@@ -1,77 +1,95 @@
-# Index des Documents - TrocZen
+# Index des Documents — TrocZen
 
-## 📚 Documentation Technique
+## Documents principaux
 
-### 📋 Documents Principaux
-- **[README.md](README.md)** - Guide principal du projet, installation, architecture et utilisation
-- **[QUICKSTART.md](QUICKSTART.md)** - Guide de démarrage rapide pour les développeurs
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Architecture technique détaillée du système
-- **[007.md](007.md)** - Whitepaper technique complet (modèle cryptographique, protocoles)
+| Fichier | Contenu |
+|---------|---------|
+| [README.md](README.md) | Point d'entrée : installation, architecture, utilisation |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture technique détaillée, flux de données, formats |
+| [007.md](007.md) | Whitepaper formel : modèle cryptographique, Tamarin/ProVerif, annexe comparative |
+| [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, analogies Ğ1/ẐEN/Euro |
 
-### 📊 Documentation Projet
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Résumé exécutif et état d'avancement
-- **[IMPLEMENTATION_FINALE.md](IMPLEMENTATION_FINALE.md)** - Détails de l'implémentation finale
-- **[SYNTHESE_FINALE.md](SYNTHESE_FINALE.md)** - Synthèse finale du projet
-- **[RECAPITULATIF_FINAL.md](troczen/RECAPITULATIF_FINAL.md)** - Récapitulatif final technique
+## Projet & état d'avancement
 
-### 🔐 Sécurité et Audit
-- **[AUDIT_SECURITE_FINAL.md](AUDIT_SECURITE_FINAL.md)** - Audit de sécurité complet
-- **[CORRECTIONS_SECURITE.md](CORRECTIONS_SECURITE.md)** - Corrections apportées suite à l'audit
-- **[VERIFICATION_CONFORMITE.md](VERIFICATION_CONFORMITE.md)** - Vérification de conformité
+| Fichier | Contenu |
+|---------|---------|
+| [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | Résumé exécutif, état fonctionnel, roadmap, commandes essentielles |
+| [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md) | 3 vagues de corrections sécurité (16–18 fév 2026) |
+| [GUIDE_TESTS.md](GUIDE_TESTS.md) | Stratégie de test, tests unitaires, intégration, terrain |
 
-### 🛠️ Guides Techniques
-- **[GUIDE_TESTS.md](GUIDE_TESTS.md)** - Guide pour exécuter les tests
-- **[ANALYSE_CODE.md](ANALYSE_CODE.md)** - Analyse détaillée du code source
-- **[DASHBOARD_MARCHAND_DOC.md](DASHBOARD_MARCHAND_DOC.md)** - Documentation du tableau de bord marchand
-- **[NOUVELLES_FEATURES.md](NOUVELLES_FEATURES.md)** - Liste des nouvelles fonctionnalités
+## Fonctionnalités spécifiques
 
-### 📂 Documentation API
-- **[api/README.md](api/README.md)** - Documentation de l'API backend
-- **[api/IPFS_CONFIG.md](api/IPFS_CONFIG.md)** - Configuration IPFS pour le stockage décentralisé
+| Fichier | Contenu |
+|---------|---------|
+| [DASHBOARD_MARCHAND_DOC.md](DASHBOARD_MARCHAND_DOC.md) | Analytics économiques P3, formules, dashboard |
+| [NOUVELLES_FEATURES.md](NOUVELLES_FEATURES.md) | NFC, ACK, échanges atomiques, gamification |
 
-## 📁 Structure des Fichiers
+## API & Backend
+
+| Fichier | Contenu |
+|---------|---------|
+| [api/README.md](api/README.md) | API Flask : endpoints, installation, déploiement |
+| [api/IPFS_CONFIG.md](api/IPFS_CONFIG.md) | Configuration IPFS, passerelle, workflow upload |
+
+## Sous-projet Flutter (`troczen/`)
+
+| Fichier | Contenu |
+|---------|---------|
+| [troczen/ONBOARDING_GUIDE.md](troczen/ONBOARDING_GUIDE.md) | Parcours d'onboarding 5 étapes |
+| [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md) | Refonte navigation : MainShell, 4 vues, migration |
+| [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md) | v1.008 : avatars, upload IPFS, sync P3 réelle |
+
+---
+
+## Structure des fichiers source
 
 ```
 /
-├── README.md                     # Documentation principale
-├── QUICKSTART.md                 # Guide de démarrage rapide
-├── ARCHITECTURE.md               # Architecture technique
-├── 007.md                        # Whitepaper technique
-├── PROJECT_SUMMARY.md            # Résumé du projet
-├── IMPLEMENTATION_FINALE.md      # Détails d'implémentation
-├── SYNTHESE_FINALE.md            # Synthèse finale
-├── AUDIT_SECURITE_FINAL.md       # Audit de sécurité
-├── CORRECTIONS_SECURITE.md       # Corrections de sécurité
-├── VERIFICATION_CONFORMITE.md    # Vérification de conformité
-├── GUIDE_TESTS.md                # Guide des tests
-├── ANALYSE_CODE.md               # Analyse du code
-├── DASHBOARD_MARCHAND_DOC.md    # Documentation tableau de bord
-├── NOUVELLES_FEATURES.md         # Nouvelles fonctionnalités
-├── FILE_INDEX.md                 # Cet index (vous êtes ici)
+├── README.md
+├── ARCHITECTURE.md
+├── 007.md
+├── PROJECT_SUMMARY.md
+├── CHANGELOG_SECURITE.md
+├── GUIDE_TESTS.md
+├── DASHBOARD_MARCHAND_DOC.md
+├── NOUVELLES_FEATURES.md
+├── FILE_INDEX.md
+├── docs/
+│   └── technical_whitepaper.md
 ├── api/
-│   ├── README.md                 # Documentation API
-│   └── IPFS_CONFIG.md            # Configuration IPFS
+│   ├── README.md
+│   ├── IPFS_CONFIG.md
+│   ├── api_backend.py
+│   ├── nostr_client.py
+│   ├── requirements.txt
+│   └── templates/
 └── troczen/
-    ├── RECAPITULATIF_FINAL.md     # Récapitulatif technique
-    └── ...                        # Code source Flutter
+    ├── ONBOARDING_GUIDE.md
+    ├── NAVIGATION_V4.md
+    ├── CHANGELOG_V1008.md
+    ├── pubspec.yaml
+    └── lib/
+        ├── main.dart
+        ├── models/
+        ├── services/
+        ├── screens/
+        └── widgets/
 ```
 
-## 🔗 Liens Utiles
+## Documents supprimés (archivés dans ce commit)
 
-- **Documentation Nostr** : [https://github.com/nostr-protocol/nostr](https://github.com/nostr-protocol/nostr)
-- **Spécification SSSS** : [https://github.com/grempe/secrets.js](https://github.com/grempe/secrets.js)
-- **Flutter Documentation** : [https://docs.flutter.dev](https://docs.flutter.dev)
+Ces fichiers ont été fusionnés pour éviter la redondance :
 
-## 📝 Conventions
-
-- Les documents techniques sont en Markdown (.md)
-- Les documents utilisateur sont en format ouvert (.odt)
-- Les liens relatifs sont utilisés pour la navigation entre documents
-- Les documents sont organisés par thème et par ordre d'importance
-
-## 🆕 Mises à jour récentes
-
-- Ajout de la documentation pour les nouvelles fonctionnalités (NFC, ACK, échanges atomiques)
-- Mise à jour de l'architecture avec les nouveaux services
-- Ajout des guides pour les nouveaux écrans et services
-- Mise à jour de la roadmap dans le README principal
+- `SYNTHESE_FINALE.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
+- `IMPLEMENTATION_FINALE.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
+- `AUDIT_SECURITE_FINAL.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
+- `CORRECTIONS_SECURITE.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
+- `CORRECTIONS_APPLIQUEES.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
+- `CORRECTIONS_BUGS_P0.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
+- `VERIFICATION_CONFORMITE.md` → absorbé dans [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
+- `troczen/RECAPITULATIF_FINAL.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
+- `troczen/NAVIGATION_V4_GUIDE.md` → [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md)
+- `troczen/MIGRATION_NAVIGATION_V4.md` → [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md)
+- `troczen/PARTIE_4_REFONTE_NAVIGATION_RESUME.md` → [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md)
+- `troczen/V1008_IMPLEMENTATION_COMPLETE.md` → [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md)
+- `troczen/V1008_AVATAR_SYNC_IMPLEMENTATION.md` → [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md)

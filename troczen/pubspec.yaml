@@ -51,6 +51,11 @@ dependencies:
   bip39_mnemonic: ^4.0.1
   crypto_keys: ^0.3.0+1
   http: ^0.13.6
+  
+  # Image Handling (v1.008+)
+  image_picker: ^1.0.4
+  cached_network_image: ^3.3.0
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:

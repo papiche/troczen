@@ -219,7 +219,7 @@ void main() {
     test('saveMarket et getMarket fonctionnent', () async {
       final market = Market(
         name: 'marche-toulouse',
-        kmarket: '0' * 64,
+        seedMarket: '0' * 64,
         validUntil: DateTime.now().add(const Duration(days: 1)),
         relayUrl: 'wss://relay.test.com',
       );
@@ -229,14 +229,14 @@ void main() {
 
       expect(retrieved, isNotNull);
       expect(retrieved!.name, equals(market.name));
-      expect(retrieved.kmarket, equals(market.kmarket));
+      expect(retrieved.seedMarket, equals(market.seedMarket));
       expect(retrieved.relayUrl, equals(market.relayUrl));
     });
 
     test('deleteMarket supprime le marché', () async {
       final market = Market(
         name: 'test',
-        kmarket: '1' * 64,
+        seedMarket: '1' * 64,
         validUntil: DateTime.now().add(const Duration(days: 1)),
       );
 

@@ -23,6 +23,7 @@ class Bon {
   final String? p3;             // Part 3 (témoin, vient du réseau)
   final String marketName;
   final String? logoUrl;        // URL du logo du commerçant
+  final String? picture;        // URL de l'avatar de l'émetteur
   final int? color;             // Couleur dominante (ARGB)
   final String? rarity;         // 'common', 'uncommon', 'rare', 'legendary'
   final int? transferCount;     // Nombre de transferts effectués
@@ -46,6 +47,7 @@ class Bon {
     this.p3,
     required this.marketName,
     this.logoUrl,
+    this.picture,
     this.color,
     this.rarity = 'common',
     this.transferCount = 0,
@@ -212,6 +214,7 @@ class Bon {
     String? p3,
     String? marketName,
     String? logoUrl,
+    String? picture,
     int? color,
     String? rarity,
     int? transferCount,
@@ -235,6 +238,7 @@ class Bon {
       p3: p3 ?? this.p3,
       marketName: marketName ?? this.marketName,
       logoUrl: logoUrl ?? this.logoUrl,
+      picture: picture ?? this.picture,
       color: color ?? this.color,
       rarity: rarity ?? this.rarity,
       transferCount: transferCount ?? this.transferCount,
@@ -261,6 +265,7 @@ class Bon {
       'p3': p3,
       'marketName': marketName,
       'logoUrl': logoUrl,
+      'picture': picture,
       'color': color,
       'rarity': rarity,
       'transferCount': transferCount,
@@ -283,6 +288,7 @@ class Bon {
       p3: json['p3'],
       marketName: json['marketName'],
       logoUrl: json['logoUrl'],
+      picture: json['picture'],
       color: json['color'],
       rarity: json['rarity'] ?? 'common',
       transferCount: json['transferCount'] ?? 0,

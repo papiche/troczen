@@ -1,12 +1,12 @@
 class Market {
   final String name;
-  final String kmarket;        // Clé symétrique du marché (hex)
-  final DateTime validUntil;   // Date d'expiration de la clé
+  final String seedMarket;     // Graine du marché (hex) - dérivée ou aléatoire
+  final DateTime validUntil;   // Date d'expiration de la graine
   final String? relayUrl;      // URL du relais Nostr local
 
   Market({
     required this.name,
-    required this.kmarket,
+    required this.seedMarket,
     required this.validUntil,
     this.relayUrl,
   });
@@ -16,7 +16,7 @@ class Market {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'kmarket': kmarket,
+      'seedMarket': seedMarket,
       'validUntil': validUntil.toIso8601String(),
       'relayUrl': relayUrl,
     };
@@ -25,7 +25,7 @@ class Market {
   factory Market.fromJson(Map<String, dynamic> json) {
     return Market(
       name: json['name'],
-      kmarket: json['kmarket'],
+      seedMarket: json['seedMarket'],
       validUntil: DateTime.parse(json['validUntil']),
       relayUrl: json['relayUrl'],
     );

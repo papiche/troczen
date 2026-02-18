@@ -18,7 +18,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _marketNameController = TextEditingController();
-  final _kmarketController = TextEditingController();
+  final _seedMarketController = TextEditingController();
   final _relayUrlController = TextEditingController();
   final _validUntilController = TextEditingController();
 
@@ -41,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _currentMarket = market;
       _marketNameController.text = market.name;
-      _kmarketController.text = market.kmarket;
+      _seedMarketController.text = market.seedMarket;
       _relayUrlController.text = market.relayUrl ?? 'wss://relay.copylaradio.com';
       _validUntilController.text = market.validUntil.toIso8601String().split('T').first;
       _isLoading = false;
@@ -56,9 +56,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final market = Market(
         name: _marketNameController.text.trim(),
-        kmarket: _kmarketController.text.trim(),
+        seedMarket: _seedMarketController.text.trim(),
         validUntil: DateTime.parse(_validUntilController.text.trim()),
-        relayUrl: _relayUrlController.text.trim().isNotEmpty 
+        relayUrl: _relayUrlController.text.trim().isNotEmpty
             ? _relayUrlController.text.trim()
             : null,
       );
@@ -94,14 +94,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final randomBytes = List<int>.generate(32, (i) => random.nextInt(256));
     final hexKey = randomBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     setState(() {
-      _kmarketController.text = hexKey;
+      _seedMarketController.text = hexKey;
     });
   }
 
   @override
   void dispose() {
     _marketNameController.dispose();
-    _kmarketController.dispose();
+    _seedMarketController.dispose();
     _relayUrlController.dispose();
     _validUntilController.dispose();
     super.dispose();
@@ -150,9 +150,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _kmarketController,
+                      controller: _seedMarketController,
                       decoration: const InputDecoration(
-                        labelText: 'Clé symétrique (k_market)',
+                        labelText: 'Graine du marché (seed_market)',
                         border: OutlineInputBorder(),
                         hintText: '32 bytes en hex',
                       ),

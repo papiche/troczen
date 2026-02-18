@@ -5,6 +5,7 @@ class User {
   final DateTime createdAt;
   final String? website;       // Site web du profil
   final String? g1pub;         // Clé publique Ğ1 (Base58)
+  final String? picture;       // URL de l'avatar
 
   User({
     required this.npub,
@@ -13,6 +14,7 @@ class User {
     required this.createdAt,
     this.website,
     this.g1pub,
+    this.picture,
   });
 
   Map<String, dynamic> toJson() {
@@ -23,6 +25,7 @@ class User {
       'createdAt': createdAt.toIso8601String(),
       if (website != null) 'website': website,
       if (g1pub != null) 'g1pub': g1pub,
+      if (picture != null) 'picture': picture,
     };
   }
 
@@ -34,6 +37,7 @@ class User {
       createdAt: DateTime.parse(json['createdAt']),
       website: json['website'],
       g1pub: json['g1pub'],
+      picture: json['picture'],
     );
   }
 }

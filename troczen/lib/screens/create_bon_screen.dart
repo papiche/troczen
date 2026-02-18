@@ -139,8 +139,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final p2 = parts[1]; // Voyageur (part active)
       final p3 = parts[2]; // Témoin (à publier)
 
-      // 3. Chiffrer P3 avec K_market
-      final p3Encrypted = await _cryptoService.encryptP3(p3, _market!.kmarket);
+      // 3. Chiffrer P3 avec K_day (clé du jour dérivée de la graine)
+      final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3, _market!.seedMarket, DateTime.now());
 
       // 4. Stocker P3 dans le cache local
       await _storageService.saveP3ToCache(bonNpub, p3);
@@ -210,7 +210,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             bonId: bonNpub,
             p2Hex: p2,  // ✅ Pour reconstruction sk_B éphémère
             p3Hex: p3,
-            kmarketHex: _market!.kmarket,
+            seedMarket: _market!.seedMarket,
             issuerNpub: widget.user.npub,
             marketName: _market!.name,
             value: double.parse(_valueController.text),

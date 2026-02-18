@@ -1,250 +1,131 @@
-# TrocZen - Synthèse du Projet
+# TrocZen — Résumé du Projet
 
-**Retour à la [Documentation Principale](README.md)** | [Index des Fichiers](FILE_INDEX.md) | [Whitepaper Technique](007.md)
+**Retour à la [Documentation Principale](README.md)** | [Architecture](ARCHITECTURE.md) | [Whitepaper](007.md)
 
-## 📋 Résumé Exécutif
+---
 
-**TrocZen** est une application mobile Flutter permettant de créer, transférer et encaisser des bons de valeur locale (ẐEN) de manière sécurisée et 100% offline après synchronisation.
+## Résumé exécutif
 
-> 📄 Pour une vue d'ensemble du projet, consultez le [README principal](README.md).
-> 📊 Pour les détails techniques complets, voir le [Whitepaper Technique](007.md).
-> 🔐 Pour les informations de sécurité, consultez l'[Audit de Sécurité](AUDIT_SECURITE_FINAL.md).
+**TrocZen** est une application mobile Flutter permettant de créer, transférer et encaisser des bons de valeur locale (ẐEN) de manière sécurisée et 100% offline après synchronisation initiale.
 
-### Caractéristiques Principales
+Caractéristiques principales :
+- **Offline-first** — fonctionne sans Internet sur le marché
+- **Cryptographiquement sécurisé** — SSSS polynomial + AES-GCM + secp256k1 (98% score industrie)
+- **Décentralisé** — pas de serveur central, protocole Nostr
+- **Atomique** — double scan empêche toute double dépense
+- **Simple** — interface ludique inspirée des cartes Panini
 
-✅ **Offline-first** - Fonctionne sans Internet sur le marché  
-✅ **Sécurisé** - Cryptographie SSSS + AES-GCM + secp256k1  
-✅ **Décentralisé** - Pas de serveur central, utilise Nostr  
-✅ **Simple** - Interface ludique inspirée des cartes Panini  
-✅ **Atomique** - Double scan empêche la double dépense  
+---
 
-## 📊 État du Projet
+## État du projet (février 2026)
 
-### ✅ Implémenté (MVP Fonctionnel)
+**Version** : 1.2.0 / 1.008 (branches de développement)  
+**Statut** : Production-ready pour pilote terrain
 
-| Composant | Statut | Fichier |
-|-----------|--------|---------|
-| **Models** | ✅ Complet | `lib/models/*.dart` |
-| - User | ✅ | `user.dart` |
-| - Bon | ✅ | `bon.dart` |
-| - Market | ✅ | `market.dart` |
-| **Services** | ✅ Complet | `lib/services/*.dart` |
-| - CryptoService | ✅ | `crypto_service.dart` |
-| - QRService | ✅ | `qr_service.dart` |
-| - StorageService | ✅ | `storage_service.dart` |
-| **Screens** | ✅ Complet | `lib/screens/*.dart` |
-| - Login | ✅ | `main.dart` |
-| - Wallet | ✅ | `wallet_screen.dart` |
-| - Create Bon | ✅ | `create_bon_screen.dart` |
-| - Offer | ✅ | `offer_screen.dart` |
-| - Scan | ✅ | `scan_screen.dart` |
-| - Market Config | ✅ | `market_screen.dart` |
-| **Widgets** | ✅ | `lib/widgets/*.dart` |
-| - PaniniCard | ✅ | `panini_card.dart` |
+### Fonctionnel ✅
 
-### 🚧 À Compléter
+| Composant | Détail |
+|-----------|--------|
+| Cryptographie | SSSS (2,3) polynomial, AES-GCM, Schnorr, Scrypt |
+| Modèles | User, Bon (rareté, unicité), Market |
+| Services | CryptoService, QRService, StorageService, NostrService, AuditTrailService, BurnService, NfcService |
+| Écrans | Login, Wallet, CreateBon, Offer, Scan, ACK, AtomicSwap, Market, Dashboard, Profil |
+| Widgets | PaniniCard (animée, holographique, système de rareté) |
+| Format QR | v1 (113 octets) et v2 (160 octets, offline complet) |
+| Backend API | Flask, 10 endpoints, upload IPFS, profils Nostr |
+| Onboarding | Parcours 5 étapes (seed, config, sync P3, profil, bienvenue) |
+| Navigation | MainShell avec 4 onglets + drawer paramètres |
+| Tests | 15 tests unitaires crypto (100% passants) |
 
-| Fonctionnalité | Priorité | Complexité | Temps estimé |
-|----------------|----------|------------|--------------|
-| Handshake ACK complet | ⭐⭐⭐ Haute | Moyenne | 2-3h |
-| Service Nostr (kind 30303) | ⭐⭐⭐ Haute | Haute | 4-6h |
-| Synchronisation P3 | ⭐⭐ Moyenne | Moyenne | 3-4h |
-| Tests unitaires | ⭐⭐ Moyenne | Faible | 2-3h |
-| Gestion bons expirés | ⭐ Basse | Faible | 1-2h |
+### En cours / à compléter 🚧
 
-## 🏗️ Structure du Code
+| Fonctionnalité | Priorité | Effort estimé |
+|----------------|----------|---------------|
+| Tests d'intégration end-to-end | Haute | 3–4h |
+| Tests sur appareils réels (NFC) | Haute | 2h |
+| Sync P3 automatique en arrière-plan | Moyenne | 3h |
+| Graphiques Dashboard (onglets 2 & 3) | Moyenne | 2h |
+| Backend proxy feedback utilisateur | Basse | 2h |
 
-> 📄 Pour la structure complète et à jour du code, consultez le [README principal](README.md#🏗️-architecture).
+---
 
-## 🔐 Sécurité Cryptographique
+## Architecture en bref
 
-> 📊 Pour les détails techniques complets sur la cryptographie, le chiffrement et les formats, consultez le [Whitepaper Technique](007.md).
-
-## 📱 Interface Utilisateur
-
-> 🎨 Pour les détails sur l'interface utilisateur et les flux, consultez le [README](README.md#📱-utilisation).
-
-## 🎯 Démo Rapide
-
-> 🚀 Pour un guide de démarrage rapide avec des scénarios de test, consultez le [Guide de Démarrage Rapide](QUICKSTART.md).
-3. Créer bon : 5 ẐEN "Miel"
-4. Donner → Afficher QR
+```
+lib/
+├── main.dart
+├── models/         user, bon, market, nostr_profile, onboarding_state
+├── services/       crypto, qr, storage, nostr, api, audit_trail, burn, nfc, feedback
+├── screens/        wallet, create_bon, offer, scan, ack, atomic_swap, market,
+│                   merchant_dashboard, onboarding/*, main_shell, views/*
+└── widgets/        panini_card, cached_profile_image, bon_reception_confirm_sheet
 ```
 
-**Appareil B (Bob - Receveur)**
-```bash
-1. Login : bob / password123
-2. Config marché : marche-test + même K_market
-3. Scanner → Valider
-4. Confirmer réception
-```
+Voir [ARCHITECTURE.md](ARCHITECTURE.md) pour le détail complet des flux et du protocole.
 
-**Résultat attendu :**
-- Alice n'a plus le bon
-- Bob a le bon dans son wallet
-- Double dépense impossible
+---
 
-## 📦 Dépendances Principales
-
-| Package | Version | Usage |
-|---------|---------|-------|
-| `pointycastle` | 3.7.3 | Crypto (secp256k1, AES) |
-| `flutter_secure_storage` | 9.0.0 | Stockage sécurisé |
-| `qr_flutter` | 4.1.0 | Génération QR |
-| `mobile_scanner` | 3.5.2 | Scan QR |
-| `crypto` | 3.0.3 | Hashing |
-| `hex` | 0.2.0 | Encodage hex |
-| `uuid` | 4.2.1 | IDs uniques |
-
-**Taille totale** : ~40 dépendances (~15 MB)
-
-## 🚀 Commandes Essentielles
-
-```bash
-# Installation
-flutter pub get
-
-# Lancer (dev)
-flutter run
-
-# Build APK
-flutter build apk --release
-
-# Build avec script
-./build.sh android
-
-# Tests
-flutter test
-
-# Analyser le code
-flutter analyze
-
-# Formater
-flutter format lib/
-```
-
-## 📊 Métriques Techniques
+## Métriques techniques
 
 | Métrique | Valeur |
 |----------|--------|
-| Lignes de code Dart | ~2500 |
-| Fichiers Dart | 13 |
-| Taille APK (arm64) | ~15 MB |
-| Temps de build | ~3 min |
-| Couverture tests | 0% (à implémenter) |
-| Version minimale Android | 5.0 (API 21) |
-| Version minimale iOS | 12.0 |
+| Lignes Dart | ~3 500 |
+| Fichiers Dart | ~30 |
+| Lignes Python (API) | ~600 |
+| Taille APK arm64 | ~15 MB |
+| Couverture tests crypto | 60% |
+| Score sécurité crypto | 98% |
 
-## 🔄 Workflow Git Recommandé
+---
+
+## Déploiement recommandé
+
+### Pilote (< 500 utilisateurs)
+- Relay Nostr : `wss://relay.copylaradio.com`
+- API : `https://troczen.copylaradio.com`
+- Marché unique, monitoring basique
+
+### Bêta publique (500–5 000 utilisateurs)
+- Multi-marchés
+- IPFS activé
+- Relays multiples (résilience)
+- Analytics
+
+### Avant déploiement massif (> 5 000)
+Implémenter les 2% de durcissement restants (voir [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)) et réaliser un audit externe.
+
+---
+
+## Commandes essentielles
 
 ```bash
-# Branches principales
-main           # Production stable
-develop        # Intégration continue
-feature/*      # Nouvelles fonctionnalités
-bugfix/*       # Corrections
-hotfix/*       # Urgences production
+# Installation
+cd troczen && flutter pub get
 
-# Exemple
-git checkout -b feature/nostr-service
-# ... développement ...
-git commit -m "feat: implement Nostr kind 30303 publishing"
-git push origin feature/nostr-service
-# Pull Request → develop → main
+# Développement
+flutter run
+
+# Tests
+flutter test test/crypto_service_test.dart
+
+# Build APK
+flutter build apk --split-per-abi --release
+
+# API Backend
+cd api && pip install -r requirements.txt && python api_backend.py
 ```
 
-## 🎓 Prochaines Étapes Techniques
-
-### Priorité 1 - Handshake Complet
-- [ ] Générer QR ACK avec signature
-- [ ] Scanner ACK côté donneur
-- [ ] Supprimer P2 après validation
-- [ ] Tester double dépense
-
-### Priorité 2 - Nostr
-- [ ] Créer NostrService
-- [ ] Publier kind 30303 (P3)
-- [ ] Subscribe au relais
-- [ ] Synchronisation automatique
-
-### Priorité 3 - Tests
-- [ ] crypto_service_test.dart
-- [ ] qr_service_test.dart
-- [ ] Integration tests
-- [ ] CI/CD (GitHub Actions)
-
-## 📈 Roadmap Produit
-
-**v1.0 (MVP)** - Mars 2025
-- ✅ Création/transfert bons offline
-- 🚧 Handshake atomique complet
-- 🚧 Nostr kind 30303
-
-**v1.1** - Avril 2025
-- Synchronisation automatique
-- Export PDF transactions
-- Statistiques
-
-**v2.0** - Mai 2025
-- Multi-marchés
-- PWA version
-- API publique
-
-## 💡 Points d'Attention
-
-### Sécurité
-- ⚠️ Ne jamais logger les clés privées
-- ⚠️ Tester la suppression de P2 après transfert
-- ⚠️ Vérifier le TTL des QR codes
-- ⚠️ Rotation K_market quotidienne
-
-### UX
-- ✅ Feedback visuel clair (couleurs, animations)
-- ✅ Messages d'erreur explicites
-- ✅ Pas de jargon technique visible
-- ⚠️ Tester lisibilité QR en conditions réelles
-
-### Performance
-- ✅ Cache P3 en mémoire
-- ⚠️ Optimiser reconstruction SSSS
-- ⚠️ Lazy loading wallet (si > 50 bons)
-
-## 📞 Support & Contributions
-
-- **Issues** : https://github.com/votre-repo/troczen/issues
-- **Discussions** : https://github.com/votre-repo/troczen/discussions
-- **Email** : dev@troczen.org
-
-## 📄 Licence
-
-MIT License - Voir LICENSE
-
 ---
 
-**Date de création** : 16 février 2025  
-**Version** : 1.0.0-alpha  
-**Auteur** : Équipe TrocZen  
-**Status** : 🚧 MVP en développement
+## Roadmap
 
----
+**v1.3 — Mars 2026**
+- Sync automatique P3 en arrière-plan
+- Graphiques Dashboard complets
+- Tests d'intégration
 
-## ✨ Conclusion
-
-Vous disposez maintenant d'un MVP complet et fonctionnel de TrocZen avec :
-
-- **13 fichiers Dart** bien structurés
-- **Architecture solide** et évolutive
-- **Sécurité cryptographique** de niveau production
-- **Documentation complète** (README, QUICKSTART, ARCHITECTURE)
-- **Scripts de build** automatisés
-
-**Prochaines actions recommandées :**
-
-1. Tester le build : `./build.sh android`
-2. Lancer sur émulateur : `flutter run`
-3. Compléter le handshake ACK
-4. Implémenter le service Nostr
-5. Ajouter les tests unitaires
-6. Test terrain sur un vrai marché !
-
-**Bon développement ! 🚀🌻**
+**v2.0**
+- Multi-marchés (switch)
+- PWA
+- Intégration provisionnement Ğ1 (1 Ğ1 = 10 ẐEN)
+- Export PDF/CSV transactions

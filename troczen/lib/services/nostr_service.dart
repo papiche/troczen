@@ -84,7 +84,7 @@ class NostrService {
     required String bonId,
     required String p2Hex,  // ✅ Passer P2 pour reconstruction
     required String p3Hex,
-    required String kmarketHex,
+    required String seedMarket,  // ✅ Graine du marché (remplace kmarketHex)
     required String issuerNpub,
     required String marketName,
     required double value,
@@ -97,14 +97,14 @@ class NostrService {
     }
 
     try {
-      // 1. Chiffrer P3 avec K_market
-      final p3Encrypted = await _cryptoService.encryptP3(p3Hex, kmarketHex);
+      // 1. Chiffrer P3 avec K_day (clé du jour dérivée de la graine)
+      final now = DateTime.now();
+      final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3Hex, seedMarket, now);
 
       // 2. ✅ Reconstruire sk_B ÉPHÉMÈRE (P2+P3) pour signature
       final nsecBon = _cryptoService.shamirCombine(null, p2Hex, p3Hex);
 
       // 3. Créer l'event Nostr avec tags optimisés pour dashboard
-      final now = DateTime.now();
       final expiry = now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
       
       final event = {
@@ -436,10 +436,15 @@ class NostrService {
         return;
       }
 
-      final p3Hex = await _cryptoService.decryptP3(
+      // Calculer la clé du jour à partir de la graine du marché
+      // On utilise la date de l'event (timestamp) pour déchiffrer
+      final eventTimestamp = event['created_at'] as int;
+      final eventDate = DateTime.fromMillisecondsSinceEpoch(eventTimestamp * 1000);
+      final p3Hex = await _cryptoService.decryptP3WithSeed(
         p3Cipher,
         p3Nonce,
-        market.kmarket,
+        market.seedMarket,
+        eventDate,
       );
 
       onP3Received?.call(bonId, p3Hex);

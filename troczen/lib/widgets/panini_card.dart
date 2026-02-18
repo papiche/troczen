@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/bon.dart';
 
 class PaniniCard extends StatefulWidget {
@@ -178,12 +179,27 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
                               if (widget.bon.logoUrl != null && widget.bon.logoUrl!.isNotEmpty)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    widget.bon.logoUrl!,
+                                  child: CachedNetworkImage(
+                                    imageUrl: widget.bon.logoUrl!,
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
+                                    placeholder: (context, url) => Container(
+                                      width: 60,
+                                      height: 60,
+                                      color: Colors.grey[800],
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: color.withOpacity(0.5),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) {
                                       return Icon(
                                         _getDefaultIcon(rarity),
                                         size: 48,

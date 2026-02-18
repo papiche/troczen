@@ -499,6 +499,130 @@ def get_stats():
     })
 
 
+# ==================== FEEDBACK GITHUB ====================
+
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """
+    Soumettre un feedback utilisateur vers GitHub Issues
+    🔒 Sécurisé: Le token GitHub reste côté serveur (.env)
+    """
+    
+    # Configuration GitHub
+    GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+    GITHUB_REPO = os.getenv('GITHUB_REPO', 'copylaradio/TrocZen')
+    
+    if not GITHUB_TOKEN:
+        return jsonify({
+            'success': False,
+            'error': 'GitHub integration not configured on server'
+        }), 503
+    
+    # Récupérer les données du feedback
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    title = data.get('title', '')
+    description = data.get('description', '')
+    feedback_type = data.get('type', 'feedback')  # bug, feature, feedback
+    user_email = data.get('email', 'anonymous')
+    app_version = data.get('app_version', 'unknown')
+    platform = data.get('platform', 'unknown')
+    
+    if not title or not description:
+        return jsonify({'error': 'Title and description are required'}), 400
+    
+    # Formater le titre avec emoji selon le type
+    type_emoji = {
+        'bug': '🐛',
+        'feature': '✨',
+        'feedback': '💬',
+        'question': '❓'
+    }
+    emoji = type_emoji.get(feedback_type, '💬')
+    issue_title = f"{emoji} [{feedback_type.upper()}] {title}"
+    
+    # Formater le corps de l'issue
+    issue_body = f"""## Feedback Utilisateur
+
+**Type**: {feedback_type}
+**Version**: {app_version}
+**Plateforme**: {platform}
+**Email**: {user_email}
+**Date**: {datetime.now().isoformat()}
+
+---
+
+### Description
+
+{description}
+
+---
+
+*Ce feedback a été soumis automatiquement via l'application TrocZen.*
+"""
+    
+    # Préparer la requête GitHub
+    github_api_url = f'https://api.github.com/repos/{GITHUB_REPO}/issues'
+    headers = {
+        'Authorization': f'token {GITHUB_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+    }
+    
+    # Labels selon le type
+    labels = [feedback_type]
+    if feedback_type == 'bug':
+        labels.append('user-reported')
+    
+    payload = {
+        'title': issue_title,
+        'body': issue_body,
+        'labels': labels
+    }
+    
+    try:
+        # Envoyer vers GitHub
+        response = requests.post(
+            github_api_url,
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
+        
+        if response.status_code == 201:
+            issue_data = response.json()
+            print(f"✅ Issue GitHub créée: #{issue_data['number']}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Feedback envoyé avec succès',
+                'issue_number': issue_data['number'],
+                'issue_url': issue_data['html_url']
+            }), 201
+        else:
+            print(f"❌ Erreur GitHub API: {response.status_code} - {response.text}")
+            return jsonify({
+                'success': False,
+                'error': f'GitHub API error: {response.status_code}'
+            }), 500
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erreur connexion GitHub: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to connect to GitHub'
+        }), 500
+    except Exception as e:
+        print(f"❌ Erreur feedback: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 if __name__ == '__main__':
     # Mode dev
     app.run(host='0.0.0.0', port=5000, debug=True)

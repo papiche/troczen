@@ -15,7 +15,7 @@ class MarketScreen extends StatefulWidget {
 class _MarketScreenState extends State<MarketScreen> {
   final _formKey = GlobalKey<FormState>();
   final _marketNameController = TextEditingController();
-  final _kmarketController = TextEditingController();
+  final _seedMarketController = TextEditingController();
   final _relayUrlController = TextEditingController();
   final _storageService = StorageService();
 
@@ -35,7 +35,7 @@ class _MarketScreenState extends State<MarketScreen> {
       setState(() {
         _currentMarket = market;
         _marketNameController.text = market.name;
-        _kmarketController.text = market.kmarket;
+        _seedMarketController.text = market.seedMarket;
         _relayUrlController.text = market.relayUrl ?? '';
         _isLoading = false;
       });
@@ -52,10 +52,10 @@ class _MarketScreenState extends State<MarketScreen> {
     try {
       final market = Market(
         name: _marketNameController.text.trim(),
-        kmarket: _kmarketController.text.trim(),
+        seedMarket: _seedMarketController.text.trim(),
         validUntil: DateTime.now().add(const Duration(days: 1)), // Valide 24h
-        relayUrl: _relayUrlController.text.trim().isEmpty 
-            ? null 
+        relayUrl: _relayUrlController.text.trim().isEmpty
+            ? null
             : _relayUrlController.text.trim(),
       );
 
@@ -108,7 +108,7 @@ class _MarketScreenState extends State<MarketScreen> {
       setState(() {
         _currentMarket = null;
         _marketNameController.clear();
-        _kmarketController.clear();
+        _seedMarketController.clear();
         _relayUrlController.clear();
       });
 
@@ -143,7 +143,7 @@ class _MarketScreenState extends State<MarketScreen> {
   @override
   void dispose() {
     _marketNameController.dispose();
-    _kmarketController.dispose();
+    _seedMarketController.dispose();
     _relayUrlController.dispose();
     super.dispose();
   }
@@ -291,11 +291,11 @@ class _MarketScreenState extends State<MarketScreen> {
                     const SizedBox(height: 16),
 
                     TextFormField(
-                      controller: _kmarketController,
+                      controller: _seedMarketController,
                       style: const TextStyle(color: Colors.white),
                       maxLines: 3,
                       decoration: InputDecoration(
-                        labelText: 'Clé du marché (K_market)',
+                        labelText: 'Graine du marché (seed_market)',
                         labelStyle: TextStyle(color: Colors.grey[400]),
                         hintText: '64 caractères hexadécimaux',
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -312,10 +312,10 @@ class _MarketScreenState extends State<MarketScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer la clé du marché';
+                          return 'Veuillez entrer la graine du marché';
                         }
                         if (!RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(value.trim())) {
-                          return 'La clé doit contenir exactement 64 caractères hexadécimaux';
+                          return 'La graine doit contenir exactement 64 caractères hexadécimaux';
                         }
                         return null;
                       },

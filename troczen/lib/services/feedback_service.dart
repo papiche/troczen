@@ -1,179 +1,139 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:crypto/crypto.dart';
-import 'package:hex/hex.dart';
-import '../models/nostr_profile.dart';
-import '../models/user.dart';
-import 'nostr_service.dart';
-import 'crypto_service.dart';
-import 'storage_service.dart';
+import 'package:flutter/foundation.dart';
 
-/// Service de feedback utilisateur
-/// Envoie les rapports sur Nostr (kind 1) et GitHub Issues
+/// Service d'envoi de feedback utilisateur
+/// 🔒 Sécurisé: Passe par le backend qui gère le token GitHub
 class FeedbackService {
-  final CryptoService _cryptoService;
-  final StorageService _storageService;
+  final String _baseUrl;
 
-  // Configuration GitHub
-  static const String githubRepo = 'papiche/troczen';
-  static const String githubApiUrl = 'https://api.github.com/repos/$githubRepo/issues';
-  
-  // Token GitHub (optionnel, pour authentification)
-  // En production, utiliser un backend pour éviter d'exposer le token
-  static const String? githubToken = null;
+  FeedbackService({String? baseUrl})
+      : _baseUrl = baseUrl ?? 'https://api.troczen.local';
 
-  FeedbackService({
-    required CryptoService cryptoService,
-    required StorageService storageService,
-  })  : _cryptoService = cryptoService,
-        _storageService = storageService;
-
-  /// Envoyer un feedback/bug report
-  /// Publie sur Nostr (kind 1) ET crée une issue GitHub
-  Future<Map<String, bool>> sendFeedback({
-    required User user,
-    required String type,  // 'bug', 'feature', 'question', 'praise'
+  /// Envoyer un feedback via le backend
+  /// 
+  /// [type] : 'bug', 'feature', 'feedback', 'question'
+  /// [title] : Titre court du feedback
+  /// [description] : Description détaillée
+  /// [email] : Email de contact (optionnel)
+  /// [appVersion] : Version de l'app
+  /// [platform] : Plateforme (Android, iOS, etc.)
+  Future<FeedbackResult> sendFeedback({
+    required String type,
     required String title,
     required String description,
+    String? email,
     String? appVersion,
-    String? deviceInfo,
+    String? platform,
   }) async {
-    final results = <String, bool>{
-      'nostr': false,
-      'github': false,
-    };
-
-    // 1. ✅ Publier sur Nostr (kind 1 avec tags)
     try {
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
-
-      await nostrService.connect(NostrConstants.defaultRelay);
-
-      final feedback = {
-        'type': type,
-        'title': title,
-        'description': description,
-        'app_version': appVersion ?? '1.2.0',
-        'device_info': deviceInfo ?? 'unknown',
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-
-      final event = {
-        'kind': NostrConstants.kindText,
-        'pubkey': user.npub,
-        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [
-          ['t', 'troczen-feedback'],
-          ['t', 'feedback-$type'],
-          ['p', '0000000000000000000000000000000000000000000000000000000000000000'], // TrocZen dev team
-        ],
-        'content': jsonEncode(feedback),
-      };
-
-      final eventId = _calculateEventId(event);
-      event['id'] = eventId;
-
-      final signature = _cryptoService.signMessage(eventId, user.nsec);
-      event['sig'] = signature;
-
-      // Publier l'event via NostrService
-      // Créer une méthode publique publishEvent() dans NostrService
-      // Pour l'instant, utiliser connect + reconstruction manuelle
-      
-      await nostrService.disconnect();
-      
-      results['nostr'] = true;
-      print('✅ Feedback publié sur Nostr');
-    } catch (e) {
-      print('⚠️ Erreur publication Nostr: $e');
-    }
-
-    // 2. ✅ Créer issue GitHub
-    try {
-      final issueBody = '''
-**Type**: $type
-**Reporter**: ${user.displayName} (${user.npub.substring(0, 16)}...)
-
-## Description
-
-$description
-
----
-
-**Métadonnées:**
-- App Version: ${appVersion ?? '1.2.0'}
-- Device: ${deviceInfo ?? 'unknown'}
-- Date: ${DateTime.now().toIso8601String()}
-- Nostr Report: Published
-
-*Issue créée automatiquement depuis l'app TrocZen*
-''';
-
-      final labels = _getGitHubLabels(type);
-
-      final issueData = {
-        'title': '[$type] $title',
-        'body': issueBody,
-        'labels': labels,
-      };
-
-      final headers = {
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-        if (githubToken != null) 'Authorization': 'Bearer $githubToken',
-      };
-
       final response = await http.post(
-        Uri.parse(githubApiUrl),
-        headers: headers,
-        body: jsonEncode(issueData),
-      );
+        Uri.parse('$_baseUrl/api/feedback'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'type': type,
+          'title': title,
+          'description': description,
+          'email': email ?? 'anonymous',
+          'app_version': appVersion ?? 'unknown',
+          'platform': platform ?? 'unknown',
+        }),
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 201) {
-        results['github'] = true;
-        final issue = jsonDecode(response.body);
-        print('✅ Issue GitHub créée: #${issue['number']}');
+        final data = jsonDecode(response.body);
+        return FeedbackResult(
+          success: true,
+          issueNumber: data['issue_number'],
+          issueUrl: data['issue_url'],
+          message: data['message'],
+        );
       } else {
-        print('⚠️ Erreur GitHub: ${response.statusCode} - ${response.body}');
+        final error = jsonDecode(response.body);
+        return FeedbackResult(
+          success: false,
+          error: error['error'] ?? 'Erreur inconnue',
+        );
       }
     } catch (e) {
-      print('⚠️ Erreur création issue GitHub: $e');
-    }
-
-    return results;
-  }
-
-  /// Récupérer labels GitHub selon le type
-  List<String> _getGitHubLabels(String type) {
-    switch (type) {
-      case 'bug':
-        return ['bug', 'from-app'];
-      case 'feature':
-        return ['enhancement', 'from-app'];
-      case 'question':
-        return ['question', 'from-app'];
-      case 'praise':
-        return ['feedback', 'from-app'];
-      default:
-        return ['from-app'];
+      debugPrint('❌ Erreur envoi feedback: $e');
+      return FeedbackResult(
+        success: false,
+        error: 'Impossible de se connecter au serveur',
+      );
     }
   }
 
-  /// Calculer event ID Nostr
-  String _calculateEventId(Map<String, dynamic> event) {
-    final serialized = jsonEncode([
-      0,
-      event['pubkey'],
-      event['created_at'],
-      event['kind'],
-      event['tags'],
-      event['content'],
-    ]);
-
-    final hash = sha256.convert(utf8.encode(serialized));
-    return HEX.encode(hash.bytes);
+  /// Envoyer un rapport de bug
+  Future<FeedbackResult> reportBug({
+    required String title,
+    required String description,
+    String? email,
+    String? appVersion,
+    String? platform,
+  }) {
+    return sendFeedback(
+      type: 'bug',
+      title: title,
+      description: description,
+      email: email,
+      appVersion: appVersion,
+      platform: platform,
+    );
   }
+
+  /// Suggérer une fonctionnalité
+  Future<FeedbackResult> suggestFeature({
+    required String title,
+    required String description,
+    String? email,
+    String? appVersion,
+    String? platform,
+  }) {
+    return sendFeedback(
+      type: 'feature',
+      title: title,
+      description: description,
+      email: email,
+      appVersion: appVersion,
+      platform: platform,
+    );
+  }
+
+  /// Envoyer un feedback général
+  Future<FeedbackResult> sendGeneralFeedback({
+    required String title,
+    required String description,
+    String? email,
+    String? appVersion,
+    String? platform,
+  }) {
+    return sendFeedback(
+      type: 'feedback',
+      title: title,
+      description: description,
+      email: email,
+      appVersion: appVersion,
+      platform: platform,
+    );
+  }
+}
+
+/// Résultat d'envoi de feedback
+class FeedbackResult {
+  final bool success;
+  final int? issueNumber;
+  final String? issueUrl;
+  final String? message;
+  final String? error;
+
+  FeedbackResult({
+    required this.success,
+    this.issueNumber,
+    this.issueUrl,
+    this.message,
+    this.error,
+  });
 }

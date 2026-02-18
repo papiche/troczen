@@ -235,8 +235,15 @@ class CryptoService {
       var result = (y1Big * l1 + y2Big * l2) % mod;
       if (result.isNegative) result = result + mod;
       
-      // Ramener dans [0, 255] - le secret original était mod 256
-      secretBytes[i] = result.toInt() % 256;
+      // ✅ CORRECTION BUG P0 CRITIQUE: Supprimer le % 256 final
+      // En théorie, f(0) devrait toujours être dans [0, 255] car c'est le secret original
+      // Si on obtient 256, c'est une erreur de calcul ou des données corrompues
+      // On lève une exception au lieu de masquer silencieusement avec % 256
+      final resultInt = result.toInt();
+      if (resultInt > 255) {
+        throw Exception('Erreur Shamir: reconstruction invalide (octet $i = $resultInt > 255)');
+      }
+      secretBytes[i] = resultInt;
     }
     
     return HEX.encode(secretBytes);
@@ -320,10 +327,10 @@ class CryptoService {
     return HEX.encode(plaintext);
   }
 
-  /// Chiffre P3 avec K_market
-  Future<Map<String, String>> encryptP3(String p3Hex, String kmarketHex) async {
+  /// Chiffre P3 avec K_day (clé du jour)
+  Future<Map<String, String>> encryptP3(String p3Hex, String kDayHex) async {
     final p3Bytes = HEX.decode(p3Hex);
-    final kmarketBytes = HEX.decode(kmarketHex);
+    final kDayBytes = HEX.decode(kDayHex);
     
     // ✅ CORRECTION: Nonce sécurisé
     final nonce = Uint8List.fromList(
@@ -333,7 +340,7 @@ class CryptoService {
     // Chiffrer avec AES-GCM
     final cipher = GCMBlockCipher(AESEngine());
     final params = AEADParameters(
-      KeyParameter(Uint8List.fromList(kmarketBytes)),
+      KeyParameter(Uint8List.fromList(kDayBytes)),
       128,
       nonce,
       Uint8List(0),
@@ -348,15 +355,15 @@ class CryptoService {
     };
   }
 
-  /// Déchiffre P3 avec K_market
-  Future<String> decryptP3(String ciphertextHex, String nonceHex, String kmarketHex) async {
+  /// Déchiffre P3 avec K_day (clé du jour)
+  Future<String> decryptP3(String ciphertextHex, String nonceHex, String kDayHex) async {
     final ciphertext = HEX.decode(ciphertextHex);
     final nonce = HEX.decode(nonceHex);
-    final kmarketBytes = HEX.decode(kmarketHex);
+    final kDayBytes = HEX.decode(kDayHex);
     
     final cipher = GCMBlockCipher(AESEngine());
     final params = AEADParameters(
-      KeyParameter(Uint8List.fromList(kmarketBytes)),
+      KeyParameter(Uint8List.fromList(kDayBytes)),
       128,
       Uint8List.fromList(nonce),
       Uint8List(0),
@@ -646,6 +653,31 @@ class CryptoService {
       'privateKey': signingKey.asTypedList, // 64 bytes (seed + pub)
       'publicKey': signingKey.publicKey.asTypedList,   // 32 bytes
     };
+  }
+
+  /// ✅ Calcule la clé de chiffrement quotidienne à partir de la graine du marché
+  /// Utilise HMAC-SHA256(seed, "YYYY-MM-DD") comme spécifié dans le whitepaper
+  String getDailyMarketKey(String seedHex, DateTime date) {
+    final seedBytes = HEX.decode(seedHex);
+    final dateStr = '${date.year.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dateBytes = utf8.encode(dateStr);
+    
+    final hmac = Hmac(sha256, seedBytes);
+    final keyBytes = hmac.convert(dateBytes).bytes;
+    
+    return HEX.encode(keyBytes);
+  }
+
+  /// ✅ Chiffre P3 avec K_day (clé du jour dérivée de la graine)
+  Future<Map<String, String>> encryptP3WithSeed(String p3Hex, String seedHex, DateTime date) async {
+    final kDay = getDailyMarketKey(seedHex, date);
+    return encryptP3(p3Hex, kDay);
+  }
+
+  /// ✅ Déchiffre P3 avec K_day (clé du jour dérivée de la graine)
+  Future<String> decryptP3WithSeed(String ciphertextHex, String nonceHex, String seedHex, DateTime date) async {
+    final kDay = getDailyMarketKey(seedHex, date);
+    return decryptP3(ciphertextHex, nonceHex, kDay);
   }
 
 }

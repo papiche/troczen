@@ -1,10 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:hex/hex.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
+import '../models/qr_payload_v2.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/bon_reception_confirm_sheet.dart';
 import 'ack_screen.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -45,61 +49,17 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      // Décoder le QR binaire
-      final offerData = _qrService.decodeOffer(barcode.rawBytes!);
-
-      // Vérifier le TTL
-      if (_qrService.isExpired(offerData['timestamp'], offerData['ttl'])) {
-        _showError('QR code expiré');
+      // ✅ NOUVEAU: Tenter de décoder en QR v2 d'abord
+      final qrV2Payload = _qrService.decodeQr(barcode.rawBytes!);
+      
+      if (qrV2Payload != null) {
+        // Format QR v2 détecté - Fonctionnement offline complet
+        await _handleQrV2(qrV2Payload);
         return;
       }
 
-      // Récupérer P3 depuis le cache
-      final p3 = await _storageService.getP3FromCache(offerData['bonId']);
-      if (p3 == null) {
-        _showError('Part P3 non trouvée.\nSynchronisez d\'abord avec le marché.');
-        return;
-      }
-
-      // Déchiffrer P2 avec K_P2 = hash(P3)
-      final p2 = await _cryptoService.decryptP2(
-        offerData['p2Cipher'],
-        offerData['nonce'],
-        p3,
-      );
-
-      setState(() => _statusMessage = 'Bon validé ! Génération de la confirmation...');
-
-      // TODO: Reconstruire nsec_bon temporairement pour signer
-      // final nsecBon = _cryptoService.shamirCombine(p2, p3, null);
-
-      // Pour l'instant, on stocke le bon en pending
-      final existingBon = await _storageService.getBonById(offerData['bonId']);
-      if (existingBon != null) {
-        // Mettre à jour
-        final updatedBon = existingBon.copyWith(
-          status: BonStatus.active,
-          p2: p2,
-        );
-        await _storageService.saveBon(updatedBon);
-
-        if (!mounted) return;
-
-        // Naviguer vers l'écran ACK
-        await Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AckScreen(
-              user: widget.user,
-              bon: updatedBon,
-              challenge: offerData['challenge'],
-            ),
-          ),
-        );
-      } else {
-        _showError('Bon inconnu');
-        return;
-      }
+      // Fallback: Format v1 (ancien format 113 octets)
+      await _handleQrV1(barcode.rawBytes!);
 
     } catch (e) {
       _showError('Erreur: $e');
@@ -109,6 +69,163 @@ class _ScanScreenState extends State<ScanScreen> {
         _statusMessage = 'Scannez le QR code du bon';
       });
     }
+  }
+
+  /// Traite un QR code v2 (160 octets) avec toutes les métadonnées
+  Future<void> _handleQrV2(QrPayloadV2 payload) async {
+    if (!mounted) return;
+
+    // Afficher la bottom sheet de confirmation AVANT d'accepter
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      builder: (context) => BonReceptionConfirmSheet(
+        value: payload.value,
+        issuerName: payload.issuerName,
+        issuerNpub: payload.issuerNpub,
+        onAccept: () => Navigator.pop(context, true),
+        onDecline: () => Navigator.pop(context, false),
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = 'Réception annulée';
+      });
+      return;
+    }
+
+    setState(() => _statusMessage = 'Déchiffrement en cours...');
+
+    // Récupérer P3 depuis le cache
+    final p3 = await _storageService.getP3FromCache(payload.bonId);
+    if (p3 == null) {
+      _showError('Part P3 non trouvée.\nSynchronisez d\'abord avec le marché.');
+      return;
+    }
+
+    // Déchiffrer P2 avec AES-GCM (format v2 inclut le tag séparément)
+    final encryptedP2WithTag = Uint8List.fromList([
+      ...payload.encryptedP2,
+      ...payload.p2Tag,
+    ]);
+    
+    final p2 = await _cryptoService.decryptP2(
+      HEX.encode(encryptedP2WithTag),
+      HEX.encode(payload.p2Nonce),
+      p3,
+    );
+
+    setState(() => _statusMessage = 'Bon validé ! Génération de la confirmation...');
+
+    // Récupérer le nom du marché depuis storage
+    final market = await _storageService.getMarket();
+    final marketName = market?.name ?? 'Marché Local';
+
+    // Créer le bon avec les métadonnées du payload v2
+    final bon = Bon(
+      bonId: payload.bonId,
+      value: payload.value,
+      issuerName: payload.issuerName,
+      issuerNpub: payload.issuerNpub,
+      p2: p2,
+      p3: null, // P3 reste dans le cache
+      status: BonStatus.active,
+      createdAt: payload.emittedAt,
+      marketName: marketName,
+    );
+
+    await _storageService.saveBon(bon);
+
+    if (!mounted) return;
+
+    // Générer un challenge pour l'ACK
+    final challengeBytes = HEX.encode(Uint8List.fromList(
+      List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
+    ));
+
+    // Naviguer vers l'écran ACK
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AckScreen(
+          user: widget.user,
+          bon: bon,
+          challenge: challengeBytes,
+        ),
+      ),
+    );
+  }
+
+  /// Traite un QR code v1 (ancien format 113 octets) - Fallback
+  Future<void> _handleQrV1(Uint8List rawBytes) async {
+    // Décoder le QR binaire v1
+    final offerData = _qrService.decodeOffer(rawBytes);
+
+    // Vérifier le TTL
+    if (_qrService.isExpired(offerData['timestamp'], offerData['ttl'])) {
+      _showError('QR code expiré');
+      return;
+    }
+
+    // Récupérer P3 depuis le cache
+    final p3 = await _storageService.getP3FromCache(offerData['bonId']);
+    if (p3 == null) {
+      _showError('Part P3 non trouvée.\nSynchronisez d\'abord avec le marché.');
+      return;
+    }
+
+    // Déchiffrer P2 avec K_P2 = hash(P3)
+    final p2 = await _cryptoService.decryptP2(
+      offerData['p2Cipher'],
+      offerData['nonce'],
+      p3,
+    );
+
+    setState(() => _statusMessage = 'Bon validé ! Génération de la confirmation...');
+
+    // ✅ CORRECTION BUG P0: Créer le bon à la volée au lieu de "Bon inconnu"
+    // Le receveur n'a pas encore le bon dans son wallet avant réception
+    final existingBon = await _storageService.getBonById(offerData['bonId']);
+    
+    // Récupérer le nom du marché depuis storage
+    final market = await _storageService.getMarket();
+    final marketName = market?.name ?? 'Marché Local';
+    
+    final bon = existingBon ?? Bon(
+      bonId: offerData['bonId'],
+      value: (offerData['value'] ?? 0.0).toDouble(),
+      issuerName: offerData['issuerName'] ?? 'Inconnu',
+      issuerNpub: offerData['issuerNpub'] ?? '',
+      p2: p2,
+      p3: null, // P3 reste dans le cache, pas dans l'objet
+      status: BonStatus.active,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(offerData['timestamp'] ?? DateTime.now().millisecondsSinceEpoch),
+      marketName: marketName,
+    );
+
+    // Si le bon existait déjà, mettre à jour avec P2
+    final updatedBon = existingBon != null
+      ? existingBon.copyWith(status: BonStatus.active, p2: p2)
+      : bon;
+
+    await _storageService.saveBon(updatedBon);
+
+    if (!mounted) return;
+
+    // Naviguer vers l'écran ACK
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AckScreen(
+          user: widget.user,
+          bon: updatedBon,
+          challenge: offerData['challenge'],
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {
