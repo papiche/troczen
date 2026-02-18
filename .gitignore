@@ -1,6 +1,5 @@
 api/uploads
 api/profiles
-api/apks
 
 # Miscellaneous
 *.class
