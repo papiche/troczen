@@ -19,6 +19,16 @@ class NostrService {
   bool _isConnected = false;
   String? _currentRelayUrl;
   
+  // ✅ Sync automatique en arrière-plan
+  Timer? _backgroundSyncTimer;
+  bool _autoSyncEnabled = false;
+  Duration _autoSyncInterval = const Duration(minutes: 5);
+  Market? _lastSyncedMarket;
+
+  // ✅ Getters publics pour les tests
+  bool get autoSyncEnabled => _autoSyncEnabled;
+  Market? get lastSyncedMarket => _lastSyncedMarket;
+  
   // Callbacks
   Function(String bonId, String p3Hex)? onP3Received;
   Function(String error)? onError;
@@ -76,6 +86,70 @@ class NostrService {
     _isConnected = false;
     _currentRelayUrl = null;
     onConnectionChange?.call(false);
+  }
+
+  // ============================================================
+  // ✅ SYNC AUTOMATIQUE EN ARRIÈRE-PLAN
+  // ============================================================
+
+  /// Active la synchronisation automatique en arrière-plan
+  void enableAutoSync({
+    Duration? interval,
+    Market? initialMarket,
+  }) {
+    if (_autoSyncEnabled) return;
+    
+    _autoSyncEnabled = true;
+    if (interval != null) {
+      _autoSyncInterval = interval;
+    }
+    _lastSyncedMarket = initialMarket;
+    
+    // Démarrer le timer de sync
+    _backgroundSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
+      if (_isConnected && _lastSyncedMarket != null) {
+        _doBackgroundSync();
+      }
+    });
+  }
+
+  /// Désactive la synchronisation automatique
+  void disableAutoSync() {
+    _autoSyncEnabled = false;
+    _backgroundSyncTimer?.cancel();
+    _backgroundSyncTimer = null;
+  }
+
+  /// Met à jour le marché à synchroniser automatiquement
+  void updateAutoSyncMarket(Market market) {
+    _lastSyncedMarket = market;
+  }
+
+  /// Effectue une synchronisation en arrière-plan silencieuse
+  Future<void> _doBackgroundSync() async {
+    if (!_isConnected || _lastSyncedMarket == null) return;
+    
+    try {
+      final count = await syncMarketP3s(_lastSyncedMarket!);
+      // Sync silencieuse - pas de notification si succès
+    } catch (e) {
+      // Erreur ignorée en arrière-plan
+    }
+  }
+
+  /// Force une synchronisation immédiate (pour appel manuel)
+  Future<int> triggerImmediateSync(Market market) async {
+    // Utiliser le relay du marché s'il n'est pas connecté
+    if (!_isConnected && market.relayUrl != null) {
+      await connect(market.relayUrl!);
+    }
+    
+    if (!_isConnected) {
+      onError?.call('Pas de connexion pour synchronisation');
+      return 0;
+    }
+    
+    return await syncMarketP3s(market);
   }
 
   /// ✅ Publie une P3 chiffrée sur Nostr (kind 30303)

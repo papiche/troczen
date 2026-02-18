@@ -30,7 +30,35 @@ class _MainShellState extends State<MainShell> {
   final _storageService = StorageService();
   final _cryptoService = CryptoService();
   final _feedbackService = FeedbackService();
+  late final NostrService _nostrService;
   bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nostrService = NostrService(
+      cryptoService: _cryptoService,
+      storageService: _storageService,
+    );
+    _initAutoSync();
+  }
+
+  Future<void> _initAutoSync() async {
+    // Activer la sync P3 automatique en arrière-plan
+    final market = await _storageService.getMarket();
+    if (market != null) {
+      _nostrService.enableAutoSync(
+        interval: const Duration(minutes: 5),
+        initialMarket: market,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _nostrService.disableAutoSync();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

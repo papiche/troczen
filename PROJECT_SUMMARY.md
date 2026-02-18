@@ -28,7 +28,7 @@ Caractéristiques principales :
 |-----------|--------|
 | Cryptographie | SSSS (2,3) polynomial, AES-GCM, Schnorr, Scrypt |
 | Modèles | User, Bon (rareté, unicité), Market |
-| Services | CryptoService, QRService, StorageService, NostrService, AuditTrailService, BurnService, NfcService |
+| Services | CryptoService, QRService, StorageService, NostrService, AuditTrailService, BurnService, NfcService, FeedbackService, ImageCacheService, ApiService |
 | Écrans | Login, Wallet, CreateBon, Offer, Scan, ACK, AtomicSwap, Market, Dashboard, Profil |
 | Widgets | PaniniCard (animée, holographique, système de rareté) |
 | Format QR | v1 (113 octets) et v2 (160 octets, offline complet) |
@@ -43,9 +43,6 @@ Caractéristiques principales :
 |----------------|----------|---------------|
 | Tests d'intégration end-to-end | Haute | 3–4h |
 | Tests sur appareils réels (NFC) | Haute | 2h |
-| Sync P3 automatique en arrière-plan | Moyenne | 3h |
-| Graphiques Dashboard (onglets 2 & 3) | Moyenne | 2h |
-| Backend proxy feedback utilisateur | Basse | 2h |
 
 ---
 
@@ -82,7 +79,7 @@ Voir [ARCHITECTURE.md](ARCHITECTURE.md) pour le détail complet des flux et du p
 
 ### Pilote (< 500 utilisateurs)
 - Relay Nostr : `wss://relay.copylaradio.com`
-- API : `https://https://zen.copylaradio.com`
+- API : `https://zen.copylaradio.com`
 - Marché unique, monitoring basique
 
 ### Bêta publique (500–5 000 utilisateurs)

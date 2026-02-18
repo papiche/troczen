@@ -36,8 +36,8 @@
 | Fichier | Contenu |
 |---------|---------|
 | [troczen/ONBOARDING_GUIDE.md](troczen/ONBOARDING_GUIDE.md) | Parcours d'onboarding 5 étapes |
-| [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md) | Refonte navigation : MainShell, 4 vues, migration |
-| [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md) | v1.008 : avatars, upload IPFS, sync P3 réelle |
+| [NAVIGATION_V4.md](NAVIGATION_V4.md) | Refonte navigation : MainShell, 4 vues, migration |
+| [CHANGELOG_V1008.md](CHANGELOG_V1008.md) | v1.008 : avatars, upload IPFS, sync P3 réelle |
 
 ---
 
@@ -65,8 +65,6 @@
 │   └── templates/
 └── troczen/
     ├── ONBOARDING_GUIDE.md
-    ├── NAVIGATION_V4.md
-    ├── CHANGELOG_V1008.md
     ├── pubspec.yaml
     └── lib/
         ├── main.dart
@@ -88,8 +86,8 @@ Ces fichiers ont été fusionnés pour éviter la redondance :
 - `CORRECTIONS_BUGS_P0.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
 - `VERIFICATION_CONFORMITE.md` → absorbé dans [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
 - `troczen/RECAPITULATIF_FINAL.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
-- `troczen/NAVIGATION_V4_GUIDE.md` → [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md)
-- `troczen/MIGRATION_NAVIGATION_V4.md` → [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md)
-- `troczen/PARTIE_4_REFONTE_NAVIGATION_RESUME.md` → [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md)
-- `troczen/V1008_IMPLEMENTATION_COMPLETE.md` → [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md)
-- `troczen/V1008_AVATAR_SYNC_IMPLEMENTATION.md` → [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md)
+- `troczen/NAVIGATION_V4_GUIDE.md` → [NAVIGATION_V4.md](NAVIGATION_V4.md)
+- `troczen/MIGRATION_NAVIGATION_V4.md` → [NAVIGATION_V4.md](NAVIGATION_V4.md)
+- `troczen/PARTIE_4_REFONTE_NAVIGATION_RESUME.md` → [NAVIGATION_V4.md](NAVIGATION_V4.md)
+- `troczen/V1008_IMPLEMENTATION_COMPLETE.md` → [CHANGELOG_V1008.md](CHANGELOG_V1008.md)
+- `troczen/V1008_AVATAR_SYNC_IMPLEMENTATION.md` → [CHANGELOG_V1008.md](CHANGELOG_V1008.md)

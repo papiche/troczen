@@ -111,8 +111,8 @@ K_day = HMAC-SHA256(seed_market, "daily-key-" || YYYY-MM-DD)
 | [DASHBOARD_MARCHAND_DOC.md](DASHBOARD_MARCHAND_DOC.md) | Analytics économiques P3, formules, dashboard |
 | [NOUVELLES_FEATURES.md](NOUVELLES_FEATURES.md) | NFC, ACK, échanges atomiques, gamification |
 | [troczen/ONBOARDING_GUIDE.md](troczen/ONBOARDING_GUIDE.md) | Parcours d'onboarding 5 étapes |
-| [troczen/NAVIGATION_V4.md](troczen/NAVIGATION_V4.md) | MainShell, 4 vues, migration |
-| [troczen/CHANGELOG_V1008.md](troczen/CHANGELOG_V1008.md) | v1.008 : avatars, IPFS, sync P3 réelle |
+| [NAVIGATION_V4.md](NAVIGATION_V4.md) | MainShell, 4 vues, migration |
+| [CHANGELOG_V1008.md](CHANGELOG_V1008.md) | v1.008 : avatars, IPFS, sync P3 réelle |
 | [api/README.md](api/README.md) | API Flask : endpoints, déploiement |
 | [api/IPFS_CONFIG.md](api/IPFS_CONFIG.md) | Configuration IPFS |
 | [FILE_INDEX.md](FILE_INDEX.md) | Index complet + trace des fichiers supprimés |
