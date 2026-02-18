@@ -182,81 +182,69 @@ Cette approche combine la robustesse du chiffrement quotidien (limitant l’impa
 
 ---
 
+#### Partie 4 : Le ẐEN comme Pont vers la Société des Communs
+
+Au-delà de la technique, cette architecture ouvre des perspectives philosophiques et politiques majeures, en phase avec le projet **UPlanet**.
+
+### 4.1. Le ẐEN : Capturer la Valeur de l'Ancien Monde pour les Communs
+
+Le ẐEN devient un **outil de comptabilité coopérative**. Il permet de gérer l'inévitable interaction avec le "monde de la dette" (l'économie en Euros) sans contaminer la pureté du Dividende Universel (DU) de la Ğ1.
+
+*   **Le constat** : Pour construire des communs (serveurs, ateliers, fermes), nous devons encore acheter du matériel dans le système Euro. Comment financer ces achats sans tomber dans la spéculation ou la dépendance ?
+*   **La solution ẐEN** : Un contributeur qui apporte un bien ou un service payé en Euros (ex: achat d'un serveur, heures de travail facturées) peut être **crédité en ẐEN** par la communauté, selon un taux de conversion défini collectivement. Il a alors le choix :
+    *   **Convertir** ses ẐEN en Euros (via une caisse commune) pour se rembourser.
+    *   **Conserver** ses ẐEN. Dans ce cas, il fait don de sa créance à la communauté. Les ẐEN non convertis deviennent la **valeur capturée à l'ancien monde**, qui vient abonder le trésor de guerre des communs.
+
+**C'est ainsi que le travail bénévole, ou l'apport en nature, se transforme en capital collectif, mesuré et traçable via le ẐEN, sans passer par un mécanisme de dette.**
+
+### 4.2. Comprendre la Nécessité de la Ğ1 : Le DU comme Droit de Vote
+
+Le mécanisme de provisionnement (1 Ğ1 = 10 Ẑ) n'est pas qu'une règle technique. C'est une **leçon d'économie politique** pour l'utilisateur.
+
+*   Pour créer des ẐEN (et donc participer à l'économie locale), il faut **d'abord posséder des Ğ1**.
+*   Et pour posséder des Ğ1, il faut **être membre de la Toile de Confiance** et recevoir le **Dividende Universel (DU)**.
+*   Le DU n'est pas un simple revenu. Dans cette vision élargie, il devient un **point de vote**, une preuve de participation à la communauté. Plus on reçoit de DU (car on est membre depuis longtemps), plus on a de poids pour :
+    *   Proposer de nouveaux projets.
+    *   Valider l'émission de ẐEN pour des projets collectifs.
+    *   Participer aux décisions sur la répartition des ressources (les 3×1/3 : Trésorerie, R&D, Actifs).
+
+Ainsi, le circuit Ğ1 → ẐEN crée une **démocratie des contributeurs**, où le pouvoir de vote est proportionnel à l'ancienneté et à la participation, et non à la richesse accumulée.
+
+### 4.3. Le Triptyque Ğ1 / ẐEN / Euro : Un Système à Trois Étages
+
+Nous arrivons à une vision claire d'un système monétaire et social à trois niveaux, en parfaite cohérence avec les piliers d'UPlanet.
+
+| Niveau | Monnaie / Outil | Rôle | Origine | Gouvernance |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Socle de Confiance** | **Ğ1 (June)** | Mesure de la valeur relative, Dividende Universel, droit de vote. | Création monétaire égalitaire par le DU. | Toile de Confiance (1 humaine = 1 voix). |
+| **2. Outil d'Échange Local** | **ẐEN** | Monnaie d'usage quotidien, bons de réduction, comptabilité des communs. | Création par provisionnement de Ğ1 (1Ğ1 = 10Ẑ). | Communauté locale (via les portefeuilles Ğ1/ẐEN). |
+| **3. Interface avec l'Ancien Monde**| **Euro (€)** | Achats externes, paiement des factures du monde "dette". | Apports des contributeurs, conversion de ẐEN. | Caisse commune, gérée par la communauté. |
+
+### 4.4. Une Invitation à l'Action : Rejoindre le Mouvement
+
+Ce modèle technique n'est pas une utopie. Il est en cours de construction. Rejoindre TrocZen et UPlanet, c'est choisir de :
+
+1.  **Devenir acteur** de son économie locale en utilisant et en émettant des ẐEN.
+2.  **Comprendre** la monnaie libre en recevant son DU Ğ1 et en voyant comment il permet de créer de la valeur locale.
+3.  **Contribuer** aux projets de la communauté (logiciels, matériels low-tech, communs) et être rétribué en ẐEN pour ses apports.
+4.  **Voter** avec son DU pour orienter les ressources collectives vers les projets qui construisent la résilience commune (énergie, information, inclusion).
+
+Comme l'explique la page UPlanet, il s'agit de passer d'un monde de "services publics" verticaux à un monde de **"biens communs" horizontaux**, où chaque utilisateur est un **bâtisseur souverain**. Le ẐEN est l'outil comptable qui rend cette transition possible et transparente.
+
+---
+
 ## Conclusion : Une Nouvelle Souveraineté Monétaire
 
-TrocZen, adossé à la Ğ1, n’est pas juste une application de bons de réduction. C’est un **protocole d’émission monétaire décentralisé**. Il démontre qu’il est possible de créer de la valeur locale (les ẐEN) en s’ancrant sur une monnaie libre et équitable (la Ğ1), le tout sécurisé par une cryptographie transparente (le jeu de post‑it). La gestion simplifiée par graine quotidienne rend le système robuste, simple à maintenir et véritablement offline‑first.
+TrocZen, adossé à la Ğ1 et intégré à la vision d'UPlanet, n'est pas juste une application de bons de réduction. C'est un **protocole d'émission monétaire décentralisé** et un **outil de gouvernance des communs**. Il démontre qu'il est possible de créer de la valeur locale (les ẐEN) en s'ancrant sur une monnaie libre et équitable (la Ğ1), et d'utiliser cette dynamique pour financer collectivement les infrastructures de notre autonomie.
 
-C’est un pas vers une société où l’acte de créer de la monnaie n’est plus un privilège institutionnel, mais une **capacité répartie**, liée à notre existence et à notre contribution au sein de la communauté. Le marché devient alors un espace de handshakes atomiques où la confiance n’est plus un postulat, mais une propriété émergente du système.
+C'est un pas vers une société où l'acte de créer de la monnaie n'est plus un privilège institutionnel, mais une **capacité répartie**, liée à notre existence et à notre contribution au sein de la communauté. Le marché devient alors un espace de handshakes atomiques où la confiance n'est plus un postulat, mais une propriété émergente du système, au service de la construction d'un monde résilient et désirable.
 
-# Annexe : Conséquences d’une compromission de la clé du marché
-
-Dans l’architecture de TrocZen, la clé du marché (qu’il s’agisse de la **graine** `seed_market` ou des clés quotidiennes `K_day` qui en sont dérivées) joue un rôle crucial : elle permet de chiffrer les parts **P3** avant leur publication sur Nostr. Mais que se passe-t-il si un attaquant parvient à obtenir cette clé ? Quels sont les risques réels et comment le système les limite-t-il ?
-
----
-
-## 1. Ce que l’attaquant **peut** faire avec la clé du marché
-
-### 1.1. Déchiffrer tous les P3 publiés sur Nostr
-- En possession de `seed_market` (ou des `K_day` correspondantes), l’attaquant peut déchiffrer l’intégralité des **P3** jamais publiés sur le relais Nostr pour ce marché.
-- Il obtient ainsi pour chaque bon :
-  - son identifiant public `npub_bon`,
-  - la part **P3** (fragment de la clé privée du bon),
-  - les métadonnées éventuellement incluses (valeur, émetteur, etc.).
-
-### 1.2. Intercepter et dérober des bons en transit
-- Lors d’un transfert, le donneur chiffre **P2** avec une clé dérivée de **P3** : `K_P2 = SHA256(P3)`.
-- Si l’attaquant connaît **P3**, il peut calculer `K_P2` et donc **déchiffrer tout P2 qu’il parviendrait à intercepter** (par exemple en scannant furtivement un QR code affiché, ou en écoutant une communication NFC).
-- Il pourrait alors reconstituer temporairement la clé privée complète (`P2 + P3`) et **voler le bon** avant que le receveur légitime ne finalise la transaction.
-
-### 1.3. Créer de faux bons (sous conditions)
-- L’attaquant peut générer une nouvelle paire de clés pour un bon factice, en produire les trois parts (P1, P2, P3), puis chiffrer **P3** avec la clé du marché et le publier sur Nostr.
-- **Cependant**, pour que ce faux bon ait une valeur réelle et soit accepté, il doit respecter la règle de **provisionnement en Ğ1** (1 Ğ1 = 10 Ẑ). L’attaquant devrait donc posséder une quantité suffisante de Ğ1 et les bloquer, ce qui ancre sa fraude dans une identité réelle (sa toile de confiance). S’il utilise une identité volée ou fictive, le système de confiance Ğ1 le détectera probablement.
-- De plus, les autres utilisateurs vérifieront l’intégrité du bon lors du premier transfert (reconstitution de la clé), mais un faux bon bien formé passerait cette vérification.
-
-### 1.4. Analyser le marché
-- En déchiffrant tous les P3, l’attaquant peut établir une **cartographie complète des bons émis** : volumes, émetteurs, dates. Cela constitue une atteinte à la vie privée des commerçants, mais ne permet pas de voler directement des fonds.
-
----
-
-## 2. Ce que l’attaquant **ne peut pas** faire
-
-### 2.1. Dépenser un bon sans en posséder P2
-- Avoir **P3 seul** ne suffit pas à reconstituer la clé privée du bon. Il faut obligatoirement une deuxième part (**P2** ou **P1**). L’attaquant ne peut donc pas vider le portefeuille des utilisateurs à distance.
-
-### 2.2. Accéder aux P1 (ancres) ni aux P2 stockés localement
-- La clé du marché ne donne aucun accès aux stockages locaux des appareils. Les **P1** (chez l’émetteur) et les **P2** (dans les portefeuilles) restent protégés par le système d’exploitation et le chiffrement local.
-
-### 2.3. Révoquer des bons
-- La révocation nécessite **P1**, qui n’est jamais publiée. L’attaquant ne peut donc pas annuler des bons légitimes.
-
-### 2.4. Contrefaire indéfiniment sans provision
-- La création de faux bons est limitée par la quantité de Ğ1 que l’attaquant peut immobiliser. S’il n’a pas de Ğ1, ses faux bons resteront sans valeur car non provisionnés (le système les rejettera lors de l’émission).
-
----
-
-## 3. Mesures de protection et limitations des dégâts
-
-### 3.1. Clés quotidiennes dérivées d’une graine
-- Comme proposé dans la version 1.1, l’utilisation d’une **graine** unique et de clés `K_day` dérivées par date réduit considérablement l’impact d’une compromission :
-  - Si un attaquant ne récupère qu’une `K_day` (par exemple celle d’hier), il ne pourra déchiffrer que les P3 de ce jour précis. Les autres jours restent protégés.
-  - La graine elle-même est stockée localement de manière sécurisée et n’est jamais transmise après l’installation.
-
-### 3.2. Rotation et révocation de la graine
-- En cas de compromission avérée, il est possible de **changer la graine** du marché. Cela nécessite une redistribution sécurisée (physique) aux participants, mais peut être planifié (par exemple annuellement). Les anciens P3 restent déchiffrables avec l’ancienne graine, mais les nouveaux seront chiffrés avec la nouvelle.
-
-### 3.3. Protection des transferts
-- Les QR codes ont une durée de vie très courte (TTL de 30 secondes) et sont souvent échangés en face à face, ce qui rend l’interception difficile.
-- L’utilisation du NFC en champ proche limite encore plus les risques d’écoute.
-
-### 3.4. Ancrage Ğ1
-- Le provisionnement en Ğ1 lie chaque émission à une identité réelle et à une quantité limitée de monnaie libre. Même avec la clé du marché, un attaquant ne peut pas créer une masse monétaire infinie sans posséder lui-même des Ğ1, ce qui le rend traçable via la toile de confiance.
-
----
-
-## 4. Conclusion
-
-Une compromission de la clé du marché est **grave mais pas catastrophique**. Elle expose les **P3** et permet le vol de bons en transit si l’attaquant peut intercepter les transferts. En revanche, elle ne donne pas un contrôle total sur les fonds ni sur les identités. Grâce aux clés quotidiennes dérivées, à la protection des transferts et à l’ancrage Ğ1, les risques sont contenus et des contre-mesures existent (rotation de la graine, révocation). La sécurité du système repose donc sur la **défense en profondeur** : plusieurs couches indépendantes doivent être franchies pour qu’un attaquant puisse causer des dommages significatifs.
 
 ---
 
 **Pour contribuer, poser des questions ou signaler un bug :** [Lien vers les Issues GitHub](https://github.com/papiche/troczen/issues)
+
+**Pour aller plus loin :**
+- [Dépôt GitHub de Astroport.ONE](https://github.com/papiche/Astroport.ONE)
+- [Site de la Monnaie Libre Ğ1](https://monnaie-libre.fr)
+- [La vision UPlanet](https://ipfs.copylaradio.com/ipns/copylaradio.com/Unation.html)
