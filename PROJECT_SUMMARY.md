@@ -115,17 +115,4 @@ flutter build apk --split-per-abi --release
 cd api && pip install -r requirements.txt && python api_backend.py
 ```
 
----
-
-## Roadmap
-
-**v1.3 — Mars 2026**
-- Sync automatique P3 en arrière-plan
-- Graphiques Dashboard complets
-- Tests d'intégration
-
-**v2.0**
-- Multi-marchés (switch)
-- PWA
-- Intégration provisionnement Ğ1 (1 Ğ1 = 10 ẐEN)
-- Export PDF/CSV transactions
+NB: Configurer .env pour que les remarques des utilisateurs soient postés comme issue github

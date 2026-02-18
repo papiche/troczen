@@ -5,7 +5,7 @@ import '../../services/crypto_service.dart';
 import '../../services/nostr_service.dart';
 import '../../models/market.dart';
 import '../../models/user.dart';
-import '../wallet_screen.dart';
+import '../views/wallet_view.dart';
 import 'onboarding_flow.dart';
 
 /// Étape 5: Écran de Bienvenue et Récapitulatif
@@ -324,7 +324,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => WalletScreen(user: user),
+          builder: (context) => WalletView(user: user),
         ),
         (route) => false,
       );

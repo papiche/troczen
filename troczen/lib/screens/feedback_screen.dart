@@ -23,10 +23,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   String _selectedType = 'bug';
   bool _isSending = false;
 
-  final _feedbackService = FeedbackService(
-    cryptoService: CryptoService(),
-    storageService: StorageService(),
-  );
+  final _feedbackService = FeedbackService();
 
   final _types = {
     'bug': {'label': '🐛 Bug', 'color': Colors.red},
@@ -49,33 +46,24 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     try {
       // Récupérer infos appareil
-      final deviceInfo = Platform.isAndroid ? 'Android' : 'iOS';
+      final platform = Platform.isAndroid ? 'Android' : 'iOS';
 
-      final results = await _feedbackService.sendFeedback(
-        user: widget.user,
+      final result = await _feedbackService.sendFeedback(
         type: _selectedType,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         appVersion: '1.2.0-ipfs',
-        deviceInfo: deviceInfo,
+        platform: platform,
       );
 
       if (!mounted) return;
 
       // Afficher résultat
-      final successMessages = <String>[];
-      if (results['nostr'] == true) {
-        successMessages.add('✅ Publié sur Nostr');
-      }
-      if (results['github'] == true) {
-        successMessages.add('✅ Issue GitHub créée');
-      }
-
-      if (successMessages.isEmpty) {
-        _showError('Échec d\'envoi. Vérifiez votre connexion.');
-      } else {
-        _showSuccess(successMessages.join('\n'));
+      if (result.success) {
+        _showSuccess('✅ Feedback envoyé avec succès!\nIssue #${result.issueNumber}');
         Navigator.pop(context);
+      } else {
+        _showError(result.error ?? 'Échec d\'envoi. Vérifiez votre connexion.');
       }
     } catch (e) {
       _showError('Erreur: $e');
