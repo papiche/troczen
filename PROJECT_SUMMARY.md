@@ -19,7 +19,7 @@ Caractéristiques principales :
 
 ## État du projet (février 2026)
 
-**Version** : 1.2.0 / 1.008 (branches de développement)  
+**Version** : 1.0.9 (pubspec.yaml)
 **Statut** : Production-ready pour pilote terrain
 
 ### Fonctionnel ✅

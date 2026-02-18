@@ -150,6 +150,48 @@ Utilisée pour le handshake ACK : le receveur signe le challenge avec `nsec_bon`
 }
 ```
 
+### NostrProfile
+Profil Nostr récupéré via kind 0 (métadonnées utilisateur).
+```json
+{
+  "npub": "hex_public_key",
+  "name": "jean_dupont",
+  "displayName": "Jean Dupont",
+  "picture": "https://ipfs.../avatar.png",
+  "about": "Apiculteur sur le marché de Toulouse",
+  "website": "https://rucher-de-jean.fr",
+  "lud16": "jean@wallet.example.com"
+}
+```
+
+### OnboardingState
+État de progression de l'onboarding (Provider ChangeNotifier).
+```dart
+class OnboardingState {
+  int currentStep;          // 0-4
+  bool seedGenerated;       // Seed marché générée
+  bool nostrConfigured;     // Relais configuré
+  bool p3Synced;            // P3 synchronisées
+  bool profileCompleted;    // Profil rempli
+  Market? market;           // Marché sélectionné
+}
+```
+
+### QrPayloadV2
+Payload étendu pour QR code v2 (160 octets, offline complet).
+```dart
+class QrPayloadV2 {
+  String bonId;             // 32 octets hex
+  int valueInCentimes;      // uint32 (valeur en centimes)
+  String issuerNpub;        // 32 octets hex
+  String issuerName;        // 20 octets UTF-8 max
+  Uint8List encryptedP2;    // 32 octets AES-GCM
+  Uint8List p2Nonce;        // 12 octets
+  Uint8List p2Tag;          // 16 octets
+  DateTime emittedAt;       // Timestamp émission
+}
+```
+
 ---
 
 ## Flux de données
@@ -272,6 +314,32 @@ K_day = HMAC-SHA256(seed_market, "daily-key-" + date_from_timestamp)
 P3 = AES-GCM-decrypt(event.tags.p3, K_day)
 StorageService.saveP3ToCache(bonId, P3)
 ```
+
+---
+
+## Services
+
+### Services principaux
+
+| Service | Rôle | Fichier |
+|---------|------|---------|
+| CryptoService | SSSS, AES-GCM, Schnorr, Scrypt | `crypto_service.dart` |
+| QRService | Encodage/décodage QR v1/v2/ACK | `qr_service.dart` |
+| StorageService | FlutterSecureStorage, cache P3 | `storage_service.dart` |
+| NostrService | Publication/sync kind 30303 | `nostr_service.dart` |
+| ApiService | Communication backend Flask | `api_service.dart` |
+
+### Services utilitaires
+
+| Service | Rôle | Fichier |
+|---------|------|---------|
+| AuditTrailService | Journal SQLite des transferts (RGPD) | `audit_trail_service.dart` |
+| BurnService | Révocation de bons (kind 5) | `burn_service.dart` |
+| FeedbackService | Envoi feedback via GitHub Issues | `feedback_service.dart` |
+| ImageCacheService | Cache images profils Nostr | `image_cache_service.dart` |
+| NfcService | Transfert par NFC (⚠️ expérimental) | `nfc_service.dart` |
+
+> **Note NFC** : Le service NFC est en phase expérimentale. L'implémentation complète nécessite une configuration plateforme spécifique. Utiliser le QR code comme méthode principale de transfert.
 
 ---
 

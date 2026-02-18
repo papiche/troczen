@@ -54,6 +54,7 @@
 ├── DASHBOARD_MARCHAND_DOC.md
 ├── NOUVELLES_FEATURES.md
 ├── FILE_INDEX.md
+├── ANALYSE_DOC_CODE.md
 ├── docs/
 │   └── technical_whitepaper.md
 ├── api/
@@ -69,9 +70,32 @@
     └── lib/
         ├── main.dart
         ├── models/
+        │   ├── user.dart
+        │   ├── bon.dart
+        │   ├── market.dart
+        │   ├── nostr_profile.dart      # Profil Nostr (kind 0)
+        │   ├── onboarding_state.dart   # État onboarding Provider
+        │   └── qr_payload_v2.dart      # Payload QR v2 (160 octets)
         ├── services/
+        │   ├── crypto_service.dart
+        │   ├── qr_service.dart
+        │   ├── storage_service.dart
+        │   ├── nostr_service.dart
+        │   ├── api_service.dart
+        │   ├── audit_trail_service.dart
+        │   ├── burn_service.dart
+        │   ├── nfc_service.dart            # ⚠️ Expérimental
+        │   ├── feedback_service.dart       # Envoi feedback GitHub
+        │   └── image_cache_service.dart    # Cache images profils
         ├── screens/
+        │   ├── main_shell.dart
+        │   ├── views/ (wallet, explore, dashboard, profile)
+        │   ├── onboarding/ (5 étapes)
+        │   └── ... (15+ écrans)
         └── widgets/
+            ├── panini_card.dart
+            ├── bon_reception_confirm_sheet.dart
+            └── cached_profile_image.dart
 ```
 
 ## Documents supprimés (archivés dans ce commit)

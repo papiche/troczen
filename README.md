@@ -10,7 +10,7 @@ Application Flutter pour la création, le transfert et l'encaissement de bons de
 - **QR codes binaires** : Format compact v1 (113 octets) et v2 offline-complet (160 octets)
 - **Interface Panini** : Cartes à collectionner avec système de rareté
 - **Décentralisé** : Synchronisation via protocole Nostr (kind 30303)
-- **NFC** : Transfert de bons par approche des appareils
+- **NFC** : Transfert de bons par approche des appareils (⚠️ expérimental)
 
 ## Prérequis
 

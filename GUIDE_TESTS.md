@@ -15,16 +15,15 @@
 
 ### ✅ Existants
 
+#### Crypto Service
+
 **Fichier** : [`test/crypto_service_test.dart`](troczen/test/crypto_service_test.dart)
 
-#### Exécution
-
 ```bash
-cd troczen
-flutter test test/crypto_service_test.dart
+cd troczen && flutter test test/crypto_service_test.dart
 ```
 
-**Couverture actuelle** : 15 tests
+**Couverture** : 15 tests
 
 - Dérivation de clé déterministe ✅
 - Génération paires de clés ✅
@@ -32,11 +31,45 @@ flutter test test/crypto_service_test.dart
 - Chiffrement/déchiffrement P2 et P3 ✅
 - Signatures Schnorr ✅
 
+#### QR Service
+
+**Fichier** : [`test/qr_service_test.dart`](troczen/test/qr_service_test.dart)
+
+```bash
+cd troczen && flutter test test/qr_service_test.dart
+```
+
+**Couverture** : 13 tests
+
+- Encodage/décodage offre v1 (113 octets) ✅
+- Encodage/décodage ACK (97 octets) ✅
+- Gestion TTL et expiration ✅
+- Edge cases ✅
+
+#### Storage Service
+
+**Fichier** : [`test/storage_service_test.dart`](troczen/test/storage_service_test.dart)
+
+```bash
+cd troczen && flutter test test/storage_service_test.dart
+```
+
+**Couverture** : 15 tests
+
+- Gestion utilisateurs (save/get/delete) ✅
+- Gestion bons (save/get/update/delete) ✅
+- Cache P3 ✅
+- Gestion marché ✅
+
+#### Exécution de tous les tests
+
+```bash
+cd troczen && flutter test
+```
+
+**Total** : 43 tests unitaires
+
 ### 📝 Tests À Ajouter
-
-#### A. QR Service
-
-Créer `test/qr_service_test.dart` :
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
