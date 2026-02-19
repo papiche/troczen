@@ -21,6 +21,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   List<Bon> bons = [];
   List<Bon> filteredBons = [];
   bool _isLoading = true;
+  bool _isUpdating = false;
   final _searchController = TextEditingController();
 
   @override
@@ -40,14 +41,27 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   }
 
   Future<void> _loadBons() async {
+    if (_isLoading || _isUpdating) return;
     setState(() => _isLoading = true);
-    final storageService = StorageService();
-    final loadedBons = await storageService.getBons();
-    setState(() {
-      bons = loadedBons;
-      filteredBons = loadedBons;
-      _isLoading = false;
-    });
+    try {
+      final storageService = StorageService();
+      final loadedBons = await storageService.getBons();
+      if (!mounted) return;
+      setState(() {
+        bons = loadedBons;
+        filteredBons = loadedBons;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur lors du chargement: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _filterBons() {
@@ -607,6 +621,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   }
 
   Future<void> _deleteBon(Bon bon) async {
+    if (_isUpdating) return;
+    setState(() => _isUpdating = true);
     try {
       final storageService = StorageService();
       await storageService.deleteBon(bon.bonId);
@@ -628,6 +644,10 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
     }
   }
 

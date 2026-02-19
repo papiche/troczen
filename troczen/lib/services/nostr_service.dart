@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:developer' as dev;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
@@ -502,11 +503,17 @@ class NostrService {
       }
 
       if (bonId == null || p3Cipher == null || p3Nonce == null) {
+        dev.log('⚠️ Event Nostr kind 30303 rejeté: tag obligatoire manquant.',
+            level: 900, name: 'NostrService',
+            error: 'bonId=$bonId, p3Cipher=$p3Cipher, p3Nonce=$p3Nonce, tags=$tags');
         return;
       }
 
       final market = await _storageService.getMarket();
       if (market == null || market.name != marketName) {
+        dev.log('⚠️ Event Nostr rejeté: marché incompatible.',
+            level: 900, name: 'NostrService',
+            error: 'marketName=$marketName, localMarket=${market?.name}');
         return;
       }
 
@@ -523,6 +530,9 @@ class NostrService {
 
       onP3Received?.call(bonId, p3Hex);
     } catch (e) {
+      dev.log('❌ Erreur traitement event Nostr',
+          level: 1000, name: 'NostrService',
+          error: e, stackTrace: StackTrace.current);
       onError?.call('Erreur traitement event: $e');
     }
   }

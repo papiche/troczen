@@ -184,6 +184,10 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
+                                    memCacheHeight: 120,
+                                    memCacheWidth: 120,
+                                    maxHeightDiskCache: 240,
+                                    maxWidthDiskCache: 240,
                                     placeholder: (context, url) => Container(
                                       width: 60,
                                       height: 60,
