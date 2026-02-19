@@ -4,7 +4,7 @@ import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/panini_card.dart';
-import '../gallery_screen.dart';
+import '../offer_screen.dart';
 
 /// WalletView — Bons dont je détiens P2
 /// Vue principale du commerçant receveur
@@ -22,6 +22,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   List<Bon> filteredBons = [];
   bool _isLoading = true;
   bool _isUpdating = false;
+  bool _isGridView = false;
   final _searchController = TextEditingController();
 
   @override
@@ -114,11 +115,11 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         backgroundColor: const Color(0xFF1E1E1E),
         title: const Text('Mon Wallet'),
         actions: [
-          // Bouton galerie
+          // Bouton bascule vue grille/liste
           IconButton(
-            icon: const Icon(Icons.grid_view),
-            onPressed: () => _navigateToGallery(),
-            tooltip: 'Voir en galerie',
+            icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+            onPressed: () => setState(() => _isGridView = !_isGridView),
+            tooltip: _isGridView ? 'Vue liste' : 'Vue grille',
           ),
           // Bouton rafraîchir
           IconButton(
@@ -303,6 +304,42 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     final sortedBons = List<Bon>.from(filteredBons)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+    // Vue grille
+    if (_isGridView) {
+      return GridView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: sortedBons.length,
+        itemBuilder: (context, index) {
+          final bon = sortedBons[index];
+          return GestureDetector(
+            onTap: () => _showBonDetails(bon),
+            onLongPress: () => _showContextMenu(bon),
+            child: Stack(
+              children: [
+                PaniniCard(
+                  bon: bon,
+                  onTap: () => _showBonDetails(bon),
+                ),
+                // Chip de statut
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: _buildStatusChip(bon),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    // Vue liste (par défaut)
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: sortedBons.length,
@@ -651,15 +688,6 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     }
   }
 
-  void _navigateToGallery() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GalleryScreen(user: widget.user),
-      ),
-    );
-  }
-
   void _showBonDetails(Bon bon) {
     showModalBottomSheet(
       context: context,
@@ -730,13 +758,48 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               
               const SizedBox(height: 24),
               
-              // Boutons d'action
+              // Bouton Donner (si le bon est actif et non expiré)
+              if (bon.status == BonStatus.active && !bon.isExpired)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context); // Fermer la modale
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => OfferScreen(user: widget.user, bon: bon),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code, color: Colors.black),
+                    label: const Text(
+                      'Donner ce bon',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB347),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              if (bon.status == BonStatus.active && !bon.isExpired)
+                const SizedBox(height: 12),
+              
+              // Bouton Fermer
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFB347),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFB347),
+                    side: const BorderSide(color: Color(0xFFFFB347)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -747,7 +810,6 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
                     ),
                   ),
                 ),
