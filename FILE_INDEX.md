@@ -96,6 +96,12 @@
             ├── panini_card.dart
             ├── bon_reception_confirm_sheet.dart
             └── cached_profile_image.dart
+    └── test/
+        ├── crypto_service_test.dart      # 15 tests unitaires
+        ├── qr_service_test.dart          # 13 tests unitaires
+        ├── storage_service_test.dart     # 15 tests unitaires
+        ├── nostr_service_test.dart       # 6 tests unitaires
+        └── integration_test.dart         # 16 tests d'intégration (flux critiques)
 ```
 
 ## Documents supprimés (archivés dans ce commit)

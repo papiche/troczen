@@ -61,13 +61,28 @@ cd troczen && flutter test test/storage_service_test.dart
 - Cache P3 ✅
 - Gestion marché ✅
 
+#### Tests d'intégration
+
+**Fichier** : [`test/integration_test.dart`](troczen/test/integration_test.dart)
+
+```bash
+cd troczen && flutter test test/integration_test.dart
+```
+
+**Couverture** : 16 tests (flux critiques du diagramme `trozen.mermaid`)
+
+- **PHASE 2 - Création de bon** : génération clés, Shamir split, chiffrement P3, zeroise
+- **PHASE 3 - Synchronisation** : dérivation K_day, déchiffrement P3, cache local
+- **PHASE 4 - Transfert atomique** : QR1 offre, QR2 ACK, signature Schnorr, end-to-end
+- **Sécurité** : validation clés, détection falsification, expiration QR
+
 #### Exécution de tous les tests
 
 ```bash
 cd troczen && flutter test
 ```
 
-**Total** : 43 tests unitaires
+**Total** : 68 tests (52 unitaires + 16 intégration)
 
 ### 📝 Tests À Ajouter
 

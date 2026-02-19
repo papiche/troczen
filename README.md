@@ -86,9 +86,14 @@ L'onboarding en 5 étapes guide la configuration : seed de marché, relais Nostr
 # Tests unitaires crypto (15 tests)
 flutter test test/crypto_service_test.dart
 
-# Tous les tests
+# Tests d'intégration - flux critiques (16 tests)
+flutter test test/integration_test.dart
+
+# Tous les tests (68 tests)
 flutter test
 ```
+
+**Couverture** : création de bon, transfert atomique, synchronisation P3, sécurité.
 
 ## Configuration avancée
 
