@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
-import '../../services/image_cache_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/nostr_service.dart';
+import '../../services/crypto_service.dart';
 import 'onboarding_flow.dart';
 
 /// Étape 4: Création du Profil Nostr+Ğ1
@@ -27,12 +28,16 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   final _displayNameController = TextEditingController();
   final _aboutController = TextEditingController();
   final _g1PublicKeyController = TextEditingController();
+  final _customTagController = TextEditingController();
+  final _focusNode = FocusNode();
   
   final List<String> _selectedTags = [];
+  final List<String> _dynamicTags = [];
   final ImagePicker _imagePicker = ImagePicker();
   
   File? _selectedProfileImage;
   bool _uploadingImage = false;
+  bool _loadingDynamicTags = false;
   
   // Tags prédéfinis par catégorie
   final Map<String, List<String>> _predefinedTags = {
@@ -67,11 +72,78 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   };
   
   @override
+  void initState() {
+    super.initState();
+    _loadDynamicTags();
+  }
+  
+  @override
   void dispose() {
     _displayNameController.dispose();
     _aboutController.dispose();
     _g1PublicKeyController.dispose();
+    _customTagController.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+  
+  /// Charge les tags dynamiques depuis les profils existants sur le relais
+  Future<void> _loadDynamicTags() async {
+    final state = context.read<OnboardingNotifier>().state;
+    final relayUrl = state.relayUrl;
+    
+    if (relayUrl.isEmpty) {
+      return;
+    }
+    
+    setState(() => _loadingDynamicTags = true);
+    
+    try {
+      final storageService = StorageService();
+      final cryptoService = CryptoService();
+      final nostrService = NostrService(
+        cryptoService: cryptoService,
+        storageService: storageService,
+      );
+      
+      final connected = await nostrService.connect(relayUrl);
+      if (connected) {
+        final tags = await nostrService.fetchActivityTagsFromProfiles();
+        setState(() {
+          _dynamicTags.clear();
+          _dynamicTags.addAll(tags);
+        });
+      }
+      
+      await nostrService.disconnect();
+    } catch (e) {
+      debugPrint('❌ Erreur chargement tags dynamiques: $e');
+    } finally {
+      setState(() => _loadingDynamicTags = false);
+    }
+  }
+  
+  /// Ajoute un tag personnalisé à la liste des tags sélectionnés
+  void _addCustomTag() {
+    final tag = _customTagController.text.trim();
+    if (tag.isEmpty) return;
+    
+    // Vérifier que le tag n'est pas déjà sélectionné
+    if (_selectedTags.contains(tag)) {
+      _customTagController.clear();
+      return;
+    }
+    
+    setState(() {
+      _selectedTags.add(tag);
+      // Ajouter aussi aux tags dynamiques pour affichage
+      if (!_dynamicTags.contains(tag)) {
+        _dynamicTags.add(tag);
+      }
+    });
+    
+    _customTagController.clear();
+    _focusNode.requestFocus();
   }
   
   @override
@@ -219,7 +291,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                     _buildSectionTitle('Tags d\'activité'),
                     const SizedBox(height: 8),
                     Text(
-                      'Sélectionnez vos domaines d\'activité',
+                      'Sélectionnez vos domaines d\'activité ou ajoutez vos propres tags',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[400],
@@ -228,9 +300,76 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                     const SizedBox(height: 16),
                     
                     // Tags par catégorie
-                    ..._predefinedTags.entries.map((entry) => 
+                    ..._predefinedTags.entries.map((entry) =>
                       _buildCategoryTags(entry.key, entry.value)
                     ),
+                    
+                    // Tags dynamiques depuis le relais
+                    if (_dynamicTags.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildDynamicTagsSection(),
+                    ],
+                    
+                    // Indicateur de chargement des tags dynamiques
+                    if (_loadingDynamicTags)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFFFB347),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Chargement des suggestions...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    // Section pour ajouter un tag personnalisé
+                    const SizedBox(height: 16),
+                    _buildCustomTagInput(),
+                    
+                    // Tags sélectionnés affichés en chips
+                    if (_selectedTags.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Vos tags sélectionnés:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _selectedTags.map((tag) => Chip(
+                          label: Text(tag),
+                          deleteIcon: const Icon(Icons.close, size: 18),
+                          onDeleted: () {
+                            setState(() {
+                              _selectedTags.remove(tag);
+                            });
+                          },
+                          backgroundColor: const Color(0xFFFFB347).withOpacity(0.3),
+                          labelStyle: const TextStyle(color: Color(0xFFFFB347)),
+                          deleteIconColor: const Color(0xFFFFB347),
+                        )).toList(),
+                      ),
+                    ],
                     
                     const SizedBox(height: 32),
                     
@@ -385,6 +524,139 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
           }).toList(),
         ),
         const SizedBox(height: 16),
+      ],
+    );
+  }
+  
+  /// Construit la section des tags dynamiques récupérés depuis le relais
+  Widget _buildDynamicTagsSection() {
+    // Filtrer les tags dynamiques pour exclure ceux déjà dans les tags prédéfinis
+    final allPredefinedTags = _predefinedTags.values.expand((tags) => tags).toSet();
+    final uniqueDynamicTags = _dynamicTags
+        .where((tag) => !allPredefinedTags.contains(tag))
+        .toList();
+    
+    if (uniqueDynamicTags.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.public, size: 16, color: Colors.grey[400]),
+            const SizedBox(width: 8),
+            Text(
+              'Suggestions de la communauté',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[300],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: uniqueDynamicTags.take(20).map((tag) {
+            final isSelected = _selectedTags.contains(tag);
+            return FilterChip(
+              label: Text(tag),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedTags.add(tag);
+                  } else {
+                    _selectedTags.remove(tag);
+                  }
+                });
+              },
+              selectedColor: const Color(0xFFFFB347).withOpacity(0.3),
+              checkmarkColor: const Color(0xFFFFB347),
+              backgroundColor: const Color(0xFF2A2A2A),
+              labelStyle: TextStyle(
+                color: isSelected ? const Color(0xFFFFB347) : Colors.white,
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+  
+  /// Construit le champ de saisie pour les tags personnalisés
+  Widget _buildCustomTagInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.add_circle_outline, size: 16, color: Colors.grey[400]),
+            const SizedBox(width: 8),
+            Text(
+              'Ajouter un tag personnalisé',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[300],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _customTagController,
+                focusNode: _focusNode,
+                style: const TextStyle(color: Colors.white),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _addCustomTag(),
+                decoration: InputDecoration(
+                  hintText: 'Ex: Boulanger, Artisan...',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  prefixIcon: const Icon(Icons.tag, color: Color(0xFFFFB347)),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFFFB347)),
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: _addCustomTag,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB347),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

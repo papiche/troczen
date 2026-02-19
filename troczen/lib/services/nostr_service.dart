@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:developer' as dev;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
@@ -37,6 +36,7 @@ class NostrService {
   Function(String bonId, String p3Hex)? onP3Received;
   Function(String error)? onError;
   Function(bool connected)? onConnectionChange;
+  Function(List<String> tags)? onTagsReceived;
 
   NostrService({
     required CryptoService cryptoService,
@@ -134,7 +134,7 @@ class NostrService {
     if (!_isConnected || _lastSyncedMarket == null) return;
     
     try {
-      final count = await syncMarketP3s(_lastSyncedMarket!);
+      await syncMarketP3s(_lastSyncedMarket!);
       // Sync silencieuse - pas de notification si succès
     } catch (e) {
       // Erreur ignorée en arrière-plan
@@ -465,9 +465,6 @@ class NostrService {
             }
           }
           break;
-        case 'EVENT':
-          _handleEvent(message[2]);
-          break;
         case 'OK':
           final eventId = message[1];
           final success = message[2];
@@ -681,6 +678,130 @@ class NostrService {
     } catch (e) {
       onError?.call('Erreur publication relay list: $e');
       return false;
+    }
+  }
+
+  /// Récupère les tags d'activité depuis les profils existants (kind 0) sur le relais
+  /// Retourne une liste de tags uniques extraits des métadonnées des profils
+  Future<List<String>> fetchActivityTagsFromProfiles({int limit = 100}) async {
+    if (!_isConnected) {
+      onError?.call('Non connecté au relais');
+      return [];
+    }
+
+    try {
+      final completer = Completer<List<String>>();
+      final Set<String> extractedTags = {};
+      final subscriptionId = 'zen-tags-${DateTime.now().millisecondsSinceEpoch}';
+      
+      // Sauvegarder le callback original
+      final originalOnTagsReceived = onTagsReceived;
+      
+      // Timer pour fermer l'abonnement après un délai
+      final timer = Timer(const Duration(seconds: 5), () {
+        _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+        if (!completer.isCompleted) {
+          completer.complete(extractedTags.toList()..sort());
+        }
+      });
+
+      // Créer un abonnement pour les events kind 0 (métadonnées)
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'kinds': [0],
+          'limit': limit,
+        },
+      ]);
+      
+      _channel!.sink.add(request);
+      
+      // Écouter les réponses
+      final subscription = _channel!.stream.listen((data) {
+        try {
+          final message = jsonDecode(data);
+          
+          if (message is List && message.isNotEmpty) {
+            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
+              final event = message[2] as Map<String, dynamic>?;
+              if (event != null) {
+                final content = event['content'] as String?;
+                if (content != null) {
+                  final contentJson = jsonDecode(content);
+                  
+                  // Extraire les tags du profil
+                  // Les tags peuvent être dans différents champs selon le format NIP-24
+                  
+                  // 1. Tags explicites dans le champ 'tags' (NIP-24)
+                  final tags = contentJson['tags'] as List?;
+                  if (tags != null) {
+                    for (final tag in tags) {
+                      if (tag is List && tag.isNotEmpty && tag[0] == 't') {
+                        final tagValue = tag.length > 1 ? tag[1]?.toString() : null;
+                        if (tagValue != null && tagValue.isNotEmpty) {
+                          extractedTags.add(tagValue);
+                        }
+                      }
+                    }
+                  }
+                  
+                  // 2. Champ 'activity' ou 'profession' personnalisé
+                  final activity = contentJson['activity'] as String?;
+                  if (activity != null && activity.isNotEmpty) {
+                    extractedTags.add(activity);
+                  }
+                  
+                  final profession = contentJson['profession'] as String?;
+                  if (profession != null && profession.isNotEmpty) {
+                    extractedTags.add(profession);
+                  }
+                  
+                  // 3. Extraire du champ 'about' si contient des hashtags
+                  final about = contentJson['about'] as String?;
+                  if (about != null) {
+                    // Rechercher des hashtags dans le texte
+                    final hashtagRegex = RegExp(r'#(\w+)');
+                    final matches = hashtagRegex.allMatches(about);
+                    for (final match in matches) {
+                      final hashtag = match.group(1);
+                      if (hashtag != null && hashtag.isNotEmpty) {
+                        extractedTags.add(hashtag);
+                      }
+                    }
+                  }
+                }
+              }
+            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
+              // End of Stored Events
+              timer.cancel();
+              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+              if (!completer.isCompleted) {
+                completer.complete(extractedTags.toList()..sort());
+              }
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing tags response', e);
+        }
+      });
+      
+      // Attendre le résultat
+      final result = await completer.future;
+      
+      // Nettoyer
+      await subscription.cancel();
+      timer.cancel();
+      onTagsReceived = originalOnTagsReceived;
+      
+      Logger.log('NostrService', 'Tags extraits: ${result.length} tags uniques');
+      onTagsReceived?.call(result);
+      
+      return result;
+    } catch (e) {
+      onError?.call('Erreur récupération tags: $e');
+      Logger.error('NostrService', 'Erreur fetchActivityTagsFromProfiles', e);
+      return [];
     }
   }
 
