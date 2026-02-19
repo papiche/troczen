@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/bon.dart';
+import '../services/image_cache_service.dart';
 
 class PaniniCard extends StatefulWidget {
   final Bon bon;
@@ -22,6 +24,12 @@ class PaniniCard extends StatefulWidget {
 class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
   bool _showDetails = false; // Pour afficher/masquer les détails
+  
+  // Offline-first: cache local des images
+  final ImageCacheService _imageCacheService = ImageCacheService();
+  String? _localLogoPath;
+  String? _localPicturePath;
+  bool _isCheckingCache = true;
 
   @override
   void initState() {
@@ -35,12 +43,146 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
     } else {
       _shimmerController = AnimationController(vsync: this);
     }
+    
+    // Vérifier le cache local pour offline-first
+    _checkLocalCache();
+  }
+
+  /// Vérifie si les images sont disponibles localement (offline-first)
+  Future<void> _checkLocalCache() async {
+    final List<Future<String?>> cacheChecks = [];
+    
+    // Vérifier le logo du commerçant
+    if (widget.bon.logoUrl != null && widget.bon.logoUrl!.isNotEmpty) {
+      cacheChecks.add(_imageCacheService.getCachedImage(widget.bon.logoUrl!));
+    } else {
+      cacheChecks.add(Future.value(null));
+    }
+    
+    // Vérifier l'avatar de l'émetteur
+    if (widget.bon.picture != null && widget.bon.picture!.isNotEmpty) {
+      cacheChecks.add(_imageCacheService.getCachedImage(widget.bon.picture!));
+    } else {
+      cacheChecks.add(Future.value(null));
+    }
+    
+    final results = await Future.wait(cacheChecks);
+    
+    if (mounted) {
+      setState(() {
+        _localLogoPath = results[0];
+        _localPicturePath = results[1];
+        _isCheckingCache = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _shimmerController.dispose();
     super.dispose();
+  }
+  
+  /// Widget d'image offline-first
+  /// Priorise le fichier local, puis fallback sur CachedNetworkImage
+  Widget _buildOfflineFirstImage({
+    required String? url,
+    required String? localPath,
+    required double width,
+    required double height,
+    required Color color,
+    required String rarity,
+    required bool isPending,
+    BoxFit fit = BoxFit.cover,
+  }) {
+    // Si on est encore en train de vérifier le cache, afficher le loader
+    if (_isCheckingCache) {
+      return Container(
+        width: width,
+        height: height,
+        color: Colors.grey[800],
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: color.withOpacity(0.5),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // OFFLINE-FIRST: Si l'image est disponible localement, l'utiliser directement
+    if (localPath != null) {
+      final file = File(localPath);
+      return Image.file(
+        file,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          // En cas d'erreur de lecture locale, fallback sur le réseau
+          return _buildNetworkImage(url, width, height, color, rarity, isPending, fit);
+        },
+      );
+    }
+    
+    // Sinon, utiliser CachedNetworkImage (avec son propre cache)
+    return _buildNetworkImage(url, width, height, color, rarity, isPending, fit);
+  }
+  
+  /// Widget CachedNetworkImage avec fallback
+  Widget _buildNetworkImage(
+    String? url,
+    double width,
+    double height,
+    Color color,
+    String rarity,
+    bool isPending,
+    BoxFit fit,
+  ) {
+    if (url == null || url.isEmpty) {
+      return Icon(
+        _getDefaultIcon(rarity),
+        size: width * 0.8,
+        color: color.withOpacity(isPending ? 0.3 : 1.0),
+      );
+    }
+    
+    return CachedNetworkImage(
+      imageUrl: url,
+      width: width,
+      height: height,
+      fit: fit,
+      memCacheHeight: (height * 2).toInt(),
+      memCacheWidth: (width * 2).toInt(),
+      maxHeightDiskCache: (height * 4).toInt(),
+      maxWidthDiskCache: (width * 4).toInt(),
+      placeholder: (context, url) => Container(
+        width: width,
+        height: height,
+        color: Colors.grey[800],
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: color.withOpacity(0.5),
+            ),
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) {
+        return Icon(
+          _getDefaultIcon(rarity),
+          size: width * 0.8,
+          color: color.withOpacity(isPending ? 0.3 : 1.0),
+        );
+      },
+    );
   }
 
   @override
@@ -175,41 +317,19 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Logo ou image du commerçant
+                              // Logo ou image du commerçant - OFFLINE-FIRST
                               if (widget.bon.logoUrl != null && widget.bon.logoUrl!.isNotEmpty)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(
-                                    imageUrl: widget.bon.logoUrl!,
+                                  child: _buildOfflineFirstImage(
+                                    url: widget.bon.logoUrl,
+                                    localPath: _localLogoPath,
                                     width: 60,
                                     height: 60,
+                                    color: color,
+                                    rarity: rarity,
+                                    isPending: isPending,
                                     fit: BoxFit.cover,
-                                    memCacheHeight: 120,
-                                    memCacheWidth: 120,
-                                    maxHeightDiskCache: 240,
-                                    maxWidthDiskCache: 240,
-                                    placeholder: (context, url) => Container(
-                                      width: 60,
-                                      height: 60,
-                                      color: Colors.grey[800],
-                                      child: Center(
-                                        child: SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: color.withOpacity(0.5),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) {
-                                      return Icon(
-                                        _getDefaultIcon(rarity),
-                                        size: 48,
-                                        color: color.withOpacity(isPending ? 0.3 : 1.0),
-                                      );
-                                    },
                                   ),
                                 )
                               else
