@@ -13,7 +13,7 @@ class OfferScreen extends StatefulWidget {
   final User user;
   final Bon bon;
 
-  const OfferScreen({Key? key, required this.user, required this.bon}) : super(key: key);
+  const OfferScreen({super.key, required this.user, required this.bon});
 
   @override
   State<OfferScreen> createState() => _OfferScreenState();

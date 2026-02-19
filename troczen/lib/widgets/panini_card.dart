@@ -14,13 +14,13 @@ class PaniniCard extends StatefulWidget {
   final Widget? statusChip;
 
   const PaniniCard({
-    Key? key,
+    super.key,
     required this.bon,
     this.onTap,
     this.onLongPress,
     this.showActions = true,
     this.statusChip,
-  }) : super(key: key);
+  });
 
   @override
   State<PaniniCard> createState() => _PaniniCardState();
@@ -31,7 +31,7 @@ class _PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
   
-  bool _showDetails = false; // Pour afficher/masquer les détails
+  final bool _showDetails = false; // Pour afficher/masquer les détails
   
   // Offline-first: cache local des images
   final ImageCacheService _imageCacheService = ImageCacheService();

@@ -14,7 +14,7 @@ import 'ack_screen.dart';
 class ScanScreen extends StatefulWidget {
   final User user;
 
-  const ScanScreen({Key? key, required this.user}) : super(key: key);
+  const ScanScreen({super.key, required this.user});
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();

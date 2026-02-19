@@ -11,7 +11,7 @@ import '../user_profile_screen.dart';
 class ProfileView extends StatefulWidget {
   final User user;
 
-  const ProfileView({Key? key, required this.user}) : super(key: key);
+  const ProfileView({super.key, required this.user});
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
@@ -468,7 +468,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
               Expanded(
                 child: _buildStatItem(
                   'Émis (Ẑ)',
-                  '${_stats!.totalEmitted.toStringAsFixed(0)}',
+                  _stats!.totalEmitted.toStringAsFixed(0),
                   Icons.account_balance_wallet,
                 ),
               ),
@@ -476,7 +476,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
               Expanded(
                 child: _buildStatItem(
                   'Reçus (Ẑ)',
-                  '${_stats!.totalReceived.toStringAsFixed(0)}',
+                  _stats!.totalReceived.toStringAsFixed(0),
                   Icons.wallet,
                 ),
               ),

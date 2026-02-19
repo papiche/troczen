@@ -8,7 +8,7 @@ import '../services/feedback_service.dart';
 class FeedbackScreen extends StatefulWidget {
   final User user;
 
-  const FeedbackScreen({Key? key, required this.user}) : super(key: key);
+  const FeedbackScreen({super.key, required this.user});
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();

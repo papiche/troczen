@@ -8,7 +8,7 @@ import 'feedback_screen.dart';
 class HelpScreen extends StatelessWidget {
   final User user;
 
-  const HelpScreen({Key? key, required this.user}) : super(key: key);
+  const HelpScreen({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {

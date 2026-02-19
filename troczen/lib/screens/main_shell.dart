@@ -21,7 +21,7 @@ import '../services/feedback_service.dart';
 class MainShell extends StatefulWidget {
   final User user;
 
-  const MainShell({Key? key, required this.user}) : super(key: key);
+  const MainShell({super.key, required this.user});
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -133,8 +133,8 @@ class _MainShellState extends State<MainShell> {
       case 3: // Profil
         return FloatingActionButton(
           onPressed: () => _navigateToEditProfile(),
-          child: const Icon(Icons.edit),
           backgroundColor: const Color(0xFFFFB347),
+          child: const Icon(Icons.edit),
         );
       
       default:
@@ -621,7 +621,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
             children: [
               // Type de feedback
               DropdownButtonFormField<String>(
-                value: _feedbackType,
+                initialValue: _feedbackType,
                 dropdownColor: const Color(0xFF2A2A2A),
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(

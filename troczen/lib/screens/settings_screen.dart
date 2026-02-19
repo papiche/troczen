@@ -12,7 +12,7 @@ import 'logs_screen.dart';
 class SettingsScreen extends StatefulWidget {
   final User user;
 
-  const SettingsScreen({Key? key, required this.user}) : super(key: key);
+  const SettingsScreen({super.key, required this.user});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();

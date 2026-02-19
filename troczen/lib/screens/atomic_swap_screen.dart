@@ -21,11 +21,11 @@ class AtomicSwapScreen extends StatefulWidget {
   final bool isDonor; // true = donneur, false = receveur
 
   const AtomicSwapScreen({
-    Key? key,
+    super.key,
     required this.user,
     required this.bon,
     required this.isDonor,
-  }) : super(key: key);
+  });
 
   @override
   State<AtomicSwapScreen> createState() => _AtomicSwapScreenState();

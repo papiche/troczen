@@ -15,10 +15,10 @@ class BonProfileScreen extends StatefulWidget {
   final Bon bon;
 
   const BonProfileScreen({
-    Key? key,
+    super.key,
     required this.user,
     required this.bon,
-  }) : super(key: key);
+  });
 
   @override
   State<BonProfileScreen> createState() => _BonProfileScreenState();

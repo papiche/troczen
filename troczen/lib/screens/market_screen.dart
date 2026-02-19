@@ -6,7 +6,7 @@ import '../services/storage_service.dart';
 class MarketScreen extends StatefulWidget {
   final User user;
 
-  const MarketScreen({Key? key, required this.user}) : super(key: key);
+  const MarketScreen({super.key, required this.user});
 
   @override
   State<MarketScreen> createState() => _MarketScreenState();

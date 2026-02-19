@@ -75,7 +75,9 @@ void main() {
       // On génère une clé factice pour tester le formatage, ou on dérive la vraie
       // Ici on teste juste que la fonction encodeSS58 ne plante pas
       final pubKeyBytes = Uint8List(32); 
-      for(int i=0; i<32; i++) pubKeyBytes[i] = i; 
+      for(int i=0; i<32; i++) {
+        pubKeyBytes[i] = i;
+      } 
       
       final ss58 = cryptoService.encodeSS58(pubKeyBytes, prefix: 42);
       

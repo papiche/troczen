@@ -11,7 +11,7 @@ import '../../services/storage_service.dart';
 class DashboardView extends StatefulWidget {
   final User user;
 
-  const DashboardView({Key? key, required this.user}) : super(key: key);
+  const DashboardView({super.key, required this.user});
 
   @override
   State<DashboardView> createState() => _DashboardViewState();

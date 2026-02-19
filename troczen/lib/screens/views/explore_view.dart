@@ -13,7 +13,7 @@ import '../create_bon_screen.dart';
 class ExploreView extends StatefulWidget {
   final User user;
 
-  const ExploreView({Key? key, required this.user}) : super(key: key);
+  const ExploreView({super.key, required this.user});
 
   @override
   State<ExploreView> createState() => _ExploreViewState();

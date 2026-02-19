@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
@@ -180,7 +181,9 @@ class NostrService {
       final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3Hex, seedMarket, now);
 
       // 2. ✅ Reconstruire sk_B ÉPHÉMÈRE (P2+P3) pour signature
-      final nsecBon = _cryptoService.shamirCombine(null, p2Hex, p3Hex);
+      final nsecBonHex = _cryptoService.shamirCombine(null, p2Hex, p3Hex);
+      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
+      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
 
       // 3. Créer l'event Nostr avec tags optimisés pour dashboard
       final expiry = now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
@@ -214,9 +217,11 @@ class NostrService {
       event['id'] = eventId;
 
       // 5. ✅ Signer avec la clé privée du bon (reconstruction éphémère)
-      final signature = _cryptoService.signMessage(eventId, nsecBon);
+      final signature = _cryptoService.signMessage(eventId, nsecBonHex);
       event['sig'] = signature;
-      // nsecBon disparaît de la RAM ici ✅
+      
+      // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
 
       // 6. Envoyer au relais
       final message = jsonEncode(['EVENT', event]);
@@ -308,8 +313,10 @@ class NostrService {
     }
 
     try {
-      // ✅ Reconst<br/>ruire sk_B ÉPHÉMÈRE pour que le BON signe son transfert
-      final nsecBon = _cryptoService.shamirCombine(null, bonP2, bonP3);
+      // ✅ Reconstruire sk_B ÉPHÉMÈRE pour que le BON signe son transfert
+      final nsecBonHex = _cryptoService.shamirCombine(null, bonP2, bonP3);
+      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
+      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
 
       // Contenu du transfert
       final content = {
@@ -339,9 +346,11 @@ class NostrService {
       event['id'] = eventId;
 
       // ✅ Signature par le bon
-      final signature = _cryptoService.signMessage(eventId, nsecBon);
+      final signature = _cryptoService.signMessage(eventId, nsecBonHex);
       event['sig'] = signature;
-      // nsecBon disparaît ici
+      
+      // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
 
       final message = jsonEncode(['EVENT', event]);
       _channel!.sink.add(message);

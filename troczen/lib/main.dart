@@ -18,7 +18,7 @@ void main() async {
 }
 
 class TrocZenApp extends StatelessWidget {
-  const TrocZenApp({Key? key}) : super(key: key);
+  const TrocZenApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +39,7 @@ class TrocZenApp extends StatelessWidget {
 }
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

@@ -10,13 +10,13 @@ class BonReceptionConfirmSheet extends StatelessWidget {
   final VoidCallback onDecline;
 
   const BonReceptionConfirmSheet({
-    Key? key,
+    super.key,
     required this.value,
     required this.issuerName,
     required this.issuerNpub,
     required this.onAccept,
     required this.onDecline,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

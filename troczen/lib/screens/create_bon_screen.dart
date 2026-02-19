@@ -14,7 +14,7 @@ import '../services/api_service.dart';
 class CreateBonScreen extends StatefulWidget {
   final User user;
 
-  const CreateBonScreen({Key? key, required this.user}) : super(key: key);
+  const CreateBonScreen({super.key, required this.user});
 
   @override
   State<CreateBonScreen> createState() => _CreateBonScreenState();
@@ -558,7 +558,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                             });
                           },
                           activeColor: const Color(0xFFFFB347),
-                        )).toList(),
+                        )),
                       ],
                     ),
                   ),

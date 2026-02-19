@@ -12,7 +12,7 @@ import '../offer_screen.dart';
 class WalletView extends StatefulWidget {
   final User user;
 
-  const WalletView({Key? key, required this.user}) : super(key: key);
+  const WalletView({super.key, required this.user});
 
   @override
   State<WalletView> createState() => _WalletViewState();

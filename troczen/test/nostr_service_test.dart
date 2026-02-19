@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:troczen/services/nostr_service.dart';
 import 'package:troczen/services/crypto_service.dart';

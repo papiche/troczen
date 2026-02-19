@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
+import 'dart:typed_data';
 import 'package:hex/hex.dart';
 import 'crypto_service.dart';
 import 'nostr_service.dart';
@@ -35,7 +34,9 @@ class BurnService {
       }
 
       // 2. Reconstruire sk_B temporairement (P1 + P3)
-      final nsecBon = _cryptoService.shamirCombine(p1, null, p3);
+      final nsecBonHex = _cryptoService.shamirCombine(p1, null, p3);
+      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
+      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
 
       // 3. Publier event kind 5 sur Nostr
       final nostrService = NostrService(
@@ -48,12 +49,14 @@ class BurnService {
       
       final connected = await nostrService.connect(relayUrl);
       if (!connected) {
+        // ✅ SÉCURITÉ: Nettoyage RAM en cas d'erreur
+        _cryptoService.secureZeroiseBytes(nsecBonBytes);
         throw Exception('Impossible de se connecter au relais');
       }
 
       final burned = await nostrService.publishBurn(
         bonId: bon.bonId,
-        nsecBon: nsecBon,
+        nsecBon: nsecBonHex,
         reason: reason,
         marketName: market?.name ?? NostrConstants.globalMarketName,
       );
@@ -61,11 +64,13 @@ class BurnService {
       await nostrService.disconnect();
 
       if (!burned) {
+        // ✅ SÉCURITÉ: Nettoyage RAM en cas d'erreur
+        _cryptoService.secureZeroiseBytes(nsecBonBytes);
         throw Exception('Échec publication burn');
       }
 
-      // ✅ SÉCURITÉ 100%: Nettoyage RAM après usage
-      _cryptoService.secureZeroise(nsecBon);
+      // ✅ SÉCURITÉ: Nettoyage RAM après usage - utilise Uint8List
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
 
       // 4. Marquer le bon comme brûlé localement
       final burnedBon = bon.copyWith(

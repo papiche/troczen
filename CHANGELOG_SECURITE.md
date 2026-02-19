@@ -1,6 +1,82 @@
 # Changelog Sécurité — TrocZen
 
-Ce fichier consolide les quatre vagues de corrections de sécurité : analyse initiale (16 fév), correctifs appliqués (17 fév), corrections des bugs bloquants P0 (18 fév), et durcissement cryptographique (19 fév).
+Ce fichier consolide les cinq vagues de corrections de sécurité : analyse initiale (16 fév), correctifs appliqués (17 fév), corrections des bugs bloquants P0 (18 fév), durcissement cryptographique (19 fév), et corrections mémoire/clés (19 fév).
+
+---
+
+## Vague 5 — Corrections Mémoire & Validation Clés (19 février 2026)
+
+### 🔒 Sécurité mémoire : Nettoyage des clés privées
+
+#### Problème identifié
+La fonction `secureZeroise` prenait un `String` en paramètre, ce qui est inefficace car :
+- Les `String` sont **immuables** en Dart - la chaîne originale reste en mémoire
+- Le nettoyage ne pouvait pas réellement effacer les données sensibles
+- Les clés privées restaient potentiellement accessibles en mémoire
+
+#### Solution appliquée
+Création d'une nouvelle méthode `secureZeroiseBytes(Uint8List)` qui :
+- ✅ Prend un `Uint8List` mutable en paramètre
+- ✅ Remplit le tableau avec des zéros de manière effective
+- ✅ Inclut une protection contre l'optimisation du compilateur
+- ✅ Déprécie l'ancienne méthode `secureZeroise(String)`
+
+```dart
+// ❌ AVANT — Inefficace (String immuable)
+void secureZeroise(String hexString) {
+  final bytes = HEX.decode(hexString); // Crée une nouvelle liste
+  for (int i = 0; i < bytes.length; i++) {
+    bytes[i] = 0; // Nettoie la copie, pas l'original
+  }
+}
+
+// ✅ APRÈS — Efficace (Uint8List mutable)
+void secureZeroiseBytes(Uint8List bytes) {
+  for (int i = 0; i < bytes.length; i++) {
+    bytes[i] = 0; // Nettoie directement le tableau original
+  }
+  _volatileWrite(bytes); // Empêche l'optimisation
+}
+```
+
+#### Fichiers modifiés
+- `crypto_service.dart` : Ajout de `secureZeroiseBytes()`, dépréciation de `secureZeroise()`
+- `burn_service.dart` : Utilisation de `secureZeroiseBytes()` avec conversion `Uint8List`
+- `ack_screen.dart` : Utilisation de `secureZeroiseBytes()` avec conversion `Uint8List`
+- `nostr_service.dart` : Utilisation de `secureZeroiseBytes()` pour toutes les clés éphémères
+
+### 🔒 Validation des clés publiques secp256k1
+
+#### Problème identifié
+La méthode `isValidPublicKey` avait une validation incomplète :
+- Ne vérifiait pas que `x > 0`
+- Ne validait pas correctement l'existence du point sur la courbe
+- Pouvait accepter des clés invalides
+
+#### Solution appliquée
+Réécriture complète de la validation avec :
+- ✅ Vérification `0 < x < p` (coordonnée x dans le corps fini)
+- ✅ Validation de l'équation `y² = x³ + 7 (mod p)`
+- ✅ Calcul et vérification de la racine carrée modulaire
+- ✅ Vérification que le point résultant est valide
+
+```dart
+// ✅ Validation complète
+bool isValidPublicKey(String pubKeyHex) {
+  // 1. Vérifier la longueur (32 bytes = 64 chars hex)
+  if (pubKeyHex.length != 64) return false;
+  
+  // 2. Vérifier 0 < x < p
+  if (x <= BigInt.zero || x >= p) return false;
+  
+  // 3. Vérifier y² = x³ + 7 (mod p)
+  final ySq = (x.modPow(3, p) + 7) % p;
+  final y = ySq.modPow((p + 1) >> 2, p);
+  
+  // 4. Vérifier que y² ≡ ySq (mod p)
+  return y.modPow(2, p) == ySq;
+}
+```
 
 ---
 

@@ -1,5 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:hex/hex.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/nostr_profile.dart';
@@ -66,17 +68,19 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
       }
       
       // ✅ Reconstruire ÉPHÉMÈRE nsec_bon pour signer le challenge
-      final nsecBon = _cryptoService.shamirCombine(
+      final nsecBonHex = _cryptoService.shamirCombine(
         widget.bon.p2,
         p3,
         null,
       );
+      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
+      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
 
       // Signer le challenge avec la clé privée du bon
-      final signature = _cryptoService.signMessage(widget.challenge, nsecBon);
+      final signature = _cryptoService.signMessage(widget.challenge, nsecBonHex);
       
-      // ✅ SÉCURITÉ 100%: Nettoyage explicite RAM
-      _cryptoService.secureZeroise(nsecBon);
+      // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
 
       // Encoder l'ACK en format binaire (97 octets)
       final ackBytes = _qrService.encodeAck(

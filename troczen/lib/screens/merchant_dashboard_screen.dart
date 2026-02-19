@@ -15,11 +15,11 @@ class MerchantDashboardScreen extends StatefulWidget {
   final String marketName;
 
   const MerchantDashboardScreen({
-    Key? key,
+    super.key,
     required this.merchantNpub,
     required this.merchantName,
     required this.marketName,
-  }) : super(key: key);
+  });
 
   @override
   State<MerchantDashboardScreen> createState() => _MerchantDashboardScreenState();

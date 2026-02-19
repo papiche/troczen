@@ -9,10 +9,10 @@ class AckScannerScreen extends StatefulWidget {
   final String bonId;
 
   const AckScannerScreen({
-    Key? key,
+    super.key,
     required this.challenge,
     required this.bonId,
-  }) : super(key: key);
+  });
 
   @override
   State<AckScannerScreen> createState() => _AckScannerScreenState();
