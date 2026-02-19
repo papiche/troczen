@@ -7,6 +7,7 @@ import 'package:hex/hex.dart';
 import 'package:pinenacl/ed25519.dart' as nacl;
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:bs58/bs58.dart';
+import 'package:bech32/bech32.dart';
 
 /// Exception levée lorsque la reconstruction Shamir échoue
 /// Cela peut arriver si les parts sont incompatibles ou si la seed n'est pas compatible
@@ -124,6 +125,7 @@ class CryptoService {
   }
 
   /// Génère une paire de clés Nostr (secp256k1)
+  /// Retourne les clés au format Bech32 NIP-19 (nsec1... et npub1...)
   Map<String, String> generateNostrKeyPair() {
     final keyPair = _generateSecp256k1KeyPair();
     var privateKey = (keyPair.privateKey as ECPrivateKey).d!;
@@ -144,10 +146,95 @@ class CryptoService {
     final privateKeyHex = _bigIntToHex(privateKey, 32);
     final publicKeyHex = _pointToHex(publicKey);
     
+    // Encoder en Bech32 NIP-19
     return {
-      'nsec': privateKeyHex,
-      'npub': publicKeyHex,
+      'nsec': encodeNsec(privateKeyHex),
+      'npub': encodeNpub(publicKeyHex),
+      'privateKeyHex': privateKeyHex, // Gardé pour compatibilité interne
+      'publicKeyHex': publicKeyHex,   // Gardé pour compatibilité interne
     };
+  }
+
+  // ==================== NIP-19 BECH32 ENCODING ====================
+  
+  /// Encode une clé privée hexadécimale en format nsec1... (NIP-19)
+  String encodeNsec(String privateKeyHex) {
+    final bytes = HEX.decode(privateKeyHex);
+    return _encodeBech32('nsec', bytes);
+  }
+  
+  /// Encode une clé publique hexadécimale en format npub1... (NIP-19)
+  String encodeNpub(String publicKeyHex) {
+    final bytes = HEX.decode(publicKeyHex);
+    return _encodeBech32('npub', bytes);
+  }
+  
+  /// Décode une clé privée nsec1... en hexadécimal
+  String decodeNsec(String nsec) {
+    final decoded = _decodeBech32(nsec, 'nsec');
+    return HEX.encode(decoded);
+  }
+  
+  /// Décode une clé publique npub1... en hexadécimal
+  String decodeNpub(String npub) {
+    final decoded = _decodeBech32(npub, 'npub');
+    return HEX.encode(decoded);
+  }
+  
+  /// Encode des bytes en Bech32 avec le préfixe donné
+  String _encodeBech32(String hrp, List<int> data) {
+    // Convertir de 8 bits vers 5 bits (bech32)
+    final converted = _convertBits(data, 8, 5, true);
+    final bech32Data = converted.map((e) => e).toList();
+    
+    // Utiliser la librairie bech32 - constructeur avec paramètres positionnels
+    final codec = Bech32Codec();
+    final bech32 = Bech32(hrp, bech32Data);
+    return codec.encode(bech32);
+  }
+  
+  /// Décode une chaîne Bech32 et vérifie le préfixe
+  List<int> _decodeBech32(String bech32String, String expectedHrp) {
+    final codec = Bech32Codec();
+    final bech32 = codec.decode(bech32String);
+    
+    if (bech32.hrp != expectedHrp) {
+      throw ArgumentError('Préfixe Bech32 invalide: attendu $expectedHrp, reçu ${bech32.hrp}');
+    }
+    
+    // Convertir de 5 bits vers 8 bits
+    return _convertBits(bech32.data, 5, 8, false);
+  }
+  
+  /// Convertit les bits d'une liste d'entiers
+  /// Inspiré de la spécification BIP-173
+  List<int> _convertBits(List<int> data, int fromBits, int toBits, bool pad) {
+    var acc = 0;
+    var bits = 0;
+    final result = <int>[];
+    final maxv = (1 << toBits) - 1;
+    
+    for (final value in data) {
+      if (value < 0 || (value >> fromBits) != 0) {
+        throw ArgumentError('Valeur hors limites pour la conversion de bits');
+      }
+      acc = (acc << fromBits) | value;
+      bits += fromBits;
+      while (bits >= toBits) {
+        bits -= toBits;
+        result.add((acc >> bits) & maxv);
+      }
+    }
+    
+    if (pad) {
+      if (bits > 0) {
+        result.add((acc << (toBits - bits)) & maxv);
+      }
+    } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv) != 0) {
+      throw ArgumentError('Données invalides pour la conversion de bits');
+    }
+    
+    return result;
   }
 
   /// Génère une paire de clés secp256k1 avec générateur sécurisé
@@ -450,7 +537,16 @@ class CryptoService {
   }
 
   /// ✅ Signe un message avec une clé privée (Schnorr avec RFC 6979)
-  String signMessage(String messageHex, String privateKeyHex) {
+  /// Accepte la clé privée en format hex ou nsec1... (Bech32)
+  String signMessage(String messageHex, String privateKey) {
+    // Détecter si c'est du Bech32 (nsec1...) ou de l'hex
+    String privateKeyHex;
+    if (privateKey.startsWith('nsec1')) {
+      privateKeyHex = decodeNsec(privateKey);
+    } else {
+      privateKeyHex = privateKey;
+    }
+    
     final message = HEX.decode(messageHex);
     final privateKeyBytes = Uint8List.fromList(HEX.decode(privateKeyHex));
     final privateKeyBigInt = _bytesToBigInt(privateKeyBytes);
@@ -487,10 +583,19 @@ class CryptoService {
   }
 
   /// Vérifie une signature Schnorr
-  bool verifySignature(String messageHex, String signatureHex, String publicKeyHex) {
+  /// Accepte la clé publique en format hex ou npub1... (Bech32)
+  bool verifySignature(String messageHex, String signatureHex, String publicKey) {
     if (signatureHex.length != 128) return false; // 64 octets
     
     try {
+      // Détecter si c'est du Bech32 (npub1...) ou de l'hex
+      String publicKeyHex;
+      if (publicKey.startsWith('npub1')) {
+        publicKeyHex = decodeNpub(publicKey);
+      } else {
+        publicKeyHex = publicKey;
+      }
+      
       final message = HEX.decode(messageHex);
       final r = _hexToBigInt(signatureHex.substring(0, 64));
       final s = _hexToBigInt(signatureHex.substring(64));

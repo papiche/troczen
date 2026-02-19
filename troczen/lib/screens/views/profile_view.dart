@@ -361,13 +361,13 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           
           _buildKeyRow(
             'Clé publique (npub)',
-            _currentUser!.npub,
+            _currentUser!.npubBech32,  // Format Bech32 NIP-19
             Icons.visibility,
           ),
           const Divider(color: Colors.white24, height: 24),
           _buildKeyRow(
             'Clé privée (nsec)',
-            '•' * 32,
+            _currentUser!.nsecBech32,  // Format Bech32 NIP-19
             Icons.lock,
             sensitive: true,
           ),

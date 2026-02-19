@@ -92,26 +92,36 @@ void main() {
     test('generateNostrKeyPair génère des clés valides (Hex 64 chars)', () {
       final keys = cryptoService.generateNostrKeyPair();
       
-      expect(keys['nsec']!.length, equals(64));
-      expect(keys['npub']!.length, equals(64));
+      // Les clés hex sont disponibles via privateKeyHex et publicKeyHex
+      expect(keys['privateKeyHex']!.length, equals(64));
+      expect(keys['publicKeyHex']!.length, equals(64));
       
       // Vérifier que c'est bien de l'hexadécimal
       final hexRegex = RegExp(r'^[0-9a-fA-F]+$');
-      expect(hexRegex.hasMatch(keys['nsec']!), isTrue);
-      expect(hexRegex.hasMatch(keys['npub']!), isTrue);
+      expect(hexRegex.hasMatch(keys['privateKeyHex']!), isTrue);
+      expect(hexRegex.hasMatch(keys['publicKeyHex']!), isTrue);
+      
+      // Vérifier que nsec et npub sont en format Bech32
+      expect(keys['nsec']!.startsWith('nsec1'), isTrue);
+      expect(keys['npub']!.startsWith('npub1'), isTrue);
     });
 
     test('signMessage et verifySignature fonctionnent ensemble', () {
       final keys = cryptoService.generateNostrKeyPair();
       final message = HEX.encode(Uint8List.fromList('Hello World'.codeUnits)); // Message en Hex
       
-      // Signer
-      final signature = cryptoService.signMessage(message, keys['nsec']!);
+      // Signer avec la clé hex
+      final signature = cryptoService.signMessage(message, keys['privateKeyHex']!);
       expect(signature.length, equals(128)); // 64 bytes hex
       
-      // Vérifier
-      final isValid = cryptoService.verifySignature(message, signature, keys['npub']!);
+      // Vérifier avec la clé hex
+      final isValid = cryptoService.verifySignature(message, signature, keys['publicKeyHex']!);
       expect(isValid, isTrue);
+      
+      // Vérifier que ça fonctionne aussi avec les formats Bech32
+      final signatureFromNsec = cryptoService.signMessage(message, keys['nsec']!);
+      final isValidNpub = cryptoService.verifySignature(message, signatureFromNsec, keys['npub']!);
+      expect(isValidNpub, isTrue);
     });
     
     test('verifySignature rejette une signature invalide', () {
@@ -119,7 +129,7 @@ void main() {
       final message = HEX.encode(Uint8List.fromList('Hello'.codeUnits));
       
       final fakeSig = 'a' * 128; // 64 bytes de 'aaaa...'
-      final isValid = cryptoService.verifySignature(message, fakeSig, keys['npub']!);
+      final isValid = cryptoService.verifySignature(message, fakeSig, keys['publicKeyHex']!);
       expect(isValid, isFalse);
     });
 
@@ -208,6 +218,57 @@ void main() {
       
       expect(enc1['nonce'], isNot(equals(enc2['nonce'])));
       expect(enc1['ciphertext'], isNot(equals(enc2['ciphertext'])));
+    });
+
+    // --- TEST NIP-19 BECH32 ENCODING ---
+
+    test('encodeNsec et decodeNsec fonctionnent correctement', () {
+      final privateKeyHex = 'a' * 64; // 32 octets
+      final nsec = cryptoService.encodeNsec(privateKeyHex);
+      
+      expect(nsec.startsWith('nsec1'), isTrue);
+      
+      final decoded = cryptoService.decodeNsec(nsec);
+      expect(decoded, equals(privateKeyHex));
+    });
+
+    test('encodeNpub et decodeNpub fonctionnent correctement', () {
+      final publicKeyHex = 'b' * 64; // 32 octets
+      final npub = cryptoService.encodeNpub(publicKeyHex);
+      
+      expect(npub.startsWith('npub1'), isTrue);
+      
+      final decoded = cryptoService.decodeNpub(npub);
+      expect(decoded, equals(publicKeyHex));
+    });
+
+    test('generateNostrKeyPair retourne les clés au format Bech32', () {
+      final keys = cryptoService.generateNostrKeyPair();
+      
+      expect(keys['nsec']!.startsWith('nsec1'), isTrue, reason: 'nsec doit commencer par nsec1');
+      expect(keys['npub']!.startsWith('npub1'), isTrue, reason: 'npub doit commencer par npub1');
+      expect(keys['privateKeyHex'], isNotNull, reason: 'privateKeyHex doit être présent pour compatibilité');
+      expect(keys['publicKeyHex'], isNotNull, reason: 'publicKeyHex doit être présent pour compatibilité');
+      
+      // Vérifier que le décodage fonctionne
+      final decodedNsec = cryptoService.decodeNsec(keys['nsec']!);
+      final decodedNpub = cryptoService.decodeNpub(keys['npub']!);
+      
+      expect(decodedNsec, equals(keys['privateKeyHex']));
+      expect(decodedNpub, equals(keys['publicKeyHex']));
+    });
+
+    test('Vérification de la dérivation avec le générateur de référence', () async {
+      final seed = await cryptoService.deriveSeed('totodu56', 'totodu56');
+      final privateKey = await cryptoService.deriveNostrPrivateKey(seed);
+      final pubKeyHex = cryptoService.derivePublicKey(privateKey);
+      
+      // Encodage bech32
+      final nsec = cryptoService.encodeNsec(HEX.encode(privateKey));
+      final npub = cryptoService.encodeNpub(pubKeyHex);
+
+      expect(nsec, 'nsec1qagw2axaqzu7ej4fduzjfc8v7dtdl9wdun05qexdxfs6nmf4u9as2nckc5');
+      expect(npub, 'npub1azd96vx2t4zs2gkqxt7xlhn8s33396m06j3r9alkqa2prwgvpdysc9ycq8');
     });
   });
 }

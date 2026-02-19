@@ -200,7 +200,7 @@ class _MarketScreenState extends State<MarketScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'npub: ${widget.user.npub.substring(0, 16)}...',
+                            'npub: ${widget.user.npubBech32.substring(0, 20)}...',
                             style: TextStyle(
                               color: Colors.grey[500],
                               fontSize: 12,

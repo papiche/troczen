@@ -186,11 +186,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     try {
       // 1. Générer la paire de clés du bon
       final bonKeys = _cryptoService.generateNostrKeyPair();
-      final bonNsec = bonKeys['nsec']!;
-      final bonNpub = bonKeys['npub']!;
+      final bonNsecHex = bonKeys['privateKeyHex']!;  // Format hex pour shamirSplit
+      final bonNpubHex = bonKeys['publicKeyHex']!;   // Format hex pour les identifiants
+      final bonNsec = bonKeys['nsec']!;              // Format Bech32 pour affichage
+      final bonNpub = bonKeys['npub']!;              // Format Bech32 pour affichage
 
-      // 2. Découper en 3 parts avec SSSS
-      final parts = _cryptoService.shamirSplit(bonNsec);
+      // 2. Découper en 3 parts avec SSSS (utilise le format hex)
+      final parts = _cryptoService.shamirSplit(bonNsecHex);
       final p1 = parts[0]; // Ancre (reste chez l'émetteur)
       final p2 = parts[1]; // Voyageur (part active)
       final p3 = parts[2]; // Témoin (à publier)
@@ -198,12 +200,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       // 3. Chiffrer P3 avec K_day (clé du jour dérivée de la graine)
       final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3, _market!.seedMarket, DateTime.now());
 
-      // 4. Stocker P3 dans le cache local
-      await _storageService.saveP3ToCache(bonNpub, p3);
+      // 4. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
+      await _storageService.saveP3ToCache(bonNpubHex, p3);
 
       // 5. Créer le bon (sans stocker bonNsec)
       final bon = Bon(
-        bonId: bonNpub,
+        bonId: bonNpubHex,
         // bonNsec retiré - reconstruction via P2+P3 uniquement
         value: double.parse(_valueController.text),
         issuerName: _issuerNameController.text,
@@ -247,8 +249,9 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         if (connected) {
           // Publication du profil du bon (kind 0)
           // Utilise les informations du profil utilisateur par défaut
+          // Note: npub et nsec sont en format hex pour les opérations Nostr
           await nostrService.publishUserProfile(
-            npub: bonNpub,
+            npub: bonNpubHex,
             nsec: _cryptoService.shamirCombine(null, p2, p3),
             name: _issuerNameController.text,
             displayName: _issuerNameController.text,
@@ -263,7 +266,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
           // Publication P3 chiffrée - AVEC P2 pour signature par le bon
           final published = await nostrService.publishP3(
-            bonId: bonNpub,
+            bonId: bonNpubHex,
             p2Hex: p2,  // ✅ Pour reconstruction sk_B éphémère
             p3Hex: p3,
             seedMarket: _market!.seedMarket,
