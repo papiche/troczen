@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../models/bon.dart';
 import '../models/user.dart';
 import '../models/market.dart';
@@ -63,11 +64,66 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
   /// Sélectionner une image pour le bon
   Future<void> _selectImage() async {
-    // Pour l'instant, on simule avec un fichier test
-    // En production, utiliser image_picker
-    setState(() {
-      _selectedImage = File('/path/to/bon_image.jpg');
-    });
+    final ImagePicker picker = ImagePicker();
+    
+    // Afficher le choix source (caméra ou galerie)
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.orange),
+              title: const Text('Prendre une photo', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.orange),
+              title: const Text('Choisir depuis la galerie', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            if (_selectedImage != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Supprimer l\'image', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _selectedImage = null);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+    
+    if (source == null) return;
+    
+    try {
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() => _selectedImage = File(image.path));
+      }
+    } catch (e) {
+      debugPrint('Erreur sélection image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   /// Uploader l'image du bon vers IPFS

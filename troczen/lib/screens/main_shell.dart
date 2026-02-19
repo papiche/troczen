@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../models/user.dart';
+import '../config/app_config.dart';
 import 'views/wallet_view.dart';
 import 'views/explore_view.dart';
 import 'views/dashboard_view.dart';
@@ -488,8 +490,8 @@ class _MainShellState extends State<MainShell> {
     
     showAboutDialog(
       context: context,
-      applicationName: 'TrocZen',
-      applicationVersion: '1.0.8',
+      applicationName: AppConfig.appName,
+      applicationVersion: AppConfig.appVersion,
       applicationIcon: const Icon(
         Icons.wallet,
         size: 64,
@@ -564,8 +566,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         email: _emailController.text.trim().isEmpty
             ? null
             : _emailController.text.trim(),
-        appVersion: '1.0.8',
-        platform: 'Android',
+        appVersion: AppConfig.appVersion,
+        platform: Platform.isAndroid ? 'Android' : 'iOS',
       );
 
       if (!mounted) return;

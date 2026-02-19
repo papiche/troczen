@@ -1,35 +1,24 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 /// Service API TrocZen pour upload logos uniquement
 /// Toutes les opérations Nostr se font directement via le relais
 class ApiService {
-  // URLs par défaut (production)
-  static const String defaultApiUrl = 'https://https://zen.copylaradio.com';
-  static const String defaultRelayUrl = 'wss://relay.copylaradio.com';
-  
-  // URLs locales (borne wifi/portail captif)
-  static const String localApiUrl = 'http://zen.local:5000';
-  static const String localRelayUrl = 'ws://zen.local:7777';
-  static const List<String> localHosts = [
-    'http://192.168.101.1:5000',  // AP direct
-    'http://10.0.0.1:5000',     // Routeur standard
-    'http://zen.local:5000',    // mDNS
-  ];
-
-  String _currentApiUrl = defaultApiUrl;
-  String _currentRelayUrl = defaultRelayUrl;
+  // Utiliser les constantes de AppConfig
+  String _currentApiUrl = AppConfig.defaultApiUrl;
+  String _currentRelayUrl = AppConfig.defaultRelayUrl;
   bool _isLocal = false;
 
   /// Détecte automatiquement si connecté à une borne locale
   Future<bool> detectLocalNetwork() async {
     // Tester chaque URL locale
-    for (final url in localHosts) {
+    for (final url in AppConfig.localHosts) {
       try {
         final response = await http.get(
           Uri.parse('$url/health'),
-        ).timeout(const Duration(seconds: 2));
+        ).timeout(AppConfig.localDetectionTimeout);
 
         if (response.statusCode == 200) {
           // Borne locale détectée !
@@ -51,8 +40,8 @@ class ApiService {
     }
 
     // Aucune borne locale - utiliser l'API publique
-    _currentApiUrl = defaultApiUrl;
-    _currentRelayUrl = defaultRelayUrl;
+    _currentApiUrl = AppConfig.defaultApiUrl;
+    _currentRelayUrl = AppConfig.defaultRelayUrl;
     _isLocal = false;
     
     print('📡 Utilisation API publique: $_currentApiUrl');
@@ -107,8 +96,8 @@ class ApiService {
 
   /// Force l'utilisation de l'API publique
   void usePublicApi() {
-    _currentApiUrl = defaultApiUrl;
-    _currentRelayUrl = defaultRelayUrl;
+    _currentApiUrl = AppConfig.defaultApiUrl;
+    _currentRelayUrl = AppConfig.defaultRelayUrl;
     _isLocal = false;
   }
 

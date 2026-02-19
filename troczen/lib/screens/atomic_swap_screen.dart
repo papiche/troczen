@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
+import '../config/app_config.dart';
 import '../services/nfc_service.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
@@ -104,6 +105,17 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
 
   Future<void> _checkNfcAvailability() async {
     setState(() => _status = SwapStatus.initializing);
+
+    // Vérifier si NFC est activé via feature flag
+    if (!AppConfig.nfcEnabled) {
+      // NFC désactivé - utiliser QR directement
+      setState(() {
+        _nfcAvailable = false;
+        _useNfc = false;
+      });
+      _switchToQrMode();
+      return;
+    }
 
     try {
       _nfcAvailable = await _nfcService.checkAvailability();
@@ -506,6 +518,56 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
   }
 
   Widget _buildModeIndicator() {
+    // Si NFC est désactivé via feature flag, afficher uniquement QR
+    if (!AppConfig.nfcEnabled) {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange, width: 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.qr_code, color: Colors.orange),
+            const SizedBox(width: 8),
+            const Text(
+              'Mode QR Code',
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.nfc, size: 16, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Text(
+                    AppConfig.nfcUnavailableMessage,
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

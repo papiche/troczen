@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../models/user.dart';
+import '../config/app_config.dart';
 import '../services/feedback_service.dart';
-import '../services/crypto_service.dart';
-import '../services/storage_service.dart';
 
 /// Écran d'envoi de feedback/bug report
 class FeedbackScreen extends StatefulWidget {
@@ -52,7 +51,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         type: _selectedType,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
-        appVersion: '1.2.0-ipfs',
+        appVersion: AppConfig.appVersion,
         platform: platform,
       );
 

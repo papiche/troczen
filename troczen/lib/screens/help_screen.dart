@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/user.dart';
+import '../config/app_config.dart';
 import 'feedback_screen.dart';
 
 /// Écran d'aide avec toutes les actions possibles
@@ -465,7 +466,7 @@ Internet requis seulement pour:
             ),
             const SizedBox(height: 12),
             Text(
-              'Version: 1.2.0-ipfs',
+              'Version: ${AppConfig.appVersion}',
               style: TextStyle(color: Colors.grey[400]),
             ),
             const SizedBox(height: 4),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../models/user.dart';
 import '../models/nostr_profile.dart';
 import '../services/api_service.dart';
@@ -68,16 +69,79 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _selectImage(String type) async {
-    // Ouvrir le sélecteur de fichiers
-    // Pour l'instant, on simule avec un fichier test
-    // En production, utiliser image_picker
-    setState(() {
-      if (type == 'picture') {
-        _selectedPicture = File('/path/to/picture.jpg');
-      } else if (type == 'banner') {
-        _selectedBanner = File('/path/to/banner.jpg');
+    final ImagePicker picker = ImagePicker();
+    
+    // Afficher le choix source (caméra ou galerie)
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.orange),
+              title: const Text('Prendre une photo', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.orange),
+              title: const Text('Choisir depuis la galerie', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            if ((type == 'picture' && _selectedPicture != null) ||
+                (type == 'banner' && _selectedBanner != null))
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Supprimer l\'image', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    if (type == 'picture') {
+                      _selectedPicture = null;
+                    } else {
+                      _selectedBanner = null;
+                    }
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+    
+    if (source == null) return;
+    
+    try {
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          if (type == 'picture') {
+            _selectedPicture = File(image.path);
+          } else if (type == 'banner') {
+            _selectedBanner = File(image.path);
+          }
+        });
       }
-    });
+    } catch (e) {
+      debugPrint('Erreur sélection image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<String?> _uploadImage(File imageFile, String type) async {
