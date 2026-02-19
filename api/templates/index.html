@@ -166,6 +166,16 @@
         .market-chip:hover {
             background-color: var(--secondary);
         }
+        
+        .market-chip.hackathon {
+            border-color: var(--primary);
+            background-color: rgba(255, 179, 71, 0.15);
+            color: var(--primary);
+            font-weight: bold;
+        }
+        .market-chip.hackathon:hover {
+            background-color: rgba(255, 179, 71, 0.3);
+        }
 
         /* --- FORMS (Style TextFormField Flutter) --- */
         .form-group { margin-bottom: 16px; }
@@ -246,7 +256,8 @@
             <p class="subtitle">Le troc local, simple et zen.</p>
             
             <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <a href="/api/apk/latest" class="btn btn-primary">
+                <!-- ID ajouté pour ciblage JS -->
+                <a href="#" id="download-apk-btn" class="btn btn-primary">
                     <span style="font-size: 1.2rem;">⬇️</span> Télécharger APK
                 </a>
                 <button onclick="toggleQR()" class="btn btn-secondary">
@@ -286,7 +297,7 @@
             </div>
 
             <div style="margin-top: 20px;">
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Marchés actifs détectés :</p>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Marchés actifs détectés (Nostr) :</p>
                 <div id="markets-list">Chargement...</div>
             </div>
         </div>
@@ -358,26 +369,41 @@
         // Chargement Stats
         async function loadData() {
             try {
+                // 1. Stats Générales
                 const stats = await (await fetch('/api/stats')).json();
                 document.getElementById('stat-markets').textContent = stats.market_count;
                 document.getElementById('stat-profiles').textContent = stats.profile_count;
                 document.getElementById('stat-logos').textContent = stats.logo_count;
 
+                // 2. Gestion des Marchés
                 const marketsDiv = document.getElementById('markets-list');
-                if (stats.markets && stats.markets.length > 0) {
-                    marketsDiv.innerHTML = stats.markets.map(m => 
-                        `<a href="/market/${m}" class="market-chip" target="_blank">🏪 ${m}</a>`
-                    ).join('');
-                } else {
-                    marketsDiv.innerHTML = '<span style="color:#666">Aucun marché détecté (Nostr)</span>';
-                }
+                
+                // Toujours afficher le lien Hackathon par défaut
+                let marketsHtml = `<a href="/market/HACKATHON" class="market-chip hackathon" target="_blank">🏆 HACKATHON</a>`;
 
+                if (stats.markets && stats.markets.length > 0) {
+                    marketsHtml += stats.markets
+                        .filter(m => m !== 'HACKATHON') // Éviter doublon
+                        .map(m => `<a href="/market/${m}" class="market-chip" target="_blank">🏪 ${m}</a>`)
+                        .join('');
+                } else {
+                    marketsHtml += '<span style="color:#666; font-size:0.9em; margin-left:10px;">(Aucun autre marché détecté)</span>';
+                }
+                marketsDiv.innerHTML = marketsHtml;
+
+                // 3. Gestion APK Link
                 const apk = await (await fetch('/api/apk/latest')).json();
                 if (!apk.error) {
                     document.getElementById('apk-version').textContent = 'v' + apk.version;
+                    
+                    // MISE A JOUR DU LIEN DE TÉLÉCHARGEMENT
+                    const downloadBtn = document.getElementById('download-apk-btn');
+                    if (apk.download_url) {
+                        downloadBtn.href = apk.download_url;
+                    }
                 }
             } catch (e) {
-                console.warn("Offline or API error");
+                console.warn("Offline or API error", e);
             }
         }
 
