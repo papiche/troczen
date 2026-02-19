@@ -140,7 +140,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       );
       
       if (result != null) {
-        return result['url'] ?? result['ipfs_url'];
+        // Préférer l'URL IPFS (décentralisée) à l'URL locale
+        return result['ipfs_url'] ?? result['url'];
       }
     } catch (e) {
       debugPrint('Erreur upload image bon: $e');

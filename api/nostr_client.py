@@ -8,8 +8,13 @@ import asyncio
 import json
 import websockets
 import ssl
+import os
 from datetime import datetime
 from typing import List, Dict, Optional
+
+# Configuration de pagination (peut être surchargée par variables d'environnement)
+DEFAULT_PAGE_SIZE = int(os.getenv('NOSTR_PAGE_SIZE', '500'))  # Taille de page par défaut
+MAX_TOTAL_RESULTS = int(os.getenv('NOSTR_MAX_RESULTS', '10000'))  # Limite totale pour éviter les abus
 
 class NostrClient:
     """Client Nostr pour interroger le relai Strfry local"""
@@ -90,60 +95,144 @@ class NostrClient:
             print(f"❌ Erreur lors de la requête: {e}")
             return []
     
-    async def get_merchant_profiles(self) -> List[Dict]:
+    async def query_events_paginated(
+        self,
+        kinds: List[int],
+        page_size: int = DEFAULT_PAGE_SIZE,
+        max_results: int = MAX_TOTAL_RESULTS,
+        additional_filters: Optional[Dict] = None
+    ) -> List[Dict]:
         """
-        Récupérer les profils marchands (kind 0)
+        Interroger les events avec pagination automatique
         
+        Utilise la pagination par curseur (until) pour récupérer tous les résultats
+        sans limite artificielle.
+        
+        Args:
+            kinds: Liste des kinds Nostr à récupérer
+            page_size: Nombre d'events par page
+            max_results: Nombre maximum total de résultats (protection)
+            additional_filters: Filtres additionnels (tags, etc.)
+            
+        Returns:
+            Liste complète des events
+        """
+        all_events = []
+        until_timestamp = None
+        page_count = 0
+        
+        while len(all_events) < max_results:
+            # Construire le filtre
+            filter_dict = {
+                "kinds": kinds,
+                "limit": min(page_size, max_results - len(all_events))
+            }
+            
+            # Ajouter le curseur de pagination (until)
+            if until_timestamp:
+                filter_dict["until"] = until_timestamp
+            
+            # Ajouter les filtres additionnels
+            if additional_filters:
+                filter_dict.update(additional_filters)
+            
+            filters = [filter_dict]
+            
+            # Récupérer la page
+            events = await self.query_events(filters)
+            page_count += 1
+            
+            if not events:
+                # Plus de résultats
+                break
+            
+            all_events.extend(events)
+            
+            # Mettre à jour le curseur avec le timestamp du plus ancien event
+            if events:
+                oldest_timestamp = min(e.get("created_at", 0) for e in events)
+                until_timestamp = oldest_timestamp - 1
+                
+                # Si on a reçu moins que la page size, on a tout
+                if len(events) < page_size:
+                    break
+            
+            print(f'📄 [NostrClient] Page {page_count}: {len(events)} events (total: {len(all_events)})')
+        
+        print(f'✅ [NostrClient] Pagination terminée: {len(all_events)} events en {page_count} pages')
+        return all_events[:max_results]
+    
+    async def get_merchant_profiles(self, max_results: int = MAX_TOTAL_RESULTS) -> List[Dict]:
+        """
+        Récupérer les profils marchands (kind 0) avec pagination
+        
+        Args:
+            max_results: Nombre maximum de profils à récupérer
+            
         Returns:
             Liste des profils marchands
         """
-        # Filtre pour kind 0
-        filters = [{
-            "kinds": [0],
-            "limit": 100
-        }]
+        # Récupérer avec pagination
+        events = await self.query_events_paginated(
+            kinds=[0],
+            max_results=max_results
+        )
         
-        events = await self.query_events(filters)
-        
-        # Décoder le contenu JSON
-        profiles = []
+        # Décoder le contenu JSON et dédoublonner par pubkey
+        profiles_by_pubkey = {}
         for event in events:
             try:
                 content = json.loads(event.get("content", "{}"))
-                if content:  # Vérifier que le contenu n'est pas vide
-                    profile = {
-                        "pubkey": event.get("pubkey", ""),
-                        "created_at": event.get("created_at", 0),
-                        "content": content,
-                        "name": content.get("name", "Anonyme"),
-                        "about": content.get("about", ""),
-                        "picture": content.get("picture", ""),
-                        "banner": content.get("banner", ""),
-                        "nip05": content.get("nip05", ""),
-                        "lud16": content.get("lud16", ""),
-                        "website": content.get("website", "")
-                    }
-                    profiles.append(profile)
+                if content:
+                    pubkey = event.get("pubkey", "")
+                    # Garder le profil le plus récent pour chaque pubkey
+                    if pubkey not in profiles_by_pubkey or \
+                       event.get("created_at", 0) > profiles_by_pubkey[pubkey].get("created_at", 0):
+                        profiles_by_pubkey[pubkey] = {
+                            "pubkey": pubkey,
+                            "created_at": event.get("created_at", 0),
+                            "content": content,
+                            "name": content.get("name", "Anonyme"),
+                            "about": content.get("about", ""),
+                            "picture": content.get("picture", ""),
+                            "banner": content.get("banner", ""),
+                            "nip05": content.get("nip05", ""),
+                            "lud16": content.get("lud16", ""),
+                            "website": content.get("website", "")
+                        }
             except json.JSONDecodeError:
                 continue
         
-        return profiles
+        return list(profiles_by_pubkey.values())
     
-    async def get_bons(self, market_name: Optional[str] = None) -> List[Dict]:
+    async def get_bons(
+        self,
+        market_name: Optional[str] = None,
+        max_results: int = MAX_TOTAL_RESULTS
+    ) -> List[Dict]:
         """
-        Récupérer les bons (kind 30303)
+        Récupérer les bons (kind 30303) avec pagination
         
         Args:
             market_name: Filtre par marché (optionnel)
-        
+            max_results: Nombre maximum de bons à récupérer
+            
         Returns:
             Liste des bons
         """
-        # Filtre pour kind 30303
-        filters = [{
-            "kinds": [30303],
-            "limit": 1000
-        }]
+        # Filtres additionnels pour le marché
+        additional_filters = {}
+        if market_name:
+            # Note: Le filtre par tag 'market' se fait après récupération
+            # car tous les relais supportent pas le filtrage par tags
+            pass
+        
+        # Récupérer avec pagination
+        events = await self.query_events_paginated(
+            kinds=[30303],
+            max_results=max_results,
+            additional_filters=additional_filters
+        )
         
         events = await self.query_events(filters)
         

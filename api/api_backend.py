@@ -18,6 +18,9 @@ from io import BytesIO
 import requests
 import base64
 import asyncio
+import aiohttp
+import threading
+import concurrent.futures
 from nostr_client import NostrClient
 
 app = Flask(__name__)
@@ -33,6 +36,10 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 IPFS_API_URL = os.getenv('IPFS_API_URL', 'http://127.0.0.1:5001')  # API locale IPFS
 IPFS_GATEWAY = os.getenv('IPFS_GATEWAY', 'https://ipfs.copylaradio.com')  # Passerelle publique
 IPFS_ENABLED = os.getenv('IPFS_ENABLED', 'true').lower() == 'true'
+IPFS_TIMEOUT = int(os.getenv('IPFS_TIMEOUT', '30'))  # Timeout en secondes
+
+# Pool de threads pour les uploads IPFS asynchrones
+IPFS_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix='ipfs_upload')
 
 # Créer les dossiers
 UPLOAD_FOLDER.mkdir(exist_ok=True)
@@ -43,9 +50,85 @@ app.config['APK_FOLDER'] = APK_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 
-def allowed_file(filename):
-    """Vérifier extension fichier"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# ==================== VALIDATION MIME MAGIC BYTES ====================
+
+# Magic bytes pour les types MIME autorisés
+MAGIC_BYTES = {
+    'png': [b'\x89PNG\r\n\x1a\n'],
+    'jpg': [b'\xff\xd8\xff'],
+    'jpeg': [b'\xff\xd8\xff'],
+    'webp': [b'RIFF', b'WEBP'],  # WEBP commence par RIFF....WEBP
+}
+
+# Mapping extension -> MIME type
+MIME_TYPES = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'webp': 'image/webp',
+}
+
+
+def validate_magic_bytes(file_content: bytes, extension: str) -> bool:
+    """
+    Valide les magic bytes d'un fichier pour s'assurer qu'il correspond à son extension.
+    
+    Args:
+        file_content: Les premiers bytes du fichier (au moins 12 bytes)
+        extension: L'extension du fichier (sans le point)
+        
+    Returns:
+        True si les magic bytes correspondent à l'extension, False sinon
+    """
+    ext = extension.lower()
+    
+    if ext not in MAGIC_BYTES:
+        return False
+    
+    magic_signatures = MAGIC_BYTES[ext]
+    
+    # Pour WEBP, vérifier RIFF au début et WEBP à l'offset 8
+    if ext == 'webp':
+        if len(file_content) < 12:
+            return False
+        return file_content[:4] == b'RIFF' and file_content[8:12] == b'WEBP'
+    
+    # Pour les autres formats, vérifier si le contenu commence par un des magic bytes
+    for signature in magic_signatures:
+        if file_content.startswith(signature):
+            return True
+    
+    return False
+
+
+def allowed_file(filename, file_content: bytes = None) -> tuple:
+    """
+    Vérifier extension fichier et optionnellement les magic bytes.
+    
+    Args:
+        filename: Nom du fichier
+        file_content: Contenu du fichier pour validation magic bytes (optionnel)
+        
+    Returns:
+        Tuple (is_valid, error_message)
+    """
+    if '.' not in filename:
+        return False, "Le fichier n'a pas d'extension"
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    
+    if extension not in ALLOWED_EXTENSIONS:
+        return False, f"Extension '{extension}' non autorisée. Extensions autorisées: {', '.join(ALLOWED_EXTENSIONS)}"
+    
+    # Si le contenu est fourni, valider les magic bytes
+    if file_content is not None:
+        if len(file_content) < 12:
+            return False, "Fichier trop petit pour validation"
+        
+        if not validate_magic_bytes(file_content[:12], extension):
+            return False, f"Les magic bytes ne correspondent pas à l'extension '{extension}'. Fichier potentiellement malveillant."
+    
+    return True, None
 
 
 def generate_checksum(filepath):
@@ -57,10 +140,17 @@ def generate_checksum(filepath):
     return sha256_hash.hexdigest()
 
 
-def upload_to_ipfs(filepath):
+# ==================== IPFS ASYNCHRONE ====================
+
+async def upload_to_ipfs_async(filepath) -> tuple:
     """
-    Upload un fichier vers IPFS via l'API locale
-    Retourne: (cid, ipfs_url) ou (None, None) si échec
+    Upload un fichier vers IPFS de manière asynchrone avec aiohttp.
+    
+    Args:
+        filepath: Chemin du fichier à uploader
+        
+    Returns:
+        Tuple (cid, ipfs_url) ou (None, None) si échec
     """
     if not IPFS_ENABLED:
         return None, None
@@ -68,13 +158,70 @@ def upload_to_ipfs(filepath):
     try:
         # Lire le fichier
         with open(filepath, 'rb') as f:
+            file_content = f.read()
+        
+        # Préparer le multipart/form-data pour aiohttp
+        # L'API IPFS Kubo utilise multipart avec le fichier
+        data = aiohttp.FormData()
+        data.add_field(
+            'file',
+            file_content,
+            filename=os.path.basename(filepath),
+            content_type='application/octet-stream'
+        )
+        
+        timeout = aiohttp.ClientTimeout(total=IPFS_TIMEOUT)
+        
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                f'{IPFS_API_URL}/api/v0/add',
+                data=data
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    cid = result['Hash']
+                    ipfs_url = f'{IPFS_GATEWAY}/ipfs/{cid}'
+                    
+                    print(f'✅ Fichier uploadé sur IPFS (async): {IPFS_GATEWAY}/ipfs/{cid}')
+                    return cid, ipfs_url
+                else:
+                    error_text = await response.text()
+                    print(f'❌ Erreur IPFS API: {response.status} - {error_text}')
+                    return None, None
+                    
+    except asyncio.TimeoutError:
+        print(f'❌ Timeout IPFS après {IPFS_TIMEOUT}s')
+        return None, None
+    except aiohttp.ClientError as e:
+        print(f'❌ Erreur connexion IPFS: {e}')
+        return None, None
+    except Exception as e:
+        print(f'❌ Erreur upload IPFS: {e}')
+        return None, None
+
+
+def upload_to_ipfs_sync(filepath) -> tuple:
+    """
+    Upload synchrone vers IPFS (pour compatibilité et fallback).
+    Utilisé dans le thread pool pour ne pas bloquer l'API.
+    
+    Args:
+        filepath: Chemin du fichier à uploader
+        
+    Returns:
+        Tuple (cid, ipfs_url) ou (None, None) si échec
+    """
+    if not IPFS_ENABLED:
+        return None, None
+    
+    try:
+        with open(filepath, 'rb') as f:
             files = {'file': f}
             
-            # Upload vers IPFS node local
             response = requests.post(
                 f'{IPFS_API_URL}/api/v0/add',
                 files=files,
-                timeout=30
+                timeout=IPFS_TIMEOUT
             )
             
             if response.status_code == 200:
@@ -82,7 +229,7 @@ def upload_to_ipfs(filepath):
                 cid = result['Hash']
                 ipfs_url = f'{IPFS_GATEWAY}/ipfs/{cid}'
                 
-                print(f'✅ Fichier uploadé sur IPFS: {IPFS_GATEWAY}/ipfs/{cid}')
+                print(f'✅ Fichier uploadé sur IPFS (sync): {IPFS_GATEWAY}/ipfs/{cid}')
                 return cid, ipfs_url
             else:
                 print(f'❌ Erreur IPFS API: {response.status_code}')
@@ -94,6 +241,44 @@ def upload_to_ipfs(filepath):
     except Exception as e:
         print(f'❌ Erreur upload IPFS: {e}')
         return None, None
+
+
+def upload_to_ipfs_background(filepath, callback=None):
+    """
+    Lance l'upload IPFS en arrière-plan dans le thread pool.
+    Ne bloque pas la requête HTTP.
+    
+    Args:
+        filepath: Chemin du fichier à uploader
+        callback: Fonction optionnelle appelée avec (cid, ipfs_url) à la fin
+        
+    Returns:
+        concurrent.futures.Future: Future représentant l'opération
+    """
+    def _upload_and_callback():
+        result = upload_to_ipfs_sync(filepath)
+        cid, ipfs_url = result
+        
+        # Sauvegarder les métadonnées si upload réussi
+        if cid and ipfs_url:
+            save_ipfs_metadata(Path(filepath), cid, ipfs_url)
+        
+        if callback:
+            callback(cid, ipfs_url)
+        return result
+    
+    return IPFS_EXECUTOR.submit(_upload_and_callback)
+
+
+# Garder l'ancienne fonction pour compatibilité
+def upload_to_ipfs(filepath):
+    """
+    Upload un fichier vers IPFS via l'API locale (version synchrone).
+    DEPRECATED: Utiliser upload_to_ipfs_async ou upload_to_ipfs_background
+    
+    Retourne: (cid, ipfs_url) ou (None, None) si échec
+    """
+    return upload_to_ipfs_sync(filepath)
 
 
 @app.route('/')
@@ -116,7 +301,14 @@ def health():
 
 @app.route('/api/upload/image', methods=['POST'])
 def upload_image():
-    """Upload image (logo, bandeau, avatar) pour profils Nostr"""
+    """
+    Upload image (logo, bandeau, avatar) pour profils Nostr
+    
+    Sécurité:
+    - Validation de l'extension du fichier
+    - Validation des magic bytes pour éviter les fichiers malveillants
+    - Upload IPFS en arrière-plan pour ne pas bloquer la requête
+    """
     
     # Vérifier présence fichier
     if 'file' not in request.files:
@@ -127,8 +319,14 @@ def upload_image():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    if not allowed_file(file.filename):
-        return jsonify({'error': 'Invalid file type'}), 400
+    # Lire le contenu du fichier pour validation magic bytes
+    file_content = file.read()
+    file.seek(0)  # Remettre le curseur au début pour sauvegarde
+    
+    # Validation extension ET magic bytes
+    is_valid, error_msg = allowed_file(file.filename, file_content)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
     
     # Récupérer npub du commerçant/utilisateur
     npub = request.form.get('npub')
@@ -154,28 +352,89 @@ def upload_image():
     # Générer checksum
     checksum = generate_checksum(filepath)
     
-    # ✅ Upload vers IPFS
-    ipfs_cid, ipfs_url = upload_to_ipfs(filepath)
-    
-    # URL de fallback (locale)
+    # URL de fallback (locale) - toujours disponible
     local_url = f"/uploads/{new_filename}"
     
-    # URL finale (IPFS si dispo, sinon locale)
-    final_url = ipfs_url if ipfs_url else local_url
+    # ✅ Upload IPFS en arrière-plan (non-bloquant)
+    # Le client recevra l'URL locale immédiatement, et l'URL IPFS sera disponible plus tard
+    ipfs_upload_future = upload_to_ipfs_background(filepath)
+    
+    # Pour la réponse initiale, on indique que l'upload IPFS est en cours
+    # Le client peut vérifier le statut via /api/upload/status/<filename>
     
     return jsonify({
         'success': True,
-        'url': final_url,           # URL IPFS ou locale
-        'local_url': local_url,     # Toujours disponible en fallback
-        'ipfs_url': ipfs_url,       # URL IPFS (ou null)
-        'ipfs_cid': ipfs_cid,       # CID IPFS (ou null)
+        'url': local_url,              # URL locale immédiatement disponible
+        'local_url': local_url,        # Toujours disponible en fallback
+        'ipfs_url': None,              # Sera disponible après upload
+        'ipfs_cid': None,              # Sera disponible après upload
+        'ipfs_status': 'pending',      # pending, completed, failed
         'filename': new_filename,
         'checksum': checksum,
         'size': filepath.stat().st_size,
         'uploaded_at': datetime.now().isoformat(),
-        'storage': 'ipfs' if ipfs_url else 'local',
-        'type': image_type
+        'storage': 'local',            # Local pour l'instant, IPFS en cours
+        'type': image_type,
+        'message': 'Fichier uploadé localement. Upload IPFS en cours.'
     }), 201
+
+
+@app.route('/api/upload/status/<filename>', methods=['GET'])
+def upload_status(filename):
+    """
+    Vérifier le statut de l'upload IPFS pour un fichier.
+    
+    Cette endpoint permet au client de vérifier si l'upload IPFS
+    a été complété avec succès.
+    """
+    filepath = UPLOAD_FOLDER / secure_filename(filename)
+    
+    if not filepath.exists():
+        return jsonify({'error': 'File not found'}), 404
+    
+    # Vérifier si un fichier .ipfs_meta existe (créé après upload réussi)
+    meta_file = filepath.with_suffix(filepath.suffix + '.ipfs_meta')
+    
+    if meta_file.exists():
+        try:
+            with open(meta_file, 'r') as f:
+                meta = json.load(f)
+            return jsonify({
+                'filename': filename,
+                'ipfs_status': 'completed',
+                'ipfs_url': meta.get('ipfs_url'),
+                'ipfs_cid': meta.get('ipfs_cid'),
+                'uploaded_at': meta.get('uploaded_at')
+            })
+        except Exception as e:
+            return jsonify({
+                'filename': filename,
+                'ipfs_status': 'unknown',
+                'error': str(e)
+            })
+    
+    return jsonify({
+        'filename': filename,
+        'ipfs_status': 'pending',
+        'message': 'Upload IPFS en cours ou non démarré'
+    })
+
+
+def save_ipfs_metadata(filepath, cid, ipfs_url):
+    """
+    Sauvegarder les métadonnées IPFS après upload réussi.
+    Permet au client de vérifier le statut via /api/upload/status/
+    """
+    meta_file = filepath.with_suffix(filepath.suffix + '.ipfs_meta')
+    try:
+        with open(meta_file, 'w') as f:
+            json.dump({
+                'ipfs_cid': cid,
+                'ipfs_url': ipfs_url,
+                'uploaded_at': datetime.now().isoformat()
+            }, f)
+    except Exception as e:
+        print(f'❌ Erreur sauvegarde métadonnées IPFS: {e}')
 
 
 @app.route('/uploads/<filename>')

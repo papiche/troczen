@@ -49,12 +49,77 @@ class ApiService {
     return false;
   }
 
+  /// Vérifie le statut de l'upload IPFS pour un fichier
+  ///
+  /// Retourne les informations IPFS si l'upload est terminé,
+  /// ou null si encore en cours ou en erreur
+  Future<Map<String, dynamic>?> checkIpfsStatus(String filename) async {
+    try {
+      final baseUrl = _currentApiUrl.endsWith('/')
+          ? _currentApiUrl.substring(0, _currentApiUrl.length - 1)
+          : _currentApiUrl;
+      final uri = Uri.parse('$baseUrl/api/upload/status/$filename');
+      
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 10),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return null;
+    } catch (e) {
+      Logger.error('ApiService', 'Erreur vérification statut IPFS', e);
+      return null;
+    }
+  }
+
+  /// Attend que l'upload IPFS soit terminé avec polling
+  ///
+  /// [filename] : Nom du fichier à vérifier
+  /// [maxAttempts] : Nombre maximum de tentatives (défaut: 30)
+  /// [delay] : Délai entre chaque tentative (défaut: 1 seconde)
+  ///
+  /// Retourne l'URL IPFS si disponible, sinon l'URL locale
+  Future<String> waitForIpfsUrl({
+    required String filename,
+    required String localUrl,
+    int maxAttempts = 30,
+    Duration delay = const Duration(seconds: 1),
+  }) async {
+    for (int i = 0; i < maxAttempts; i++) {
+      final status = await checkIpfsStatus(filename);
+      
+      if (status != null && status['ipfs_status'] == 'completed') {
+        final ipfsUrl = status['ipfs_url'] as String?;
+        if (ipfsUrl != null && ipfsUrl.isNotEmpty) {
+          Logger.success('ApiService', 'URL IPFS obtenue: $ipfsUrl');
+          return ipfsUrl;
+        }
+      }
+      
+      // Attendre avant la prochaine vérification
+      await Future.delayed(delay);
+    }
+    
+    // Timeout - retourner l'URL locale
+    Logger.warn('ApiService', 'Timeout attente IPFS, utilisation URL locale');
+    return localUrl;
+  }
+
   /// Upload image (logo, bandeau, avatar) pour profils Nostr
-  /// Seule opération API nécessaire - pour stocker l'image
+  ///
+  /// L'upload IPFS est asynchrone côté serveur. Cette méthode:
+  /// 1. Uploade le fichier et obtient l'URL locale immédiatement
+  /// 2. Attend l'URL IPFS avec un polling (max 30 secondes)
+  /// 3. Retourne l'URL IPFS si disponible, sinon l'URL locale
+  ///
+  /// Préfère toujours l'URL IPFS car elle est décentralisée et permanente.
   Future<Map<String, dynamic>?> uploadImage({
     required String npub,
     required File imageFile,
     required String type,  // 'logo', 'banner', ou 'avatar'
+    bool waitForIpfs = true,  // Attendre l'URL IPFS
   }) async {
     try {
       // ✅ SÉCURITÉ: Normaliser l'URL pour éviter les doubles slash
@@ -76,7 +141,30 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
-        return json.decode(response.body);
+        final result = json.decode(response.body) as Map<String, dynamic>;
+        
+        // Si l'upload IPFS est en cours et qu'on doit attendre
+        if (waitForIpfs && result['ipfs_status'] == 'pending') {
+          final filename = result['filename'] as String?;
+          final localUrl = result['local_url'] as String?;
+          
+          if (filename != null && localUrl != null) {
+            // Attendre l'URL IPFS
+            final ipfsUrl = await waitForIpfsUrl(
+              filename: filename,
+              localUrl: localUrl,
+            );
+            
+            // Mettre à jour le résultat avec l'URL IPFS
+            result['url'] = ipfsUrl;
+            result['ipfs_url'] = ipfsUrl;
+            result['storage'] = ipfsUrl.contains('ipfs') ? 'ipfs' : 'local';
+            
+            Logger.success('ApiService', 'Upload terminé - URL finale: $ipfsUrl');
+          }
+        }
+        
+        return result;
       } else {
         Logger.error('ApiService', 'Erreur upload: ${response.body}');
         return null;

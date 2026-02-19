@@ -156,7 +156,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
       
       if (result != null) {
-        return result['url'] ?? result['ipfs_url'];
+        // Préférer l'URL IPFS (décentralisée) à l'URL locale
+        return result['ipfs_url'] ?? result['url'];
       }
     } catch (e) {
       debugPrint('Erreur upload $type: $e');
