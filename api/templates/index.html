@@ -132,6 +132,41 @@
             font-size: 0.9em;
             overflow-x: auto;
         }
+
+        /* Nouveaux styles pour le formulaire */
+        .form-group { margin-bottom: 15px; }
+        .form-control {
+            width: 100%; padding: 12px; border: 1px solid #ddd;
+            border-radius: 8px; font-family: inherit; font-size: 1em;
+        }
+        textarea.form-control { resize: vertical; min-height: 100px; }
+        .btn-submit {
+            background: #667eea; color: white; border: none;
+            padding: 12px 30px; border-radius: 8px; cursor: pointer;
+            font-size: 1em; font-weight: bold; width: 100%;
+            transition: background 0.3s;
+        }
+        .btn-submit:hover { background: #5a6fd6; }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Séparateur de section */
+        .divider {
+            border-top: 1px solid #eee; margin: 60px 0 40px;
+            text-align: center; position: relative;
+        }
+        .divider span {
+            background: white; padding: 0 15px; color: #999;
+            position: relative; top: -10px; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        /* Style pour les sections développeur (plus discrètes) */
+        .dev-section {
+            opacity: 0.85;
+            transition: opacity 0.3s;
+        }
+        .dev-section:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -142,6 +177,8 @@
         <div class="status">
             ✓ Service opérationnel
         </div>
+
+        <!-- ==================== ZONE UTILISATEUR ==================== -->
 
         <!-- Statistiques -->
         <div class="section">
@@ -210,8 +247,47 @@
             </div>
         </div>
 
-        <!-- Endpoints Upload -->
+        <!-- Section Feedback -->
         <div class="section">
+            <h2>💬 Feedback & Support</h2>
+            <p class="subtitle" style="margin-bottom: 20px;">
+                Un bug ? Une idée ? Envoyez-nous un message directement (crée une issue GitHub).
+            </p>
+            
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 12px; border-left: 4px solid #667eea;">
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <select id="fbType" class="form-control">
+                            <option value="feedback">💡 Suggestion / Avis</option>
+                            <option value="bug">🐛 Signaler un bug</option>
+                            <option value="question">❓ Question</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <input type="text" id="fbTitle" class="form-control" placeholder="Titre du message (ex: Problème d'upload...)" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <textarea id="fbDesc" class="form-control" placeholder="Description détaillée..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <input type="email" id="fbEmail" class="form-control" placeholder="Votre email (optionnel, pour réponse)">
+                    </div>
+                    
+                    <button type="submit" class="btn-submit" id="fbSubmitBtn">Envoyer le feedback</button>
+                    <div id="fbStatus" style="margin-top: 15px; text-align: center; font-weight: bold;"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== ZONE DÉVELOPPEURS ==================== -->
+        
+        <div class="divider"><span>Zone Développeurs</span></div>
+
+        <!-- Endpoints Upload -->
+        <div class="section dev-section">
             <h2>📤 Upload</h2>
             
             <div class="endpoint">
@@ -228,7 +304,7 @@
         </div>
 
         <!-- Endpoints APK -->
-        <div class="section">
+        <div class="section dev-section">
             <h2>📱 Distribution APK</h2>
             
             <div class="endpoint">
@@ -251,7 +327,7 @@
         </div>
 
         <!-- Endpoints Pages -->
-        <div class="section">
+        <div class="section dev-section">
             <h2>🌐 Pages Web</h2>
             
             <div class="endpoint">
@@ -262,7 +338,7 @@
         </div>
 
         <!-- Endpoints Nostr -->
-        <div class="section">
+        <div class="section dev-section">
             <h2>📡 Nostr (Strfry Relay)</h2>
             
             <div class="endpoint">
@@ -279,7 +355,7 @@
         </div>
 
         <!-- Exemple d'utilisation -->
-        <div class="section">
+        <div class="section dev-section">
             <h2>💻 Exemple d'utilisation</h2>
             
             <p><strong>Upload image :</strong></p>
@@ -347,6 +423,54 @@
                 document.getElementById('stat-markets').textContent = '0';
                 document.getElementById('markets-list').innerHTML = '<p style="color: #999;">Erreur de chargement des marchés. Vérifiez que le relai Nostr Strfry est démarré.</p>';
             });
+
+        // Gestion du formulaire de Feedback
+        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('fbSubmitBtn');
+            const status = document.getElementById('fbStatus');
+            
+            // État chargement
+            btn.disabled = true;
+            btn.textContent = 'Envoi en cours...';
+            status.textContent = '';
+            status.className = '';
+
+            const payload = {
+                type: document.getElementById('fbType').value,
+                title: document.getElementById('fbTitle').value,
+                description: document.getElementById('fbDesc').value,
+                email: document.getElementById('fbEmail').value,
+                platform: 'Web API',
+                app_version: '1.0.0'
+            };
+
+            try {
+                const response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    status.textContent = `✅ Feedback envoyé ! Issue #${data.issue_number}`;
+                    status.style.color = 'green';
+                    document.getElementById('feedbackForm').reset();
+                } else {
+                    throw new Error(data.error || 'Erreur inconnue');
+                }
+            } catch (err) {
+                console.error(err);
+                status.textContent = `❌ Erreur : ${err.message}`;
+                status.style.color = 'red';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Envoyer le feedback';
+            }
+        });
     </script>
 </body>
 </html>
