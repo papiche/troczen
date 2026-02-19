@@ -3,342 +3,678 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ market_name }} - TrocZen</title>
+    <title>{{ market_name }} - TrocZen ẐEN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            /* Palette TrocZen Flutter */
+            --bg-scaffold: #121212;
+            --bg-card: #1E1E1E;
+            --bg-input: #2A2A2A;
+            --primary: #FFB347;
+            --primary-dark: #FF8C42;
+            --secondary: #0A7EA4;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #F44336;
+            --text-main: #FFFFFF;
+            --text-secondary: #B0BEC5;
+            --text-muted: #666666;
+            --radius: 16px;
+            --radius-sm: 8px;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-scaffold);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
         }
 
+        /* --- HEADER --- */
         .header {
-            background: linear-gradient(135deg, #FFB347 0%, #FF8C42 100%);
-            color: white;
-            padding: 60px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 80px 20px 60px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-icon {
+            font-size: 60px;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
         }
 
         .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.2);
         }
 
-        .header p {
-            font-size: 1.3em;
-            opacity: 0.95;
+        .header .subtitle {
+            font-size: 1.2rem;
+            color: rgba(0,0,0,0.7);
         }
 
+        /* --- CONTAINER --- */
         .container {
             max-width: 1200px;
-            margin: -40px auto 40px;
-            padding: 0 20px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+            margin-top: -30px;
+            position: relative;
+            z-index: 2;
         }
 
-        .download-card {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        /* --- STATS CARDS --- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
             margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .stat-card.primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #000;
+        }
+
+        .stat-card.secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #0d5a7d 100%);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- DOWNLOAD CARD --- */
+        .download-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 32px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
             text-align: center;
         }
 
         .download-card h2 {
-            color: #333;
+            font-size: 1.5rem;
             margin-bottom: 20px;
+            color: var(--text-main);
         }
 
-        .qr-code {
+        .qr-container {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius-sm);
+            display: inline-block;
             margin: 20px 0;
         }
 
-        .download-btn {
-            background: #4CAF50;
-            color: white;
-            padding: 15px 40px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin: 10px;
-            transition: all 0.3s;
+        .qr-container img {
+            display: block;
         }
 
-        .download-btn:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        .qr-container p {
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 10px;
         }
 
-        .profiles-section {
-            margin-top: 40px;
-        }
-
-        .profiles-section h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2em;
-        }
-
-        .profiles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-        }
-
-        .profile-card {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-
-        .profile-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        }
-
-        .profile-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
-            text-align: center;
-        }
-
-        .profile-logo {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 4px solid white;
-            object-fit: cover;
-            margin-bottom: 10px;
-        }
-
-        .profile-logo-placeholder {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 4px solid white;
-            background: white;
-            display: flex;
+        .btn {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 10px;
-            font-size: 3em;
-        }
-
-        .profile-name {
-            color: white;
-            font-size: 1.3em;
+            padding: 16px 32px;
+            border-radius: 12px;
             font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            gap: 10px;
         }
 
-        .profile-body {
-            padding: 20px;
+        .btn-primary {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
         }
 
-        .profile-description {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 15px;
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
 
-        .profile-info {
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-            font-size: 0.9em;
-            color: #888;
+        .checksum {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
 
-        .profile-info div {
-            margin-bottom: 8px;
+        .checksum code {
+            background: var(--bg-input);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-top: 8px;
+            word-break: break-all;
         }
 
-        .profile-info span {
-            color: #333;
-            font-weight: 500;
+        /* --- INFO BOX --- */
+        .info-box {
+            background: rgba(10, 126, 164, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 16px 20px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin-bottom: 30px;
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
+        .info-box-title {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 4px;
         }
 
-        .empty-state svg {
-            width: 100px;
-            height: 100px;
-            opacity: 0.3;
+        .info-box-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* --- SECTION --- */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             margin-bottom: 20px;
         }
 
-        .footer {
+        .section-icon {
+            font-size: 1.8rem;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        /* --- MERCHANTS GRID --- */
+        .merchants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .merchant-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .merchant-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(255, 179, 71, 0.15);
+        }
+
+        .merchant-header {
+            background: linear-gradient(135deg, var(--secondary) 0%, #0d5a7d 100%);
+            padding: 24px;
             text-align: center;
+            position: relative;
+        }
+
+        .merchant-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 4px solid white;
+            object-fit: cover;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .merchant-avatar-placeholder {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 4px solid white;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 2.5rem;
+        }
+
+        .merchant-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .merchant-bons-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--primary);
+            color: #000;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .merchant-body {
+            padding: 20px;
+        }
+
+        .merchant-about {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        /* --- BONS LIST --- */
+        .bons-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bons-title {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .bon-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .bon-item:last-child {
+            border-bottom: none;
+        }
+
+        .bon-value {
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .bon-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .bon-category {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .bon-rarity {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .bon-rarity.rare {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        .bon-rarity.epic {
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+        }
+
+        .bon-rarity.legendary {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .bons-more {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* --- MERCHANT META --- */
+        .merchant-meta {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .meta-item strong {
+            color: var(--text-main);
+        }
+
+        .meta-item a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+
+        .meta-item a:hover {
+            text-decoration: underline;
+        }
+
+        /* --- EMPTY STATE --- */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* --- FOOTER --- */
+        .footer {
+            background: var(--bg-card);
             padding: 40px 20px;
-            color: #999;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: var(--primary);
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .merchants-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
+
+    <!-- HEADER -->
     <div class="header">
-        <h1>{{ market_name.replace('-', ' ').title() }}</h1>
-        <p>Le troc local, simple et zen ✨</p>
+        <div class="header-content">
+            <div class="header-icon">🏪</div>
+            <h1>{{ market_name.replace('-', ' ').title() }}</h1>
+            <p class="subtitle">Le troc local, simple et zen ✨</p>
+        </div>
     </div>
 
     <div class="container">
-        <!-- Téléchargement APK -->
+        
+        <!-- STATS -->
+        <div class="stats-row">
+            <div class="stat-card primary">
+                <div class="stat-icon">🏪</div>
+                <div class="stat-value">{{ total_merchants }}</div>
+                <div class="stat-label">Marchands</div>
+            </div>
+            <div class="stat-card secondary">
+                <div class="stat-icon">🎫</div>
+                <div class="stat-value">{{ total_bons }}</div>
+                <div class="stat-label">Bons actifs</div>
+            </div>
+        </div>
+
+        <!-- INFO BOX -->
+        <div class="info-box">
+            <div class="info-box-title">📡 Données temps réel</div>
+            <div class="info-box-text">Source: Relai Nostr Strfry — kind 0 (profils marchands) + kind 30303 (bons ẐEN signés)</div>
+        </div>
+
+        <!-- DOWNLOAD CARD -->
         <div class="download-card">
             <h2>📱 Télécharger l'application TrocZen</h2>
             
             {% if apk_info and 'filename' in apk_info %}
-                <p>Version {{ apk_info.version }} | {{ (apk_info.size / 1024 / 1024)|round(1) }} MB</p>
+                <p style="color: var(--text-secondary);">Version {{ apk_info.version }} | {{ (apk_info.size / 1024 / 1024)|round(1) }} MB</p>
                 
-                <div class="qr-code">
-                    <img src="/api/apk/qr" alt="QR Code APK" width="200" height="200">
-                    <p><small>Scannez avec votre téléphone</small></p>
+                <div class="qr-container">
+                    <img src="/api/apk/qr" alt="QR Code APK" width="180" height="180">
+                    <p>Scannez avec votre téléphone</p>
                 </div>
 
-                <a href="{{ apk_info.download_url }}" class="download-btn">
-                    ⬇️ Télécharger APK
-                </a>
+                <div>
+                    <a href="{{ apk_info.download_url }}" class="btn btn-primary">
+                        ⬇️ Télécharger APK
+                    </a>
+                </div>
 
-                <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                <div class="checksum">
                     <strong>Checksum SHA256:</strong><br>
-                    <code style="background: #f5f5f5; padding: 5px 10px; border-radius: 4px; font-size: 0.85em;">
-                        {{ apk_info.checksum }}
-                    </code>
-                </p>
+                    <code>{{ apk_info.checksum }}</code>
+                </div>
             {% else %}
-                <p>Aucune version APK disponible pour le moment.</p>
+                <p style="color: var(--text-muted);">Aucune version APK disponible pour le moment.</p>
             {% endif %}
         </div>
 
-        <!-- Statistiques du marché -->
-        <div class="download-card">
-            <h2>📊 Statistiques du marché</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; text-align: center;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px;">
-                    <div style="font-size: 2.5rem; font-weight: bold;">{{ total_merchants }}</div>
-                    <div style="font-size: 0.9rem; opacity: 0.9;">Marchands</div>
-                </div>
-                <div style="background: linear-gradient(135deg, #FFB347 0%, #FF8C42 100%); color: white; padding: 20px; border-radius: 12px;">
-                    <div style="font-size: 2.5rem; font-weight: bold;">{{ total_bons }}</div>
-                    <div style="font-size: 0.9rem; opacity: 0.9;">Bons actifs</div>
-                </div>
-            </div>
-            
-            <!-- Info Nostr -->
-            <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #667eea;">
-                <p style="margin: 0; font-size: 0.9rem; color: #333;">
-                    <strong>📡 Données temps réel</strong> depuis le relai Nostr Strfry
-                    <br><small style="color: #666;">kind 0 (profils marchands) + kind 30303 (bons ẐEN signés)</small>
-                </p>
-            </div>
-        </div>
-
-        <!-- Marchands participants -->
-        <div class="profiles-section">
-            <h2>🏪 Marchands participants</h2>
-            
-            <!-- Source des données -->
-            <div style="background: #f0f8ff; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 0.9em; color: #333;">
-                    <strong>📡 Source:</strong> Relai Nostr Strfry (ws://127.0.0.1:7777)
-                    <br><small style="color: #666;">kind 0 (profils) + kind 30303 (bons)</small>
-                </p>
+        <!-- MARCHANDS -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🏪</span>
+                <h2 class="section-title">Marchands participants</h2>
             </div>
             
             {% if merchants %}
-                <div class="profiles-grid">
+                <div class="merchants-grid">
                     {% for merchant in merchants %}
-                    <div class="profile-card">
-                        <div class="profile-header">
-                            {% if merchant.picture %}
-                                <img src="{{ merchant.picture }}" alt="{{ merchant.name }}" class="profile-logo">
-                            {% else %}
-                                <div class="profile-logo-placeholder">
-                                    {{ merchant.name[0]|upper if merchant.name else '?' }}
-                                </div>
+                    <div class="merchant-card">
+                        <div class="merchant-header">
+                            {% if merchant.bons_count %}
+                            <span class="merchant-bons-badge">{{ merchant.bons_count }} bon{{ 's' if merchant.bons_count > 1 else '' }}</span>
                             {% endif %}
-                            <div class="profile-name">{{ merchant.name or 'Marchand inconnu' }}</div>
-                        </div>
-                        <div class="profile-body">
-                            <div class="profile-description">
-                                {{ merchant.about or 'Aucune description' }}
+                            
+                            {% if merchant.picture %}
+                                <img src="{{ merchant.picture }}" alt="{{ merchant.name }}" class="merchant-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                            {% endif %}
+                            <div class="merchant-avatar-placeholder" {% if merchant.picture %}style="display:none;"{% endif %}>
+                                {{ merchant.name[0]|upper if merchant.name else '🏪' }}
                             </div>
+                            
+                            <div class="merchant-name">{{ merchant.name or 'Marchand inconnu' }}</div>
+                        </div>
+                        
+                        <div class="merchant-body">
+                            <p class="merchant-about">{{ merchant.about or 'Aucune description disponible' }}</p>
                             
                             <!-- Bons du marchand -->
                             {% if merchant.bons %}
-                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                                <strong style="color: #667eea;">Bons actifs: {{ merchant.bons_count }}</strong>
-                                <div style="margin-top: 10px; font-size: 0.85em; color: #666;">
-                                    {% for bon in merchant.bons[:3] %}
-                                    <div style="margin-bottom: 5px;">
-                                        💰 {{ bon.value }} ẐEN
-                                        <span style="color: #999;">({{ bon.category }})</span>
-                                        {% if bon.rarity != 'common' %}
-                                        <span style="color: #ff6b6b;">★ {{ bon.rarity }}</span>
+                            <div class="bons-section">
+                                <div class="bons-title">💰 Bons actifs</div>
+                                {% for bon in merchant.bons[:4] %}
+                                <div class="bon-item">
+                                    <span class="bon-value">{{ bon.value }} ẐEN</span>
+                                    <div class="bon-meta">
+                                        <span class="bon-category">{{ bon.category }}</span>
+                                        {% if bon.rarity and bon.rarity != 'common' %}
+                                        <span class="bon-rarity {{ bon.rarity }}">★ {{ bon.rarity }}</span>
                                         {% endif %}
                                     </div>
-                                    {% endfor %}
-                                    {% if merchant.bons_count > 3 %}
-                                    <div style="color: #999;">... et {{ merchant.bons_count - 3 }} autres</div>
-                                    {% endif %}
                                 </div>
+                                {% endfor %}
+                                {% if merchant.bons_count > 4 %}
+                                <div class="bons-more">... et {{ merchant.bons_count - 4 }} autres</div>
+                                {% endif %}
                             </div>
                             {% endif %}
                             
-                            <!-- Info Nostr -->
-                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 0.8em; color: #888;">
-                                <strong>Nostr:</strong> {{ merchant.pubkey[:16] }}...
+                            <!-- Meta Nostr -->
+                            <div class="merchant-meta">
+                                <div class="meta-item">
+                                    <span>🔑</span>
+                                    <span><strong>Nostr:</strong> {{ merchant.pubkey[:20] }}...</span>
+                                </div>
                                 {% if merchant.nip05 %}
-                                <br><strong>NIP-05:</strong> {{ merchant.nip05 }}
+                                <div class="meta-item">
+                                    <span>✓</span>
+                                    <span><strong>NIP-05:</strong> {{ merchant.nip05 }}</span>
+                                </div>
                                 {% endif %}
                                 {% if merchant.lud16 %}
-                                <br><strong>LNURL:</strong> {{ merchant.lud16 }}
+                                <div class="meta-item">
+                                    <span>⚡</span>
+                                    <span><strong>LNURL:</strong> {{ merchant.lud16 }}</span>
+                                </div>
+                                {% endif %}
+                                {% if merchant.website %}
+                                <div class="meta-item">
+                                    <span>🌐</span>
+                                    <a href="{{ merchant.website }}" target="_blank">Site web</a>
+                                </div>
                                 {% endif %}
                             </div>
-                            
-                            <!-- Liens -->
-                            {% if merchant.website %}
-                            <div style="margin-top: 10px;">
-                                <a href="{{ merchant.website }}" target="_blank" style="color: #667eea;">🌐 Site web</a>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
                 </div>
             {% else %}
                 <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                    </svg>
-                    <p>Aucun marchand enregistré pour le moment</p>
-                    <p style="font-size: 0.9em; color: #999; margin-top: 10px;">
-                        Les marchands doivent publier leurs profils sur Nostr (kind 0)
-                    </p>
+                    <div class="empty-icon">🏪</div>
+                    <div class="empty-title">Aucun marchand enregistré</div>
+                    <div class="empty-text">
+                        Les marchands doivent publier leurs profils sur Nostr (kind 0)<br>
+                        via l'application TrocZen
+                    </div>
                 </div>
             {% endif %}
         </div>
+
     </div>
 
+    <!-- FOOTER -->
     <div class="footer">
-        <p>TrocZen - Système de bons locaux décentralisé</p>
-        <p style="margin-top: 10px;">
-            <a href="/">API Backend</a> |
-            <a href="https://github.com/papiche/troczen">GitHub</a>
+        <div class="footer-links">
+            <a href="/" class="footer-link">🏠 Accueil</a>
+            <a href="https://github.com/papiche/troczen" class="footer-link" target="_blank">GitHub</a>
+            <a href="https://opencollective.com/monnaie-libre" class="footer-link" target="_blank">Soutenir</a>
+        </div>
+        <p class="footer-text">
+            🌻 TrocZen — Système de bons locaux décentralisé<br>
+            <small>Les bons ẐEN favorisent les circuits courts et le commerce local</small>
         </p>
     </div>
+
 </body>
 </html>

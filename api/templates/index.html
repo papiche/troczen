@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrocZen - L'échange local et libre</title>
+    <title>TrocZen - ẐEN - Bons locaux sécurisés</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -12,10 +12,16 @@
             --bg-card: #1E1E1E;
             --bg-input: #2A2A2A;
             --primary: #FFB347;
+            --primary-dark: #FF8C42;
             --secondary: #0A7EA4;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #F44336;
             --text-main: #FFFFFF;
             --text-secondary: #B0BEC5;
+            --text-muted: #666666;
             --radius: 16px;
+            --radius-sm: 8px;
             --padding: 20px;
         }
 
@@ -27,44 +33,64 @@
             color: var(--text-main);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
         }
 
-        /* --- LAYOUT --- */
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        /* --- HERO SECTION --- */
+        /* --- HEADER HERO --- */
         .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 60px 20px;
             text-align: center;
-            margin-bottom: 60px;
-            padding: 40px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
 
         .logo-icon {
             font-size: 80px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             display: inline-block;
-            filter: drop-shadow(0 0 15px rgba(255, 179, 71, 0.3));
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
         }
 
-        h1 {
-            font-size: 2.5rem;
-            color: var(--primary);
+        .hero h1 {
+            font-size: 3rem;
             font-weight: 700;
+            color: #000;
             margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.2);
         }
 
-        .subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
+        .hero .subtitle {
+            font-size: 1.3rem;
+            color: rgba(0,0,0,0.8);
             max-width: 600px;
             margin: 0 auto 30px;
         }
 
-        /* --- BUTTONS (Style ElevatedButton Flutter) --- */
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* --- BUTTONS --- */
         .btn {
             display: inline-flex;
             align-items: center;
@@ -80,109 +106,312 @@
             gap: 10px;
         }
 
-        .btn-primary {
-            background-color: var(--primary);
-            color: #000; /* Texte noir sur jaune comme dans l'app */
-            box-shadow: 0 4px 12px rgba(255, 179, 71, 0.3);
+        .btn-dark {
+            background-color: var(--bg-scaffold);
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
 
-        .btn-primary:hover {
+        .btn-dark:hover {
             transform: translateY(-2px);
-            background-color: #ffca7a;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
         }
 
-        .btn-secondary {
+        .btn-outline {
             background-color: transparent;
-            border: 2px solid var(--text-secondary);
-            color: var(--text-main);
+            border: 2px solid rgba(0,0,0,0.3);
+            color: #000;
         }
 
-        .btn-secondary:hover {
-            border-color: var(--primary);
-            color: var(--primary);
+        .btn-outline:hover {
+            background-color: rgba(0,0,0,0.1);
         }
 
-        /* --- CARDS (Style PaniniCard / Dashboard) --- */
-        .card {
-            background-color: var(--bg-card);
-            border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.05);
+        /* --- LAYOUT --- */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
         }
 
-        .section-title {
-            color: var(--primary);
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* --- STATS SECTION --- */
+        .stats-section {
+            margin-top: -30px;
+            position: relative;
+            z-index: 2;
+            margin-bottom: 40px;
         }
 
-        /* --- STATS GRID --- */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 16px;
         }
 
-        .stat-item {
-            background-color: rgba(255,255,255,0.05);
-            padding: 16px;
-            border-radius: 12px;
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px 16px;
             text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
         }
 
         .stat-value {
-            font-size: 2rem;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
+        /* --- SECTION TITLES --- */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section-icon {
+            font-size: 1.8rem;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
             font-weight: bold;
             color: var(--text-main);
         }
 
-        .stat-label {
-            font-size: 0.8rem;
+        /* --- CARDS --- */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* --- MERCHANTS GRID --- */
+        .merchants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .merchant-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .merchant-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(255, 179, 71, 0.15);
+        }
+
+        .merchant-header {
+            background: linear-gradient(135deg, var(--secondary) 0%, #0d5a7d 100%);
+            padding: 24px;
+            text-align: center;
+            position: relative;
+        }
+
+        .merchant-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid white;
+            object-fit: cover;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .merchant-avatar-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid white;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 2rem;
+        }
+
+        .merchant-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .merchant-bons-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--primary);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .merchant-body {
+            padding: 20px;
+        }
+
+        .merchant-about {
             color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .merchant-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .merchant-tag {
+            background: rgba(255, 179, 71, 0.15);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            border: 1px solid rgba(255, 179, 71, 0.3);
         }
 
         /* --- MARKETS LIST --- */
+        .markets-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
         .market-chip {
             display: inline-flex;
             align-items: center;
-            background-color: rgba(10, 126, 164, 0.2);
+            background: rgba(10, 126, 164, 0.2);
             border: 1px solid var(--secondary);
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
             color: white;
             text-decoration: none;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            transition: 0.2s;
-        }
-        .market-chip:hover {
-            background-color: var(--secondary);
-        }
-        
-        .market-chip.hackathon {
-            border-color: var(--primary);
-            background-color: rgba(255, 179, 71, 0.15);
-            color: var(--primary);
-            font-weight: bold;
-        }
-        .market-chip.hackathon:hover {
-            background-color: rgba(255, 179, 71, 0.3);
+            transition: all 0.2s;
+            font-weight: 500;
         }
 
-        /* --- FORMS (Style TextFormField Flutter) --- */
+        .market-chip:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .market-chip.hackathon {
+            border-color: var(--primary);
+            background: rgba(255, 179, 71, 0.2);
+            color: var(--primary);
+        }
+
+        .market-chip.hackathon:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        /* --- INFO BOX --- */
+        .info-box {
+            background: rgba(10, 126, 164, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 16px 20px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin-bottom: 20px;
+        }
+
+        .info-box.primary {
+            background: rgba(255, 179, 71, 0.1);
+            border-left-color: var(--primary);
+        }
+
+        .info-box-title {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .info-box-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* --- FEATURES SECTION --- */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+
+        .feature-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .feature-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* --- FORM --- */
         .form-group { margin-bottom: 16px; }
         
         input, select, textarea {
             width: 100%;
-            background-color: var(--bg-input);
+            background: var(--bg-input);
             border: 1px solid #444;
             color: white;
             padding: 16px;
@@ -197,191 +426,311 @@
             border-color: var(--primary);
         }
 
-        /* --- DEV ZONE (Bottom Sheet style) --- */
-        .dev-zone {
-            margin-top: 60px;
-            border-top: 1px solid #333;
-            padding-top: 40px;
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted);
         }
 
-        .dev-title {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            color: #555;
-            margin-bottom: 20px;
+        /* --- QR OVERLAY --- */
+        .qr-overlay {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-top: 20px;
+            display: none;
             text-align: center;
         }
 
-        .endpoint {
-            font-family: 'Courier New', monospace;
-            background: #000;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            font-size: 0.85rem;
+        .qr-overlay.visible {
+            display: block;
+        }
+
+        .qr-overlay p {
+            color: #333;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        /* --- FOOTER --- */
+        .footer {
+            background: var(--bg-card);
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .footer-links {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        .method {
-            font-weight: bold;
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 4px;
+        .footer-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
         }
-        .get { background: #1b5e20; color: #a5d6a7; }
-        .post { background: #0d47a1; color: #90caf9; }
 
-        .hidden { display: none; }
-        
-        /* QR Overlay */
-        #qrOverlay {
-            background: white;
-            padding: 10px;
-            border-radius: 12px;
-            margin-top: 20px;
-            display: inline-block;
+        .footer-link:hover {
+            color: var(--primary);
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* --- LOADING --- */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--bg-input);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 600px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero .subtitle {
+                font-size: 1rem;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+            
+            .merchants-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        
-        <!-- HERO -->
-        <div class="hero">
+    <!-- HERO HEADER -->
+    <div class="hero">
+        <div class="hero-content">
             <div class="logo-icon">🌻</div>
-            <h1>TrocZen</h1>
-            <p class="subtitle">Le troc local, simple et zen.</p>
+            <h1>ẐEN — Bons locaux sécurisés</h1>
+            <p class="subtitle">Une application décentralisée pour soutenir les producteurs et commerçants locaux</p>
             
-            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <!-- ID ajouté pour ciblage JS -->
-                <a href="#" id="download-apk-btn" class="btn btn-primary">
-                    <span style="font-size: 1.2rem;">⬇️</span> Télécharger APK
+            <div class="hero-buttons">
+                <a href="#" id="download-apk-btn" class="btn btn-dark">
+                    <span>⬇️</span> Télécharger l'app
                 </a>
-                <button onclick="toggleQR()" class="btn btn-secondary">
+                <button onclick="toggleQR()" class="btn btn-outline">
                     📱 QR Code
                 </button>
             </div>
 
-            <div id="qrOverlay" class="hidden">
+            <div id="qrOverlay" class="qr-overlay">
                 <img src="/api/apk/qr" alt="QR Code" width="180" height="180">
-                <p style="color: black; font-size: 0.8rem; margin-top: 5px;">Scannez pour installer</p>
+                <p>Scannez pour installer TrocZen</p>
             </div>
         </div>
+    </div>
 
-        <!-- DASHBOARD DATA -->
-        <div class="card">
-            <div class="section-title">
-                <span style="font-size:1.5rem">📊</span> État du Réseau Nostr
-            </div>
-            
+    <div class="container">
+        
+        <!-- STATS SECTION -->
+        <div class="stats-section">
             <div class="stats-grid">
-                <div class="stat-item">
+                <div class="stat-card">
+                    <div class="stat-icon">🏪</div>
                     <div class="stat-value" id="stat-markets">-</div>
                     <div class="stat-label">Marchés</div>
                 </div>
-                <div class="stat-item">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
                     <div class="stat-value" id="stat-profiles">-</div>
                     <div class="stat-label">Commerçants</div>
                 </div>
-                <div class="stat-item">
+                <div class="stat-card">
+                    <div class="stat-icon">🎫</div>
                     <div class="stat-value" id="stat-bons">-</div>
                     <div class="stat-label">Bons Actifs</div>
                 </div>
-                <div class="stat-item">
+                <div class="stat-card">
+                    <div class="stat-icon">📱</div>
                     <div class="stat-value" id="apk-version">v...</div>
-                    <div class="stat-label">Version App</div>
+                    <div class="stat-label">Version</div>
                 </div>
-            </div>
-
-            <!-- Source des données -->
-            <div style="background: rgba(10, 126, 164, 0.1); border-left: 3px solid var(--secondary); padding: 12px; margin: 20px 0; border-radius: 8px;">
-                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">
-                    <strong style="color: var(--primary);">📡 Source:</strong> Relai Nostr Strfry
-                    <br><small>kind 0 (profils marchands) + kind 30303 (bons ẐEN)</small>
-                </p>
-            </div>
-
-            <div style="margin-top: 20px;">
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Marchés actifs détectés :</p>
-                <div id="markets-list">Chargement...</div>
             </div>
         </div>
 
-        <!-- DERNIERS MARCHANDS (Nostr kind 0) -->
-        <div class="card">
-            <div class="section-title">
-                <span style="font-size:1.5rem">🏪</span> Derniers Marchands
+        <!-- MARCHÉS ACTIFS -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🌐</span>
+                <h2 class="section-title">Marchés actifs</h2>
             </div>
-            <div id="merchants-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
-                <p style="color: var(--text-secondary);">Chargement depuis Nostr...</p>
+            
+            <div class="info-box">
+                <div class="info-box-title">📡 Données temps réel</div>
+                <div class="info-box-text">Source: Relai Nostr Strfry — kind 0 (profils) + kind 30303 (bons ẐEN)</div>
+            </div>
+            
+            <div class="markets-list" id="markets-list">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Chargement des marchés...
+                </div>
+            </div>
+        </div>
+
+        <!-- DERNIERS MARCHANDS -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">🏪</span>
+                <h2 class="section-title">Derniers Marchands</h2>
+            </div>
+            
+            <div class="merchants-grid" id="merchants-list">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Chargement depuis Nostr...
+                </div>
+            </div>
+        </div>
+
+        <!-- COMMENT ÇA MARCHE -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">💡</span>
+                <h2 class="section-title">Comment ça marche</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <div class="feature-title">Cryptographie</div>
+                    <div class="feature-text">Chaque bon est un objet cryptographique unique (P1/P2/P3) signé par son émetteur.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-title">Double Scan</div>
+                    <div class="feature-text">Un double scan atomique garantit que le bon ne peut pas être dupliqué.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📡</div>
+                    <div class="feature-title">Réseau Nostr</div>
+                    <div class="feature-text">Le réseau local (P3) assure validation et traçabilité sans serveur central.</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">offline</div>
+                    <div class="feature-icon">✈️</div>
+                    <div class="feature-title">Offline First</div>
+                    <div class="feature-text">Fonctionne même sans réseau mobile. Les transactions se synchronisent automatiquement.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- POUR LES COMMERÇANTS -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">📊</span>
+                <h2 class="section-title">Pour les commerçants</h2>
+            </div>
+            
+            <div class="card">
+                <ul style="list-style: none; padding: 0;">
+                    <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px;">
+                        <span style="color: var(--success);">✓</span>
+                        <span>Recevez les bons des clients instantanément</span>
+                    </li>
+                    <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px;">
+                        <span style="color: var(--success);">✓</span>
+                        <span>Validez les bons avec votre smartphone grâce au double scan</span>
+                    </li>
+                    <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px;">
+                        <span style="color: var(--success);">✓</span>
+                        <span>Participez au réseau local pour propager les bons</span>
+                    </li>
+                    <li style="padding: 12px 0; display: flex; align-items: center; gap: 12px;">
+                        <span style="color: var(--success);">✓</span>
+                        <span>Conservez un historique simple pour vos déclarations</span>
+                    </li>
+                </ul>
             </div>
         </div>
 
         <!-- FEEDBACK FORM -->
-        <div class="card">
-            <div class="section-title">
-                <span style="font-size:1.5rem">💬</span> Feedback & Support
-            </div>
-            <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.95rem;">
-                Aidez-nous à améliorer TrocZen. Vos retours créent directement des tâches pour les développeurs.
-            </p>
-
-            <form id="feedbackForm">
-                <div class="form-group">
-                    <select id="fbType">
-                        <option value="bug">🐛 Signaler un bug</option>
-                        <option value="feature">✨ Suggérer une idée</option>
-                        <option value="question">❓ Question</option>
-                        <option value="feedback">👍 Avis général</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <input type="text" id="fbTitle" placeholder="Titre (ex: Problème d'affichage...)" required>
-                </div>
-
-                <div class="form-group">
-                    <textarea id="fbDesc" rows="4" placeholder="Description détaillée..." required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <input type="email" id="fbEmail" placeholder="Votre email (optionnel)">
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;" id="fbSubmitBtn">
-                    Envoyer le feedback
-                </button>
-                <div id="fbStatus" style="margin-top: 15px; text-align: center; font-weight: bold;"></div>
-            </form>
-        </div>
-
-        <!-- DEV ZONE -->
-        <div class="dev-zone">
-            <div class="dev-title">Documentation API & Services</div>
-            
-            <div class="endpoint">
-                <span class="method get">GET</span> <span style="color:#aaa">/api/apk/latest</span>
-            </div>
-            <div class="endpoint">
-                <span class="method post">POST</span> <span style="color:#aaa">/api/upload/image</span> (multipart)
-            </div>
-            <div class="endpoint">
-                <span class="method get">GET</span> <span style="color:#aaa">/api/nostr/marche/:id</span>
+        <div class="section">
+            <div class="section-header">
+                <span class="section-icon">💬</span>
+                <h2 class="section-title">Feedback & Support</h2>
             </div>
             
-            <p style="text-align: center; color: #444; font-size: 0.8rem; margin-top: 20px;">
-                TrocZen Backend v1.0.0 • Python Flask • Nostr Relay • IPFS
-            </p>
+            <div class="card">
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Aidez-nous à améliorer TrocZen. Vos retours créent directement des tâches pour les développeurs.
+                </p>
+
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <select id="fbType">
+                            <option value="bug">🐛 Signaler un bug</option>
+                            <option value="feature">✨ Suggérer une idée</option>
+                            <option value="question">❓ Question</option>
+                            <option value="feedback">👍 Avis général</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="text" id="fbTitle" placeholder="Titre (ex: Problème d'affichage...)" required>
+                    </div>
+
+                    <div class="form-group">
+                        <textarea id="fbDesc" rows="4" placeholder="Description détaillée..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="email" id="fbEmail" placeholder="Votre email (optionnel)">
+                    </div>
+
+                    <button type="submit" class="btn btn-dark" style="width: 100%; background: var(--primary); color: #000;" id="fbSubmitBtn">
+                        Envoyer le feedback
+                    </button>
+                    <div id="fbStatus" style="margin-top: 15px; text-align: center; font-weight: bold;"></div>
+                </form>
+            </div>
         </div>
 
     </div>
 
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-links">
+            <a href="https://github.com/papiche/troczen" class="footer-link" target="_blank">GitHub</a>
+            <a href="https://opencollective.com/monnaie-libre" class="footer-link" target="_blank">Soutenir le projet</a>
+            <a href="/api/apk/latest" class="footer-link">Télécharger APK</a>
+        </div>
+        <p class="footer-text">
+            🌻 TrocZen v1.0 — Système de bons locaux décentralisé<br>
+            <small>Python Flask • Nostr Relay • IPFS • Flutter</small>
+        </p>
+    </div>
+
     <script>
         function toggleQR() {
-            document.getElementById('qrOverlay').classList.toggle('hidden');
+            document.getElementById('qrOverlay').classList.toggle('visible');
         }
 
         // Chargement Stats
@@ -389,47 +738,46 @@
             try {
                 // 1. Stats Générales
                 const stats = await (await fetch('/api/stats')).json();
-                document.getElementById('stat-markets').textContent = stats.market_count;
-                document.getElementById('stat-profiles').textContent = stats.profile_count;
+                document.getElementById('stat-markets').textContent = stats.market_count || 0;
+                document.getElementById('stat-profiles').textContent = stats.profile_count || 0;
 
                 // 2. Gestion des Marchés
                 const marketsDiv = document.getElementById('markets-list');
                 
-                // Toujours afficher le lien Hackathon par défaut
-                let marketsHtml = `<a href="/market/HACKATHON" class="market-chip hackathon" target="_blank">🏆 HACKATHON</a>`;
+                let marketsHtml = `<a href="/market/HACKATHON" class="market-chip hackathon">🏆 HACKATHON</a>`;
 
                 if (stats.markets && stats.markets.length > 0) {
                     marketsHtml += stats.markets
-                        .filter(m => m !== 'HACKATHON') // Éviter doublon
-                        .map(m => `<a href="/market/${m}" class="market-chip" target="_blank">🏪 ${m}</a>`)
+                        .filter(m => m !== 'HACKATHON')
+                        .map(m => `<a href="/market/${m}" class="market-chip">🏪 ${m}</a>`)
                         .join('');
-                } else {
-                    marketsHtml += '<span style="color:#666; font-size:0.9em; margin-left:10px;">(Aucun autre marché détecté)</span>';
                 }
+                
                 marketsDiv.innerHTML = marketsHtml;
 
-                // 3. Gestion APK Link
+                // 3. Gestion APK
                 const apk = await (await fetch('/api/apk/latest')).json();
                 if (!apk.error) {
                     document.getElementById('apk-version').textContent = 'v' + apk.version;
-                    
-                    // MISE A JOUR DU LIEN DE TÉLÉCHARGEMENT
                     const downloadBtn = document.getElementById('download-apk-btn');
                     if (apk.download_url) {
                         downloadBtn.href = apk.download_url;
                     }
                 }
                 
-                // 4. Charger les données Nostr pour le marché HACKATHON (démo)
+                // 4. Charger les données Nostr
                 loadNostrMerchants('HACKATHON');
                 
             } catch (e) {
                 console.warn("Offline or API error", e);
+                document.getElementById('markets-list').innerHTML = '<p style="color: var(--text-muted);">Impossible de charger les marchés</p>';
             }
         }
         
-        // Charger les marchands depuis Nostr pour un marché
+        // Charger les marchands depuis Nostr
         async function loadNostrMerchants(marketName) {
+            const merchantsDiv = document.getElementById('merchants-list');
+            
             try {
                 const response = await fetch(`/api/nostr/marche/${marketName}`);
                 const data = await response.json();
@@ -440,37 +788,47 @@
                     // Mettre à jour les stats de bons
                     document.getElementById('stat-bons').textContent = marcheData.total_bons || 0;
                     
-                    // Afficher les marchands
-                    const merchantsDiv = document.getElementById('merchants-list');
-                    
                     if (marcheData.merchants && marcheData.merchants.length > 0) {
                         merchantsDiv.innerHTML = marcheData.merchants.slice(0, 6).map(m => `
-                            <div style="background: var(--bg-input); border-radius: 12px; padding: 15px; text-align: center;">
-                                ${m.picture
-                                    ? `<img src="${m.picture}" alt="${m.name}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">`
-                                    : `<div style="width: 60px; height: 60px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 1.5rem;">🏪</div>`
-                                }
-                                <p style="margin: 10px 0 5px; font-weight: bold; color: var(--text-main);">${m.name || 'Anonyme'}</p>
-                                <p style="font-size: 0.8rem; color: var(--text-secondary);">${m.bons_count || 0} bon${(m.bons_count || 0) > 1 ? 's' : ''}</p>
-                                ${m.about ? `<p style="font-size: 0.75rem; color: #666; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.about.substring(0, 50)}${m.about.length > 50 ? '...' : ''}</p>` : ''}
+                            <div class="merchant-card">
+                                <div class="merchant-header">
+                                    ${m.bons_count ? `<span class="merchant-bons-badge">${m.bons_count} bon${m.bons_count > 1 ? 's' : ''}</span>` : ''}
+                                    ${m.picture 
+                                        ? `<img src="${m.picture}" alt="${m.name}" class="merchant-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`
+                                        : ''
+                                    }
+                                    <div class="merchant-avatar-placeholder" ${m.picture ? 'style="display:none;"' : ''}>🏪</div>
+                                    <div class="merchant-name">${m.name || 'Marchand'}</div>
+                                </div>
+                                <div class="merchant-body">
+                                    <p class="merchant-about">${m.about || 'Aucune description disponible'}</p>
+                                    <div class="merchant-meta">
+                                        ${m.nip05 ? `<span class="merchant-tag">✓ ${m.nip05}</span>` : ''}
+                                        ${m.website ? `<span class="merchant-tag">🌐 Site web</span>` : ''}
+                                    </div>
+                                </div>
                             </div>
                         `).join('');
                     } else {
                         merchantsDiv.innerHTML = `
-                            <p style="color: var(--text-secondary); grid-column: 1/-1; text-align: center;">
-                                Aucun marchand détecté sur le relai Nostr.<br>
-                                <small>Les profils sont publiés via l'app Flutter (kind 0)</small>
-                            </p>
+                            <div class="card" style="grid-column: 1/-1; text-align: center;">
+                                <p style="color: var(--text-secondary);">
+                                    🏪 Aucun marchand détecté sur le relai Nostr.<br>
+                                    <small>Les profils sont publiés via l'app Flutter (kind 0)</small>
+                                </p>
+                            </div>
                         `;
                     }
                 }
             } catch (e) {
                 console.warn("Nostr data unavailable", e);
-                document.getElementById('merchants-list').innerHTML = `
-                    <p style="color: var(--text-secondary); grid-column: 1/-1; text-align: center;">
-                        ⚠️ Impossible de charger les données Nostr<br>
-                        <small>Vérifiez que le relai Strfry est actif (ws://127.0.0.1:7777)</small>
-                    </p>
+                merchantsDiv.innerHTML = `
+                    <div class="card" style="grid-column: 1/-1; text-align: center;">
+                        <p style="color: var(--warning);">
+                            ⚠️ Impossible de charger les données Nostr<br>
+                            <small style="color: var(--text-muted);">Vérifiez que le relai Strfry est actif (ws://127.0.0.1:7777)</small>
+                        </p>
+                    </div>
                 `;
             }
         }
@@ -505,15 +863,15 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    status.innerHTML = `<span style="color: #4CAF50">✅ Feedback envoyé (Issue #${data.issue_number})</span>`;
+                    status.innerHTML = `<span style="color: var(--success)">✅ Feedback envoyé (Issue #${data.issue_number})</span>`;
                     document.getElementById('feedbackForm').reset();
                 } else {
                     let msg = data.error;
                     if(msg.includes('404')) msg = "Erreur configuration GitHub (Repo introuvable)";
-                    status.innerHTML = `<span style="color: #F44336">❌ ${msg}</span>`;
+                    status.innerHTML = `<span style="color: var(--error)">❌ ${msg}</span>`;
                 }
             } catch (err) {
-                status.innerHTML = `<span style="color: #F44336">❌ Erreur réseau</span>`;
+                status.innerHTML = `<span style="color: var(--error)">❌ Erreur réseau</span>`;
             } finally {
                 btn.disabled = false;
                 btn.style.opacity = "1";
