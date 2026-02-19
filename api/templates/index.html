@@ -3,379 +3,393 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrocZen - Monnaie Locale Libre</title>
+    <title>TrocZen - L'échange local et libre</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
+            /* Palette TrocZen Flutter Exacte */
+            --bg-scaffold: #121212;
+            --bg-card: #1E1E1E;
+            --bg-input: #2A2A2A;
             --primary: #FFB347;
-            --primary-dark: #e09220;
             --secondary: #0A7EA4;
-            --bg-light: #f8f9fa;
-            --text-dark: #2d3436;
-            --text-light: #636e72;
+            --text-main: #FFFFFF;
+            --text-secondary: #B0BEC5;
             --radius: 16px;
+            --padding: 20px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-dark);
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-scaffold);
+            color: var(--text-main);
             line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- LAYOUT --- */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
         }
 
         /* --- HERO SECTION --- */
         .hero {
-            background: linear-gradient(135deg, #1e1e1e 0%, #2d3436 100%);
-            color: white;
-            padding: 80px 20px;
             text-align: center;
-            border-bottom-left-radius: 50px;
-            border-bottom-right-radius: 50px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 60px;
+            padding: 40px 20px;
         }
 
-        .logo { font-size: 4rem; margin-bottom: 10px; display: block; }
-        h1 { font-size: 2.5rem; margin-bottom: 10px; font-weight: 800; letter-spacing: -1px; }
-        .subtitle { font-size: 1.2rem; opacity: 0.8; max-width: 600px; margin: 0 auto 40px; }
-
-        .cta-group {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
+        .logo-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            display: inline-block;
+            filter: drop-shadow(0 0 15px rgba(255, 179, 71, 0.3));
         }
 
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        /* --- BUTTONS (Style ElevatedButton Flutter) --- */
         .btn {
-            padding: 15px 30px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
             gap: 10px;
         }
 
         .btn-primary {
             background-color: var(--primary);
-            color: #1e1e1e;
-            box-shadow: 0 4px 15px rgba(255, 179, 71, 0.4);
+            color: #000; /* Texte noir sur jaune comme dans l'app */
+            box-shadow: 0 4px 12px rgba(255, 179, 71, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            background-color: #ffca7a;
         }
 
         .btn-secondary {
-            background-color: rgba(255,255,255,0.1);
-            color: white;
-            backdrop-filter: blur(5px);
+            background-color: transparent;
+            border: 2px solid var(--text-secondary);
+            color: var(--text-main);
         }
 
-        .btn:hover { transform: translateY(-2px); }
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
 
-        /* --- CONTENT CONTAINER --- */
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 40px 20px;
+        /* --- CARDS (Style PaniniCard / Dashboard) --- */
+        .card {
+            background-color: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
         .section-title {
-            font-size: 1.5rem;
+            color: var(--primary);
+            font-size: 1.2rem;
+            font-weight: bold;
             margin-bottom: 20px;
-            color: var(--text-dark);
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        /* --- CARDS GRID --- */
-        .grid {
+        /* --- STATS GRID --- */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 60px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
         }
 
-        .card {
-            background: white;
-            border-radius: var(--radius);
-            padding: 25px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
+        .stat-item {
+            background-color: rgba(255,255,255,0.05);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
         }
 
-        .card:hover { transform: translateY(-3px); }
-
-        .card h3 { margin-bottom: 10px; color: var(--secondary); }
-        .card p { color: var(--text-light); font-size: 0.95rem; margin-bottom: 15px; }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--text-dark);
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text-main);
         }
 
-        /* --- FEEDBACK FORM --- */
-        .feedback-box {
-            background: white;
-            border-radius: var(--radius);
-            padding: 30px;
-            border-left: 5px solid var(--secondary);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
-        .form-group { flex: 1; margin-bottom: 15px; }
+        /* --- MARKETS LIST --- */
+        .market-chip {
+            display: inline-flex;
+            align-items: center;
+            background-color: rgba(10, 126, 164, 0.2);
+            border: 1px solid var(--secondary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            text-decoration: none;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: 0.2s;
+        }
+        .market-chip:hover {
+            background-color: var(--secondary);
+        }
+
+        /* --- FORMS (Style TextFormField Flutter) --- */
+        .form-group { margin-bottom: 16px; }
         
         input, select, textarea {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            background: #f9f9f9;
-            font-family: inherit;
-            font-size: 0.95rem;
+            background-color: var(--bg-input);
+            border: 1px solid #444;
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 1rem;
+            transition: 0.2s;
         }
 
         input:focus, select:focus, textarea:focus {
-            outline: 2px solid var(--secondary);
-            background: white;
+            outline: none;
+            border-color: var(--primary);
         }
 
-        /* --- DEV ZONE (Dark Theme) --- */
+        /* --- DEV ZONE (Bottom Sheet style) --- */
         .dev-zone {
-            background: #1e1e1e;
-            color: #bdc3c7;
-            padding: 60px 20px;
             margin-top: 60px;
+            border-top: 1px solid #333;
+            padding-top: 40px;
         }
 
-        .dev-header {
+        .dev-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: #555;
+            margin-bottom: 20px;
             text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 20px;
         }
 
         .endpoint {
-            background: #2d3436;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
             font-family: 'Courier New', monospace;
+            background: #000;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
         }
 
         .method {
-            padding: 4px 8px;
-            border-radius: 4px;
             font-weight: bold;
-            font-size: 0.8em;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
-        .get { background: #27ae60; color: white; }
-        .post { background: #2980b9; color: white; }
+        .get { background: #1b5e20; color: #a5d6a7; }
+        .post { background: #0d47a1; color: #90caf9; }
 
-        .url { color: #ecf0f1; }
-        .desc { color: #7f8c8d; font-size: 0.9em; margin-left: auto; }
-
-        /* --- UTILS --- */
-        .badge {
-            background: #e1f5fe; color: #0288d1;
-            padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;
-        }
         .hidden { display: none; }
         
-        /* QR Code Overlay */
+        /* QR Overlay */
         #qrOverlay {
-            margin-top: 20px;
             background: white;
-            padding: 15px;
+            padding: 10px;
             border-radius: 12px;
+            margin-top: 20px;
             display: inline-block;
         }
     </style>
 </head>
 <body>
 
-    <!-- HERO USER -->
-    <div class="hero">
-        <span class="logo">🌻</span>
-        <h1>TrocZen API</h1>
-        <p class="subtitle">L'infrastructure décentralisée pour vos échanges locaux.</p>
-        
-        <div class="cta-group">
-            <a href="/api/apk/latest" class="btn btn-primary">
-                ⬇️ Télécharger l'App (APK)
-            </a>
-            <button onclick="toggleQR()" class="btn btn-secondary">
-                📱 QR Code
-            </button>
-        </div>
-
-        <div id="qrOverlay" class="hidden">
-            <img src="/api/apk/qr" alt="QR Code" width="150" height="150">
-            <p style="color:#333; font-size:0.8rem; margin-top:5px">Scannez pour installer</p>
-        </div>
-    </div>
-
     <div class="container">
-        <!-- STATS & MARCHÉS -->
-        <div class="section-title">
-            <span>📊</span> État du réseau
-        </div>
         
-        <div class="grid">
-            <div class="card">
-                <h3>Marchés Actifs</h3>
-                <div class="stat-number" id="stat-markets">-</div>
-                <p>Détectés via Nostr</p>
-                <div id="markets-list" style="font-size: 0.9em;"></div>
+        <!-- HERO -->
+        <div class="hero">
+            <div class="logo-icon">🌻</div>
+            <h1>TrocZen</h1>
+            <p class="subtitle">Le troc local, simple et zen.</p>
+            
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <a href="/api/apk/latest" class="btn btn-primary">
+                    <span style="font-size: 1.2rem;">⬇️</span> Télécharger APK
+                </a>
+                <button onclick="toggleQR()" class="btn btn-secondary">
+                    📱 QR Code
+                </button>
+            </div>
+
+            <div id="qrOverlay" class="hidden">
+                <img src="/api/apk/qr" alt="QR Code" width="180" height="180">
+                <p style="color: black; font-size: 0.8rem; margin-top: 5px;">Scannez pour installer</p>
+            </div>
+        </div>
+
+        <!-- DASHBOARD DATA -->
+        <div class="card">
+            <div class="section-title">
+                <span style="font-size:1.5rem">📊</span> État du Réseau
             </div>
             
-            <div class="card">
-                <h3>Commerçants</h3>
-                <div class="stat-number" id="stat-profiles">-</div>
-                <p>Profils synchronisés</p>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-markets">-</div>
+                    <div class="stat-label">Marchés</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-profiles">-</div>
+                    <div class="stat-label">Commerçants</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-logos">-</div>
+                    <div class="stat-label">Logos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="apk-version">v...</div>
+                    <div class="stat-label">Version App</div>
+                </div>
             </div>
 
-            <div class="card">
-                <h3>Version APK</h3>
-                <div class="stat-number" style="font-size: 1.5rem;" id="apk-version">...</div>
-                <p id="apk-size" style="margin-bottom:0">Taille: -</p>
+            <div style="margin-top: 20px;">
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Marchés actifs détectés :</p>
+                <div id="markets-list">Chargement...</div>
             </div>
         </div>
 
-        <!-- FEEDBACK -->
-        <div class="section-title">
-            <span>💬</span> Support & Feedback
-        </div>
-        
-        <div class="feedback-box">
-            <p style="margin-bottom: 20px;">Un bug ? Une suggestion ? Dites-le nous directement.</p>
+        <!-- FEEDBACK FORM -->
+        <div class="card">
+            <div class="section-title">
+                <span style="font-size:1.5rem">💬</span> Feedback & Support
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 0.95rem;">
+                Aidez-nous à améliorer TrocZen. Vos retours créent directement des tâches pour les développeurs.
+            </p>
+
             <form id="feedbackForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <select id="fbType">
-                            <option value="bug">🐛 Signaler un bug</option>
-                            <option value="feature">✨ Suggérer une idée</option>
-                            <option value="question">❓ Question</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="flex: 2;">
-                        <input type="text" id="fbTitle" placeholder="Sujet du message..." required>
-                    </div>
-                </div>
-                
                 <div class="form-group">
-                    <textarea id="fbDesc" rows="4" placeholder="Détails (contexte, étapes pour reproduire...)" required></textarea>
+                    <select id="fbType">
+                        <option value="bug">🐛 Signaler un bug</option>
+                        <option value="feature">✨ Suggérer une idée</option>
+                        <option value="question">❓ Question</option>
+                        <option value="feedback">👍 Avis général</option>
+                    </select>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <input type="email" id="fbEmail" placeholder="Votre email (optionnel)">
-                    </div>
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-primary" style="width: 100%; border-radius: 8px;" id="fbSubmitBtn">Envoyer</button>
-                    </div>
+                <div class="form-group">
+                    <input type="text" id="fbTitle" placeholder="Titre (ex: Problème d'affichage...)" required>
                 </div>
-                <div id="fbStatus"></div>
+
+                <div class="form-group">
+                    <textarea id="fbDesc" rows="4" placeholder="Description détaillée..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <input type="email" id="fbEmail" placeholder="Votre email (optionnel)">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="fbSubmitBtn">
+                    Envoyer le feedback
+                </button>
+                <div id="fbStatus" style="margin-top: 15px; text-align: center; font-weight: bold;"></div>
             </form>
         </div>
-    </div>
 
-    <!-- DEV ZONE -->
-    <div class="dev-zone">
-        <div class="container">
-            <div class="dev-header">
-                <h2>🛠️ Zone Développeurs</h2>
-                <p>Documentation des endpoints API & Statut des services</p>
+        <!-- DEV ZONE -->
+        <div class="dev-zone">
+            <div class="dev-title">Documentation API & Services</div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> <span style="color:#aaa">/api/apk/latest</span>
             </div>
-
-            <div class="grid">
-                <div>
-                    <h3>Distribution</h3>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url">/api/apk/latest</span>
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url">/api/apk/qr</span>
-                    </div>
-                </div>
-
-                <div>
-                    <h3>Nostr & Data</h3>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url">/api/nostr/marche/:id</span>
-                    </div>
-                    <div class="endpoint">
-                        <span class="method post">POST</span>
-                        <span class="url">/api/upload/image</span>
-                    </div>
-                </div>
+            <div class="endpoint">
+                <span class="method post">POST</span> <span style="color:#aaa">/api/upload/image</span> (multipart)
             </div>
-
-            <div style="text-align: center; margin-top: 40px; font-size: 0.9em; opacity: 0.6;">
-                Backend v1.0.0 • IPFS Enabled • Nostr Relay Connected
+            <div class="endpoint">
+                <span class="method get">GET</span> <span style="color:#aaa">/api/nostr/marche/:id</span>
             </div>
+            
+            <p style="text-align: center; color: #444; font-size: 0.8rem; margin-top: 20px;">
+                TrocZen Backend v1.0.0 • Python Flask • Nostr Relay • IPFS
+            </p>
         </div>
+
     </div>
 
     <script>
-        // Toggle QR Code
         function toggleQR() {
-            const qr = document.getElementById('qrOverlay');
-            qr.classList.toggle('hidden');
+            document.getElementById('qrOverlay').classList.toggle('hidden');
         }
 
-        // Chargement des données
+        // Chargement Stats
         async function loadData() {
             try {
-                // Stats
-                const statsRes = await fetch('/api/stats');
-                const stats = await statsRes.json();
-                
+                const stats = await (await fetch('/api/stats')).json();
                 document.getElementById('stat-markets').textContent = stats.market_count;
                 document.getElementById('stat-profiles').textContent = stats.profile_count;
+                document.getElementById('stat-logos').textContent = stats.logo_count;
 
-                // Liste des marchés
                 const marketsDiv = document.getElementById('markets-list');
                 if (stats.markets && stats.markets.length > 0) {
                     marketsDiv.innerHTML = stats.markets.map(m => 
-                        `<a href="/market/${m}" class="badge" style="text-decoration:none; margin-right:5px;">${m}</a>`
+                        `<a href="/market/${m}" class="market-chip" target="_blank">🏪 ${m}</a>`
                     ).join('');
                 } else {
-                    marketsDiv.textContent = "Aucun marché détecté";
+                    marketsDiv.innerHTML = '<span style="color:#666">Aucun marché détecté (Nostr)</span>';
                 }
 
-                // Info APK
-                const apkRes = await fetch('/api/apk/latest');
-                if (apkRes.ok) {
-                    const apk = await apkRes.json();
-                    document.getElementById('apk-version').textContent = apk.version;
-                    document.getElementById('apk-size').textContent = 
-                        `Taille: ${(apk.size / 1024 / 1024).toFixed(1)} MB`;
+                const apk = await (await fetch('/api/apk/latest')).json();
+                if (!apk.error) {
+                    document.getElementById('apk-version').textContent = 'v' + apk.version;
                 }
-
             } catch (e) {
-                console.error("Erreur chargement:", e);
+                console.warn("Offline or API error");
             }
         }
 
-        // Gestion Feedback
+        // Envoi Feedback
         document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('fbSubmitBtn');
             const status = document.getElementById('fbStatus');
             
             btn.disabled = true;
-            btn.textContent = 'Envoi...';
+            btn.style.opacity = "0.7";
+            btn.textContent = 'Envoi en cours...';
             status.innerHTML = '';
 
             const payload = {
@@ -383,7 +397,7 @@
                 title: document.getElementById('fbTitle').value,
                 description: document.getElementById('fbDesc').value,
                 email: document.getElementById('fbEmail').value,
-                platform: 'Web Dashboard',
+                platform: 'Web Interface',
                 app_version: document.getElementById('apk-version').textContent
             };
 
@@ -397,25 +411,22 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    status.innerHTML = `<div style="color: green; margin-top:10px; font-weight:bold;">✅ Feedback envoyé ! Issue #${data.issue_number}</div>`;
+                    status.innerHTML = `<span style="color: #4CAF50">✅ Feedback envoyé (Issue #${data.issue_number})</span>`;
                     document.getElementById('feedbackForm').reset();
                 } else {
-                    // Gestion spécifique de l'erreur 404 GitHub
-                    let errorMsg = data.error;
-                    if (data.error && data.error.includes('404')) {
-                        errorMsg = "Erreur de configuration serveur (Repo GitHub introuvable). Contactez l'admin.";
-                    }
-                    status.innerHTML = `<div style="color: red; margin-top:10px;">❌ ${errorMsg}</div>`;
+                    let msg = data.error;
+                    if(msg.includes('404')) msg = "Erreur configuration GitHub (Repo introuvable)";
+                    status.innerHTML = `<span style="color: #F44336">❌ ${msg}</span>`;
                 }
             } catch (err) {
-                status.innerHTML = `<div style="color: red; margin-top:10px;">❌ Erreur réseau</div>`;
+                status.innerHTML = `<span style="color: #F44336">❌ Erreur réseau</span>`;
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Envoyer';
+                btn.style.opacity = "1";
+                btn.textContent = 'Envoyer le feedback';
             }
         });
 
-        // Init
         loadData();
     </script>
 </body>
