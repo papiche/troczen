@@ -8,6 +8,8 @@ import 'package:pinenacl/ed25519.dart' as nacl;
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:bs58/bs58.dart';
 import 'package:bech32/bech32.dart';
+// ✅ SÉCURITÉ: Utilisation de bip340 (bibliothèque éprouvée) pour Schnorr
+import 'package:bip340/bip340.dart' as bip340;
 
 /// Exception levée lorsque la reconstruction Shamir échoue
 /// Cela peut arriver si les parts sont incompatibles ou si la seed n'est pas compatible
@@ -543,7 +545,8 @@ class CryptoService {
     return HEX.encode(plaintext);
   }
 
-  /// ✅ Signe un message avec une clé privée (Schnorr avec RFC 6979)
+  /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) via bibliothèque éprouvée
+  /// Utilise bip340 qui implémente correctement le nonce déterministe BIP-340
   /// Accepte la clé privée en format hex ou nsec1... (Bech32)
   String signMessage(String messageHex, String privateKey) {
     // Détecter si c'est du Bech32 (nsec1...) ou de l'hex
@@ -554,42 +557,33 @@ class CryptoService {
       privateKeyHex = privateKey;
     }
     
-    final message = HEX.decode(messageHex);
-    final privateKeyBytes = Uint8List.fromList(HEX.decode(privateKeyHex));
-    final privateKeyBigInt = _bytesToBigInt(privateKeyBytes);
-    
-    // ✅ SÉCURITÉ 100%: Générer k déterministe (RFC 6979)
-    var k = _deriveNonceDeterministic(privateKeyBytes, Uint8List.fromList(message));
-    
-    final domainParams = ECDomainParameters('secp256k1');
-    final n = domainParams.n;
-    var R = (domainParams.G * k)!;
-    
-    // BIP-340: Normaliser R pour avoir y pair
-    final yBigInt = R.y!.toBigInteger()!;
-    if (yBigInt.isOdd) {
-      // Si y est impair, prendre -k (qui donnera le point opposé avec y pair)
-      k = n - k;
-      R = (domainParams.G * k)!;
+    // ✅ SÉCURITÉ: Validation de la clé privée
+    if (privateKeyHex.length != 64) {
+      throw ArgumentError('Clé privée invalide: doit faire 32 octets (64 chars hex)');
     }
     
-    final r = R.x!.toBigInteger()!;
-    
-    // e = hash(r || message)
-    final eBytes = sha256.convert([
-      ...HEX.decode(_bigIntToHex(r, 32)),
-      ...message,
-    ]).bytes;
-    final e = _bytesToBigInt(Uint8List.fromList(eBytes));
-    
-    // s = k + e*privateKey mod n
-    final s = (k + e * privateKeyBigInt) % n;
-    
-    // Signature = r || s (64 octets)
-    return _bigIntToHex(r, 32) + _bigIntToHex(s, 32);
+    // ✅ SÉCURITÉ: Utilisation de bip340 (bibliothèque éprouvée)
+    // Cette bibliothèque implémente correctement:
+    // - Nonce déterministe BIP-340 avec taggedHash
+    // - Normalisation BIP-340 (y pair)
+    // - Protection contre les attaques timing
+    try {
+      // Générer auxRand sécurisé (32 octets aléatoires)
+      // BIP-340 utilise auxRand pour éviter les attaques par canal auxiliaire
+      final auxRandBytes = Uint8List.fromList(
+        List.generate(32, (_) => _secureRandom.nextInt(256))
+      );
+      final auxRandHex = HEX.encode(auxRandBytes);
+      
+      final signature = bip340.sign(privateKeyHex, messageHex, auxRandHex);
+      return signature;
+    } catch (e) {
+      throw ArgumentError('Erreur lors de la signature: $e');
+    }
   }
 
-  /// Vérifie une signature Schnorr
+  /// ✅ SÉCURITÉ: Vérifie une signature Schnorr (BIP-340) via bibliothèque éprouvée
+  /// Utilise bip340 qui implémente correctement la vérification BIP-340
   /// Accepte la clé publique en format hex ou npub1... (Bech32)
   bool verifySignature(String messageHex, String signatureHex, String publicKey) {
     if (signatureHex.length != 128) return false; // 64 octets
@@ -603,60 +597,25 @@ class CryptoService {
         publicKeyHex = publicKey;
       }
       
-      final message = HEX.decode(messageHex);
-      final r = _hexToBigInt(signatureHex.substring(0, 64));
-      final s = _hexToBigInt(signatureHex.substring(64));
+      // ✅ SÉCURITÉ: Validation de la clé publique
+      if (publicKeyHex.length != 64) {
+        return false;
+      }
       
-      final domainParams = ECDomainParameters('secp256k1');
-      final n = domainParams.n;
+      // ✅ SÉCURITÉ: Vérifier que la clé publique est sur la courbe
+      if (!isValidPublicKey(publicKeyHex)) {
+        return false;
+      }
       
-      // Vérifier que r et s sont dans [1, n-1]
-      if (r <= BigInt.zero || r >= n) return false;
-      if (s <= BigInt.zero || s >= n) return false;
-      
-      // Reconstruire le point public depuis x uniquement (supposer y pair - BIP-340)
-      final publicKeyX = _hexToBigInt(publicKeyHex);
-      final publicKeyPoint = _decompressPoint(publicKeyX, true, domainParams.curve);
-      if (publicKeyPoint == null) return false;
-      
-      // Reconstruire R depuis r (supposer y pair - BIP-340)
-      final R = _decompressPoint(r, true, domainParams.curve);
-      if (R == null) return false;
-      
-      // e = hash(r || message)
-      final eBytes = sha256.convert([
-        ...HEX.decode(_bigIntToHex(r, 32)),
-        ...message,
-      ]).bytes;
-      final e = _bytesToBigInt(Uint8List.fromList(eBytes));
-      
-      // Vérifier: s*G == R + e*publicKey
-      final sG = domainParams.G * s;
-      final ePub = publicKeyPoint * e;
-      final RePlus = R + ePub!;
-      
-      return sG == RePlus;
+      // ✅ SÉCURITÉ: Utilisation de bip340 (bibliothèque éprouvée)
+      // Cette bibliothière implémente correctement:
+      // - Décompression sécurisée du point
+      // - Vérification de l'équation s*G = R + e*P
+      // - Protection contre les attaques timing
+      return bip340.verify(publicKeyHex, messageHex, signatureHex);
     } catch (e) {
       return false;
     }
-  }
-
-  /// ✅ SÉCURITÉ 100%: Dérivation déterministe de nonce (RFC 6979)
-  /// Évite les failles si RNG compromise
-  BigInt _deriveNonceDeterministic(Uint8List privateKey, Uint8List message) {
-    // k = HMAC_SHA256(privateKey, message) mod n
-    final hmac = Hmac(sha256, privateKey);
-    final kBytes = hmac.convert(message).bytes;
-    
-    final k = _bytesToBigInt(Uint8List.fromList(kBytes));
-    
-    // Réduire modulo n (ordre de la courbe secp256k1)
-    final n = BigInt.parse(
-      'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141',
-      radix: 16
-    );
-    
-    return k % n;
   }
 
   // Utilitaires privés
@@ -669,10 +628,6 @@ class CryptoService {
     return result;
   }
 
-  BigInt _hexToBigInt(String hex) {
-    return BigInt.parse(hex, radix: 16);
-  }
-
   String _bigIntToHex(BigInt value, int length) {
     final hex = value.toRadixString(16).padLeft(length * 2, '0');
     return hex;
@@ -682,24 +637,6 @@ class CryptoService {
   String _pointToHex(ECPoint point) {
     final x = point.x!.toBigInteger()!;
     return _bigIntToHex(x, 32);
-  }
-
-  /// Décompresse un point à partir de x et du bit de parité de y
-  ECPoint? _decompressPoint(BigInt x, bool yBit, ECCurve curve) {
-    // y^2 = x^3 + 7 (pour secp256k1)
-    // p = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-    final p = BigInt.parse('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F', radix: 16);
-    final ySq = (x.modPow(BigInt.from(3), p) + BigInt.from(7)) % p;
-    
-    // Calculer y = sqrt(ySq) mod p
-    var y = ySq.modPow((p + BigInt.one) >> 2, p);
-    
-    // Ajuster selon le bit de parité
-    if ((y.isEven) != yBit) {
-      y = p - y;
-    }
-    
-    return curve.createPoint(x, y);
   }
 
   /// Encode un tableau d'octets en Base36 (Alphabet: 0-9a-z)

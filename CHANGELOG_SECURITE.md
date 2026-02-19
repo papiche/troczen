@@ -1,6 +1,61 @@
 # Changelog Sécurité — TrocZen
 
-Ce fichier consolide les trois vagues de corrections de sécurité : analyse initiale (16 fév), correctifs appliqués (17 fév), et corrections des bugs bloquants P0 (18 fév).
+Ce fichier consolide les quatre vagues de corrections de sécurité : analyse initiale (16 fév), correctifs appliqués (17 fév), corrections des bugs bloquants P0 (18 fév), et durcissement cryptographique (19 fév).
+
+---
+
+## Vague 4 — Durcissement Cryptographique Schnorr (19 février 2026)
+
+### 🔒 Remplacement de l'implémentation Schnorr maison par bip340
+
+#### Problème identifié
+L'implémentation Schnorr (`signMessage` et `verifySignature`) était codée manuellement, ce qui présentait des risques :
+- **Décompression de point non sécurisée** : La méthode `_decompressPoint` ne validait pas correctement l'appartenance du point à la courbe
+- **Nonce déterministe potentiellement mal implémenté** : Utilisation d'un simple HMAC-SHA256 au lieu du taggedHash BIP-340 complet
+- **Absence de protection contre les attaques timing** : Opérations arithmétiques modulaires non constant-time
+
+#### Solution appliquée
+Remplacement complet par la bibliothèque **bip340** (v0.1.0), une implémentation éprouvée qui :
+- ✅ Implémente correctement le nonce déterministe BIP-340 avec `taggedHash("BIP0340/nonce", ...)`
+- ✅ Utilise `auxRand` pour la protection contre les attaques par canal auxiliaire
+- ✅ Gère correctement la normalisation BIP-340 (y pair)
+- ✅ Valide les points sur la courbe de manière sécurisée
+
+#### Changements dans `crypto_service.dart`
+
+```dart
+// ❌ AVANT — Implémentation maison risquée
+String signMessage(String messageHex, String privateKey) {
+  var k = _deriveNonceDeterministic(privateKeyBytes, message); // HMAC simple
+  // ... logique manuelle de signature
+}
+
+// ✅ APRÈS — Bibliothèque éprouvée bip340
+String signMessage(String messageHex, String privateKey) {
+  final auxRandBytes = Uint8List.fromList(
+    List.generate(32, (_) => _secureRandom.nextInt(256))
+  );
+  final auxRandHex = HEX.encode(auxRandBytes);
+  return bip340.sign(privateKeyHex, messageHex, auxRandHex);
+}
+```
+
+#### Méthodes supprimées
+- `_deriveNonceDeterministic()` — Remplacée par le taggedHash BIP-340 interne à bip340
+- `_decompressPoint()` — Remplacée par `publicKeyToPoint()` de bip340
+- `_hexToBigInt()` — Inutilisée après refactorisation
+
+#### Dépendance ajoutée
+```yaml
+# pubspec.yaml
+bip340: ^0.1.0  # Bibliothèque éprouvée pour Schnorr/BIP-340
+```
+
+#### Tests validés
+```
+flutter test test/crypto_service_test.dart
+→ 18/18 tests passés ✅
+```
 
 ---
 

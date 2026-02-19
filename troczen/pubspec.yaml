@@ -19,6 +19,7 @@ dependencies:
   pinenacl: ^0.6.0
   bs58: ^1.0.2
   bech32: ^0.2.2
+  bip340: ^0.1.0  # ✅ SÉCURITÉ: Bibliothèque éprouvée pour Schnorr/BIP-340
 
   # Nostr
   nostr_core_dart: ^1.0.1
