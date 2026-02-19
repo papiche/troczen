@@ -729,71 +729,142 @@
     </div>
 
     <script>
+        // ============================================
+        // LOGGING UTILITIES
+        // ============================================
+        const LOG_PREFIX = '🌻 TrocZen';
+        
+        function logInfo(component, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            const logMsg = `[${timestamp}] ${LOG_PREFIX} | ${component} | ${message}`;
+            console.log(`%c${logMsg}`, 'color: #FFB347; font-weight: bold;', data || '');
+        }
+        
+        function logSuccess(component, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            const logMsg = `[${timestamp}] ${LOG_PREFIX} | ${component} | ✅ ${message}`;
+            console.log(`%c${logMsg}`, 'color: #4CAF50; font-weight: bold;', data || '');
+        }
+        
+        function logError(component, message, error = null) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            const logMsg = `[${timestamp}] ${LOG_PREFIX} | ${component} | ❌ ${message}`;
+            console.error(logMsg, error || '');
+        }
+        
+        function logWarn(component, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            const logMsg = `[${timestamp}] ${LOG_PREFIX} | ${component} | ⚠️ ${message}`;
+            console.warn(logMsg, data || '');
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        logInfo('index.html', 'Page chargée, initialisation...');
+        
         function toggleQR() {
+            logInfo('UI', 'Toggle QR Code overlay');
             document.getElementById('qrOverlay').classList.toggle('visible');
         }
 
-        // Chargement Stats
+        // ============================================
+        // CHARGEMENT DES DONNÉES
+        // ============================================
         async function loadData() {
+            logInfo('loadData', 'Début du chargement des données');
+            
             try {
                 // 1. Stats Générales
-                const stats = await (await fetch('/api/stats')).json();
+                logInfo('loadData', 'Récupération des stats générales...');
+                const statsResponse = await fetch('/api/stats');
+                const stats = await statsResponse.json();
+                logSuccess('loadData', `Stats reçues: ${stats.market_count} marchés, ${stats.profile_count} profils`, stats);
+                
                 document.getElementById('stat-markets').textContent = stats.market_count || 0;
                 document.getElementById('stat-profiles').textContent = stats.profile_count || 0;
 
                 // 2. Gestion des Marchés
+                logInfo('loadData', 'Affichage des marchés...');
                 const marketsDiv = document.getElementById('markets-list');
                 
                 let marketsHtml = `<a href="/market/HACKATHON" class="market-chip hackathon">🏆 HACKATHON</a>`;
 
                 if (stats.markets && stats.markets.length > 0) {
-                    marketsHtml += stats.markets
-                        .filter(m => m !== 'HACKATHON')
+                    const otherMarkets = stats.markets.filter(m => m !== 'HACKATHON');
+                    logInfo('loadData', `${otherMarkets.length} autres marchés détectés`, otherMarkets);
+                    marketsHtml += otherMarkets
                         .map(m => `<a href="/market/${m}" class="market-chip">🏪 ${m}</a>`)
                         .join('');
                 }
                 
                 marketsDiv.innerHTML = marketsHtml;
+                logSuccess('loadData', 'Marchés affichés');
 
                 // 3. Gestion APK
-                const apk = await (await fetch('/api/apk/latest')).json();
+                logInfo('loadData', 'Récupération infos APK...');
+                const apkResponse = await fetch('/api/apk/latest');
+                const apk = await apkResponse.json();
+                
                 if (!apk.error) {
+                    logSuccess('loadData', `APK version ${apk.version} disponible (${(apk.size / 1024 / 1024).toFixed(1)} MB)`, apk);
                     document.getElementById('apk-version').textContent = 'v' + apk.version;
                     const downloadBtn = document.getElementById('download-apk-btn');
                     if (apk.download_url) {
                         downloadBtn.href = apk.download_url;
                     }
+                } else {
+                    logWarn('loadData', 'Aucun APK disponible');
                 }
                 
                 // 4. Charger les données Nostr
+                logInfo('loadData', 'Chargement des données Nostr pour HACKATHON...');
                 loadNostrMerchants('HACKATHON');
                 
             } catch (e) {
-                console.warn("Offline or API error", e);
+                logError('loadData', 'Erreur lors du chargement', e);
                 document.getElementById('markets-list').innerHTML = '<p style="color: var(--text-muted);">Impossible de charger les marchés</p>';
             }
         }
         
-        // Charger les marchands depuis Nostr
+        // ============================================
+        // CHARGEMENT MARCHANDS NOSTR
+        // ============================================
         async function loadNostrMerchants(marketName) {
+            logInfo('loadNostrMerchants', `Récupération des marchands pour: ${marketName}`);
             const merchantsDiv = document.getElementById('merchants-list');
             
             try {
-                const response = await fetch(`/api/nostr/marche/${marketName}`);
+                const url = `/api/nostr/marche/${marketName}`;
+                logInfo('loadNostrMerchants', `Requête: GET ${url}`);
+                
+                const response = await fetch(url);
                 const data = await response.json();
+                
+                logInfo('loadNostrMerchants', `Réponse reçue: success=${data.success}`, data);
                 
                 if (data.success && data.data) {
                     const marcheData = data.data;
                     
                     // Mettre à jour les stats de bons
-                    document.getElementById('stat-bons').textContent = marcheData.total_bons || 0;
+                    const totalBons = marcheData.total_bons || 0;
+                    const totalMerchants = marcheData.total_merchants || 0;
+                    logSuccess('loadNostrMerchants', `${totalMerchants} marchands, ${totalBons} bons`);
+                    
+                    document.getElementById('stat-bons').textContent = totalBons;
                     
                     if (marcheData.merchants && marcheData.merchants.length > 0) {
+                        logInfo('loadNostrMerchants', `Affichage de ${Math.min(marcheData.merchants.length, 6)} marchands`);
+                        
+                        marcheData.merchants.slice(0, 6).forEach((m, i) => {
+                            logInfo('loadNostrMerchants', `  Marchand ${i+1}: ${m.name} (${m.bons_count || 0} bons, issuer: ${m.pubkey?.substring(0,16)}...)`);
+                        });
+                        
                         merchantsDiv.innerHTML = marcheData.merchants.slice(0, 6).map(m => `
                             <div class="merchant-card">
                                 <div class="merchant-header">
                                     ${m.bons_count ? `<span class="merchant-bons-badge">${m.bons_count} bon${m.bons_count > 1 ? 's' : ''}</span>` : ''}
-                                    ${m.picture 
+                                    ${m.picture
                                         ? `<img src="${m.picture}" alt="${m.name}" class="merchant-avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`
                                         : ''
                                     }
@@ -809,7 +880,10 @@
                                 </div>
                             </div>
                         `).join('');
+                        
+                        logSuccess('loadNostrMerchants', 'Marchands affichés avec succès');
                     } else {
+                        logWarn('loadNostrMerchants', 'Aucun marchand trouvé dans les données Nostr');
                         merchantsDiv.innerHTML = `
                             <div class="card" style="grid-column: 1/-1; text-align: center;">
                                 <p style="color: var(--text-secondary);">
@@ -821,7 +895,7 @@
                     }
                 }
             } catch (e) {
-                console.warn("Nostr data unavailable", e);
+                logError('loadNostrMerchants', 'Impossible de charger les données Nostr', e);
                 merchantsDiv.innerHTML = `
                     <div class="card" style="grid-column: 1/-1; text-align: center;">
                         <p style="color: var(--warning);">
@@ -833,11 +907,15 @@
             }
         }
 
-        // Envoi Feedback
+        // ============================================
+        // FEEDBACK FORM
+        // ============================================
         document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('fbSubmitBtn');
             const status = document.getElementById('fbStatus');
+            
+            logInfo('Feedback', 'Soumission du formulaire de feedback');
             
             btn.disabled = true;
             btn.style.opacity = "0.7";
@@ -852,6 +930,8 @@
                 platform: 'Web Interface',
                 app_version: document.getElementById('apk-version').textContent
             };
+            
+            logInfo('Feedback', `Type: ${payload.type}, Titre: ${payload.title}`, payload);
 
             try {
                 const res = await fetch('/api/feedback', {
@@ -863,14 +943,17 @@
                 const data = await res.json();
 
                 if (data.success) {
+                    logSuccess('Feedback', `Issue GitHub créée: #${data.issue_number}`, data);
                     status.innerHTML = `<span style="color: var(--success)">✅ Feedback envoyé (Issue #${data.issue_number})</span>`;
                     document.getElementById('feedbackForm').reset();
                 } else {
                     let msg = data.error;
                     if(msg.includes('404')) msg = "Erreur configuration GitHub (Repo introuvable)";
+                    logError('Feedback', msg, data);
                     status.innerHTML = `<span style="color: var(--error)">❌ ${msg}</span>`;
                 }
             } catch (err) {
+                logError('Feedback', 'Erreur réseau', err);
                 status.innerHTML = `<span style="color: var(--error)">❌ Erreur réseau</span>`;
             } finally {
                 btn.disabled = false;
@@ -879,6 +962,10 @@
             }
         });
 
+        // ============================================
+        // DÉMARRAGE
+        // ============================================
+        logInfo('App', 'Démarrage du chargement des données...');
         loadData();
     </script>
 </body>

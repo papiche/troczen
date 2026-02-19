@@ -405,9 +405,19 @@ def fetch_local_marche_data(market_name):
 @app.route('/market/<market_name>')
 def market_page(market_name):
     """Page de présentation du marché"""
+    print(f'🌻 [market_page] Rendu de la page pour: {market_name}')
     
     # Récupérer les données du marché depuis Nostr
+    print(f'🌻 [market_page] Récupération des données Nostr...')
     marche_data = fetch_marche_data(market_name)
+    
+    merchants_count = len(marche_data.get('merchants', []))
+    total_bons = marche_data.get('total_bons', 0)
+    print(f'🌻 [market_page] Données reçues: {merchants_count} marchands, {total_bons} bons')
+    
+    # Log détaillé des marchands
+    for i, m in enumerate(marche_data.get('merchants', [])[:5]):
+        print(f'  └─ Marchand {i+1}: {m.get("name", "N/A")} ({m.get("bons_count", 0)} bons, issuer: {m.get("pubkey", "N/A")[:16]}...)')
     
     return render_template(
         'market.html',
@@ -424,7 +434,12 @@ def get_marche_data(market_name):
     """
     API pour récupérer les données d'un marché depuis Nostr
     """
+    print(f'🌻 [API] GET /api/nostr/marche/{market_name}')
+    
     marche_data = fetch_marche_data(market_name)
+    
+    print(f'🌻 [API] Réponse: {marche_data.get("total_merchants", 0)} marchands, {marche_data.get("total_bons", 0)} bons')
+    
     return jsonify({
         'success': True,
         'data': marche_data,

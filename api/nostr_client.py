@@ -27,11 +27,12 @@ class NostrClient:
     async def connect(self):
         """Se connecter au relai Nostr"""
         try:
+            print(f'🌻 [NostrClient] Connexion au relai: {self.relay_url}')
             self.websocket = await websockets.connect(self.relay_url)
-            print(f"✅ Connecté au relai Nostr: {self.relay_url}")
+            print(f"✅ [NostrClient] Connecté au relai Nostr: {self.relay_url}")
             return True
         except Exception as e:
-            print(f"❌ Erreur de connexion au relai {self.relay_url}: {e}")
+            print(f"❌ [NostrClient] Erreur de connexion au relai {self.relay_url}: {e}")
             return False
     
     async def disconnect(self):
@@ -39,7 +40,7 @@ class NostrClient:
         if self.websocket:
             await self.websocket.close()
             self.websocket = None
-            print("✅ Déconnecté du relai Nostr")
+            print("✅ [NostrClient] Déconnecté du relai Nostr")
     
     async def query_events(self, filters: List[Dict]) -> List[Dict]:
         """
@@ -209,29 +210,44 @@ class NostrClient:
         Returns:
             Dictionnaire avec marchands et bons
         """
+        print(f'🌻 [NostrClient] get_merchants_with_bons("{market_name}")')
+        
         # Récupérer tous les marchands (kind 0)
+        print(f'  └─ Récupération des profils (kind 0)...')
         merchants = await self.get_merchant_profiles()
+        print(f'  └─ {len(merchants)} profils récupérés')
         
         # Créer un index des marchands par pubkey pour accès rapide
         merchants_by_pubkey = {m["pubkey"]: m for m in merchants}
         
         # Récupérer les bons du marché (kind 30303)
+        print(f'  └─ Récupération des bons (kind 30303) pour {market_name}...')
         bons = await self.get_bons(market_name)
+        print(f'  └─ {len(bons)} bons récupérés')
         
         # Associer les bons aux marchands via le tag 'issuer'
         # IMPORTANT: Le tag 'issuer' contient le npub du marchand émetteur
         merchant_bons = {}
+        bons_with_issuer = 0
+        bons_without_issuer = 0
+        
         for bon in bons:
             # Utiliser 'issuer' (npub du marchand) et non 'pubkey' (clé du bon)
             issuer_pubkey = bon.get("issuer", "")
             if not issuer_pubkey:
                 # Fallback: utiliser pubkey si pas d'issuer (ancien format)
                 issuer_pubkey = bon.get("pubkey", "")
+                bons_without_issuer += 1
+            else:
+                bons_with_issuer += 1
             
             if issuer_pubkey:
                 if issuer_pubkey not in merchant_bons:
                     merchant_bons[issuer_pubkey] = []
                 merchant_bons[issuer_pubkey].append(bon)
+        
+        print(f'  └─ Bons avec issuer: {bons_with_issuer}, sans issuer (fallback): {bons_without_issuer}')
+        print(f'  └─ {len(merchant_bons)} émetteurs uniques détectés')
         
         # Construire la réponse
         result = {
@@ -242,8 +258,17 @@ class NostrClient:
         }
         
         # Ajouter les marchands qui ont des bons
+        matched_merchants = 0
+        unmatched_merchants = 0
+        
         for issuer_pubkey, bons_list in merchant_bons.items():
             merchant = merchants_by_pubkey.get(issuer_pubkey, {})
+            
+            if merchant:
+                matched_merchants += 1
+            else:
+                unmatched_merchants += 1
+                print(f'  ⚠️ Émetteur sans profil kind 0: {issuer_pubkey[:16]}... ({len(bons_list)} bons)')
             
             merchant_data = {
                 "pubkey": issuer_pubkey,
@@ -260,6 +285,9 @@ class NostrClient:
             result["merchants"].append(merchant_data)
         
         result["total_merchants"] = len(result["merchants"])
+        
+        print(f'  └─ Résultat: {matched_merchants} marchands avec profil, {unmatched_merchants} sans profil')
+        print(f'  └─ Total: {result["total_merchants"]} marchands, {result["total_bons"]} bons')
         
         return result
 
