@@ -6,4 +6,4 @@ Werkzeug==3.0.1
 gunicorn==21.2.0
 requests
 cryptography==41.0.7
-websockets==12.0
+websockets==10.4

@@ -8,21 +8,28 @@ import '../services/image_cache_service.dart';
 class PaniniCard extends StatefulWidget {
   final Bon bon;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool showActions;
+  final Widget? statusChip;
 
   const PaniniCard({
     Key? key,
     required this.bon,
     this.onTap,
+    this.onLongPress,
     this.showActions = true,
+    this.statusChip,
   }) : super(key: key);
 
   @override
   State<PaniniCard> createState() => _PaniniCardState();
 }
 
-class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateMixin {
+class _PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
   late AnimationController _shimmerController;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  
   bool _showDetails = false; // Pour afficher/masquer les détails
   
   // Offline-first: cache local des images
@@ -34,6 +41,7 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    
     // Animation shimmer pour les bons rares
     if (widget.bon.isRare) {
       _shimmerController = AnimationController(
@@ -43,6 +51,18 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
     } else {
       _shimmerController = AnimationController(vsync: this);
     }
+    
+    // Animation de scale pour le feedback tactile
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(
+        parent: _scaleController,
+        curve: Curves.easeInOut,
+      ),
+    );
     
     // Vérifier le cache local pour offline-first
     _checkLocalCache();
@@ -80,7 +100,22 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
   @override
   void dispose() {
     _shimmerController.dispose();
+    _scaleController.dispose();
     super.dispose();
+  }
+  
+  /// Gestion du feedback tactile
+  void _handleTapDown(TapDownDetails details) {
+    _scaleController.forward();
+  }
+  
+  void _handleTapUp(TapUpDetails details) {
+    _scaleController.reverse();
+    widget.onTap?.call();
+  }
+  
+  void _handleTapCancel() {
+    _scaleController.reverse();
   }
   
   /// Widget d'image offline-first
@@ -199,63 +234,76 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
     final rarity = widget.bon.rarity ?? 'common';
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      onLongPress: widget.onLongPress,
       child: AnimatedBuilder(
-        animation: _shimmerController,
+        animation: _scaleAnimation,
         builder: (context, child) {
-          return Container(
-            height: 220,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: isRare 
-                      ? _getRarityColor(rarity).withOpacity(0.4)
-                      : Colors.black.withOpacity(0.1),
-                  blurRadius: isRare ? 30 : 20,
-                  spreadRadius: isRare ? 3 : 0,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                children: [
-                  // Fond de carte
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: _getCardGradient(color, rarity),
-                      border: Border.all(
-                        color: isRare ? _getRarityColor(rarity) : Colors.white,
-                        width: isRare ? 3 : 8,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: AnimatedBuilder(
+          animation: _shimmerController,
+          builder: (context, child) {
+            return Container(
+              height: 220,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: isRare
+                        ? _getRarityColor(rarity).withOpacity(0.4)
+                        : Colors.black.withOpacity(0.1),
+                    blurRadius: isRare ? 30 : 20,
+                    spreadRadius: isRare ? 3 : 0,
+                    offset: const Offset(0, 8),
                   ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    // Fond de carte
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: _getCardGradient(color, rarity),
+                        border: Border.all(
+                          color: isRare ? _getRarityColor(rarity) : Colors.white,
+                          width: isRare ? 3 : 8,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
 
-                  // Effet holographique pour bons rares
-                  if (isRare)
-                    Positioned.fill(
-                      child: Transform.rotate(
-                        angle: _shimmerController.value * 2 * math.pi,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withOpacity(0.0),
-                                Colors.white.withOpacity(0.3),
-                                Colors.white.withOpacity(0.0),
-                              ],
-                              stops: const [0.0, 0.5, 1.0],
+                    // Effet holographique pour bons rares avec RepaintBoundary
+                    if (isRare)
+                      RepaintBoundary(
+                        child: Positioned.fill(
+                          child: Transform.rotate(
+                            angle: _shimmerController.value * 2 * math.pi,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white.withOpacity(0.0),
+                                    Colors.white.withOpacity(0.3),
+                                    Colors.white.withOpacity(0.0),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
 
                   // Contenu principal
                   Column(
@@ -434,15 +482,24 @@ class _PaniniCardState extends State<PaniniCard> with SingleTickerProviderStateM
                         ),
                       ),
                     ],
-                  ),
+                   ),
+                  
+                  // Status chip externe (optionnel, positionné en bas à gauche)
+                  if (widget.statusChip != null)
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: widget.statusChip!,
+                    ),
                 ],
               ),
             ),
           );
         },
       ),
+    ),
     );
-  }
+   }
 
   // Badge de rareté
   Widget _buildRarityBadge(String rarity) {

@@ -317,23 +317,11 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         itemCount: sortedBons.length,
         itemBuilder: (context, index) {
           final bon = sortedBons[index];
-          return GestureDetector(
+          return PaniniCard(
+            bon: bon,
             onTap: () => _showBonDetails(bon),
             onLongPress: () => _showContextMenu(bon),
-            child: Stack(
-              children: [
-                PaniniCard(
-                  bon: bon,
-                  onTap: () => _showBonDetails(bon),
-                ),
-                // Chip de statut
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: _buildStatusChip(bon),
-                ),
-              ],
-            ),
+            statusChip: _buildStatusChip(bon),
           );
         },
       );
@@ -352,23 +340,11 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               minHeight: 160,
               maxHeight: 220,
             ),
-            child: GestureDetector(
+            child: PaniniCard(
+              bon: bon,
               onTap: () => _showBonDetails(bon),
               onLongPress: () => _showContextMenu(bon),
-              child: Stack(
-                children: [
-                  PaniniCard(
-                    bon: bon,
-                    onTap: () => _showBonDetails(bon),
-                  ),
-                  // Chip de statut
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: _buildStatusChip(bon),
-                  ),
-                ],
-              ),
+              statusChip: _buildStatusChip(bon),
             ),
           ),
         );
