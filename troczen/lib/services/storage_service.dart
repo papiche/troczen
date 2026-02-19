@@ -215,27 +215,50 @@ class StorageService {
   }
 
   /// Initialise un marché par défaut si aucun n'existe
-  Future<Market> initializeDefaultMarket() async {
+  /// En mode HACKATHON (name = 'HACKATHON'), utilise une seed à zéro pour faciliter les tests
+  /// ⚠️ MODE HACKATHON: Sécurité réduite - chiffrement P3 avec clé prévisible
+  Future<Market> initializeDefaultMarket({String? name}) async {
     final existing = await getMarket();
     if (existing != null) return existing;
 
-    // ✅ CORRECTION BUG P0 CRITIQUE: Générer une graine ALÉATOIRE SÉCURISÉE
-    // La graine de marché par défaut était 64 zéros, ce qui rend K_day dérivée nulle
-    // et ne chiffre rien en pratique (vulnérabilité critique)
-    final secureRandom = Random.secure();
-    final seedBytes = Uint8List.fromList(
-      List.generate(32, (_) => secureRandom.nextInt(256))
-    );
-    final seedHex = HEX.encode(seedBytes);
+    // Déterminer le nom du marché
+    final marketName = name ?? 'Marché Local';
+    final isHackathonMode = marketName.toUpperCase() == 'HACKATHON';
+
+    String seedHex;
+    
+    if (isHackathonMode) {
+      // ✅ MODE HACKATHON: Seed à zéro pour faciliter les tests et le cassage du chiffrement P3
+      // Cela permet aux participants du hackathon de comprendre et débugger l'application
+      // ⚠️ NE PAS UTILISER EN PRODUCTION - Sécurité réduite
+      seedHex = '0' * 64; // 32 octets à zéro
+      Logger.warn('StorageService', '⚠️ MODE HACKATHON ACTIVÉ - Seed à zéro utilisée (sécurité réduite)');
+    } else {
+      // ✅ PRODUCTION: Générer une graine ALÉATOIRE SÉCURISÉE
+      // La graine de marché par défaut était 64 zéros, ce qui rend K_day dérivée nulle
+      // et ne chiffre rien en pratique (vulnérabilité critique)
+      final secureRandom = Random.secure();
+      final seedBytes = Uint8List.fromList(
+        List.generate(32, (_) => secureRandom.nextInt(256))
+      );
+      seedHex = HEX.encode(seedBytes);
+    }
 
     final defaultMarket = Market(
-      name: 'Marché Local',
-      seedMarket: seedHex, // Graine aléatoire sécurisée de 32 octets (64 caractères hex)
+      name: marketName,
+      seedMarket: seedHex, // Graine (zéro en mode HACKATHON, aléatoire sinon)
       validUntil: DateTime.now().add(const Duration(days: 365)),
       relayUrl: AppConfig.defaultRelayUrl,
     );
 
     await saveMarket(defaultMarket);
+    
+    if (isHackathonMode) {
+      Logger.success('StorageService', '🎉 Marché HACKATHON créé avec seed à zéro');
+    } else {
+      Logger.success('StorageService', 'Marché "$marketName" créé avec seed sécurisée');
+    }
+    
     return defaultMarket;
   }
 

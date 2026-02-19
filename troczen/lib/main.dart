@@ -4,10 +4,16 @@ import 'models/nostr_profile.dart';
 import 'services/crypto_service.dart';
 import 'services/storage_service.dart';
 import 'services/nostr_service.dart';
+import 'services/logger_service.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding/onboarding_flow.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialiser le logger et vérifier le mode HACKATHON
+  await Logger.checkDebugMode();
+  
   runApp(const TrocZenApp());
 }
 

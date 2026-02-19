@@ -5,6 +5,8 @@ import '../models/user.dart';
 import '../models/market.dart';
 import '../services/storage_service.dart';
 import '../services/crypto_service.dart';
+import '../services/logger_service.dart';
+import 'logs_screen.dart';
 
 /// Écran de paramètres pour configurer le marché, relais, etc.
 class SettingsScreen extends StatefulWidget {
@@ -251,6 +253,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
+              
+              // Bouton Logs HACKATHON (visible uniquement en mode debug)
+              if (Logger.isDebugMode) ...[
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LogsScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.bug_report),
+                  label: Text('🐛 Logs HACKATHON (${Logger.logCount})'),
+                ),
+                const SizedBox(height: 8),
+              ],
+              
               ElevatedButton(
                 onPressed: () {
                   // TODO: Exporter les données
@@ -270,6 +292,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: const Text('Réinitialiser le marché'),
               ),
+              
+              // Indicateur mode HACKATHON
+              if (_currentMarket?.name.toUpperCase() == 'HACKATHON') ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '⚠️ Mode HACKATHON actif\n'
+                          'Seed à zéro - Sécurité réduite\n'
+                          'Chiffrement P3 affaibli',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

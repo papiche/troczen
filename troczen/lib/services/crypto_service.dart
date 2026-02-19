@@ -488,12 +488,15 @@ class CryptoService {
     return HEX.encode(plaintext);
   }
 
-  /// Chiffre P3 avec K_day (clé du jour)
+  /// Chiffre P3 avec K_day (clé du jour) en utilisant AES-GCM
+  /// En mode HACKATHON, la clé K_day est prévisible (dérivée d'une seed à zéro)
+  /// mais le chiffrement reste AES-GCM standard - seul le décodage est facilité
   Future<Map<String, String>> encryptP3(String p3Hex, String kDayHex) async {
     final p3Bytes = HEX.decode(p3Hex);
     final kDayBytes = HEX.decode(kDayHex);
     
-    // ✅ CORRECTION: Nonce sécurisé
+    // ✅ Toujours utiliser AES-GCM (même en mode HACKATHON)
+    // La sécurité réduite en mode HACKATHON vient uniquement de la clé prévisible
     final nonce = Uint8List.fromList(
       List.generate(12, (_) => _secureRandom.nextInt(256))
     );
@@ -516,12 +519,16 @@ class CryptoService {
     };
   }
 
-  /// Déchiffre P3 avec K_day (clé du jour)
+  /// Déchiffre P3 avec K_day (clé du jour) en utilisant AES-GCM
+  /// En mode HACKATHON, la clé K_day est prévisible (dérivée d'une seed à zéro)
+  /// mais le déchiffrement reste AES-GCM standard
   Future<String> decryptP3(String ciphertextHex, String nonceHex, String kDayHex) async {
     final ciphertext = HEX.decode(ciphertextHex);
     final nonce = HEX.decode(nonceHex);
     final kDayBytes = HEX.decode(kDayHex);
     
+    // ✅ Toujours utiliser AES-GCM (même en mode HACKATHON)
+    // La sécurité réduite en mode HACKATHON vient uniquement de la clé prévisible
     final cipher = GCMBlockCipher(AESEngine());
     final params = AEADParameters(
       KeyParameter(Uint8List.fromList(kDayBytes)),
