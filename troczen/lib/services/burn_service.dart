@@ -4,6 +4,7 @@ import 'package:hex/hex.dart';
 import 'crypto_service.dart';
 import 'nostr_service.dart';
 import 'storage_service.dart';
+import 'logger_service.dart';
 import '../models/bon.dart';
 import '../models/nostr_profile.dart';
 
@@ -75,7 +76,7 @@ class BurnService {
 
       return true;
     } catch (e) {
-      print('Erreur burn: $e');
+      Logger.error('BurnService', 'Erreur burn', e);
       return false;
     }
   }

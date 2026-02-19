@@ -7,6 +7,7 @@ import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/market.dart';
+import 'logger_service.dart';
 
 class StorageService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
@@ -147,7 +148,7 @@ class StorageService {
       final List<dynamic> p3Data = jsonDecode(data);
       return p3Data.cast<Map<String, dynamic>>();
     } catch (e) {
-      print('❌ Erreur getP3List: $e');
+      Logger.error('StorageService', 'Erreur getP3List', e);
       return [];
     }
   }
@@ -164,9 +165,9 @@ class StorageService {
         key: 'market_p3_last_sync',
         value: DateTime.now().millisecondsSinceEpoch.toString(),
       );
-      print('✅ ${p3List.length} P3 sauvegardées');
+      Logger.success('StorageService', '${p3List.length} P3 sauvegardées');
     } catch (e) {
-      print('❌ Erreur saveP3List: $e');
+      Logger.error('StorageService', 'Erreur saveP3List', e);
       rethrow;
     }
   }
@@ -178,9 +179,9 @@ class StorageService {
       await _secureStorage.delete(key: 'market_p3_last_sync');
       // Vider aussi le cache P3 des bons individuels
       await _secureStorage.delete(key: _p3CacheKey);
-      print('✅ Cache P3 vidé');
+      Logger.success('StorageService', 'Cache P3 vidé');
     } catch (e) {
-      print('❌ Erreur clearP3Cache: $e');
+      Logger.error('StorageService', 'Erreur clearP3Cache', e);
       rethrow;
     }
   }

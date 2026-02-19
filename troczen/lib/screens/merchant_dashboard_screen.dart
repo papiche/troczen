@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../models/bon.dart';
 import '../services/storage_service.dart';
 import '../services/audit_trail_service.dart';
+import '../services/logger_service.dart';
 
 /// Dashboard Marchand TrocZen
 /// Analytics économiques basées uniquement sur P3 (kind 30303)
@@ -57,7 +58,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
 
       _metrics = _calculateMetrics(bons, transfers);
     } catch (e) {
-      print('Erreur chargement metrics: $e');
+      Logger.error('MerchantDashboard', 'Erreur chargement metrics', e);
     } finally {
       setState(() => _isLoading = false);
     }

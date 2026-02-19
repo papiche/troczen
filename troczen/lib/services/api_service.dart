@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import 'logger_service.dart';
 
 /// Service API TrocZen pour upload logos uniquement
 /// Toutes les opérations Nostr se font directement via le relais
@@ -30,7 +31,7 @@ class ApiService {
           final port = Uri.parse(url).port;
           _currentRelayUrl = 'ws://$host:7777';  // Port relay local
 
-          print('✅ Borne locale détectée: $_currentApiUrl');
+          Logger.success('ApiService', 'Borne locale détectée: $_currentApiUrl');
           return true;
         }
       } catch (e) {
@@ -44,7 +45,7 @@ class ApiService {
     _currentRelayUrl = AppConfig.defaultRelayUrl;
     _isLocal = false;
     
-    print('📡 Utilisation API publique: $_currentApiUrl');
+    Logger.info('ApiService', 'Utilisation API publique: $_currentApiUrl');
     return false;
   }
 
@@ -72,11 +73,11 @@ class ApiService {
       if (response.statusCode == 201) {
         return json.decode(response.body);
       } else {
-        print('Erreur upload: ${response.body}');
+        Logger.error('ApiService', 'Erreur upload: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Erreur upload image ($type): $e');
+      Logger.error('ApiService', 'Erreur upload image ($type)', e);
       return null;
     }
   }
