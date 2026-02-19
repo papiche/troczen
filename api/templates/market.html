@@ -676,5 +676,59 @@
         </p>
     </div>
 
+    <script>
+        // ============================================
+        // LOGGING UTILITIES
+        // ============================================
+        const LOG_PREFIX = '🌻 TrocZen';
+        
+        function logInfo(component, message, data) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            console.log('%c[' + timestamp + '] ' + LOG_PREFIX + ' | ' + component + ' | ' + message, 'color: #FFB347; font-weight: bold;', data || '');
+        }
+        
+        function logSuccess(component, message, data) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            console.log('%c[' + timestamp + '] ' + LOG_PREFIX + ' | ' + component + ' | ✅ ' + message, 'color: #4CAF50; font-weight: bold;', data || '');
+        }
+        
+        function logWarn(component, message, data) {
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            console.warn('[' + timestamp + '] ' + LOG_PREFIX + ' | ' + component + ' | ⚠️ ' + message, data || '');
+        }
+
+        // ============================================
+        // PAGE LOAD LOGGING
+        // ============================================
+        (function() {
+            logInfo('market.html', 'Page chargée');
+            
+            // Données reçues du serveur (rendu par Jinja2)
+            var marketName = '{{ market_name }}';
+            var totalMerchants = {{ total_merchants }};
+            var totalBons = {{ total_bons }};
+            var merchantsCount = {{ merchants|length if merchants else 0 }};
+            
+            logInfo('market.html', 'Marché: ' + marketName, {
+                market_name: marketName,
+                total_merchants: totalMerchants,
+                total_bons: totalBons,
+                merchants_count: merchantsCount
+            });
+            
+            {% if merchants %}
+            logSuccess('market.html', merchantsCount + ' marchand(s) reçu(s) du serveur');
+            {% else %}
+            logWarn('market.html', 'Aucun marchand reçu du serveur');
+            {% endif %}
+            
+            {% if apk_info and apk_info.filename %}
+            logSuccess('market.html', 'APK v{{ apk_info.version }} disponible');
+            {% else %}
+            logWarn('market.html', 'Aucun APK disponible');
+            {% endif %}
+        })();
+    </script>
+
 </body>
 </html>

@@ -493,6 +493,64 @@ def get_nostr_profiles():
         })
 
 
+@app.route('/api/nostr/bons/all', methods=['GET'])
+def get_all_bons_no_filter():
+    """
+    API pour récupérer TOUS les bons (kind 30303) sans filtre de marché
+    Utile pour diagnostiquer quels bons existent sur le relai
+    """
+    print('🌻 [API] GET /api/nostr/bons/all (sans filtre marché)')
+    
+    NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
+    NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+    
+    if not NOSTR_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Nostr disabled',
+            'bons': []
+        })
+    
+    try:
+        client = NostrClient(relay_url=NOSTR_RELAY)
+        
+        async def fetch_bons():
+            await client.connect()
+            # Passer None pour récupérer tous les bons sans filtre
+            bons = await client.get_bons(None)
+            await client.disconnect()
+            return bons
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        bons = loop.run_until_complete(fetch_bons())
+        loop.close()
+        
+        # Grouper par marché pour stats
+        markets = {}
+        for bon in bons:
+            m = bon.get('market', 'unknown')
+            markets[m] = markets.get(m, 0) + 1
+        
+        print(f'🌻 [API] {len(bons)} bons trouvés sur {len(markets)} marchés: {markets}')
+        
+        return jsonify({
+            'success': True,
+            'bons': bons,
+            'count': len(bons),
+            'markets': markets,
+            'source': 'nostr_strfry'
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur récupération bons Nostr: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'bons': []
+        })
+
+
 @app.route('/api/nostr/bons', methods=['GET'])
 def get_all_bons():
     """
@@ -502,6 +560,8 @@ def get_all_bons():
     NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
     NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
     market_name = request.args.get('market')
+    
+    print(f'🌻 [API] GET /api/nostr/bons (market={market_name})')
     
     if not NOSTR_ENABLED:
         return jsonify({
@@ -523,6 +583,8 @@ def get_all_bons():
         asyncio.set_event_loop(loop)
         bons = loop.run_until_complete(fetch_bons())
         loop.close()
+        
+        print(f'🌻 [API] {len(bons)} bons trouvés pour market={market_name}')
         
         return jsonify({
             'success': True,
