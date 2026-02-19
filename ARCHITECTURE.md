@@ -337,9 +337,9 @@ StorageService.saveP3ToCache(bonId, P3)
 | BurnService | Révocation de bons (kind 5) | `burn_service.dart` |
 | FeedbackService | Envoi feedback via GitHub Issues | `feedback_service.dart` |
 | ImageCacheService | Cache images profils Nostr | `image_cache_service.dart` |
-| NfcService | Transfert par NFC (⚠️ expérimental) | `nfc_service.dart` |
+| NfcService | Transfert par NFC (⚠️ stade expérimental / Mock) | `nfc_service.dart` |
 
-> **Note NFC** : Le service NFC est en phase expérimentale. L'implémentation complète nécessite une configuration plateforme spécifique. Utiliser le QR code comme méthode principale de transfert.
+> **Note NFC** : Le service NFC est en stade expérimental / Mock. L'implémentation complète nécessite une configuration plateforme spécifique. Utiliser le QR code comme méthode principale de transfert.
 
 ---
 

@@ -110,7 +110,10 @@ C’est un passage d’une **confiance hiérarchique** à une **confiance distri
 ### 3.1. Les Composants Clés
 
 *   **Identité Nostr** : Chaque utilisateur et chaque bon ẐEN est une paire de clés (`nsec`/`npub`) sur le protocole Nostr. Le `npub_bon` est son identifiant public.
-*   **SSSS (Shamir’s Secret Sharing Scheme)** : Algorithme utilisé pour diviser la `nsec_bon` (la clé privée du bon) en 3 parts (P1, P2, P3). Seuil requis pour reconstituer la clé : 2 parts.
+*   **SSSS (Shamir's Secret Sharing Scheme)** : Algorithme utilisé pour diviser la `nsec_bon` (la clé privée du bon) en 3 parts (P1, P2, P3). Seuil requis pour reconstituer la clé : 2 parts.
+    *   **Implémentation GF(256)** : Utilise le champ de Galois GF(2^8) avec le polynôme irréductible `x^8 + x^4 + x^3 + x + 1` (0x11B). Cette implémentation garantit que toutes les valeurs restent dans [0, 255], évitant les erreurs de reconstruction.
+    *   **Tables logarithmiques** : Pré-calculées avec le générateur 3 pour une multiplication efficace en O(1).
+    *   **Interpolation de Lagrange** : Utilisée pour reconstruire le secret à partir de 2 parts quelconques.
 *   **Chiffrement AES‑GCM** : Utilisé pour :
     *   Chiffrer P3 avec une clé dérivée quotidiennement (voir §3.4) avant publication sur Nostr.
     *   Chiffrer P2 avec `K_P2 = SHA256(P3)` lors du transfert.

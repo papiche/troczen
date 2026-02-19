@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hex/hex.dart';
+import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/market.dart';
@@ -230,7 +231,7 @@ class StorageService {
       name: 'Marché Local',
       seedMarket: seedHex, // Graine aléatoire sécurisée de 32 octets (64 caractères hex)
       validUntil: DateTime.now().add(const Duration(days: 365)),
-      relayUrl: 'wss://relay.copylaradio.com',
+      relayUrl: AppConfig.defaultRelayUrl,
     );
 
     await saveMarket(defaultMarket);

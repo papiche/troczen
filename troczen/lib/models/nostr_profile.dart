@@ -1,12 +1,14 @@
-/// Constantes Nostr et API pour TrocZen
+import '../config/app_config.dart';
+
+/// Constantes Nostr pour TrocZen
+/// Les URLs API et Relay sont centralisées dans AppConfig
 class NostrConstants {
-  // API Backend
-  static const String defaultApiUrl = 'https://https://zen.copylaradio.com';
-  static const String localApiUrl = 'http://zen.local:5000';
-  static const String localRelayUrl = 'ws://zen.local:7777';
+  // Relay Nostr par défaut (délégué à AppConfig)
+  static String get defaultRelay => AppConfig.defaultRelayUrl;
   
-  // Relay Nostr par défaut
-  static const String defaultRelay = 'wss://relay.copylaradio.com';
+  // URLs locales (déléguées à AppConfig)
+  static String get localApiUrl => AppConfig.localApiUrl;
+  static String get localRelayUrl => AppConfig.localRelayUrl;
   
   // Marché global (si pas de marché spécifique)
   static const String globalMarketName = 'troczen-global';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import '../config/app_config.dart';
 import '../models/bon.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
@@ -96,7 +97,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             storageService: _storage,
           );
 
-          await nostrService.connect(market.relayUrl ?? 'wss://relay.copylaradio.com');
+          await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
           
           // Publication du profil du bon (kind 0)
           await nostrService.publishUserProfile(
@@ -138,6 +139,14 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
       );
 
       Navigator.pop(context);
+    } on ShamirReconstructionException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.userMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 8),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

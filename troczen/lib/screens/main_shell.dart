@@ -397,7 +397,7 @@ class _MainShellState extends State<MainShell> {
       );
       
       final connected = await nostrService.connect(
-        market.relayUrl ?? 'wss://relay.copylaradio.com',
+        market.relayUrl ?? AppConfig.defaultRelayUrl,
       );
       
       if (!connected) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../../config/app_config.dart';
 import 'onboarding_flow.dart';
 
 /// Étape 2: Configuration Avancée (optionnelle)
@@ -50,22 +51,22 @@ class _OnboardingAdvancedScreenState extends State<OnboardingAdvancedScreen> {
   String get _selectedRelayUrl {
     switch (_relayMode) {
       case 'local':
-        return 'ws://relay.zen:7777';
+        return AppConfig.localRelayUrl;
       case 'custom':
         return _relayController.text;
       default:
-        return 'wss://relay.copylaradio.com';
+        return AppConfig.defaultRelayUrl;
     }
   }
   
   String get _selectedApiUrl {
     switch (_apiMode) {
       case 'local':
-        return 'http://api.zen:5000';
+        return AppConfig.localApiUrl;
       case 'custom':
         return _apiController.text;
       default:
-        return 'https://zen.copylaradio.com';
+        return AppConfig.defaultApiUrl;
     }
   }
   

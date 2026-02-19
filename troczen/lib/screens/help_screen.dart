@@ -491,7 +491,7 @@ Internet requis seulement pour:
             ),
             const SizedBox(height: 4),
             Text(
-              'Relay: relay.copylaradio.com',
+              'Relay: ${AppConfig.defaultRelayUrl.replaceFirst('wss://', '')}',
               style: TextStyle(color: Colors.grey[400]),
             ),
             const SizedBox(height: 12),

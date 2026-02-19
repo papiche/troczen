@@ -96,6 +96,9 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
       // ✅ PUBLIER TRANSFERT SUR NOSTR (kind 1)
       _publishTransferToNostr();
 
+    } on ShamirReconstructionException catch (e) {
+      setState(() => _isGenerating = false);
+      _showError(e.userMessage);
     } catch (e) {
       setState(() => _isGenerating = false);
       _showError('Erreur génération ACK: $e');

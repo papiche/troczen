@@ -1,3 +1,5 @@
+import '../config/app_config.dart';
+
 /// Modèle pour gérer l'état du parcours d'onboarding
 class OnboardingState {
   // Étape 1: Seed de marché
@@ -26,8 +28,8 @@ class OnboardingState {
   OnboardingState({
     this.seedMarket,
     this.seedMode,
-    this.relayUrl = 'wss://relay.copylaradio.com',
-    this.apiUrl = 'https://zen.copylaradio.com',
+    this.relayUrl = AppConfig.defaultRelayUrl,
+    this.apiUrl = AppConfig.defaultApiUrl,
     this.ipfsGateway = 'https://ipfs.copylaradio.com',
     this.p3Count = 0,
     this.syncCompleted = false,

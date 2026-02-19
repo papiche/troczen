@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/market.dart';
 import '../services/storage_service.dart';
@@ -42,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _currentMarket = market;
       _marketNameController.text = market.name;
       _seedMarketController.text = market.seedMarket;
-      _relayUrlController.text = market.relayUrl ?? 'wss://relay.copylaradio.com';
+      _relayUrlController.text = market.relayUrl ?? AppConfig.defaultRelayUrl;
       _validUntilController.text = market.validUntil.toIso8601String().split('T').first;
       _isLoading = false;
     });

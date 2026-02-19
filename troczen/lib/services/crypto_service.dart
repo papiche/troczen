@@ -8,6 +8,30 @@ import 'package:pinenacl/ed25519.dart' as nacl;
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:bs58/bs58.dart';
 
+/// Exception levée lorsque la reconstruction Shamir échoue
+/// Cela peut arriver si les parts sont incompatibles ou si la seed n'est pas compatible
+/// avec l'implémentation SSSS actuelle (limite mod 257 vs octets 0-255)
+class ShamirReconstructionException implements Exception {
+  final String message;
+  final String userMessage;
+  final int? byteIndex;
+  final int? invalidValue;
+  
+  ShamirReconstructionException(
+    this.message, {
+    this.byteIndex,
+    this.invalidValue,
+    String? customUserMessage,
+  }) : userMessage = customUserMessage ??
+      'La reconstruction de votre seed a échoué. '
+      'Vos parts peuvent être incompatibles ou corrompues.\n\n'
+      'Si vous êtes développeur et souhaitez améliorer cette implémentation, '
+      'rendez-vous sur: https://github.com/TrocZen/TrocZen/issues';
+  
+  @override
+  String toString() => 'ShamirReconstructionException: $message';
+}
+
 class CryptoService {
   final Random _secureRandom = Random.secure();
   
@@ -145,31 +169,34 @@ class CryptoService {
   }
 
   /// Découpe une clé en 3 parts avec Shamir Secret Sharing (2-sur-3)
-  /// ✅ CORRECTION: Implémentation du vrai Shamir polynomial au lieu de XOR simple
+  /// ✅ IMPLÉMENTATION: Shamir polynomial sur GF(2^8) avec tables logarithmiques
+  /// ⚠️ NOTE: Cette implémentation utilise GF(256) pour garantir que toutes les valeurs
+  ///    restent dans [0, 255], évitant ainsi les erreurs de reconstruction.
   /// Retourne [P1, P2, P3]
+  ///
+  /// Lève [ShamirReconstructionException] si la seed contient des valeurs incompatibles.
   List<String> shamirSplit(String secretHex) {
     final secretBytes = HEX.decode(secretHex);
     if (secretBytes.length != 32) {
       throw ArgumentError('Secret doit faire 32 octets');
     }
     
-    // Shamir (2,3) : Utilisation de polynômes mod 257
+    // Shamir (2,3) sur GF(2^8) avec polynôme irréductible x^8 + x^4 + x^3 + x + 1
     // f(x) = a0 + a1*x où a0 = secret byte, a1 = random
     // P1 = f(1), P2 = f(2), P3 = f(3)
     
     final p1Bytes = Uint8List(32);
     final p2Bytes = Uint8List(32);
     final p3Bytes = Uint8List(32);
-    final mod = BigInt.from(257);
     
     for (int i = 0; i < 32; i++) {
-      final a0 = BigInt.from(secretBytes[i]); // secret
-      final a1 = BigInt.from(_secureRandom.nextInt(257)); // coefficient aléatoire
+      final a0 = secretBytes[i]; // secret
+      final a1 = _secureRandom.nextInt(256); // coefficient aléatoire dans GF(256)
       
-      // Calculer f(1), f(2), f(3) mod 257
-      p1Bytes[i] = ((a0 + a1 * BigInt.one) % mod).toInt();
-      p2Bytes[i] = ((a0 + a1 * BigInt.two) % mod).toInt();
-      p3Bytes[i] = ((a0 + a1 * BigInt.from(3)) % mod).toInt();
+      // Calculer f(1), f(2), f(3) dans GF(256)
+      p1Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 1));
+      p2Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 2));
+      p3Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 3));
     }
     
     return [
@@ -180,6 +207,10 @@ class CryptoService {
   }
 
   /// Reconstruit le secret à partir de 2 parts quelconques (sur 3)
+  /// ✅ IMPLÉMENTATION: Utilise GF(256) pour garantir des résultats dans [0, 255]
+  ///
+  /// Lève [ShamirReconstructionException] si la reconstruction échoue.
+  /// Lève [ArgumentError] si moins de 2 parts sont fournies.
   String shamirCombine(String? part1Hex, String? part2Hex, String? part3Hex) {
     // Vérifier qu'on a au moins 2 parts
     final parts = <int, Uint8List>{};
@@ -199,77 +230,120 @@ class CryptoService {
     final x2 = indices[1];
     
     final secretBytes = Uint8List(32);
-    final mod = BigInt.from(257);
     
     for (int i = 0; i < 32; i++) {
-      // Interpolation de Lagrange mod 257
+      // Interpolation de Lagrange dans GF(256)
       // f(0) = y1 * L1(0) + y2 * L2(0)
       // où L1(0) = (0-x2)/(x1-x2) et L2(0) = (0-x1)/(x2-x1)
       
-      final y1Big = BigInt.from(y1[i]);
-      final y2Big = BigInt.from(y2[i]);
-      final x1Big = BigInt.from(x1);
-      final x2Big = BigInt.from(x2);
+      // Dans GF(256), la soustraction est un XOR
+      // L1(0) = (0 ^ x2) / (x1 ^ x2) = x2 / (x1 ^ x2)
+      // L2(0) = (0 ^ x1) / (x2 ^ x1) = x1 / (x2 ^ x1)
       
-      // L1 = (0 - x2) / (x1 - x2) mod 257
-      var num1 = (BigInt.zero - x2Big) % mod;
-      if (num1.isNegative) num1 = num1 + mod;
+      final denom = x1 ^ x2; // x1 XOR x2 (soustraction dans GF(256))
       
-      var den1 = (x1Big - x2Big) % mod;
-      if (den1.isNegative) den1 = den1 + mod;
-      
-      final invDen1 = _modInverseBigInt(den1, mod);
-      final l1 = (num1 * invDen1) % mod;
-      
-      // L2 = (0 - x1) / (x2 - x1) mod 257
-      var num2 = (BigInt.zero - x1Big) % mod;
-      if (num2.isNegative) num2 = num2 + mod;
-      
-      var den2 = (x2Big - x1Big) % mod;
-      if (den2.isNegative) den2 = den2 + mod;
-      
-      final invDen2 = _modInverseBigInt(den2, mod);
-      final l2 = (num2 * invDen2) % mod;
-      
-      // f(0) = y1 * L1 + y2 * L2 mod 257
-      var result = (y1Big * l1 + y2Big * l2) % mod;
-      if (result.isNegative) result = result + mod;
-      
-      // ✅ CORRECTION BUG P0 CRITIQUE: Supprimer le % 256 final
-      // En théorie, f(0) devrait toujours être dans [0, 255] car c'est le secret original
-      // Si on obtient 256, c'est une erreur de calcul ou des données corrompues
-      // On lève une exception au lieu de masquer silencieusement avec % 256
-      final resultInt = result.toInt();
-      if (resultInt > 255) {
-        throw Exception('Erreur Shamir: reconstruction invalide (octet $i = $resultInt > 255)');
+      if (denom == 0) {
+        // Parts identiques - données corrompues
+        throw ShamirReconstructionException(
+          'Parts identiques détectées (x1=$x1, x2=$x2)',
+          byteIndex: i,
+          invalidValue: null,
+          customUserMessage: 'Les parts fournies sont identiques ou corrompues.\n\n'
+              'Vérifiez que vous avez bien scanné deux parts différentes.\n\n'
+              'Si le problème persiste, contactez le support ou visitez: '
+              'https://github.com/TrocZen/TrocZen/issues',
+        );
       }
-      secretBytes[i] = resultInt;
+      
+      // Calculer les coefficients de Lagrange dans GF(256)
+      final l1 = _gf256Div(x2, denom);
+      final l2 = _gf256Div(x1, denom);
+      
+      // f(0) = y1 * L1 + y2 * L2 dans GF(256)
+      final term1 = _gf256Mul(y1[i], l1);
+      final term2 = _gf256Mul(y2[i], l2);
+      secretBytes[i] = _gf256Add(term1, term2);
     }
     
     return HEX.encode(secretBytes);
   }
 
-  /// Calcul de l'inverse modulaire pour BigInt
-  BigInt _modInverseBigInt(BigInt a, BigInt m) {
-    // Algorithme d'Euclide étendu pour trouver l'inverse modulaire
-    final result = _extendedGCDBigInt(a, m);
-    final x = result[0];
-    
-    // Normaliser dans [0, m)
-    return (x % m + m) % m;
-  }
-
-  /// Algorithme d'Euclide étendu pour BigInt
-  List<BigInt> _extendedGCDBigInt(BigInt a, BigInt b) {
-    if (b == BigInt.zero) {
-      return [BigInt.one, BigInt.zero];
+  // ==================== OPÉRATIONS GF(256) ====================
+  // Galois Field GF(2^8) avec polynôme irréductible x^8 + x^4 + x^3 + x + 1 (0x11B)
+  // Utilise des tables logarithmiques pour une multiplication efficace
+  
+  /// Table des logarithmes en base 3 (générateur) pour GF(256)
+  static final List<int> _gf256Log = _generateGf256LogTable();
+  
+  /// Table des antilogarithmes (exponentielles) pour GF(256)
+  static final List<int> _gf256Exp = _generateGf256ExpTable();
+  
+  static List<int> _generateGf256LogTable() {
+    final log = List<int>.filled(256, 0);
+    int x = 1;
+    for (int i = 0; i < 255; i++) {
+      log[x] = i;
+      x = _gf256MulNoTable(x, 3); // 3 est le générateur
     }
-    
-    final result = _extendedGCDBigInt(b, a % b);
-    final x = result[1];
-    final y = result[0] - (a ~/ b) * result[1];
-    
-    return [x, y];
+    return log;
+  }
+  
+  static List<int> _generateGf256ExpTable() {
+    final exp = List<int>.filled(512, 0);
+    int x = 1;
+    for (int i = 0; i < 255; i++) {
+      exp[i] = x;
+      exp[i + 255] = x;
+      x = _gf256MulNoTable(x, 3);
+    }
+    return exp;
+  }
+  
+  /// Multiplication GF(256) sans table (pour l'initialisation)
+  static int _gf256MulNoTable(int a, int b) {
+    int result = 0;
+    while (b > 0) {
+      if (b & 1 != 0) {
+        result ^= a;
+      }
+      a = (a << 1) ^ ((a & 0x80) != 0 ? 0x11B : 0);
+      b >>= 1;
+    }
+    return result;
+  }
+  
+  /// Addition dans GF(256) = XOR
+  int _gf256Add(int a, int b) => a ^ b;
+  
+  /// Multiplication dans GF(256) utilisant les tables logarithmiques
+  int _gf256Mul(int a, int b) {
+    if (a == 0 || b == 0) return 0;
+    final logA = _gf256Log[a];
+    final logB = _gf256Log[b];
+    return _gf256Exp[logA + logB];
+  }
+  
+  /// Division dans GF(256): a / b = a * b^(-1)
+  int _gf256Div(int a, int b) {
+    if (b == 0) {
+      throw ArgumentError('Division par zéro dans GF(256)');
+    }
+    if (a == 0) return 0;
+    final logA = _gf256Log[a];
+    final logB = _gf256Log[b];
+    // log(a/b) = log(a) - log(b) mod 255
+    final logResult = (logA - logB + 255) % 255;
+    return _gf256Exp[logResult];
+  }
+  
+  /// Inverse multiplicatif dans GF(256)
+  int _gf256Inv(int a) {
+    if (a == 0) {
+      throw ArgumentError('Inverse de zéro n\'existe pas dans GF(256)');
+    }
+    // a^(-1) = a^(254) dans GF(256)
+    // Ou plus simplement: a^(-1) = exp(255 - log(a))
+    return _gf256Exp[255 - _gf256Log[a]];
   }
 
   /// Chiffre P2 avec K_P2 = SHA256(P3)

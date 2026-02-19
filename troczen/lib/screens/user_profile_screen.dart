@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/nostr_profile.dart';
 import '../services/api_service.dart';
@@ -65,7 +66,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _nameController.text = widget.user.displayName;
     _displayNameController.text = widget.user.displayName;
     // Relais par défaut
-    _relaysController.text = 'wss://relay.copylaradio.com';
+    _relaysController.text = AppConfig.defaultRelayUrl;
   }
 
   Future<void> _selectImage(String type) async {

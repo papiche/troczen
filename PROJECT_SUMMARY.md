@@ -19,7 +19,6 @@ Caractéristiques principales :
 
 ## État du projet (février 2026)
 
-**Version** : 1.0.9 (pubspec.yaml)
 **Statut** : Production-ready pour pilote terrain
 
 ### Fonctionnel ✅
@@ -35,7 +34,7 @@ Caractéristiques principales :
 | Backend API | Flask, 10 endpoints, upload IPFS, profils Nostr |
 | Onboarding | Parcours 5 étapes (seed, config, sync P3, profil, bienvenue) |
 | Navigation | MainShell avec 4 onglets + drawer paramètres |
-| Tests | 15 tests unitaires crypto (100% passants) |
+| Tests | 46 tests unitaires (crypto, storage, qr, nostr - 100% passants) |
 
 ### En cours / à compléter 🚧
 

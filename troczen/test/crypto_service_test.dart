@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:troczen/services/crypto_service.dart';
 import 'package:hex/hex.dart';
@@ -144,6 +145,37 @@ void main() {
         () => cryptoService.shamirCombine(parts[0], null, null),
         throwsArgumentError,
       );
+    });
+
+    test('Shamir reconstruction fonctionne avec GF(256)', () {
+      // Avec GF(256), toutes les reconstructions sont garanties dans [0, 255]
+      // Test avec plusieurs secrets aléatoires pour valider la robustesse
+      final random = Random.secure();
+      for (int run = 0; run < 10; run++) {
+        final secret = HEX.encode(
+          Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)))
+        );
+        final parts = cryptoService.shamirSplit(secret);
+        
+        // Toutes les combinaisons doivent fonctionner
+        expect(cryptoService.shamirCombine(parts[0], parts[1], null), equals(secret));
+        expect(cryptoService.shamirCombine(null, parts[1], parts[2]), equals(secret));
+        expect(cryptoService.shamirCombine(parts[0], null, parts[2]), equals(secret));
+      }
+    });
+
+    test('ShamirReconstructionException contient un message utilisateur', () {
+      final exception = ShamirReconstructionException(
+        'Test error',
+        byteIndex: 5,
+        invalidValue: 256,
+      );
+      
+      expect(exception.message, equals('Test error'));
+      expect(exception.userMessage, contains('reconstruction'));
+      expect(exception.userMessage, contains('github.com'));
+      expect(exception.byteIndex, equals(5));
+      expect(exception.invalidValue, equals(256));
     });
 
     // --- TEST CHIFFREMENT AES-GCM (P2/P3) ---
