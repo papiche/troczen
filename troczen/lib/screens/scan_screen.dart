@@ -58,8 +58,11 @@ class _ScanScreenState extends State<ScanScreen> {
         return;
       }
 
-      // Fallback: Format v1 (ancien format 113 octets)
-      await _handleQrV1(barcode.rawBytes!);
+      // ❌ SÉCURITÉ: Format v1 (113 octets) rejeté - manque de métadonnées
+      // Les QR codes V1 peuvent créer des bons avec valeur 0.0
+      // Forcer l'usage du format V2 (160 octets) avec métadonnées complètes
+      _showError('QR code obsolète (V1).\nVeuillez utiliser un QR code au format V2.');
+      return;
 
     } catch (e) {
       _showError('Erreur: $e');

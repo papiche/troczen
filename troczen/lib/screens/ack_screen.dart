@@ -68,10 +68,11 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
       }
       
       // ✅ Reconstruire ÉPHÉMÈRE nsec_bon pour signer le challenge
+      // CORRECTION BUG: P2 doit être en position 2, P3 en position 3
       final nsecBonHex = _cryptoService.shamirCombine(
-        widget.bon.p2,
-        p3,
-        null,
+        null,          // P1 est absent
+        widget.bon.p2, // P2 est à sa bonne place
+        p3,            // P3 est à sa bonne place
       );
       // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
       final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
