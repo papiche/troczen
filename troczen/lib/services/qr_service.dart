@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/qr_payload_v2.dart';
 import '../models/bon.dart';
+import '../widgets/qr_explosion_widget.dart';
 
 class QRService {
   // Magic number pour format QR v2: "ZEN" + version 0x02
@@ -335,15 +336,151 @@ class QRService {
     );
   }
   
-  /// Génère un widget QR code depuis le payload binaire
-  Widget buildQrWidget(Uint8List payload, {double size = 280}) {
-    return QrImageView(
-      data: String.fromCharCodes(payload),
-      version: QrVersions.auto,
-      size: size,
-      backgroundColor: const Color(0xFFFFFFFF),
-      errorCorrectionLevel: QrErrorCorrectLevel.M,
-    );
+  /// Vérifie si les bytes contiennent des caractères valides pour un QR code
+  /// Les QR codes supportent: bytes 0x00-0xFF mais certains encodages peuvent
+  /// poser problème avec les caractères de contrôle (0x00-0x1F, 0x7F-0x9F)
+  bool _hasValidQrCharacters(Uint8List payload) {
+    for (final byte in payload) {
+      // Les caractères de contrôle C0 (0x00-0x1F) et C1 (0x7F-0x9F)
+      // peuvent causer des problèmes d'encodage
+      // On autorise: tab (0x09), LF (0x0A), CR (0x0D)
+      if (byte < 0x20 && byte != 0x09 && byte != 0x0A && byte != 0x0D) {
+        return false;
+      }
+      // Caractères de contrôle C1 (0x7F-0x9F)
+      if (byte >= 0x7F && byte <= 0x9F) {
+        return false;
+      }
+      // Surrogates UTF-16 invalides (0xD800-0xDFFF)
+      if (byte >= 0xD8 && byte <= 0xDF) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  /// Tente de valider que la chaîne peut être encodée en QR
+  bool _canEncodeAsQr(String data) {
+    try {
+      // Vérifier que la chaîne ne contient pas de caractères invalides
+      // pour l'encodage QR (alphanumeric, byte, kanji modes)
+      for (final codeUnit in data.codeUnits) {
+        // Vérifier les surrogate pairs
+        if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
+          return false;
+        }
+        // Vérifier les caractères de contrôle problématiques
+        if (codeUnit < 0x20 && codeUnit != 0x09 && codeUnit != 0x0A && codeUnit != 0x0D) {
+          return false;
+        }
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  /// Résultat de la génération du widget QR
+  /// Peut être soit un QR code valide, soit une explosion en cas d'erreur
+  Widget buildQrWidget(
+    Uint8List payload, {
+    double size = 280,
+    VoidCallback? onRetry,
+  }) {
+    // Vérifier si les bytes contiennent des caractères valides
+    if (!_hasValidQrCharacters(payload)) {
+      return QrExplosionWidget(
+        size: size,
+        onRetry: onRetry ?? () {},
+        errorMessage: _getInvalidBytesMessage(payload),
+      );
+    }
+    
+    // Tenter de créer la chaîne
+    final qrString = String.fromCharCodes(payload);
+    
+    // Vérifier que la chaîne peut être encodée
+    if (!_canEncodeAsQr(qrString)) {
+      return QrExplosionWidget(
+        size: size,
+        onRetry: onRetry ?? () {},
+        errorMessage: 'La conversion des données binaires a produit '
+            'des caractères invalides pour le QR code.',
+      );
+    }
+    
+    // Tenter de générer le QR code
+    try {
+      return QrImageView(
+        data: qrString,
+        version: QrVersions.auto,
+        size: size,
+        backgroundColor: const Color(0xFFFFFFFF),
+        errorCorrectionLevel: QrErrorCorrectLevel.M,
+      );
+    } catch (e) {
+      return QrExplosionWidget(
+        size: size,
+        onRetry: onRetry ?? () {},
+        errorMessage: 'Erreur lors de la génération du QR code: ${e.toString()}',
+      );
+    }
+  }
+  
+  /// Génère un message d'erreur détaillé sur les bytes invalides
+  String _getInvalidBytesMessage(Uint8List payload) {
+    final invalidBytes = <int>[];
+    final invalidPositions = <int>[];
+    
+    for (int i = 0; i < payload.length; i++) {
+      final byte = payload[i];
+      if (byte < 0x20 && byte != 0x09 && byte != 0x0A && byte != 0x0D) {
+        invalidBytes.add(byte);
+        invalidPositions.add(i);
+      } else if (byte >= 0x7F && byte <= 0x9F) {
+        invalidBytes.add(byte);
+        invalidPositions.add(i);
+      }
+    }
+    
+    if (invalidBytes.isEmpty) {
+      return 'Les données binaires contiennent des séquences invalides.';
+    }
+    
+    final hexBytes = invalidBytes.take(5).map((b) => '0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}').join(', ');
+    final positions = invalidPositions.take(5).join(', ');
+    
+    return 'Bytes invalides détectés: $hexBytes\n'
+        'Positions: $positions\n\n'
+        'Ces caractères de contrôle ne peuvent pas être '
+        'représentés correctement dans un QR code.';
+  }
+  
+  /// Version sécurisée qui utilise l'encodage Base64 pour éviter les problèmes
+  /// de caractères invalides (augmente la taille du QR d'environ 33%)
+  Widget buildQrWidgetSafe(
+    Uint8List payload, {
+    double size = 280,
+    VoidCallback? onRetry,
+  }) {
+    try {
+      // Encoder en Base64 pour garantir des caractères valides
+      final base64String = base64Encode(payload);
+      
+      return QrImageView(
+        data: base64String,
+        version: QrVersions.auto,
+        size: size,
+        backgroundColor: const Color(0xFFFFFFFF),
+        errorCorrectionLevel: QrErrorCorrectLevel.M,
+      );
+    } catch (e) {
+      return QrExplosionWidget(
+        size: size,
+        onRetry: onRetry ?? () {},
+        errorMessage: 'Erreur lors de l\'encodage Base64: ${e.toString()}',
+      );
+    }
   }
   
   // ==================== UTILITAIRES ====================

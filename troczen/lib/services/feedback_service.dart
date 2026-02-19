@@ -1,17 +1,60 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'storage_service.dart';
 
 /// Service d'envoi de feedback utilisateur
 /// 🔒 Sécurisé: Passe par le backend qui gère le token GitHub
 class FeedbackService {
   final String _baseUrl;
+  final StorageService _storage = StorageService();
 
   FeedbackService({String? baseUrl})
       : _baseUrl = baseUrl ?? 'https://api.troczen.local';
 
+  /// Récupère les identifiants utilisateur (G1PUB et npub Nostr)
+  Future<Map<String, String>> _getUserIdentifiers() async {
+    try {
+      final user = await _storage.getUser();
+      if (user != null) {
+        return {
+          'g1pub': user.g1pub ?? 'non défini',
+          'npub_hex': user.npub,
+          'npub_bech32': user.npubBech32,
+          'display_name': user.displayName,
+        };
+      }
+    } catch (e) {
+      debugPrint('⚠️ Impossible de récupérer les identifiants utilisateur: $e');
+    }
+    return {
+      'g1pub': 'non défini',
+      'npub_hex': 'non défini',
+      'npub_bech32': 'non défini',
+      'display_name': 'anonyme',
+    };
+  }
+
+  /// Construit la description complète avec les identifiants utilisateur
+  Future<String> _buildDescriptionWithIdentifiers(String description) async {
+    final identifiers = await _getUserIdentifiers();
+    
+    return '''
+---
+### Identifiants utilisateur
+- **G1PUB**: `${identifiers['g1pub']}`
+- **Nostr npub (hex)**: `${identifiers['npub_hex']}`
+- **Nostr npub (bech32)**: `${identifiers['npub_bech32']}`
+- **Nom**: ${identifiers['display_name']}
+
+---
+
+$description
+''';
+  }
+
   /// Envoyer un feedback via le backend
-  /// 
+  ///
   /// [type] : 'bug', 'feature', 'feedback', 'question'
   /// [title] : Titre court du feedback
   /// [description] : Description détaillée
@@ -27,6 +70,12 @@ class FeedbackService {
     String? platform,
   }) async {
     try {
+      // Ajouter les identifiants utilisateur à la description
+      final fullDescription = await _buildDescriptionWithIdentifiers(description);
+      
+      // Récupérer les identifiants pour les métadonnées
+      final identifiers = await _getUserIdentifiers();
+      
       final response = await http.post(
         Uri.parse('$_baseUrl/api/feedback'),
         headers: {
@@ -35,10 +84,14 @@ class FeedbackService {
         body: jsonEncode({
           'type': type,
           'title': title,
-          'description': description,
+          'description': fullDescription,
           'email': email ?? 'anonymous',
           'app_version': appVersion ?? 'unknown',
           'platform': platform ?? 'unknown',
+          'user_g1pub': identifiers['g1pub'],
+          'user_npub': identifiers['npub_hex'],
+          'user_npub_bech32': identifiers['npub_bech32'],
+          'user_display_name': identifiers['display_name'],
         }),
       ).timeout(const Duration(seconds: 10));
 
