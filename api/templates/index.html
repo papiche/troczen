@@ -618,6 +618,12 @@
             </div>
             
             <div class="features-grid">
+                <!-- Offline First mis en premier -->
+                <div class="feature-card" style="border-color: var(--accent); box-shadow: 0 0 20px rgba(255, 179, 71, 0.2);">
+                    <div class="feature-icon">✈️</div>
+                    <div class="feature-title">Offline First</div>
+                    <div class="feature-text">Fonctionne même sans réseau mobile. Les transactions se synchronisent automatiquement.</div>
+                </div>
                 <div class="feature-card">
                     <div class="feature-icon">🔐</div>
                     <div class="feature-title">Cryptographie</div>
@@ -633,12 +639,55 @@
                     <div class="feature-title">Réseau Nostr</div>
                     <div class="feature-text">Le réseau local (P3) assure validation et traçabilité sans serveur central.</div>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">✈️</div>
-                    <div class="feature-title">Offline First</div>
-                    <div class="feature-text">Fonctionne même sans réseau mobile. Les transactions se synchronisent automatiquement.</div>
-                </div>
             </div>
+            
+            <!-- Section pliable avec explication détaillée -->
+            <details class="explanation-details" style="margin-top: 24px;">
+                <summary style="cursor: pointer; color: var(--accent); font-weight: 600; padding: 12px; background: rgba(255, 179, 71, 0.1); border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span>📖</span>
+                    <span>En savoir plus sur le système de bons ẐEN</span>
+                </summary>
+                <div class="explanation-content" style="padding: 20px; background: rgba(255, 255, 255, 0.02); border-radius: 8px; margin-top: 12px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                    <h4 style="color: var(--accent); margin-bottom: 16px;">🧩 Le système des trois parts (P1/P2/P3)</h4>
+                    <p style="line-height: 1.7; margin-bottom: 16px;">
+                        Chaque bon ẐEN est sécurisé par un <strong>secret partagé</strong> (Shamir's Secret Sharing). La clé privée du bon est découpée en <strong>3 parts</strong> dont <strong>2 sont nécessaires</strong> pour reconstituer le secret :
+                    </p>
+                    <ul style="list-style: none; padding: 0; margin-bottom: 20px;">
+                        <li style="padding: 8px 0; display: flex; align-items: flex-start; gap: 12px;">
+                            <span style="color: #3B82F6; font-size: 1.2em;">🟦</span>
+                            <span><strong>P1 (Ancre)</strong> : Reste chez l'émetteur du bon. C'est la preuve d'origine.</span>
+                        </li>
+                        <li style="padding: 8px 0; display: flex; align-items: flex-start; gap: 12px;">
+                            <span style="color: #22C55E; font-size: 1.2em;">🟩</span>
+                            <span><strong>P2 (Voyageur)</strong> : Circule de main en main. C'est la part qui représente la valeur.</span>
+                        </li>
+                        <li style="padding: 8px 0; display: flex; align-items: flex-start; gap: 12px;">
+                            <span style="color: #EF4444; font-size: 1.2em;">🟥</span>
+                            <span><strong>P3 (Témoin)</strong> : Publiée sur le réseau Nostr (chiffrée). Assure la traçabilité publique.</span>
+                        </li>
+                    </ul>
+                    
+                    <h4 style="color: var(--accent); margin-bottom: 16px;">🔄 Transfert atomique par double scan</h4>
+                    <p style="line-height: 1.7; margin-bottom: 16px;">
+                        Le transfert d'un bon se fait en <strong>deux étapes</strong> garantissant l'atomicité :
+                    </p>
+                    <ol style="padding-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+                        <li><strong>Offre</strong> : Le donneur génère un QR code contenant P2 chiffré (durée de vie courte).</li>
+                        <li><strong>Acceptation</strong> : Le receveur scanne, déchiffre P2 grâce au P3 du cache local, et génère un ACK signé.</li>
+                        <li><strong>Finalisation</strong> : Le donneur scanne l'ACK et supprime définitivement son P2.</li>
+                    </ol>
+                    
+                    <h4 style="color: var(--accent); margin-bottom: 16px;">📡 Fonctionnement hors-ligne</h4>
+                    <p style="line-height: 1.7; margin-bottom: 16px;">
+                        Les P3 sont <strong>téléchargés à l'avance</strong> et stockés localement. Grâce à la <strong>graine de marché</strong>, chaque appareil peut déchiffrer les P3 des jours passés et futurs <strong>sans connexion</strong>. Les transferts peuvent thus se faire même sans réseau mobile !
+                    </p>
+                    
+                    <h4 style="color: var(--accent); margin-bottom: 16px;">⚖️ Régulation par la Ğ1</h4>
+                    <p style="line-height: 1.7;">
+                        Pour émettre des ẐEN, un commerçant doit <strong>provisionner des Ğ1</strong> (monnaie libre). Le taux est <strong>1 Ğ1 = 10 Ẑ</strong>. Ce mécanisme empêche la création massive de bons et garantit la confiance dans le système.
+                    </p>
+                </div>
+            </details>
         </div>
 
         <!-- POUR LES COMMERÇANTS -->
