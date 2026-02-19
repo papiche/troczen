@@ -226,15 +226,23 @@
         <!-- Statistiques du marché -->
         <div class="download-card">
             <h2>📊 Statistiques du marché</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">{{ total_merchants }}</div>
-                    <div class="stat-label">Marchands</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; text-align: center;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 2.5rem; font-weight: bold;">{{ total_merchants }}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">Marchands</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ total_bons }}</div>
-                    <div class="stat-label">Bons actifs</div>
+                <div style="background: linear-gradient(135deg, #FFB347 0%, #FF8C42 100%); color: white; padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 2.5rem; font-weight: bold;">{{ total_bons }}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">Bons actifs</div>
                 </div>
+            </div>
+            
+            <!-- Info Nostr -->
+            <div style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                <p style="margin: 0; font-size: 0.9rem; color: #333;">
+                    <strong>📡 Données temps réel</strong> depuis le relai Nostr Strfry
+                    <br><small style="color: #666;">kind 0 (profils marchands) + kind 30303 (bons ẐEN signés)</small>
+                </p>
             </div>
         </div>
 

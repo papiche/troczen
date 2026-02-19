@@ -432,6 +432,100 @@ def get_marche_data(market_name):
     })
 
 
+@app.route('/api/nostr/profiles', methods=['GET'])
+def get_nostr_profiles():
+    """
+    API pour récupérer tous les profils Nostr (kind 0)
+    Utile pour l'affichage du dashboard principal
+    """
+    NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
+    NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+    
+    if not NOSTR_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Nostr disabled',
+            'profiles': []
+        })
+    
+    try:
+        client = NostrClient(relay_url=NOSTR_RELAY)
+        
+        async def fetch_profiles():
+            await client.connect()
+            profiles = await client.get_merchant_profiles()
+            await client.disconnect()
+            return profiles
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        profiles = loop.run_until_complete(fetch_profiles())
+        loop.close()
+        
+        return jsonify({
+            'success': True,
+            'profiles': profiles,
+            'count': len(profiles),
+            'source': 'nostr_strfry'
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur récupération profils Nostr: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'profiles': []
+        })
+
+
+@app.route('/api/nostr/bons', methods=['GET'])
+def get_all_bons():
+    """
+    API pour récupérer tous les bons (kind 30303)
+    Optionnel: filtrer par marché avec ?market=nom_marche
+    """
+    NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
+    NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+    market_name = request.args.get('market')
+    
+    if not NOSTR_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Nostr disabled',
+            'bons': []
+        })
+    
+    try:
+        client = NostrClient(relay_url=NOSTR_RELAY)
+        
+        async def fetch_bons():
+            await client.connect()
+            bons = await client.get_bons(market_name)
+            await client.disconnect()
+            return bons
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        bons = loop.run_until_complete(fetch_bons())
+        loop.close()
+        
+        return jsonify({
+            'success': True,
+            'bons': bons,
+            'count': len(bons),
+            'market': market_name,
+            'source': 'nostr_strfry'
+        })
+        
+    except Exception as e:
+        print(f"❌ Erreur récupération bons Nostr: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'bons': []
+        })
+
+
 @app.route('/api/nostr/sync', methods=['POST'])
 def sync_nostr_profiles():
     """

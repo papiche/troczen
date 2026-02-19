@@ -149,24 +149,46 @@ class NostrClient:
         bons = []
         for event in events:
             try:
-                # Extraire les tags
-                tags = {tag[0]: tag[1] for tag in event.get("tags", [])}
+                # Extraire les tags - gérer les tags multiples
+                tags = {}
+                for tag in event.get("tags", []):
+                    if len(tag) >= 2:
+                        key = tag[0]
+                        value = tag[1]
+                        # Pour les tags qui peuvent apparaître plusieurs fois
+                        if key in tags:
+                            if isinstance(tags[key], list):
+                                tags[key].append(value)
+                            else:
+                                tags[key] = [tags[key], value]
+                        else:
+                            tags[key] = value
                 
                 # Filtrer par market si spécifié
                 if market_name and tags.get("market") != market_name:
                     continue
                 
+                # Extraire le bon ID depuis le tag 'd' (format: zen-{bonId})
+                bon_id = tags.get("d", "")
+                if bon_id.startswith("zen-"):
+                    bon_id = bon_id[4:]
+                else:
+                    bon_id = event.get("id", "")
+                
                 # Le contenu est chiffré (P3), on garde les métadonnées
+                # IMPORTANT: issuer = npub du marchand émetteur (pas pubkey qui est celle du bon)
                 bon = {
-                    "id": event.get("id", ""),
-                    "pubkey": event.get("pubkey", ""),
+                    "id": bon_id,
+                    "event_id": event.get("id", ""),
+                    "pubkey": event.get("pubkey", ""),  # Clé publique du BON
+                    "issuer": tags.get("issuer", ""),    # npub du MARCHAND émetteur
                     "created_at": event.get("created_at", 0),
                     "content": event.get("content", ""),  # Chiffré
                     "tags": tags,
                     "market": tags.get("market", ""),
                     "status": tags.get("status", "active"),  # active, burned, expired
-                    "value": float(tags.get("value", 0)),
-                    "expiry": int(tags.get("expiry", 0)),
+                    "value": float(tags.get("value", 0)) if tags.get("value") else 0,
+                    "expiry": int(tags.get("expiry", 0)) if tags.get("expiry") else 0,
                     "category": tags.get("category", "autre"),
                     "rarity": tags.get("rarity", "common")
                 }
@@ -187,19 +209,29 @@ class NostrClient:
         Returns:
             Dictionnaire avec marchands et bons
         """
-        # Récupérer tous les marchands
+        # Récupérer tous les marchands (kind 0)
         merchants = await self.get_merchant_profiles()
         
-        # Récupérer les bons du marché
+        # Créer un index des marchands par pubkey pour accès rapide
+        merchants_by_pubkey = {m["pubkey"]: m for m in merchants}
+        
+        # Récupérer les bons du marché (kind 30303)
         bons = await self.get_bons(market_name)
         
-        # Associer les marchands à leurs bons
+        # Associer les bons aux marchands via le tag 'issuer'
+        # IMPORTANT: Le tag 'issuer' contient le npub du marchand émetteur
         merchant_bons = {}
         for bon in bons:
-            merchant_pubkey = bon["pubkey"]
-            if merchant_pubkey not in merchant_bons:
-                merchant_bons[merchant_pubkey] = []
-            merchant_bons[merchant_pubkey].append(bon)
+            # Utiliser 'issuer' (npub du marchand) et non 'pubkey' (clé du bon)
+            issuer_pubkey = bon.get("issuer", "")
+            if not issuer_pubkey:
+                # Fallback: utiliser pubkey si pas d'issuer (ancien format)
+                issuer_pubkey = bon.get("pubkey", "")
+            
+            if issuer_pubkey:
+                if issuer_pubkey not in merchant_bons:
+                    merchant_bons[issuer_pubkey] = []
+                merchant_bons[issuer_pubkey].append(bon)
         
         # Construire la réponse
         result = {
@@ -209,22 +241,23 @@ class NostrClient:
             "total_merchants": 0
         }
         
-        for merchant in merchants:
-            pubkey = merchant["pubkey"]
-            if pubkey in merchant_bons:
-                merchant_data = {
-                    "pubkey": pubkey,
-                    "name": merchant["name"],
-                    "about": merchant["about"],
-                    "picture": merchant["picture"],
-                    "banner": merchant["banner"],
-                    "website": merchant["website"],
-                    "lud16": merchant["lud16"],
-                    "nip05": merchant["nip05"],
-                    "bons": merchant_bons[pubkey],
-                    "bons_count": len(merchant_bons[pubkey])
-                }
-                result["merchants"].append(merchant_data)
+        # Ajouter les marchands qui ont des bons
+        for issuer_pubkey, bons_list in merchant_bons.items():
+            merchant = merchants_by_pubkey.get(issuer_pubkey, {})
+            
+            merchant_data = {
+                "pubkey": issuer_pubkey,
+                "name": merchant.get("name", "Marchand inconnu"),
+                "about": merchant.get("about", ""),
+                "picture": merchant.get("picture", ""),
+                "banner": merchant.get("banner", ""),
+                "website": merchant.get("website", ""),
+                "lud16": merchant.get("lud16", ""),
+                "nip05": merchant.get("nip05", ""),
+                "bons": bons_list,
+                "bons_count": len(bons_list)
+            }
+            result["merchants"].append(merchant_data)
         
         result["total_merchants"] = len(result["merchants"])
         

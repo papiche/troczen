@@ -57,7 +57,12 @@ class ApiService {
     required String type,  // 'logo', 'banner', ou 'avatar'
   }) async {
     try {
-      final uri = Uri.parse('$_currentApiUrl/api/upload/image');
+      // ✅ SÉCURITÉ: Normaliser l'URL pour éviter les doubles slash
+      // si _currentApiUrl se termine par '/'
+      final baseUrl = _currentApiUrl.endsWith('/')
+          ? _currentApiUrl.substring(0, _currentApiUrl.length - 1)
+          : _currentApiUrl;
+      final uri = Uri.parse('$baseUrl/api/upload/image');
       final request = http.MultipartRequest('POST', uri);
       
       request.fields['npub'] = npub;

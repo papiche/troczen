@@ -274,7 +274,7 @@
         <!-- DASHBOARD DATA -->
         <div class="card">
             <div class="section-title">
-                <span style="font-size:1.5rem">📊</span> État du Réseau
+                <span style="font-size:1.5rem">📊</span> État du Réseau Nostr
             </div>
             
             <div class="stats-grid">
@@ -287,8 +287,8 @@
                     <div class="stat-label">Commerçants</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="stat-logos">-</div>
-                    <div class="stat-label">Logos</div>
+                    <div class="stat-value" id="stat-bons">-</div>
+                    <div class="stat-label">Bons Actifs</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value" id="apk-version">v...</div>
@@ -296,9 +296,27 @@
                 </div>
             </div>
 
+            <!-- Source des données -->
+            <div style="background: rgba(10, 126, 164, 0.1); border-left: 3px solid var(--secondary); padding: 12px; margin: 20px 0; border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">
+                    <strong style="color: var(--primary);">📡 Source:</strong> Relai Nostr Strfry
+                    <br><small>kind 0 (profils marchands) + kind 30303 (bons ẐEN)</small>
+                </p>
+            </div>
+
             <div style="margin-top: 20px;">
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Marchés actifs détectés (Nostr) :</p>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">Marchés actifs détectés :</p>
                 <div id="markets-list">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- DERNIERS MARCHANDS (Nostr kind 0) -->
+        <div class="card">
+            <div class="section-title">
+                <span style="font-size:1.5rem">🏪</span> Derniers Marchands
+            </div>
+            <div id="merchants-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                <p style="color: var(--text-secondary);">Chargement depuis Nostr...</p>
             </div>
         </div>
 
@@ -373,7 +391,6 @@
                 const stats = await (await fetch('/api/stats')).json();
                 document.getElementById('stat-markets').textContent = stats.market_count;
                 document.getElementById('stat-profiles').textContent = stats.profile_count;
-                document.getElementById('stat-logos').textContent = stats.logo_count;
 
                 // 2. Gestion des Marchés
                 const marketsDiv = document.getElementById('markets-list');
@@ -402,8 +419,59 @@
                         downloadBtn.href = apk.download_url;
                     }
                 }
+                
+                // 4. Charger les données Nostr pour le marché HACKATHON (démo)
+                loadNostrMerchants('HACKATHON');
+                
             } catch (e) {
                 console.warn("Offline or API error", e);
+            }
+        }
+        
+        // Charger les marchands depuis Nostr pour un marché
+        async function loadNostrMerchants(marketName) {
+            try {
+                const response = await fetch(`/api/nostr/marche/${marketName}`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const marcheData = data.data;
+                    
+                    // Mettre à jour les stats de bons
+                    document.getElementById('stat-bons').textContent = marcheData.total_bons || 0;
+                    
+                    // Afficher les marchands
+                    const merchantsDiv = document.getElementById('merchants-list');
+                    
+                    if (marcheData.merchants && marcheData.merchants.length > 0) {
+                        merchantsDiv.innerHTML = marcheData.merchants.slice(0, 6).map(m => `
+                            <div style="background: var(--bg-input); border-radius: 12px; padding: 15px; text-align: center;">
+                                ${m.picture
+                                    ? `<img src="${m.picture}" alt="${m.name}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">`
+                                    : `<div style="width: 60px; height: 60px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 1.5rem;">🏪</div>`
+                                }
+                                <p style="margin: 10px 0 5px; font-weight: bold; color: var(--text-main);">${m.name || 'Anonyme'}</p>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary);">${m.bons_count || 0} bon${(m.bons_count || 0) > 1 ? 's' : ''}</p>
+                                ${m.about ? `<p style="font-size: 0.75rem; color: #666; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.about.substring(0, 50)}${m.about.length > 50 ? '...' : ''}</p>` : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        merchantsDiv.innerHTML = `
+                            <p style="color: var(--text-secondary); grid-column: 1/-1; text-align: center;">
+                                Aucun marchand détecté sur le relai Nostr.<br>
+                                <small>Les profils sont publiés via l'app Flutter (kind 0)</small>
+                            </p>
+                        `;
+                    }
+                }
+            } catch (e) {
+                console.warn("Nostr data unavailable", e);
+                document.getElementById('merchants-list').innerHTML = `
+                    <p style="color: var(--text-secondary); grid-column: 1/-1; text-align: center;">
+                        ⚠️ Impossible de charger les données Nostr<br>
+                        <small>Vérifiez que le relai Strfry est actif (ws://127.0.0.1:7777)</small>
+                    </p>
+                `;
             }
         }
 

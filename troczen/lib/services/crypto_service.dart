@@ -53,6 +53,10 @@ class CryptoService {
   }
   
   /// Empêche l'optimisation du compilateur
+  /// ✅ SÉCURITÉ: Le pragma 'vm:never-inline' empêche le compilateur AOT de
+  /// supprimer cette méthode lors de l'optimisation, garantissant que la
+  /// lecture volatile est effectivement exécutée.
+  @pragma('vm:never-inline')
   void _volatileWrite(Uint8List bytes) {
     // Cette méthode force le compilateur à ne pas optimiser l'écriture
     // car le résultat est "utilisé" (même si c'est pour rien)
@@ -781,7 +785,7 @@ class CryptoService {
     return bip39.generateMnemonic();
   }
 
-  /// Convertit un mnémonique en Seed de 32 octets (Compatible avec votre JS)
+  /// Convertit un mnémonique en Seed de 32 octets Compatible avec l'implémentation Substrate/Polkadot standard (SS58)
   /// Note: BIP39 produit 64 octets. Pour Ed25519 "MiniSecret", on prend les 32 premiers.
   Uint8List mnemonicToSeed(String mnemonic) {
     if (!bip39.validateMnemonic(mnemonic)) {
