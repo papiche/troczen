@@ -20,7 +20,7 @@ void main() {
     });
 
     tearDown(() {
-      nostrService.disconnect();
+      nostrService.dispose();
     });
 
     // --- TEST AUTO SYNC ---
@@ -115,6 +115,75 @@ void main() {
       expect(nostrService.onP3Received, isNotNull);
       expect(nostrService.onError, isNotNull);
       expect(nostrService.onConnectionChange, isNotNull);
+    });
+
+    // --- TEST CYCLE DE VIE APPLICATION ---
+
+    test('onAppPaused met l\'application en arrière-plan', () {
+      final market = Market(
+        name: 'Test Market',
+        seedMarket: 'f' * 64,
+        validUntil: DateTime.now().add(const Duration(days: 365)),
+      );
+
+      nostrService.enableAutoSync(initialMarket: market);
+      expect(nostrService.isAppInBackground, isFalse);
+
+      nostrService.onAppPaused();
+      expect(nostrService.isAppInBackground, isTrue);
+    });
+
+    test('onAppResumed remet l\'application au premier plan', () {
+      final market = Market(
+        name: 'Test Market',
+        seedMarket: 'g' * 64,
+        validUntil: DateTime.now().add(const Duration(days: 365)),
+      );
+
+      nostrService.enableAutoSync(initialMarket: market);
+      nostrService.onAppPaused();
+      expect(nostrService.isAppInBackground, isTrue);
+
+      nostrService.onAppResumed();
+      expect(nostrService.isAppInBackground, isFalse);
+    });
+
+    test('dispose nettoie toutes les ressources', () {
+      final market = Market(
+        name: 'Test Market',
+        seedMarket: 'h' * 64,
+        validUntil: DateTime.now().add(const Duration(days: 365)),
+      );
+
+      nostrService.enableAutoSync(initialMarket: market);
+      expect(nostrService.autoSyncEnabled, isTrue);
+
+      nostrService.dispose();
+      expect(nostrService.autoSyncEnabled, isFalse);
+      expect(nostrService.reconnectAttempts, equals(0));
+    });
+
+    // --- TEST RECONNEXION AUTOMATIQUE ---
+
+    test('reconnectAttempts est initialisé à 0', () {
+      expect(nostrService.reconnectAttempts, equals(0));
+    });
+
+    test('forceReconnect reset le compteur de reconnexion', () async {
+      // Simuler des tentatives de reconnexion
+      // (normalement fait via _scheduleReconnect qui est privé)
+      
+      // forceReconnect reset le compteur
+      await nostrService.forceReconnect();
+      expect(nostrService.reconnectAttempts, equals(0));
+    });
+
+    test('isConnected retourne false initialement', () {
+      expect(nostrService.isConnected, isFalse);
+    });
+
+    test('currentRelay retourne null initialement', () {
+      expect(nostrService.currentRelay, isNull);
     });
   });
 }

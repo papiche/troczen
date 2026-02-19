@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
+import 'package:flutter/foundation.dart';
 import '../models/market.dart';
 import '../models/nostr_profile.dart';
 import 'crypto_service.dart';
@@ -13,6 +14,11 @@ import 'logger_service.dart';
 
 /// Service de publication et synchronisation via Nostr
 /// Gère la publication des P3 (kind 30303) et la synchronisation
+///
+/// ✅ CORRECTIONS:
+/// - Gestion du cycle de vie du Timer (arrêt en arrière-plan)
+/// - Reconnexion automatique WebSocket avec backoff exponentiel
+/// - Conformité NIP-24 pour les tags d'activité
 class NostrService {
   final CryptoService _cryptoService;
   final StorageService _storageService;
@@ -28,10 +34,22 @@ class NostrService {
   bool _autoSyncEnabled = false;
   Duration _autoSyncInterval = const Duration(minutes: 5);
   Market? _lastSyncedMarket;
+  
+  // ✅ NOUVEAU: Gestion de l'état de l'application (arrière-plan/ premier plan)
+  bool _isAppInBackground = false;
+  
+  // ✅ NOUVEAU: Reconnexion automatique
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 5;
+  static const Duration _baseReconnectDelay = Duration(seconds: 2);
+  static const Duration _maxReconnectDelay = Duration(seconds: 30);
 
   // ✅ Getters publics pour les tests
   bool get autoSyncEnabled => _autoSyncEnabled;
   Market? get lastSyncedMarket => _lastSyncedMarket;
+  bool get isAppInBackground => _isAppInBackground;
+  int get reconnectAttempts => _reconnectAttempts;
   
   // Callbacks
   Function(String bonId, String p3Hex)? onP3Received;
@@ -64,26 +82,40 @@ class NostrService {
           _isConnected = false;
           onError?.call('Erreur WebSocket: $error');
           onConnectionChange?.call(false);
+          // ✅ NOUVEAU: Tenter reconnexion automatique
+          _scheduleReconnect();
         },
         onDone: () {
           _isConnected = false;
           onConnectionChange?.call(false);
+          // ✅ NOUVEAU: Tenter reconnexion automatique si pas en arrière-plan
+          if (!_isAppInBackground) {
+            _scheduleReconnect();
+          }
         },
       );
 
       _isConnected = true;
+      _reconnectAttempts = 0; // ✅ Reset du compteur de reconnexion
       onConnectionChange?.call(true);
       return true;
     } catch (e) {
       _isConnected = false;
       onError?.call('Connexion impossible: $e');
       onConnectionChange?.call(false);
+      // ✅ NOUVEAU: Tenter reconnexion automatique
+      _scheduleReconnect();
       return false;
     }
   }
 
   /// Déconnexion du relais
   Future<void> disconnect() async {
+    // ✅ NOUVEAU: Annuler le timer de reconnexion
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectAttempts = 0;
+    
     await _subscription?.cancel();
     await _channel?.sink.close();
     _subscription = null;
@@ -91,6 +123,111 @@ class NostrService {
     _isConnected = false;
     _currentRelayUrl = null;
     onConnectionChange?.call(false);
+  }
+  
+  // ============================================================
+  // ✅ NOUVEAU: GESTION DU CYCLE DE VIE DE L'APPLICATION
+  // ============================================================
+  
+  /// Appelé quand l'application passe en arrière-plan
+  /// Arrête le timer de sync pour éviter les fuites mémoire
+  void onAppPaused() {
+    _isAppInBackground = true;
+    Logger.log('NostrService', 'Application en arrière-plan - pause sync');
+    
+    // Suspendre le timer de sync automatique
+    _backgroundSyncTimer?.cancel();
+    _backgroundSyncTimer = null;
+    
+    // Annuler les tentatives de reconnexion en arrière-plan
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+  }
+  
+  /// Appelé quand l'application revient au premier plan
+  /// Redémarre le timer de sync si nécessaire
+  void onAppResumed() {
+    _isAppInBackground = false;
+    Logger.log('NostrService', 'Application au premier plan - reprise sync');
+    
+    // Redémarrer le timer de sync si auto-sync était activé
+    if (_autoSyncEnabled && _backgroundSyncTimer == null) {
+      _backgroundSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
+        if (_isConnected && _lastSyncedMarket != null && !_isAppInBackground) {
+          _doBackgroundSync();
+        }
+      });
+    }
+    
+    // Tenter de se reconnecter si on était connecté
+    if (_currentRelayUrl != null && !_isConnected) {
+      connect(_currentRelayUrl!);
+    }
+  }
+  
+  /// Appelé quand l'application est détruite
+  /// Nettoie toutes les ressources
+  void dispose() {
+    disableAutoSync();
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    disconnect();
+  }
+  
+  // ============================================================
+  // ✅ NOUVEAU: RECONNEXION AUTOMATIQUE AVEC BACKOFF EXPONENTIEL
+  // ============================================================
+  
+  /// Planifie une tentative de reconnexion avec backoff exponentiel
+  void _scheduleReconnect() {
+    // Ne pas reconnecter si en arrière-plan ou max tentatives atteint
+    if (_isAppInBackground || _reconnectAttempts >= _maxReconnectAttempts) {
+      if (_reconnectAttempts >= _maxReconnectAttempts) {
+        onError?.call('Max tentatives de reconnexion atteint');
+      }
+      return;
+    }
+    
+    _reconnectTimer?.cancel();
+    
+    // Calcul du délai avec backoff exponentiel
+    final delay = Duration(
+      milliseconds: (_baseReconnectDelay.inMilliseconds *
+          (1 << _reconnectAttempts)).clamp(
+        _baseReconnectDelay.inMilliseconds,
+        _maxReconnectDelay.inMilliseconds,
+      ),
+    );
+    
+    _reconnectAttempts++;
+    Logger.log('NostrService',
+        'Reconnexion planifiée dans ${delay.inSeconds}s (tentative $_reconnectAttempts/$_maxReconnectAttempts)');
+    
+    _reconnectTimer = Timer(delay, () async {
+      if (_currentRelayUrl != null && !_isAppInBackground) {
+        Logger.log('NostrService', 'Tentative de reconnexion...');
+        final success = await connect(_currentRelayUrl!);
+        if (success) {
+          Logger.log('NostrService', 'Reconnexion réussie');
+          // Relancer la sync si un marché était en cours
+          if (_lastSyncedMarket != null) {
+            syncMarketP3s(_lastSyncedMarket!);
+          }
+        }
+      }
+    });
+  }
+  
+  /// Force une reconnexion immédiate (reset le compteur de backoff)
+  Future<bool> forceReconnect() async {
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    
+    if (_currentRelayUrl != null) {
+      return await connect(_currentRelayUrl!);
+    }
+    return false;
   }
 
   // ============================================================
@@ -235,7 +372,12 @@ class NostrService {
   }
 
   /// ✅ PUBLIER PROFIL UTILISATEUR (kind 0 metadata)
-  /// Les tags sont ajoutés comme tags 't' dans l'event Nostr (ex: centres d'intérêt)
+  ///
+  /// NIP-24 Compliant: Les tags d'activité sont ajoutés de deux façons:
+  /// 1. Dans le contenu JSON (pour les clients NIP-24)
+  /// 2. Comme tags 't' de l'event (pour la recherche/filtrage NIP-12)
+  ///
+  /// Cela assure une interopérabilité maximale avec l'écosystème Nostr.
   Future<bool> publishUserProfile({
     required String npub,
     required String nsec,
@@ -246,7 +388,9 @@ class NostrService {
     String? banner,
     String? website,
     String? g1pub,
-    List<String>? tags,  // ✅ Tags d'activité/centres d'intérêt
+    List<String>? tags,  // ✅ Tags d'activité/centres d'intérêt (NIP-24)
+    String? activity,    // ✅ Activité professionnelle (NIP-24 extended)
+    String? profession,  // ✅ Métier (NIP-24 extended)
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
@@ -254,6 +398,7 @@ class NostrService {
     }
 
     try {
+      // ✅ Créer le profil avec tous les champs NIP-24
       final profile = NostrProfile(
         npub: npub,
         name: name,
@@ -263,22 +408,42 @@ class NostrService {
         banner: banner,
         website: website,
         g1pub: g1pub,
+        tags: tags,           // ✅ Tags dans le contenu JSON
+        activity: activity,   // ✅ NIP-24 extended
+        profession: profession,
       );
 
-      // ✅ Construire les tags Nostr à partir de la liste
+      // ✅ NIP-12/NIP-24: Construire les tags 't' pour l'event
+      // Les tags 't' permettent la recherche et le filtrage par les clients
       final nostrTags = <List<String>>[];
+      
+      // Ajouter les tags d'activité/centres d'intérêt
       if (tags != null && tags.isNotEmpty) {
         for (final tag in tags) {
-          nostrTags.add(['t', tag]);
+          // ✅ NIP-12: Les tags 't' doivent être en minuscules pour la recherche
+          final normalizedTag = tag.toLowerCase().trim();
+          if (normalizedTag.isNotEmpty) {
+            nostrTags.add(['t', normalizedTag]);
+          }
         }
+      }
+      
+      // ✅ Ajouter l'activité comme tag si présente
+      if (activity != null && activity.trim().isNotEmpty) {
+        nostrTags.add(['t', activity.toLowerCase().trim()]);
+      }
+      
+      // ✅ Ajouter la profession comme tag si présente
+      if (profession != null && profession.trim().isNotEmpty) {
+        nostrTags.add(['t', profession.toLowerCase().trim()]);
       }
 
       final event = {
         'kind': NostrConstants.kindMetadata,
         'pubkey': npub,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': nostrTags,  // ✅ Tags intégrés dans l'event
-        'content': jsonEncode(profile.toJson()),
+        'tags': nostrTags,  // ✅ NIP-12: Tags pour recherche/filtrage
+        'content': jsonEncode(profile.toJson()),  // ✅ NIP-24: Contenu JSON complet
       };
 
       final eventId = _calculateEventId(event);
@@ -289,6 +454,9 @@ class NostrService {
 
       final message = jsonEncode(['EVENT', event]);
       _channel!.sink.add(message);
+      
+      Logger.log('NostrService',
+          'Profil publié avec ${nostrTags.length} tags (NIP-24 compliant)');
 
       return true;
     } catch (e) {
