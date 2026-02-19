@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
+import 'logger_service.dart';
 
 /// Service de cache d'images local pour fonctionnement hors-ligne
 /// 
@@ -50,7 +51,7 @@ class ImageCacheService {
         ),
       );
     } catch (e) {
-      debugPrint('❌ Erreur chargement metadata cache: $e');
+      Logger.error('ImageCache', 'Erreur chargement metadata cache', e);
       return {};
     }
   }
@@ -64,7 +65,7 @@ class ImageCacheService {
       );
       await file.writeAsString(jsonEncode(json));
     } catch (e) {
-      debugPrint('❌ Erreur sauvegarde metadata cache: $e');
+      Logger.error('ImageCache', 'Erreur sauvegarde metadata cache', e);
     }
   }
   
@@ -76,36 +77,54 @@ class ImageCacheService {
     return '${hash.toString()}.${ext.length <= 4 ? ext : 'jpg'}';
   }
   
+  /// Convertit une URL IPFS en URL HTTP via une passerelle
+  String _convertIpfsUrl(String url) {
+    if (url.startsWith('ipfs://')) {
+      // Extraire le CID et le chemin après ipfs://
+      final ipfsPath = url.substring(7);
+      // Utiliser la passerelle copylaradio ou une passerelle publique
+      return 'https://ipfs.copylaradio.com/ipfs/$ipfsPath';
+    }
+    return url;
+  }
+  
   /// Télécharger et mettre en cache une image
-  /// 
+  ///
   /// [url] : URL de l'image (IPFS ou HTTP)
   /// [npub] : Clé publique Nostr (pour association)
   /// [type] : Type d'image ('avatar', 'logo', 'banner')
-  /// 
+  ///
   /// Retourne le chemin local de l'image en cache
   Future<String?> cacheImage({
     required String url,
     required String npub,
     required String type,
   }) async {
+    Logger.log('ImageCache', 'Tentative de mise en cache: $url');
+    
     try {
-      debugPrint('📥 Téléchargement image: $url');
+      // Gestion des URLs IPFS brutes (si l'API renvoie ipfs://)
+      final effectiveUrl = _convertIpfsUrl(url);
+      
+      if (effectiveUrl != url) {
+        Logger.log('ImageCache', 'URL IPFS convertie: $url -> $effectiveUrl');
+      }
       
       // Télécharger l'image
-      final response = await http.get(Uri.parse(url)).timeout(
+      final response = await http.get(Uri.parse(effectiveUrl)).timeout(
         const Duration(seconds: 30),
       );
       
       if (response.statusCode != 200) {
-        debugPrint('❌ Échec téléchargement: ${response.statusCode}');
+        Logger.error('ImageCache', 'Échec HTTP ${response.statusCode} pour $effectiveUrl');
         return null;
       }
       
       // Obtenir le répertoire de cache
       final cacheDir = await _getCacheDirectory;
       
-      // Générer le nom du fichier
-      final filename = _generateCacheFilename(url);
+      // Générer le nom du fichier avec extension correcte
+      final filename = _generateCacheFilename(effectiveUrl);
       final file = File('${cacheDir.path}/$filename');
       
       // Sauvegarder l'image
@@ -114,7 +133,7 @@ class ImageCacheService {
       // Charger les métadonnées existantes
       final metadata = await _loadMetadata();
       
-      // Ajouter les nouvelles métadonnées
+      // Ajouter les nouvelles métadonnées (avec l'URL originale comme clé)
       metadata[url] = CachedImageMetadata(
         url: url,
         localPath: file.path,
@@ -127,18 +146,18 @@ class ImageCacheService {
       // Sauvegarder les métadonnées
       await _saveMetadata(metadata);
       
-      debugPrint('✅ Image mise en cache: ${file.path}');
+      Logger.success('ImageCache', 'Succès cache: ${file.path} (${response.bodyBytes.length} bytes)');
       
       return file.path;
       
     } catch (e) {
-      debugPrint('❌ Erreur cache image: $e');
+      Logger.error('ImageCache', 'Exception téléchargement pour $url', e);
       return null;
     }
   }
   
   /// Obtenir une image depuis le cache
-  /// 
+  ///
   /// Retourne le chemin local si l'image est en cache, sinon null
   Future<String?> getCachedImage(String url) async {
     try {
@@ -146,23 +165,25 @@ class ImageCacheService {
       final cached = metadata[url];
       
       if (cached == null) {
+        Logger.log('ImageCache', 'Pas de cache pour: $url');
         return null;
       }
       
       // Vérifier que le fichier existe toujours
       final file = File(cached.localPath);
       if (await file.exists()) {
-        debugPrint('📂 Image trouvée en cache: ${cached.localPath}');
+        Logger.log('ImageCache', 'Image trouvée en cache: ${cached.localPath}');
         return cached.localPath;
       } else {
         // Fichier supprimé, nettoyer les métadonnées
+        Logger.warn('ImageCache', 'Fichier cache manquant: ${cached.localPath}');
         metadata.remove(url);
         await _saveMetadata(metadata);
         return null;
       }
       
     } catch (e) {
-      debugPrint('❌ Erreur récupération cache: $e');
+      Logger.error('ImageCache', 'Erreur récupération cache', e);
       return null;
     }
   }
@@ -198,7 +219,7 @@ class ImageCacheService {
           .where((m) => m.npub == npub)
           .toList();
     } catch (e) {
-      debugPrint('❌ Erreur récupération images user: $e');
+      Logger.error('ImageCache', 'Erreur récupération images user', e);
       return [];
     }
   }
@@ -236,12 +257,12 @@ class ImageCacheService {
       
       await _saveMetadata(metadata);
       
-      debugPrint('🧹 Cache nettoyé: $deletedCount images supprimées');
+      Logger.success('ImageCache', 'Cache nettoyé: $deletedCount images supprimées');
       
       return deletedCount;
       
     } catch (e) {
-      debugPrint('❌ Erreur nettoyage cache: $e');
+      Logger.error('ImageCache', 'Erreur nettoyage cache', e);
       return 0;
     }
   }
@@ -283,10 +304,10 @@ class ImageCacheService {
         await cacheDir.create(recursive: true);
       }
       
-      debugPrint('🧹 Cache complètement vidé');
+      Logger.success('ImageCache', 'Cache complètement vidé');
       
     } catch (e) {
-      debugPrint('❌ Erreur vidage cache: $e');
+      Logger.error('ImageCache', 'Erreur vidage cache', e);
     }
   }
 }

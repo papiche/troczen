@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/bon.dart';
 import '../services/image_cache_service.dart';
+import '../services/logger_service.dart';
 
 class PaniniCard extends StatefulWidget {
   final Bon bon;
@@ -70,10 +71,13 @@ class _PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
 
   /// Vérifie si les images sont disponibles localement (offline-first)
   Future<void> _checkLocalCache() async {
+    Logger.log('PaniniCard', 'Vérification cache pour ${widget.bon.issuerName}');
+    
     final List<Future<String?>> cacheChecks = [];
     
     // Vérifier le logo du commerçant
     if (widget.bon.logoUrl != null && widget.bon.logoUrl!.isNotEmpty) {
+      Logger.log('PaniniCard', 'Logo URL: ${widget.bon.logoUrl}');
       cacheChecks.add(_imageCacheService.getCachedImage(widget.bon.logoUrl!));
     } else {
       cacheChecks.add(Future.value(null));
@@ -81,12 +85,16 @@ class _PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
     
     // Vérifier l'avatar de l'émetteur
     if (widget.bon.picture != null && widget.bon.picture!.isNotEmpty) {
+      Logger.log('PaniniCard', 'Picture URL: ${widget.bon.picture}');
       cacheChecks.add(_imageCacheService.getCachedImage(widget.bon.picture!));
     } else {
       cacheChecks.add(Future.value(null));
     }
     
     final results = await Future.wait(cacheChecks);
+    
+    // Log résultat
+    Logger.log('PaniniCard', 'Cache trouvé: Logo=${results[0] != null}, Pic=${results[1] != null}');
     
     if (mounted) {
       setState(() {
@@ -152,19 +160,28 @@ class _PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
     // OFFLINE-FIRST: Si l'image est disponible localement, l'utiliser directement
     if (localPath != null) {
       final file = File(localPath);
-      return Image.file(
-        file,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) {
-          // En cas d'erreur de lecture locale, fallback sur le réseau
-          return _buildNetworkImage(url, width, height, color, rarity, isPending, fit);
-        },
-      );
+      
+      // Vérification supplémentaire que le fichier existe physiquement
+      if (file.existsSync()) {
+        Logger.log('PaniniCard', 'Utilisation fichier local: $localPath');
+        return Image.file(
+          file,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) {
+            // En cas d'erreur de lecture locale, fallback sur le réseau
+            Logger.error('PaniniCard', 'Erreur lecture fichier local: $localPath', error);
+            return _buildNetworkImage(url, width, height, color, rarity, isPending, fit);
+          },
+        );
+      } else {
+        Logger.warn('PaniniCard', 'Fichier cache manquant malgré path: $localPath');
+      }
     }
     
     // Sinon, utiliser CachedNetworkImage (avec son propre cache)
+    Logger.log('PaniniCard', 'Utilisation réseau pour: $url');
     return _buildNetworkImage(url, width, height, color, rarity, isPending, fit);
   }
   

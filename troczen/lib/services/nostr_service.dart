@@ -8,12 +8,15 @@ import '../models/market.dart';
 import '../models/nostr_profile.dart';
 import 'crypto_service.dart';
 import 'storage_service.dart';
+import 'image_cache_service.dart';
+import 'logger_service.dart';
 
 /// Service de publication et synchronisation via Nostr
 /// Gère la publication des P3 (kind 30303) et la synchronisation
 class NostrService {
   final CryptoService _cryptoService;
   final StorageService _storageService;
+  final ImageCacheService _imageCache = ImageCacheService();
   
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
@@ -448,6 +451,21 @@ class NostrService {
 
       switch (messageType) {
         case 'EVENT':
+          // Vérifier le kind pour router vers le bon handler
+          if (message.length > 2 && message[2] is Map) {
+            final event = message[2] as Map<String, dynamic>;
+            final kind = event['kind'];
+            
+            if (kind == 0) {
+              // Kind 0 = Metadata utilisateur
+              _handleMetadataEvent(event);
+            } else {
+              // Autres kinds (30303, etc.)
+              _handleEvent(event);
+            }
+          }
+          break;
+        case 'EVENT':
           _handleEvent(message[2]);
           break;
         case 'OK':
@@ -470,7 +488,7 @@ class NostrService {
     }
   }
 
-  /// Traite un event Nostr reçu
+  /// Traite un event Nostr reçu (Kind 30303 - Bons)
   void _handleEvent(Map<String, dynamic> event) async {
     try {
       if (event['kind'] != 30303) return;
@@ -503,17 +521,13 @@ class NostrService {
       }
 
       if (bonId == null || p3Cipher == null || p3Nonce == null) {
-        dev.log('⚠️ Event Nostr kind 30303 rejeté: tag obligatoire manquant.',
-            level: 900, name: 'NostrService',
-            error: 'bonId=$bonId, p3Cipher=$p3Cipher, p3Nonce=$p3Nonce, tags=$tags');
+        Logger.warn('NostrService', 'Event kind 30303 rejeté: tag obligatoire manquant (bonId=$bonId)');
         return;
       }
 
       final market = await _storageService.getMarket();
       if (market == null || market.name != marketName) {
-        dev.log('⚠️ Event Nostr rejeté: marché incompatible.',
-            level: 900, name: 'NostrService',
-            error: 'marketName=$marketName, localMarket=${market?.name}');
+        Logger.warn('NostrService', 'Event rejeté: marché incompatible ($marketName vs ${market?.name})');
         return;
       }
 
@@ -528,12 +542,82 @@ class NostrService {
         eventDate,
       );
 
+      Logger.log('NostrService', 'Bon reçu/déchiffré: $bonId');
+
+      // EXTRACTION ET MISE EN CACHE DES IMAGES DU BON
+      try {
+        final content = event['content'];
+        if (content != null && content is String) {
+          final contentJson = jsonDecode(content);
+          
+          // Image principale du bon (picture)
+          final picture = contentJson['picture'] as String?;
+          if (picture != null && picture.isNotEmpty) {
+            Logger.log('NostrService', 'Mise en cache image bon: $picture');
+            _imageCache.getOrCacheImage(
+              url: picture,
+              npub: bonId,
+              type: 'logo'
+            );
+          }
+          
+          // Bannière du bon
+          final banner = contentJson['banner'] as String?;
+          if (banner != null && banner.isNotEmpty) {
+            Logger.log('NostrService', 'Mise en cache bannière bon: $banner');
+            _imageCache.getOrCacheImage(
+              url: banner,
+              npub: bonId,
+              type: 'banner'
+            );
+          }
+        }
+      } catch (e) {
+        Logger.error('NostrService', 'Erreur parsing content bon pour images', e);
+      }
+
       onP3Received?.call(bonId, p3Hex);
     } catch (e) {
-      dev.log('❌ Erreur traitement event Nostr',
-          level: 1000, name: 'NostrService',
-          error: e, stackTrace: StackTrace.current);
+      Logger.error('NostrService', 'Erreur traitement event Nostr', e);
       onError?.call('Erreur traitement event: $e');
+    }
+  }
+
+  /// Traite un event de métadonnées utilisateur (Kind 0)
+  void _handleMetadataEvent(Map<String, dynamic> event) {
+    try {
+      final npub = event['pubkey'] as String?;
+      final content = event['content'] as String?;
+      
+      if (npub == null || content == null) return;
+      
+      final contentJson = jsonDecode(content);
+      final picture = contentJson['picture'] as String?;
+      final banner = contentJson['banner'] as String?;
+
+      // Mise en cache de l'avatar
+      if (picture != null && picture.isNotEmpty) {
+        Logger.log('NostrService', 'Mise en cache avatar pour $npub: $picture');
+        _imageCache.getOrCacheImage(
+          url: picture,
+          npub: npub,
+          type: 'avatar'
+        );
+      }
+      
+      // Mise en cache de la bannière
+      if (banner != null && banner.isNotEmpty) {
+        Logger.log('NostrService', 'Mise en cache banner pour $npub: $banner');
+        _imageCache.getOrCacheImage(
+          url: banner,
+          npub: npub,
+          type: 'banner'
+        );
+      }
+      
+      Logger.log('NostrService', 'Métadonnées mises à jour pour $npub');
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur traitement metadata', e);
     }
   }
 

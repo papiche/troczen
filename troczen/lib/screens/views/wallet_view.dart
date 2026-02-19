@@ -3,6 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
+import '../../services/logger_service.dart';
 import '../../widgets/panini_card.dart';
 import '../offer_screen.dart';
 
@@ -43,17 +44,38 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
 
   Future<void> _loadBons() async {
     if (_isLoading || _isUpdating) return;
+    
+    // Initialiser le mode debug au chargement
+    await Logger.checkDebugMode();
+    Logger.log('WalletView', 'Chargement des bons...');
+    
     setState(() => _isLoading = true);
     try {
       final storageService = StorageService();
       final loadedBons = await storageService.getBons();
+      
+      // LOG CRITIQUE POUR DEBUG - Afficher tous les bons trouvés
+      Logger.log('WalletView', 'Total bons chargés: ${loadedBons.length}');
+      for (var b in loadedBons) {
+        Logger.log('WalletView', 'Bon: ${b.issuerName} | Status: ${b.status} | P1: ${b.p1 != null ? "présent" : "absent"} | P2: ${b.p2 != null ? "présent" : "absent"}');
+      }
+      
       if (!mounted) return;
       setState(() {
-        bons = loadedBons;
-        filteredBons = loadedBons;
+        // Afficher les bons non brûlés dont on possède P2 (bons reçus)
+        // OU les bons actifs dont on possède P1 (nos créations pas encore transférées)
+        bons = loadedBons.where((b) =>
+          b.status != BonStatus.burned &&
+          (b.p2 != null || (b.status == BonStatus.active && b.p1 != null))
+        ).toList();
+        
+        Logger.log('WalletView', 'Bons après filtrage: ${bons.length}');
+        
+        filteredBons = bons;
         _isLoading = false;
       });
     } catch (e) {
+      Logger.error('WalletView', 'Erreur lors du chargement', e);
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(

@@ -82,7 +82,7 @@ def upload_to_ipfs(filepath):
                 cid = result['Hash']
                 ipfs_url = f'{IPFS_GATEWAY}/ipfs/{cid}'
                 
-                print(f'✅ Fichier uploadé sur IPFS: {cid}')
+                print(f'✅ Fichier uploadé sur IPFS: {IPFS_GATEWAY}/ipfs/{cid}')
                 return cid, ipfs_url
             else:
                 print(f'❌ Erreur IPFS API: {response.status_code}')
