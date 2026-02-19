@@ -100,12 +100,12 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
     // 6️⃣ Taux d'expiration
     final expireRate = myBons.isNotEmpty ? expiredBons / myBons.length : 0.0;
 
-    // 7️⃣ Vitesse de circulation moyenne
-    final circulationSpeeds = <int>[];
+    // 7️⃣ Vitesse de circulation moyenne (en heures par transfert)
+    final circulationSpeeds = <double>[];
     for (final bon in myBons) {
       if (bon.transferCount != null && bon.transferCount! > 0) {
-        final age = now.difference(bon.createdAt).inMinutes;
-        final speed = age ~/ bon.transferCount!;
+        final ageHours = now.difference(bon.createdAt).inHours;
+        final speed = ageHours / bon.transferCount!;
         circulationSpeeds.add(speed);
       }
     }
@@ -178,8 +178,11 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
     required double networkRate,
   }) {
     // Score normalisé [0-100]
+    // avgSpeed est maintenant en heures par transfert
     final encashScore = encashRate * 30; // Max 30 points
-    final speedScore = avgSpeed > 0 ? (1 / (avgSpeed / 60)) * 30 : 0; // Max 30 points
+    // Vitesse rapide = < 24h, normale = < 7 jours, lente = > 7 jours
+    // Score inversement proportionnel : plus c'est rapide, plus le score est élevé
+    final speedScore = avgSpeed > 0 ? (24 / avgSpeed).clamp(0.0, 1.0) * 30 : 0; // Max 30 points
     final expireScore = (1 - expireRate) * 20; // Max 20 points
     final networkScore = networkRate * 20; // Max 20 points
 
@@ -449,22 +452,26 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
     );
   }
 
-  Widget _buildSpeedIndicator(double avgMinutes) {
-    final speed = avgMinutes < 30
+  Widget _buildSpeedIndicator(double avgHours) {
+    // Seuils réalistes pour une monnaie locale physique/numérique
+    // Rapide : < 24h par transfert
+    // Normal : < 7 jours (168h) par transfert
+    // Lent : > 7 jours par transfert
+    final speed = avgHours < 24
         ? 'Rapide'
-        : avgMinutes < 120
+        : avgHours < (24 * 7)
             ? 'Normal'
             : 'Lent';
 
-    final color = avgMinutes < 30
+    final color = avgHours < 24
         ? Colors.green
-        : avgMinutes < 120
+        : avgHours < (24 * 7)
             ? Colors.orange
             : Colors.red;
 
-    final bars = avgMinutes < 30
+    final bars = avgHours < 24
         ? 5
-        : avgMinutes < 120
+        : avgHours < (24 * 7)
             ? 3
             : 1;
 

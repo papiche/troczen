@@ -180,10 +180,12 @@ class Bon {
     
     final days = remaining.inDays;
     final hours = remaining.inHours % 24;
+    final minutes = remaining.inMinutes % 60;
     
     if (days > 30) return '${(days/30).floor()} mois restants';
     if (days > 0) return '$days jours restants';
-    return '$hours heures restantes';
+    if (hours > 0) return '$hours heures restantes';
+    return '$minutes minutes restantes';
   }
 
   // Obtenir les caractéristiques pour l'affichage
