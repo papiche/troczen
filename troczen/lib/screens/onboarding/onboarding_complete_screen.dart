@@ -301,8 +301,10 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           name: user.displayName,
           displayName: user.displayName,
           about: state.about ?? 'Utilisateur TrocZen - Monnaie locale ẐEN',
+          picture: state.pictureUrl,  // ✅ Image profil IPFS
           website: null,
           g1pub: user.g1pub,
+          tags: state.activityTags,  // ✅ Tags d'activité/centres d'intérêt
         );
         
         await nostrService.disconnect();

@@ -1,0 +1,84 @@
+sequenceDiagram
+    autonumber
+
+    box rgba(0, 150, 255, 0.1) Application A (Alice - Émetteur)
+    actor Alice
+    participant CacheA as Cache Local A<br/>(SecureStorage/SQLite)
+    end
+
+    participant Nostr as Relais Nostr<br/>(Réseau)
+
+    box rgba(0, 200, 100, 0.1) Application B (Bob - Receveur)
+    participant CacheB as Cache Local B<br/>(SecureStorage/SQLite)
+    actor Bob
+    end
+
+    %% =======================================================
+    %% PHASE 1 : EMBARQUEMENT
+    %% =======================================================
+    note over Alice, Nostr: PHASE 1 : EMBARQUEMENT (ONBOARDING)
+
+    Alice->>CacheA: Génération et stockage Clés Utilisateur (npub_A, nsec_A)
+    Alice->>CacheA: Stockage Graine du Marché (seed_market)
+    Alice->>Nostr: Publication Profil Utilisateur<br/>(Nom, avatar IPFS, tags...)
+
+    Alice->>Nostr: REQ (Filtre: Kind 30303, Marché X)
+    Nostr-->>Alice: Liste des P3 chiffrés existants
+    Alice->>Alice: Dérivation K_day = HMAC(seed_market, date)
+    Alice->>CacheA: Déchiffre et stocke les P3 dans SQLite (Cache P3)
+
+    %% =======================================================
+    %% PHASE 2 : CRÉATION DU PREMIER BON
+    %% =======================================================
+    note over Alice, Nostr: PHASE 2 : CRÉATION D'UN BON (ÉMISSION)
+
+    Alice->>Alice: Génération Clés du Bon (npub_B, nsec_B)
+    Note over Alice: Découpage SSSS(nsec_B) ➔ P1 (Ancre), P2 (Voyageur), P3 (Témoin)
+
+    Alice->>CacheA: Sauvegarde Bon (P1, P2, métadonnées) dans le Wallet
+    Alice->>CacheA: Sauvegarde P3 dans le Cache P3 local
+
+    Alice->>Alice: Chiffre P3 avec K_day
+    Alice->>Alice: Reconstruit nsec_B en RAM (P2 + P3)
+    Alice->>Nostr: Publie Création Bon<br/>(Tags: P3_chiffré, Valeur, Rareté) - Signé par nsec_B
+    Note over Alice: 🧹 nsec_B est effacé de la RAM (zeroise)
+
+    %% =======================================================
+    %% PHASE 3 : SYNCHRONISATION DU RECEVEUR
+    %% =======================================================
+    note over Nostr, Bob: PHASE 3 : SYNCHRONISATION (BOB)
+
+    Bob->>Nostr: REQ Sync du matin (Kind 30303)
+    Nostr-->>Bob: Reçoit le Bon d'Alice
+    Bob->>Bob: Dérive K_day et déchiffre P3
+    Bob->>CacheB: Stocke P3 du Bon (Essentiel pour valider offline)
+
+    %% =======================================================
+    %% PHASE 4 : TRANSFERT ATOMIQUE OFFLINE
+    %% =======================================================
+    note over Alice, Bob: PHASE 4 : TRANSFERT ATOMIQUE (100% OFFLINE)
+
+    Note over Alice, Bob: Étape A : L'Offre (QR 1)
+    Alice->>CacheA: Récupère P3 du Bon
+    Alice->>Alice: Chiffre P2 (Clé AES = SHA256(P3))<br/>Génère Challenge aléatoire
+    Alice->>Bob: 📱 Affiche QR1
+
+    Note over Alice, Bob: Étape B : Réception & Vérification
+    Bob->>CacheB: Récupère P3 local via npub_B
+    Bob->>Bob: Déchiffre P2_chiffré grâce à P3
+    Bob->>Bob: Reconstruit nsec_B = P2 + P3 (en RAM)
+    Bob->>Bob: Signe le Challenge d'Alice avec nsec_B
+
+    Note over Bob: En arrière-plan (Dès que le réseau revient)
+    Bob->>Nostr: Publie Transfert<br/>(Signé par le Bon) pour le Dashboard Marchand
+    Note over Bob: 🧹 nsec_B est effacé de la RAM (zeroise)
+    Bob->>CacheB: Sauvegarde le Bon (avec P2) dans son Wallet
+
+    Note over Alice, Bob: Étape C : Accusé de Réception (QR 2)
+    Bob->>Alice: 📱 Affiche QR2 (ACK)
+
+    Note over Alice, Bob: Étape D : Finalisation
+    Alice->>Alice: Vérifie la Signature(Challenge) avec npub_B (Clé publique du bon)
+    Alice->>CacheA: 🗑️ Supprime/Invalide P2 du Wallet (Bon = dépensé)
+
+    Note over Alice, Bob: ✅ TRANSFERT TERMINÉ ET SÉCURISÉ

@@ -230,6 +230,7 @@ class NostrService {
   }
 
   /// ✅ PUBLIER PROFIL UTILISATEUR (kind 0 metadata)
+  /// Les tags sont ajoutés comme tags 't' dans l'event Nostr (ex: centres d'intérêt)
   Future<bool> publishUserProfile({
     required String npub,
     required String nsec,
@@ -240,6 +241,7 @@ class NostrService {
     String? banner,
     String? website,
     String? g1pub,
+    List<String>? tags,  // ✅ Tags d'activité/centres d'intérêt
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
@@ -258,11 +260,19 @@ class NostrService {
         g1pub: g1pub,
       );
 
+      // ✅ Construire les tags Nostr à partir de la liste
+      final nostrTags = <List<String>>[];
+      if (tags != null && tags.isNotEmpty) {
+        for (final tag in tags) {
+          nostrTags.add(['t', tag]);
+        }
+      }
+
       final event = {
         'kind': NostrConstants.kindMetadata,
         'pubkey': npub,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [],
+        'tags': nostrTags,  // ✅ Tags intégrés dans l'event
         'content': jsonEncode(profile.toJson()),
       };
 
