@@ -26,6 +26,7 @@ class AppConfig {
   /// URLs locales (borne wifi/portail captif)
   static const String localApiUrl = 'http://zen.local:5000';
   static const String localRelayUrl = 'ws://zen.local:7777';
+  static const String localIPFSgw = 'ws://zen.local:8080';
   
   static const List<String> localHosts = [
     'http://192.168.101.1:5000',  // AP direct

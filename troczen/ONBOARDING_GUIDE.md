@@ -114,9 +114,9 @@ void _generateSecureSeed() {
 
 | Service | Défaut | Box locale | Personnalisé |
 |---------|--------|------------|--------------|
-| **Relais Nostr** | `wss://relay.copylaradio.com` | `ws://relay.zen:7777` | URL manuelle |
-| **API REST** | `https://zen.copylaradio.com` | `http://api.zen:5000` | URL manuelle |
-| **IPFS Gateway** | `https://ipfs.copylaradio.com` | `http://ipfs.zen:8080` | URL manuelle |
+| **Relais Nostr** | `wss://relay.copylaradio.com` | `ws://zen.local:7777` | URL manuelle |
+| **API REST** | `https://zen.copylaradio.com` | `http://zen.local:5000` | URL manuelle |
+| **IPFS Gateway** | `https://ipfs.copylaradio.com` | `http://zen.local:8080` | URL manuelle |
 
 **Fonctionnalités** :
 - ✅ Bouton "Passer" pour utiliser les valeurs par défaut

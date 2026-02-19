@@ -73,7 +73,7 @@ class _OnboardingAdvancedScreenState extends State<OnboardingAdvancedScreen> {
   String get _selectedIpfsGateway {
     switch (_ipfsMode) {
       case 'local':
-        return 'http://ipfs.zen:8080';
+        return 'http://zen.local:8080';
       case 'custom':
         return _ipfsController.text;
       default:
