@@ -69,7 +69,34 @@ class _OfferScreenState extends State<OfferScreen> {
         // Timestamp actuel
         final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-        // Encoder en format binaire
+        // ✅ CORRECTION P0-C: Signer le QR1 avec sk_B (clé du bon)
+        // Whitepaper (007.md §3.2 Étape 1): "QR1: {B_id, P2, c, ts}_sig_E"
+        // Le donneur prouve qu'il possède le bon en signant avec sk_B
+        //
+        // Reconstruction éphémère de sk_B = shamirCombine(null, P2, P3)
+        final nsecBonHex = _cryptoService.shamirCombine(
+          null,              // P1 absent (pas nécessaire)
+          widget.bon.p2!,    // P2
+          p3,                // P3
+        );
+        
+        // Créer le message à signer: bonId || p2Cipher || nonce || challenge || timestamp || ttl
+        final messageToSign = widget.bon.bonId +
+            p2Encrypted['ciphertext']! +
+            p2Encrypted['nonce']! +
+            challenge +
+            timestamp.toRadixString(16).padLeft(8, '0') +
+            '1e'; // ttl = 30 = 0x1e
+        
+        // Signer avec la clé du bon
+        final signature = _cryptoService.signMessage(messageToSign, nsecBonHex);
+        
+        // ✅ SÉCURITÉ: Nettoyage explicite RAM
+        // Note: En Dart les Strings sont immuables, mais on efface la référence
+        // ignore: unused_local_variable
+        final nsecBonHex_erase = nsecBonHex; // Pour documentation - sera GC
+
+        // Encoder en format binaire avec signature (177 octets)
         final qrBytes = _qrService.encodeOffer(
           bonIdHex: widget.bon.bonId,
           p2CipherHex: p2Encrypted['ciphertext']!,
@@ -77,6 +104,7 @@ class _OfferScreenState extends State<OfferScreen> {
           challengeHex: challenge,
           timestamp: timestamp,
           ttl: 30,
+          signatureHex: signature,  // ✅ NOUVEAU: signature du donneur
         );
 
         setState(() {
@@ -118,29 +146,46 @@ class _OfferScreenState extends State<OfferScreen> {
 
     try {
       // Naviguer vers le scanner ACK
+      // ✅ CORRECTION P0-A: Passer les infos nécessaires pour la publication Nostr
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => AckScannerScreen(
             challenge: _currentChallenge,
             bonId: widget.bon.bonId,
+            receiverNpub: widget.user.npub,  // ✅ NOUVEAU: npub du receveur
+            bonValue: widget.bon.value,       // ✅ NOUVEAU: valeur du bon
           ),
         ),
       );
 
       if (result != null && result['verified'] == true) {
-        // ✅ ACK vérifié avec succès !
-        // SUPPRESSION SÉCURISÉE DE P2
-        await _storageService.deleteBon(widget.bon.bonId);
+        // ✅ CORRECTION P0-B: Ne PAS supprimer le bon entièrement !
+        // L'émetteur doit conserver P1 (l'Ancre) pour pouvoir révoquer le bon
+        // et pour l'afficher dans "Mes émissions"
+        //
+        // Whitepaper (007.md §1.3): P1 = Ancre, détenue par l'Émetteur
+        //
+        // Au lieu de deleteBon, on met à jour le bon:
+        // - p2: null (le porteur n'a plus P2)
+        // - status: BonStatus.spent (le bon est dépensé)
+        final updatedBon = widget.bon.copyWith(
+          p2: null,
+          status: BonStatus.spent,
+        );
+        await _storageService.saveBon(updatedBon);
 
         if (!mounted) return;
 
         // Message de succès
+        final publishedMsg = result['published'] == true
+            ? ' (publié sur Nostr)'
+            : ' (sync en attente)';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Transfert confirmé et sécurisé !'),
+          SnackBar(
+            content: Text('✅ Transfert confirmé et sécurisé !$publishedMsg'),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
 

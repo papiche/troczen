@@ -11,7 +11,16 @@ class QRService {
   // Magic number pour format QR v2: "ZEN" + version 0x02
   static const int _magicV2 = 0x5A454E02;
   
-  /// Encode une offre en format binaire compact (113 octets)
+  /// ✅ CORRECTION P0-C: Taille du QR Offre avec signature (177 octets)
+  /// Ancien format sans signature: 113 octets
+  /// Nouveau format avec signature: 113 + 64 = 177 octets
+  ///
+  /// Whitepaper (007.md §3.2 Étape 1 — Offre):
+  /// "QR1: {B_id, P2, c, ts}_sig_E"
+  /// Le QR doit être signé par le donneur pour prouver la propriété du bon.
+  
+  /// Encode une offre en format binaire compact avec signature (177 octets)
+  /// ✅ CORRECTION P0-C: Ajout de la signature du donneur
   /// Structure:
   /// - bon_id: 32 octets
   /// - p2_cipher: 48 octets
@@ -19,6 +28,7 @@ class QRService {
   /// - challenge: 16 octets
   /// - timestamp: 4 octets (uint32)
   /// - ttl: 1 octet (uint8)
+  /// - signature: 64 octets (Schnorr) ✅ NOUVEAU
   Uint8List encodeOffer({
     required String bonIdHex,
     required String p2CipherHex,
@@ -26,13 +36,18 @@ class QRService {
     required String challengeHex,
     required int timestamp,
     required int ttl,
+    String? signatureHex,  // ✅ NOUVEAU: signature du donneur (64 octets = 128 hex chars)
   }) {
     final bonId = HEX.decode(bonIdHex);
     final p2Cipher = HEX.decode(p2CipherHex);
     final nonce = HEX.decode(nonceHex);
     final challenge = HEX.decode(challengeHex);
     
-    final buffer = ByteData(113);
+    // ✅ CORRECTION P0-C: Taille variable selon présence de signature
+    final hasSignature = signatureHex != null && signatureHex.isNotEmpty;
+    final totalSize = hasSignature ? 177 : 113;
+    
+    final buffer = ByteData(totalSize);
     int offset = 0;
     
     // bon_id (32 octets)
@@ -60,17 +75,28 @@ class QRService {
     offset += 4;
     
     // ttl (1 octet)
-    buffer.setUint8(offset, ttl);
+    buffer.setUint8(offset++, ttl);
+    
+    // ✅ CORRECTION P0-C: signature (64 octets) - NOUVEAU
+    if (hasSignature) {
+      final signature = HEX.decode(signatureHex);
+      for (int i = 0; i < 64; i++) {
+        buffer.setUint8(offset++, signature[i]);
+      }
+    }
     
     return buffer.buffer.asUint8List();
   }
 
   /// Décode une offre depuis le format binaire
+  /// ✅ CORRECTION P0-C: Supporte les deux formats (avec/sans signature)
   Map<String, dynamic> decodeOffer(Uint8List data) {
-    if (data.length != 113) {
-      throw Exception('Format invalide: taille attendue 113 octets, reçu ${data.length}');
+    // ✅ CORRECTION P0-C: Accepter les deux tailles
+    if (data.length != 113 && data.length != 177) {
+      throw Exception('Format invalide: taille attendue 113 ou 177 octets, reçu ${data.length}');
     }
     
+    final hasSignature = data.length == 177;
     final buffer = ByteData.sublistView(data);
     int offset = 0;
     
@@ -96,6 +122,14 @@ class QRService {
     
     // ttl
     final ttl = buffer.getUint8(offset);
+    offset += 1;
+    
+    // ✅ CORRECTION P0-C: signature (optionnel)
+    String? signature;
+    if (hasSignature) {
+      final sigBytes = data.sublist(offset, offset + 64);
+      signature = HEX.encode(sigBytes);
+    }
     
     return {
       'bonId': HEX.encode(bonId),
@@ -104,6 +138,7 @@ class QRService {
       'challenge': HEX.encode(challenge),
       'timestamp': timestamp,
       'ttl': ttl,
+      'signature': signature,  // ✅ NOUVEAU
     };
   }
 

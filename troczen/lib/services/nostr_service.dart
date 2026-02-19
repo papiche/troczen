@@ -317,10 +317,8 @@ class NostrService {
       final now = DateTime.now();
       final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3Hex, seedMarket, now);
 
-      // 2. ✅ Reconstruire sk_B ÉPHÉMÈRE (P2+P3) pour signature
-      final nsecBonHex = _cryptoService.shamirCombine(null, p2Hex, p3Hex);
-      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
-      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
+      // 2. ✅ SÉCURITÉ: Reconstruire sk_B ÉPHÉMÈRE (P2+P3) directement en Uint8List
+      final nsecBonBytes = _cryptoService.shamirCombineBytes(null, p2Hex, p3Hex);
 
       // 3. Créer l'event Nostr avec tags optimisés pour dashboard
       final expiry = now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
@@ -353,8 +351,8 @@ class NostrService {
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
 
-      // 5. ✅ Signer avec la clé privée du bon (reconstruction éphémère)
-      final signature = _cryptoService.signMessage(eventId, nsecBonHex);
+      // 5. ✅ SÉCURITÉ: Signer avec la clé privée du bon (Uint8List)
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
       event['sig'] = signature;
       
       // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
@@ -481,10 +479,8 @@ class NostrService {
     }
 
     try {
-      // ✅ Reconstruire sk_B ÉPHÉMÈRE pour que le BON signe son transfert
-      final nsecBonHex = _cryptoService.shamirCombine(null, bonP2, bonP3);
-      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
-      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
+      // ✅ SÉCURITÉ: Reconstruire sk_B ÉPHÉMÈRE directement en Uint8List
+      final nsecBonBytes = _cryptoService.shamirCombineBytes(null, bonP2, bonP3);
 
       // Contenu du transfert
       final content = {
@@ -513,8 +509,8 @@ class NostrService {
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
 
-      // ✅ Signature par le bon
-      final signature = _cryptoService.signMessage(eventId, nsecBonHex);
+      // ✅ SÉCURITÉ: Signature avec Uint8List
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
       event['sig'] = signature;
       
       // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
@@ -532,6 +528,8 @@ class NostrService {
 
   /// ✅ PUBLIER EVENT BURN (kind 5)
   /// Pour révoquer un bon (émetteur avec P1+P3)
+  /// ⚠️ NOTE: Utilise une String immuable qui reste en mémoire.
+  /// Préférez publishBurnBytes() pour une meilleure sécurité mémoire.
   Future<bool> publishBurn({
     required String bonId,
     required String nsecBon,  // sk_B reconstruit temporairement avec P1+P3
@@ -563,6 +561,49 @@ class NostrService {
       final signature = _cryptoService.signMessage(eventId, nsecBon);
       event['sig'] = signature;
       // nsecBon disparaît ici
+
+      final message = jsonEncode(['EVENT', event]);
+      _channel!.sink.add(message);
+
+      return true;
+    } catch (e) {
+      onError?.call('Erreur publication burn: $e');
+      return false;
+    }
+  }
+
+  /// ✅ SÉCURITÉ: Publie un event BURN (kind 5) avec Uint8List
+  /// Version sécurisée qui permet le nettoyage mémoire de la clé privée.
+  Future<bool> publishBurnBytes({
+    required String bonId,
+    required Uint8List nsecBonBytes,  // sk_B reconstruit temporairement avec P1+P3
+    required String reason,
+    required String marketName,
+  }) async {
+    if (!_isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      final event = {
+        'kind': 5,
+        'pubkey': bonId,  // ✅ Clé publique du bon
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['e', bonId],
+          ['market', marketName],
+          ['reason', reason],
+        ],
+        'content': 'BURN | $reason',
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+
+      // ✅ SÉCURITÉ: Signer avec Uint8List
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
+      event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
       _channel!.sink.add(message);

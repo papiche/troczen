@@ -365,7 +365,22 @@ class CryptoService {
   ///
   /// Lève [ShamirReconstructionException] si la reconstruction échoue.
   /// Lève [ArgumentError] si moins de 2 parts sont fournies.
+  /// @Deprecated('Utiliser shamirCombineBytes qui retourne Uint8List pour permettre le nettoyage mémoire')
   String shamirCombine(String? part1Hex, String? part2Hex, String? part3Hex) {
+    final result = shamirCombineBytes(part1Hex, part2Hex, part3Hex);
+    final hex = HEX.encode(result);
+    // Nettoyer le Uint8List après conversion
+    secureZeroiseBytes(result);
+    return hex;
+  }
+
+  /// ✅ SÉCURITÉ: Reconstruit le secret en Uint8List (permet le nettoyage mémoire)
+  /// Retourne directement un Uint8List au lieu d'une String hexadécimale
+  /// pour permettre à l'appelant de nettoyer la mémoire avec secureZeroiseBytes()
+  ///
+  /// Lève [ShamirReconstructionException] si la reconstruction échoue.
+  /// Lève [ArgumentError] si moins de 2 parts sont fournies.
+  Uint8List shamirCombineBytes(String? part1Hex, String? part2Hex, String? part3Hex) {
     // Vérifier qu'on a au moins 2 parts
     final parts = <int, Uint8List>{};
     if (part1Hex != null) parts[1] = Uint8List.fromList(HEX.decode(part1Hex));
@@ -419,7 +434,12 @@ class CryptoService {
       secretBytes[i] = _gf256Add(term1, term2);
     }
     
-    return HEX.encode(secretBytes);
+    // Nettoyer les parts intermédiaires
+    for (final part in parts.values) {
+      secureZeroiseBytes(part);
+    }
+    
+    return secretBytes;
   }
 
   // ==================== OPÉRATIONS GF(256) ====================
@@ -613,6 +633,8 @@ class CryptoService {
   /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) via bibliothèque éprouvée
   /// Utilise bip340 qui implémente correctement le nonce déterministe BIP-340
   /// Accepte la clé privée en format hex ou nsec1... (Bech32)
+  /// ⚠️ NOTE: Cette méthode utilise des Strings immuables qui restent en mémoire.
+  /// Préférez signMessageBytes() pour une meilleure sécurité mémoire.
   String signMessage(String messageHex, String privateKey) {
     // Détecter si c'est du Bech32 (nsec1...) ou de l'hex
     String privateKeyHex;
@@ -641,6 +663,38 @@ class CryptoService {
       final auxRandHex = HEX.encode(auxRandBytes);
       
       final signature = bip340.sign(privateKeyHex, messageHex, auxRandHex);
+      return signature;
+    } catch (e) {
+      throw ArgumentError('Erreur lors de la signature: $e');
+    }
+  }
+
+  /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) en utilisant Uint8List
+  /// Version sécurisée qui permet le nettoyage mémoire de la clé privée.
+  /// Le message est en hexadécimal, la clé privée en Uint8List.
+  /// Retourne la signature en hexadécimal (128 chars).
+  String signMessageBytes(String messageHex, Uint8List privateKeyBytes) {
+    // ✅ SÉCURITÉ: Validation de la clé privée
+    if (privateKeyBytes.length != 32) {
+      throw ArgumentError('Clé privée invalide: doit faire 32 octets');
+    }
+    
+    try {
+      // Convertir en hex pour bip340 (la bibliothèque nécessite du hex)
+      final privateKeyHex = HEX.encode(privateKeyBytes);
+      
+      // Générer auxRand sécurisé (32 octets aléatoires)
+      final auxRandBytes = Uint8List.fromList(
+        List.generate(32, (_) => _secureRandom.nextInt(256))
+      );
+      final auxRandHex = HEX.encode(auxRandBytes);
+      
+      final signature = bip340.sign(privateKeyHex, messageHex, auxRandHex);
+      
+      // Nettoyer l'hex intermédiaire (même si c'est une String immuable,
+      // au moins les bytes auxRand sont nettoyés)
+      secureZeroiseBytes(auxRandBytes);
+      
       return signature;
     } catch (e) {
       throw ArgumentError('Erreur lors de la signature: $e');

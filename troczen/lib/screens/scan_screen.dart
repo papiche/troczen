@@ -162,7 +162,8 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  /// Traite un QR code v1 (ancien format 113 octets) - Fallback
+  /// Traite un QR code v1 (format 113 ou 177 octets)
+  /// ✅ CORRECTION P0-C: Vérification de la signature du QR1
   Future<void> _handleQrV1(Uint8List rawBytes) async {
     // Décoder le QR binaire v1
     final offerData = _qrService.decodeOffer(rawBytes);
@@ -171,6 +172,36 @@ class _ScanScreenState extends State<ScanScreen> {
     if (_qrService.isExpired(offerData['timestamp'], offerData['ttl'])) {
       _showError('QR code expiré');
       return;
+    }
+
+    // ✅ CORRECTION P0-C: Vérifier la signature si présente
+    // Whitepaper (007.md §3.2): Le QR1 doit être signé par le donneur
+    final signature = offerData['signature'];
+    if (signature != null && signature.isNotEmpty) {
+      // Reconstruire le message signé: bonId || p2Cipher || nonce || challenge || timestamp || ttl
+      final messageToVerify = offerData['bonId'] +
+          offerData['p2Cipher'] +
+          offerData['nonce'] +
+          offerData['challenge'] +
+          offerData['timestamp'].toRadixString(16).padLeft(8, '0') +
+          offerData['ttl'].toRadixString(16).padLeft(2, '0');
+      
+      // Vérifier la signature avec la clé publique du bon (bonId = pk_B)
+      final isSignatureValid = _cryptoService.verifySignature(
+        messageToVerify,
+        signature,
+        offerData['bonId'],
+      );
+      
+      if (!isSignatureValid) {
+        _showError('⚠️ Signature invalide !\n\nCe QR code n\'a pas été généré par le propriétaire du bon.\nTransfert refusé pour votre sécurité.');
+        return;
+      }
+      
+      debugPrint('✅ Signature QR1 valide - le donneur prouve la propriété du bon');
+    } else {
+      // QR sans signature (ancien format) - avertir mais accepter
+      debugPrint('⚠️ QR1 sans signature (format ancien) - accepté pour compatibilité');
     }
 
     // Récupérer P3 depuis le cache

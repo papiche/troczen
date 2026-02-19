@@ -1,17 +1,19 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:hex/hex.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/nostr_profile.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
-import '../services/nostr_service.dart';
+// ❌ CORRECTION P0-A: nostr_service.dart supprimé - la publication est maintenant côté Donneur
 
 /// Écran d'acquittement (ACK) après réception d'un bon
 /// Génère un QR code ACK signé pour confirmer la réception
+///
+/// ✅ CORRECTION P0-A: Ce screen ne publie PLUS le transfert sur Nostr.
+/// C'est le Donneur qui publie après avoir vérifié l'ACK (voir ack_scanner_screen.dart)
+/// Conformément au Whitepaper (007.md §3.2 Étape 3 — Finalisation)
 class AckScreen extends StatefulWidget {
   final User user;
   final Bon bon;
@@ -35,7 +37,7 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
   
   List<int>? _ackQrData;
   bool _isGenerating = true;
-  bool _transferPublished = false;
+  // ❌ CORRECTION P0-A: _transferPublished supprimé - plus besoin
   late AnimationController _checkmarkController;
 
   @override
@@ -67,18 +69,16 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
         return;
       }
       
-      // ✅ Reconstruire ÉPHÉMÈRE nsec_bon pour signer le challenge
-      // CORRECTION BUG: P2 doit être en position 2, P3 en position 3
-      final nsecBonHex = _cryptoService.shamirCombine(
+      // ✅ SÉCURITÉ: Utiliser shamirCombineBytes qui retourne directement Uint8List
+      // Évite la création d'une String intermédiaire qui resterait en mémoire
+      final nsecBonBytes = _cryptoService.shamirCombineBytes(
         null,          // P1 est absent
         widget.bon.p2, // P2 est à sa bonne place
         p3,            // P3 est à sa bonne place
       );
-      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
-      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
 
-      // Signer le challenge avec la clé privée du bon
-      final signature = _cryptoService.signMessage(widget.challenge, nsecBonHex);
+      // ✅ SÉCURITÉ: Utiliser signMessageBytes qui accepte Uint8List
+      final signature = _cryptoService.signMessageBytes(widget.challenge, nsecBonBytes);
       
       // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
@@ -98,8 +98,13 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
       // Animer le checkmark
       _checkmarkController.forward();
 
-      // ✅ PUBLIER TRANSFERT SUR NOSTR (kind 1)
-      _publishTransferToNostr();
+      // ❌ CORRECTION P0-A: SUPPRIMÉ - La publication Nostr doit être faite par le DONNEUR
+      // après vérification de l'ACK, pas par le receveur avant même de montrer son QR !
+      //
+      // Le Whitepaper (007.md §3.2 Étape 3) est clair:
+      // "Donneur: 1. Vérifie response, 2. Supprime définitivement P2, 3. Publie événement TRANSFER"
+      //
+      // La publication est maintenant dans ack_scanner_screen.dart côté Donneur.
 
     } on ShamirReconstructionException catch (e) {
       setState(() => _isGenerating = false);
@@ -130,49 +135,10 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
     );
   }
 
-  /// ✅ PUBLICATION DU TRANSFERT SUR NOSTR (kind 1)
-  /// SIGNÉ PAR LE BON LUI-MÊME pour le dashboard économique
-  Future<void> _publishTransferToNostr() async {
-    if (_transferPublished) return;
-
-    try {
-      final market = await _storageService.getMarket();
-      
-      // ✅ CORRECTION BUG P0: Récupérer P3 depuis le cache
-      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
-      
-      if (market == null || widget.bon.p2 == null || p3 == null) {
-        return;
-      }
-
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
-
-      final relayUrl = market.relayUrl ?? NostrConstants.defaultRelay;
-      final connected = await nostrService.connect(relayUrl);
-
-      if (connected) {
-        // ✅ Publication avec reconstruction éphémère sk_B (P2+P3)
-        await nostrService.publishTransfer(
-          bonId: widget.bon.bonId,
-          bonP2: widget.bon.p2!,  // Pour reconstruction
-          bonP3: p3,  // ✅ Utiliser P3 depuis le cache
-          receiverNpub: widget.user.npub,
-          value: widget.bon.value,
-          marketName: market.name,
-        );
-
-        setState(() => _transferPublished = true);
-        debugPrint('✅ Transfert publié sur Nostr (signé par le bon)');
-
-        await nostrService.disconnect();
-      }
-    } catch (e) {
-      debugPrint('⚠️ Erreur publication transfert Nostr: $e');
-    }
-  }
+  // ❌ CORRECTION P0-A: Méthode _publishTransferToNostr() supprimée
+  // La publication du transfert sur Nostr est maintenant faite par le DONNEUR
+  // dans ack_scanner_screen.dart, APRÈS vérification de l'ACK.
+  // Conformément au Whitepaper (007.md §3.2 Étape 3 — Finalisation)
 
   @override
   Widget build(BuildContext context) {

@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'package:hex/hex.dart';
 import 'crypto_service.dart';
 import 'nostr_service.dart';
 import 'storage_service.dart';
@@ -33,10 +32,8 @@ class BurnService {
         throw Exception('P3 non trouvée pour ce bon');
       }
 
-      // 2. Reconstruire sk_B temporairement (P1 + P3)
-      final nsecBonHex = _cryptoService.shamirCombine(p1, null, p3);
-      // ✅ SÉCURITÉ: Convertir en Uint8List pour permettre le nettoyage mémoire
-      final nsecBonBytes = Uint8List.fromList(HEX.decode(nsecBonHex));
+      // 2. ✅ SÉCURITÉ: Reconstruire sk_B temporairement en Uint8List (P1 + P3)
+      final nsecBonBytes = _cryptoService.shamirCombineBytes(p1, null, p3);
 
       // 3. Publier event kind 5 sur Nostr
       final nostrService = NostrService(
@@ -54,9 +51,10 @@ class BurnService {
         throw Exception('Impossible de se connecter au relais');
       }
 
-      final burned = await nostrService.publishBurn(
+      // ✅ SÉCURITÉ: Utiliser la version Uint8List de publishBurn
+      final burned = await nostrService.publishBurnBytes(
         bonId: bon.bonId,
-        nsecBon: nsecBonHex,
+        nsecBonBytes: nsecBonBytes,
         reason: reason,
         marketName: market?.name ?? NostrConstants.globalMarketName,
       );

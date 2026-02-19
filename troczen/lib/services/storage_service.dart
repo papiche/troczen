@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -23,6 +24,26 @@ class StorageService {
   static const String _p3CacheKey = 'p3_cache';
   static const String _onboardingCompleteKey = 'onboarding_complete';
 
+  // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
+  // FlutterSecureStorage n'a pas de système de transaction
+  // Ce verrou garantit qu'une seule opération d'écriture à la fois
+  Completer<void>? _bonsLock;
+  
+  /// Acquiert le verrou sur les bons
+  Future<void> _acquireBonsLock() async {
+    while (_bonsLock != null) {
+      await _bonsLock!.future;
+    }
+    _bonsLock = Completer<void>();
+  }
+  
+  /// Libère le verrou sur les bons
+  void _releaseBonsLock() {
+    final lock = _bonsLock;
+    _bonsLock = null;
+    lock?.complete();
+  }
+
   /// Sauvegarde l'utilisateur
   Future<void> saveUser(User user) async {
     await _secureStorage.write(
@@ -44,27 +65,39 @@ class StorageService {
   }
 
   /// Sauvegarde un bon
+  /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions
   Future<void> saveBon(Bon bon) async {
-    final bons = await getBons();
-    
-    // Remplacer ou ajouter le bon
-    final index = bons.indexWhere((b) => b.bonId == bon.bonId);
-    if (index != -1) {
-      bons[index] = bon;
-    } else {
-      bons.add(bon);
+    await _acquireBonsLock();
+    try {
+      final bons = await getBons();
+      
+      // Remplacer ou ajouter le bon
+      final index = bons.indexWhere((b) => b.bonId == bon.bonId);
+      if (index != -1) {
+        bons[index] = bon;
+      } else {
+        bons.add(bon);
+      }
+      
+      await _saveBons(bons);
+    } finally {
+      _releaseBonsLock();
     }
-    
-    await _saveBons(bons);
   }
 
   /// Récupère tous les bons
+  /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions lors de la lecture
   Future<List<Bon>> getBons() async {
-    final data = await _secureStorage.read(key: _bonsKey);
-    if (data == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(data);
-    return jsonList.map((json) => Bon.fromJson(json)).toList();
+    await _acquireBonsLock();
+    try {
+      final data = await _secureStorage.read(key: _bonsKey);
+      if (data == null) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(data);
+      return jsonList.map((json) => Bon.fromJson(json)).toList();
+    } finally {
+      _releaseBonsLock();
+    }
   }
 
   /// Récupère un bon par son ID
@@ -78,10 +111,25 @@ class StorageService {
   }
 
   /// Supprime un bon
+  /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions
   Future<void> deleteBon(String bonId) async {
-    final bons = await getBons();
-    bons.removeWhere((b) => b.bonId == bonId);
-    await _saveBons(bons);
+    await _acquireBonsLock();
+    try {
+      final bons = await _getBonsInternal();
+      bons.removeWhere((b) => b.bonId == bonId);
+      await _saveBons(bons);
+    } finally {
+      _releaseBonsLock();
+    }
+  }
+
+  /// Récupère tous les bons (version interne sans verrou)
+  Future<List<Bon>> _getBonsInternal() async {
+    final data = await _secureStorage.read(key: _bonsKey);
+    if (data == null) return [];
+    
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.map((json) => Bon.fromJson(json)).toList();
   }
 
   /// Sauvegarde la liste complète des bons
