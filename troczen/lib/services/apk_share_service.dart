@@ -95,20 +95,21 @@ class ApkShareService {
     }
   }
   
-  /// Copie l'APK installé vers un fichier accessible
-  Future<String?> _copyInstalledApk() async {
+  static const platform = MethodChannel('com.example.troczen/apk_path');
+
+  /// Récupère le chemin de l'APK installé via MethodChannel
+  Future<String?> _getInstalledApkPath() async {
     try {
-      // Sur Android, l'APK est accessible via /data/app/
-      // Mais cette méthode nécessite des permissions root ou spéciales
-      // On utilise plutôt la méthode des assets
-      
-      // Alternative: utiliser le chemin de l'APK de l'application
-      // En Flutter, on peut accéder à l'APK via le package_info_plus
-      // mais cela nécessite des permissions supplémentaires
-      
+      if (Platform.isAndroid) {
+        final String? apkPath = await platform.invokeMethod('getApkPath');
+        if (apkPath != null && File(apkPath).existsSync()) {
+          Logger.log(_tag, 'APK installé trouvé: $apkPath');
+          return apkPath;
+        }
+      }
       return null;
     } catch (e) {
-      Logger.error(_tag, 'Erreur lors de la copie de l\'APK installé', e);
+      Logger.error(_tag, 'Erreur lors de la récupération du chemin de l\'APK installé', e);
       return null;
     }
   }
@@ -116,19 +117,19 @@ class ApkShareService {
   /// Prépare l'APK pour le partage
   Future<bool> prepareApk() async {
     try {
-      // Méthode 1: Extraire l'APK depuis les assets
+      // Méthode 1: Utiliser l'APK installé (optimisation de taille)
+      final installedPath = await _getInstalledApkPath();
+      if (installedPath != null) {
+        _apkPath = installedPath;
+        Logger.log(_tag, 'APK préparé depuis l\'installation (optimisé)');
+        return true;
+      }
+
+      // Méthode 2: Extraire l'APK depuis les assets (fallback)
       final assetPath = await _extractApkFromAssets();
       if (assetPath != null) {
         _apkPath = assetPath;
-        Logger.log(_tag, 'APK préparé depuis les assets');
-        return true;
-      }
-      
-      // Méthode 2: Essayer de copier l'APK installé
-      final installedPath = await _copyInstalledApk();
-      if (installedPath != null) {
-        _apkPath = installedPath;
-        Logger.log(_tag, 'APK préparé depuis l\'installation');
+        Logger.log(_tag, 'APK préparé depuis les assets (fallback)');
         return true;
       }
       
