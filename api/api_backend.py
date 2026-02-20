@@ -38,6 +38,9 @@ IPFS_GATEWAY = os.getenv('IPFS_GATEWAY', 'https://ipfs.copylaradio.com')  # Pass
 IPFS_ENABLED = os.getenv('IPFS_ENABLED', 'true').lower() == 'true'
 IPFS_TIMEOUT = int(os.getenv('IPFS_TIMEOUT', '30'))  # Timeout en secondes
 
+# ✅ Fichier de métadonnées IPFS pour les APK
+APK_IPFS_META_FILE = APK_FOLDER / 'ipfs_meta.json'
+
 # Pool de threads pour les uploads IPFS asynchrones
 IPFS_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix='ipfs_upload')
 
@@ -138,6 +141,51 @@ def generate_checksum(filepath):
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
+
+
+# ==================== APK IPFS METADATA ====================
+
+def load_apk_ipfs_metadata():
+    """
+    Charge les métadonnées IPFS des APK depuis le fichier JSON.
+    Retourne un dict avec les infos IPFS pour chaque APK.
+    """
+    try:
+        if APK_IPFS_META_FILE.exists():
+            with open(APK_IPFS_META_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f'⚠️ Erreur lecture métadonnées IPFS: {e}')
+    return {}
+
+
+def save_apk_ipfs_metadata(metadata):
+    """
+    Sauvegarde les métadonnées IPFS des APK.
+    """
+    try:
+        with open(APK_IPFS_META_FILE, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        print(f'✅ Métadonnées IPFS sauvegardées: {APK_IPFS_META_FILE}')
+    except Exception as e:
+        print(f'❌ Erreur sauvegarde métadonnées IPFS: {e}')
+
+
+def get_apk_ipfs_url(apk_name):
+    """
+    Récupère l'URL IPFS pour un APK donné.
+    Retourne None si non disponible.
+    """
+    metadata = load_apk_ipfs_metadata()
+    apk_info = metadata.get('apks', {}).get(apk_name, {})
+    cid = apk_info.get('cid')
+    if cid:
+        return f"{IPFS_GATEWAY}/ipfs/{cid}/{apk_name}"
+    # Fallback: utiliser le CID du dossier si disponible
+    folder_cid = metadata.get('folder_cid')
+    if folder_cid:
+        return f"{IPFS_GATEWAY}/ipfs/{folder_cid}/{apk_name}"
+    return None
 
 
 # ==================== IPFS ASYNCHRONE ====================
@@ -450,43 +498,84 @@ def serve_upload(filename):
 
 @app.route('/api/apk/latest', methods=['GET'])
 def get_latest_apk():
-    """Informations sur la dernière version APK"""
+    """Informations sur la dernière version APK (local ou IPFS)"""
     
     apk_files = list(APK_FOLDER.glob('*.apk'))
     
+    # Charger les métadonnées IPFS
+    ipfs_metadata = load_apk_ipfs_metadata()
+    
+    # Si pas de fichiers locaux, vérifier IPFS
     if not apk_files:
+        # Vérifier si on a des métadonnées IPFS
+        if ipfs_metadata.get('apks'):
+            # Prendre le plus récent
+            apks_list = list(ipfs_metadata['apks'].items())
+            if apks_list:
+                latest_name, latest_info = apks_list[-1]
+                ipfs_url = get_apk_ipfs_url(latest_name)
+                return jsonify({
+                    'filename': latest_name,
+                    'version': latest_name.replace('troczen-', '').replace('.apk', ''),
+                    'size': latest_info.get('size', 0),
+                    'checksum': latest_info.get('checksum', ''),
+                    'download_url': f'/api/apk/download/{latest_name}',
+                    'ipfs_url': ipfs_url,
+                    'ipfs_cid': latest_info.get('cid'),
+                    'storage': 'ipfs',
+                    'updated_at': latest_info.get('uploaded_at', '')
+                })
+        
         return jsonify({'error': 'No APK available'}), 404
     
     # Trier par date de modification
     latest_apk = max(apk_files, key=lambda p: p.stat().st_mtime)
     
     checksum = generate_checksum(latest_apk)
+    ipfs_url = get_apk_ipfs_url(latest_apk.name)
     
-    return jsonify({
+    response = {
         'filename': latest_apk.name,
         'version': latest_apk.stem.replace('troczen-', ''),
         'size': latest_apk.stat().st_size,
         'checksum': checksum,
         'download_url': f'/api/apk/download/{latest_apk.name}',
-        'updated_at': datetime.fromtimestamp(latest_apk.stat().st_mtime).isoformat()
-    })
+        'updated_at': datetime.fromtimestamp(latest_apk.stat().st_mtime).isoformat(),
+        'storage': 'local'
+    }
+    
+    # Ajouter infos IPFS si disponibles
+    if ipfs_url:
+        response['ipfs_url'] = ipfs_url
+        apk_info = ipfs_metadata.get('apks', {}).get(latest_apk.name, {})
+        response['ipfs_cid'] = apk_info.get('cid')
+        response['storage'] = 'local+ipfs'
+    
+    return jsonify(response)
 
 
 @app.route('/api/apk/download/<filename>')
 def download_apk(filename):
-    """Télécharger APK"""
+    """Télécharger APK (local ou redirection IPFS)"""
     
     filepath = APK_FOLDER / secure_filename(filename)
     
-    if not filepath.exists() or not filepath.suffix == '.apk':
-        return jsonify({'error': 'APK not found'}), 404
+    # Si le fichier existe localement, le servir
+    if filepath.exists() and filepath.suffix == '.apk':
+        return send_file(
+            filepath,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.android.package-archive'
+        )
     
-    return send_file(
-        filepath,
-        as_attachment=True,
-        download_name=filename,
-        mimetype='application/vnd.android.package-archive'
-    )
+    # Sinon, rediriger vers IPFS si disponible
+    ipfs_url = get_apk_ipfs_url(filename)
+    if ipfs_url:
+        from flask import redirect
+        return redirect(ipfs_url)
+    
+    return jsonify({'error': 'APK not found'}), 404
 
 
 @app.route('/api/apk/qr')

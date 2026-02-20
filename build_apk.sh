@@ -44,7 +44,7 @@ done
 # Configuration
 # ============================================
 IPFS_GATEWAY="ipfs.copylaradio.com"
-IPFS_FALLBACK_GATEWAYS="ipfs.io dweb.link cloudflare-ipfs.com"
+IPFS_FALLBACK_GATEWAYS="ipfs.paratge.copylaradio.com ipfs.guenoel.fr"
 
 # ============================================
 # Nettoyage et Build
@@ -84,8 +84,7 @@ echo "🚀 Upload vers IPFS..."
 
 # Vérifier qu'IPFS est disponible
 if ! command -v ipfs &> /dev/null; then
-    echo "⚠️  IPFS non installé. L'APK reste disponible localement."
-    echo "   Installez IPFS: https://docs.ipfs.tech/install/"
+    echo "   Installez Astroport: https://docs.ipfs.tech/install/"
     exit 0
 fi
 
@@ -200,9 +199,67 @@ cat > "$DEST_DIR/index.html" << EOF
 </html>
 EOF
 
+# Mise à jour du fichier ipfs_meta.json pour l'API
+APK_SIZE=$(stat -c%s "$DEST_DIR/$APK_NAME" 2>/dev/null || stat -f%z "$DEST_DIR/$APK_NAME" 2>/dev/null)
+APK_CHECKSUM=$(sha256sum "$DEST_DIR/$APK_NAME" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$DEST_DIR/$APK_NAME" 2>/dev/null | cut -d' ' -f1)
+UPLOAD_DATE=$(date -Iseconds)
+
+# Créer ou mettre à jour le fichier ipfs_meta.json
+META_FILE="$DEST_DIR/ipfs_meta.json"
+if [ -f "$META_FILE" ]; then
+    # Charger les métadonnées existantes
+    EXISTING_META=$(cat "$META_FILE")
+else
+    EXISTING_META='{"apks":{}}'
+fi
+
+# Utiliser jq pour mettre à jour le JSON (ou Python si jq non disponible)
+if command -v jq &> /dev/null; then
+    echo "$EXISTING_META" | jq --arg name "$APK_NAME" \
+        --arg cid "$IPFS_CID" \
+        --arg size "$APK_SIZE" \
+        --arg checksum "$APK_CHECKSUM" \
+        --arg date "$UPLOAD_DATE" \
+        --arg version "$VERSION" \
+        '.apks[$name] = {"cid": $cid, "size": ($size | tonumber), "checksum": $checksum, "uploaded_at": $date, "version": $version}' > "$META_FILE"
+elif command -v python3 &> /dev/null; then
+    python3 << PYEOF
+import json
+import sys
+
+existing = json.loads('''$EXISTING_META''')
+existing.setdefault('apks', {})
+existing['apks']['$APK_NAME'] = {
+    'cid': '$IPFS_CID',
+    'size': $APK_SIZE,
+    'checksum': '$APK_CHECKSUM',
+    'uploaded_at': '$UPLOAD_DATE',
+    'version': '$VERSION'
+}
+with open('$META_FILE', 'w') as f:
+    json.dump(existing, f, indent=2)
+PYEOF
+else
+    # Fallback: créer un fichier simple sans dépendances
+    cat > "$META_FILE" << METAEOF
+{
+  "apks": {
+    "$APK_NAME": {
+      "cid": "$IPFS_CID",
+      "size": $APK_SIZE,
+      "checksum": "$APK_CHECKSUM",
+      "uploaded_at": "$UPLOAD_DATE",
+      "version": "$VERSION"
+    }
+  }
+}
+METAEOF
+fi
+
 echo "✅ Templates mis à jour"
 echo "   - $DEST_DIR/README.md"
 echo "   - $DEST_DIR/index.html"
+echo "   - $DEST_DIR/ipfs_meta.json"
 
 # ============================================
 # Commit et push Git (optionnel)
@@ -212,7 +269,7 @@ if [ "$PUSH_TO_GIT" = true ]; then
     echo "📤 Mise à jour du dépôt Git..."
 
     # Ajouter les fichiers modifiés (pas les APK, ils sont dans .gitignore)
-    git add "$DEST_DIR/README.md" "$DEST_DIR/index.html"
+    git add "$DEST_DIR/README.md" "$DEST_DIR/index.html" "$DEST_DIR/ipfs_meta.json"
 
     # Vérifier s'il y a des changements à committer
     if git diff --cached --quiet; then
