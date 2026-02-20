@@ -54,18 +54,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => OnboardingNotifier(),
-      child: WillPopScope(
-        onWillPop: () async {
+      child: PopScope(
+        canPop: !_seedGenerated && _currentPage == 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
           // Empêcher le retour système après la seed générée
-          if (_seedGenerated) {
-            return false;
-          }
+          if (_seedGenerated) return;
           
           if (_currentPage > 0) {
             _previousPage();
-            return false;
           }
-          return true;
         },
         child: Scaffold(
           backgroundColor: const Color(0xFF121212),

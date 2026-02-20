@@ -246,9 +246,7 @@ class NostrClient:
             max_results=max_results,
             additional_filters=additional_filters
         )
-        
-        events = await self.query_events(filters)
-        
+                
         bons = []
         for event in events:
             try:

@@ -151,8 +151,10 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         // Empêcher le retour avant que le donneur scanne
         final shouldPop = await showDialog<bool>(
           context: context,
@@ -179,7 +181,7 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
             ],
           ),
         );
-        return shouldPop ?? false;
+        if (shouldPop == true && mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF121212),

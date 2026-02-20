@@ -437,12 +437,14 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: _status != SwapStatus.validating,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         if (_status == SwapStatus.validating) {
-          return await _showCancelDialog() ?? false;
+          final shouldPop = await _showCancelDialog() ?? false;
+          if (shouldPop && mounted) Navigator.of(context).pop();
         }
-        return true;
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF121212),
