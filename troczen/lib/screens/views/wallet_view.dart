@@ -4,6 +4,8 @@ import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../services/logger_service.dart';
+import '../../services/burn_service.dart';
+import '../../services/crypto_service.dart';
 import '../../widgets/panini_card.dart';
 import '../../widgets/qr_explosion_widget.dart';
 import '../offer_screen.dart';
@@ -780,6 +782,70 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               
               const SizedBox(height: 24),
               
+              // ✅ Bouton ENCAISSER/DÉTRUIRE (si l'utilisateur est l'émetteur avec P1+P2+P3)
+              // L'émetteur peut "encaisser" son propre bon = détruire la boucle
+              if (_isEmitterWithAllParts(bon) && bon.status == BonStatus.active && !bon.isExpired) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.local_fire_department, color: Colors.orange.shade400),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Vous êtes l\'émetteur de ce bon',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Encaissez ce bon pour fermer la boucle et récupérer la valeur.',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _confirmBurnBon(bon),
+                    icon: const Icon(Icons.local_fire_department, color: Colors.white),
+                    label: const Text(
+                      '🔥 ENCAISSER / DÉTRUIRE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              
               // Bouton Donner (si le bon est actif et non expiré)
               if (bon.status == BonStatus.active && !bon.isExpired)
                 SizedBox(
@@ -841,6 +907,161 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         ),
       ),
     );
+  }
+
+  /// Vérifie si l'utilisateur est l'émetteur du bon avec toutes les parties (P1+P2+P3)
+  /// Cela signifie qu'il peut "encaisser" le bon = détruire la boucle
+  bool _isEmitterWithAllParts(Bon bon) {
+    // L'émetteur possède P1 (ancre) + P2 (voyageur retourné) + P3 (témoin en cache)
+    // P1 et P2 sont stockés dans le bon, P3 est dans le cache
+    return bon.p1 != null && bon.p2 != null;
+  }
+
+  /// Affiche la confirmation de destruction du bon
+  void _confirmBurnBon(Bon bon) {
+    Navigator.pop(context); // Fermer la modale de détails
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Row(
+          children: [
+            Icon(Icons.local_fire_department, color: Colors.orange.shade400),
+            const SizedBox(width: 8),
+            const Text(
+              'Encaisser ce bon ?',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Vous êtes sur le point d\'encaisser ce bon de ${bon.value.toStringAsFixed(2)} ẐEN.',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'La boucle est bouclée ! Ce bon sera définitivement détruit.',
+                      style: TextStyle(
+                        color: Colors.orange.shade300,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _burnBon(bon);
+            },
+            icon: const Icon(Icons.local_fire_department, color: Colors.white),
+            label: const Text(
+              'ENCAISSER',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Brûle le bon avec animation de validation
+  Future<void> _burnBon(Bon bon) async {
+    if (_isUpdating) return;
+    
+    setState(() => _isUpdating = true);
+    
+    try {
+      // Afficher l'animation de feu pendant le burn
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: QrExplosionWidget(
+            size: 300,
+            type: QrExplosionType.bonBurned,
+            bonId: bon.bonId,
+            bonValue: bon.value,
+            onRetry: () => Navigator.pop(context),
+          ),
+        ),
+      );
+      
+      // Exécuter le burn via BurnService
+      final burnService = BurnService(
+        cryptoService: CryptoService(),
+        storageService: StorageService(),
+      );
+      
+      final success = await burnService.burnBon(
+        bon: bon,
+        p1: bon.p1!,
+        reason: 'Encaissement par l\'émetteur',
+      );
+      
+      if (success) {
+        await _loadBons();
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🔥 Bon de ${bon.value.toStringAsFixed(2)} ẐEN encaissé avec succès !'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Erreur lors de l\'encaissement'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      Logger.error('WalletView', 'Erreur burn', e);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
   }
 
   Widget _buildDetailRow(String label, String value) {

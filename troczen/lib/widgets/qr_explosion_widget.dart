@@ -9,6 +9,8 @@ enum QrExplosionType {
   bonTransferInProgress,
   /// Erreur technique générique
   technicalError,
+  /// Bon brûlé/encaissé avec succès par l'émetteur
+  bonBurned,
 }
 
 /// Widget animé montrant une explosion pour signaler une action impossible.
@@ -187,6 +189,10 @@ $logsText
       case QrExplosionType.technicalError:
         return 'Une erreur technique est survenue.\n\n'
             'Veuillez réessayer ou contacter le support si le problème persiste.';
+      case QrExplosionType.bonBurned:
+        return '🔥 Bon encaissé avec succès !\n\n'
+            'La boucle est bouclée.\n'
+            'Ce bon a été détruit et ne peut plus être utilisé.';
     }
   }
 

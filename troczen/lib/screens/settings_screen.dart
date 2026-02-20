@@ -7,6 +7,7 @@ import '../services/storage_service.dart';
 import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
 import 'logs_screen.dart';
+import 'apk_share_screen.dart';
 
 /// Écran de paramètres pour configurer le marché, relais, etc.
 class SettingsScreen extends StatefulWidget {
@@ -281,6 +282,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   backgroundColor: const Color(0xFF0A7EA4),
                 ),
                 child: const Text('Exporter les données (CSV)'),
+              ),
+              const SizedBox(height: 8),
+              
+              // Bouton Partager l'application
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ApkShareScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB347),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.share),
+                label: const Text('📤 Partager l\'application'),
               ),
               const SizedBox(height: 8),
               ElevatedButton(
