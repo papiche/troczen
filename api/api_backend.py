@@ -21,7 +21,7 @@ import asyncio
 import aiohttp
 import threading
 import concurrent.futures
-from nostr_client import NostrClient
+from nostr_client import NostrClientSync  # Utiliser le client synchrone pour Flask
 
 app = Flask(__name__)
 CORS(app)
@@ -560,21 +560,17 @@ def fetch_marche_data(market_name):
         return fetch_local_marche_data(market_name)
     
     try:
-        # Créer le client Nostr
-        client = NostrClient(relay_url=NOSTR_RELAY)
+        # Créer le client Nostr SYNCHRONE (adapté pour Flask)
+        client = NostrClientSync(relay_url=NOSTR_RELAY)
         
-        # Exécuter de manière asynchrone
-        async def fetch_data():
-            await client.connect()
-            data = await client.get_merchants_with_bons(market_name)
-            await client.disconnect()
-            return data
+        # Connexion synchrone
+        if not client.connect():
+            print(f"❌ Impossible de se connecter au relai Nostr")
+            return fetch_local_marche_data(market_name)
         
-        # Exécuter la coroutine
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        data = loop.run_until_complete(fetch_data())
-        loop.close()
+        # Récupération synchrone des données
+        data = client.get_merchants_with_bons(market_name)
+        client.disconnect()
         
         return data
         
@@ -723,18 +719,18 @@ def get_nostr_profiles():
         })
     
     try:
-        client = NostrClient(relay_url=NOSTR_RELAY)
+        # Utiliser le client synchrone (adapté pour Flask)
+        client = NostrClientSync(relay_url=NOSTR_RELAY)
         
-        async def fetch_profiles():
-            await client.connect()
-            profiles = await client.get_merchant_profiles()
-            await client.disconnect()
-            return profiles
+        if not client.connect():
+            return jsonify({
+                'success': False,
+                'error': 'Failed to connect to Nostr relay',
+                'profiles': []
+            })
         
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        profiles = loop.run_until_complete(fetch_profiles())
-        loop.close()
+        profiles = client.get_merchant_profiles()
+        client.disconnect()
         
         return jsonify({
             'success': True,
@@ -771,19 +767,19 @@ def get_all_bons_no_filter():
         })
     
     try:
-        client = NostrClient(relay_url=NOSTR_RELAY)
+        # Utiliser le client synchrone (adapté pour Flask)
+        client = NostrClientSync(relay_url=NOSTR_RELAY)
         
-        async def fetch_bons():
-            await client.connect()
-            # Passer None pour récupérer tous les bons sans filtre
-            bons = await client.get_bons(None)
-            await client.disconnect()
-            return bons
+        if not client.connect():
+            return jsonify({
+                'success': False,
+                'error': 'Failed to connect to Nostr relay',
+                'bons': []
+            })
         
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        bons = loop.run_until_complete(fetch_bons())
-        loop.close()
+        # Passer None pour récupérer tous les bons sans filtre
+        bons = client.get_bons(None)
+        client.disconnect()
         
         # Grouper par marché pour stats
         markets = {}
@@ -830,18 +826,18 @@ def get_all_bons():
         })
     
     try:
-        client = NostrClient(relay_url=NOSTR_RELAY)
+        # Utiliser le client synchrone (adapté pour Flask)
+        client = NostrClientSync(relay_url=NOSTR_RELAY)
         
-        async def fetch_bons():
-            await client.connect()
-            bons = await client.get_bons(market_name)
-            await client.disconnect()
-            return bons
+        if not client.connect():
+            return jsonify({
+                'success': False,
+                'error': 'Failed to connect to Nostr relay',
+                'bons': []
+            })
         
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        bons = loop.run_until_complete(fetch_bons())
-        loop.close()
+        bons = client.get_bons(market_name)
+        client.disconnect()
         
         print(f'🌻 [API] {len(bons)} bons trouvés pour market={market_name}')
         
