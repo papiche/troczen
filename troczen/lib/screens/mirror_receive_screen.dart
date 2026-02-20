@@ -149,6 +149,9 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
         status: BonStatus.active,
         createdAt: payload.emittedAt,
         marketName: marketName,
+        // ✅ RÈGLE ÉCONOMIQUE : Une fois échangé, le bon perd sa date d'expiration
+        // (La monnaie fondante ne s'applique qu'au créateur initial pour forcer l'injection)
+        expiresAt: null,
       );
 
       final updatedBon = existingBon != null ? existingBon.copyWith(status: BonStatus.active, p2: p2) : bon;

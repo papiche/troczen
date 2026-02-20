@@ -212,7 +212,7 @@ class CryptoService {
 
   /// Génère un mot de passe Wi-Fi WPA2 déterministe à partir de la graine du marché
   String deriveWifiPassword(String seedMarketHex) {
-    final bytes = utf8.encode(seedMarketHex + "wifi_password");
+    final bytes = utf8.encode("${seedMarketHex}wifi_password");
     final digest = sha256.convert(bytes);
     // Retourne les 12 premiers caractères encodés en Base58 (plus lisible que l'hex)
     return base58.encode(Uint8List.fromList(digest.bytes)).substring(0, 12);
@@ -869,7 +869,7 @@ class CryptoService {
     ]);
 
     // 4. Encoder en Base36 et ajouter le préfixe 'k' (multibase code pour base36)
-    return 'k' + _encodeBase36(ipnsBytes);
+    return 'k${_encodeBase36(ipnsBytes)}';
   }
 
   // --- SECTION DUNITER V2 (SUBSTRATE / BIP39) ---

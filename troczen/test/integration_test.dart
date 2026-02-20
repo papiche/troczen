@@ -5,6 +5,7 @@
 /// - PHASE 2 : Création d'un bon (émission)
 /// - PHASE 3 : Synchronisation (réception des P3)
 /// - PHASE 4 : Transfert atomique offline
+library;
 
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,7 +83,7 @@ void main() {
           bonId: bonKeys['publicKeyHex']!,
           value: 50.0,
           issuerName: 'Alice Commerce',
-          issuerNpub: 'npub1' + 'a' * 58, // npub fictif de l'émetteur
+          issuerNpub: 'npub1${'a' * 58}', // npub fictif de l'émetteur
           createdAt: DateTime.now(),
           expiresAt: DateTime.now().add(const Duration(days: 365)),
           status: BonStatus.active, // Actif pour être valide
@@ -411,7 +412,7 @@ void main() {
             bonId: bonId,
             value: 25.0,
             issuerName: 'Test',
-            issuerNpub: 'npub1' + 'a' * 58,
+            issuerNpub: 'npub1${'a' * 58}',
             createdAt: DateTime.now(),
             status: BonStatus.spent, // Marqué comme dépensé
             marketName: 'Test Market',
@@ -558,7 +559,7 @@ void main() {
 
           // Part corrompue (modifier un byte)
           // Note: Shamir ne détecte pas les parts corrompues, il reconstruit un résultat incorrect
-          final corruptedP2 = parts[1].substring(0, 62) + 'ff';
+          final corruptedP2 = '${parts[1].substring(0, 62)}ff';
           final corruptedP2Bytes = Uint8List.fromList(HEX.decode(corruptedP2));
           final corruptedReconstruction = HEX.encode(cryptoService.shamirCombineBytesDirect(p0Bytes, corruptedP2Bytes, null));
           

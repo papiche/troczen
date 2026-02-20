@@ -9,6 +9,7 @@ import '../../services/crypto_service.dart';
 import '../../widgets/panini_card.dart';
 import '../../widgets/qr_explosion_widget.dart';
 import '../mirror_offer_screen.dart';
+import '../bon_journey_screen.dart';
 
 /// WalletView — Bons dont je détiens P2
 /// Vue principale du commerçant receveur
@@ -55,6 +56,19 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     setState(() => _isLoading = true);
     try {
       final storageService = StorageService();
+      
+      // ✅ Nettoyage automatique des bons expirés (Monnaie fondante)
+      final removedCount = await storageService.cleanupExpiredBons();
+      if (removedCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🧹 $removedCount bon(s) expiré(s) supprimé(s)'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
       final loadedBons = await storageService.getBons();
       
       // LOG CRITIQUE POUR DEBUG - Afficher tous les bons trouvés
@@ -760,6 +774,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               _buildDetailRow('Commerçant', bon.issuerName),
               _buildDetailRow('Créé le', _formatDate(bon.createdAt)),
               _buildDetailRow('Marché', bon.marketName),
+              if (bon.wish != null && bon.wish!.isNotEmpty)
+                _buildDetailRow('Vœu', bon.wish!),
               if (bon.rarity != null && bon.rarity != 'common') ...[
                 const SizedBox(height: 16),
                 const Text(
@@ -781,6 +797,38 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               ],
               
               const SizedBox(height: 24),
+
+              // Bouton Carnet de Voyage
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BonJourneyScreen(bon: bon),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map, color: Color(0xFF0A7EA4)),
+                  label: const Text(
+                    'Carnet de Voyage',
+                    style: TextStyle(
+                      color: Color(0xFF0A7EA4),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF0A7EA4)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               
               // ✅ Bouton ENCAISSER/DÉTRUIRE (si l'utilisateur est l'émetteur avec P1+P2+P3)
               // L'émetteur peut "encaisser" son propre bon = détruire la boucle

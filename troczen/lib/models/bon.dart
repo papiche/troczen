@@ -36,6 +36,7 @@ class Bon {
   final String? specialAbility; // Capacité spéciale (ex: "double valeur", "résistant")
   final Map<String, dynamic>? stats; // Statistiques (ex: {"power": 5, "defense": 3})
   final double? duAtCreation;   // Valeur du DU le jour de la création (pour calcul relativiste)
+  final String? wish;           // Vœu attaché au bon (ex: "De la graine à l'assiette")
 
   Bon({
     required this.bonId,
@@ -61,6 +62,7 @@ class Bon {
     this.specialAbility,
     this.stats,
     this.duAtCreation,
+    this.wish,
   });
 
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
@@ -212,6 +214,7 @@ class Bon {
       'Transfers': '${transferCount ?? 0}',
       'Capacité': specialAbility ?? 'Aucune',
       'Émetteur': issuerName,
+      if (wish != null && wish!.isNotEmpty) 'Vœu': wish!,
     };
   }
 
@@ -276,6 +279,7 @@ class Bon {
     String? specialAbility,
     Map<String, dynamic>? stats,
     double? duAtCreation,
+    String? wish,
   }) {
     return Bon(
       bonId: bonId ?? this.bonId,
@@ -301,6 +305,7 @@ class Bon {
       specialAbility: specialAbility ?? this.specialAbility,
       stats: stats ?? this.stats,
       duAtCreation: duAtCreation ?? this.duAtCreation,
+      wish: wish ?? this.wish,
     );
   }
 
@@ -325,6 +330,7 @@ class Bon {
       'transferCount': transferCount,
       'issuerNostrProfile': issuerNostrProfile,
       'duAtCreation': duAtCreation,
+      'wish': wish,
     };
   }
 
@@ -349,6 +355,7 @@ class Bon {
       transferCount: json['transferCount'] ?? 0,
       issuerNostrProfile: json['issuerNostrProfile'],
       duAtCreation: json['duAtCreation']?.toDouble(),
+      wish: json['wish'],
     );
   }
 

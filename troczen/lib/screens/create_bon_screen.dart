@@ -43,6 +43,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   File? _selectedImage;
   bool _isUploading = false;
   final _websiteController = TextEditingController();
+  final _wishController = TextEditingController();
+  List<String> _suggestedTags = [];
 
   @override
   void initState() {
@@ -52,6 +54,30 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     _websiteController.text = widget.user.website ?? '';
     _loadMarkets();
     _detectNetwork();
+    _loadSuggestedTags();
+  }
+
+  Future<void> _loadSuggestedTags() async {
+    try {
+      final market = await _storageService.getMarket();
+      if (market != null && market.relayUrl != null) {
+        final nostrService = NostrService(
+          cryptoService: _cryptoService,
+          storageService: _storageService,
+        );
+        if (await nostrService.connect(market.relayUrl!)) {
+          final tags = await nostrService.fetchActivityTagsFromProfiles(limit: 50);
+          if (mounted) {
+            setState(() {
+              _suggestedTags = tags.take(10).toList(); // Garder les 10 premiers
+            });
+          }
+          await nostrService.disconnect();
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur chargement tags: $e');
+    }
   }
 
   /// ✅ NOUVEAU: Charge la liste des marchés et sélectionne l'actif par défaut
@@ -181,6 +207,9 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   void dispose() {
     _valueController.dispose();
     _issuerNameController.dispose();
+    _websiteController.dispose();
+    _wishController.dispose();
+    _expirationController.dispose();
     super.dispose();
   }
 
@@ -305,6 +334,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             value: double.parse(_valueController.text),
             category: 'generic',  // TODO: Sélection UI
             rarity: Bon.generateRarity(),  // ✅ Génération aléatoire
+            wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
           );
 
           if (published) {
@@ -657,6 +687,70 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   ),
                 )).toList(),
               ),
+
+              const SizedBox(height: 24),
+
+              // Section Vœu (Carnet de Voyage)
+              Row(
+                children: [
+                  Text(
+                    'Vœu / Petite Annonce',
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Attachez une demande à ce bon (ex: "Je cherche du houblon").\n'
+                        'Le bon va voyager de main en main (Effet Petit Monde).\n'
+                        'S\'il atteint la bonne personne, la boucle de valeur est bouclée !',
+                    triggerMode: TooltipTriggerMode.tap,
+                    showDuration: const Duration(seconds: 5),
+                    child: const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _wishController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Votre demande (ex: Je cherche du houblon)',
+                  labelStyle: TextStyle(color: Colors.grey[400]),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFFFFB347)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                ),
+              ),
+              
+              if (_suggestedTags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _suggestedTags.map((tag) => ActionChip(
+                    label: Text(tag),
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    labelStyle: const TextStyle(color: Colors.orange, fontSize: 12),
+                    side: const BorderSide(color: Colors.orange),
+                    onPressed: () {
+                      setState(() {
+                        _wishController.text = tag;
+                      });
+                    },
+                  )).toList(),
+                ),
+              ],
 
               const SizedBox(height: 24),
 

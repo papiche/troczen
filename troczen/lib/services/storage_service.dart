@@ -577,6 +577,29 @@ class StorageService {
     await _secureStorage.deleteAll();
   }
 
+  /// Nettoie les bons expirés du wallet local
+  /// Supprime définitivement les bons dont la date d'expiration est dépassée
+  Future<int> cleanupExpiredBons() async {
+    await _acquireBonsLock();
+    try {
+      final bons = await _getBonsInternal();
+      final initialCount = bons.length;
+      
+      // Garder uniquement les bons non expirés
+      bons.removeWhere((b) => b.isExpired);
+      
+      final removedCount = initialCount - bons.length;
+      if (removedCount > 0) {
+        await _saveBons(bons);
+        Logger.log('StorageService', 'Nettoyage: $removedCount bons expirés supprimés');
+      }
+      
+      return removedCount;
+    } finally {
+      _releaseBonsLock();
+    }
+  }
+
   /// Récupère les bons actifs (non dépensés, non expirés)
   Future<List<Bon>> getActiveBons() async {
     final bons = await getBons();

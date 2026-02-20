@@ -54,6 +54,10 @@ class BonCardFooter extends StatelessWidget {
   }
 
   Widget _buildDateRow() {
+    final isExpiringSoon = bon.expiresAt != null &&
+        !bon.isExpired &&
+        bon.expiresAt!.difference(DateTime.now()).inDays <= 7;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -67,8 +71,48 @@ class BonCardFooter extends StatelessWidget {
           ),
         ),
         if (bon.isExpired)
-          const _ExpiredBadge(),
+          const _ExpiredBadge()
+        else if (isExpiringSoon)
+          _ExpiringSoonBadge(expiresAt: bon.expiresAt!),
       ],
+    );
+  }
+}
+
+/// Badge indiquant que le bon expire bientôt
+class _ExpiringSoonBadge extends StatelessWidget {
+  final DateTime expiresAt;
+
+  const _ExpiringSoonBadge({required this.expiresAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final daysLeft = expiresAt.difference(DateTime.now()).inDays;
+    final text = daysLeft == 0 ? "Aujourd'hui" : "Dans $daysLeft j";
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.red.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.timer, size: 10, color: Colors.red),
+          const SizedBox(width: 4),
+          Text(
+            'Expire $text',
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 9,
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

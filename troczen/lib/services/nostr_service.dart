@@ -365,6 +365,7 @@ class NostrService {
     required double value,
     String? category,
     String? rarity,
+    String? wish,
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
@@ -403,6 +404,7 @@ class NostrService {
           ['p3_nonce', p3Encrypted['nonce']],
           ['version', '1'],
           ['policy', '2of3-ssss'],
+          if (wish != null && wish.isNotEmpty) ['wish', wish],
         ],
         'content': jsonEncode({
           'display_name': 'Bon ${value.toStringAsFixed(0)} ẐEN',
@@ -525,6 +527,74 @@ class NostrService {
     } catch (e) {
       onError?.call('Erreur publication profil: $e');
       return false;
+    }
+  }
+
+  /// ✅ RÉCUPÉRER HISTORIQUE DES TRANSFERTS D'UN BON (kind 1)
+  Future<List<Map<String, dynamic>>> fetchBonTransfers(String bonId) async {
+    if (!_isConnected) {
+      Logger.error('NostrService', 'Non connecté au relais');
+      return [];
+    }
+
+    try {
+      final completer = Completer<List<Map<String, dynamic>>>();
+      final transfers = <Map<String, dynamic>>[];
+      
+      final subscriptionId = 'transfers_${DateTime.now().millisecondsSinceEpoch}';
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'kinds': [NostrConstants.kindText],
+          '#bon': [bonId],
+        }
+      ]);
+
+      void Function(dynamic)? tempHandler;
+      tempHandler = (data) {
+        try {
+          final message = jsonDecode(data);
+          if (message is List && message.length >= 3) {
+            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
+              final event = message[2] as Map<String, dynamic>;
+              transfers.add(event);
+            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
+              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+              if (!completer.isCompleted) {
+                completer.complete(transfers);
+              }
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing transfers response', e);
+        }
+      };
+
+      final originalSubscription = _subscription;
+      _subscription = _channel?.stream.listen(tempHandler);
+      
+      _channel?.sink.add(request);
+      
+      Timer(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) {
+          _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(transfers);
+        }
+      });
+      
+      final result = await completer.future;
+      
+      await _subscription?.cancel();
+      _subscription = originalSubscription;
+      if (_channel != null && originalSubscription != null) {
+        _subscription = _channel?.stream.listen(_handleMessage);
+      }
+      
+      return result;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération transferts', e);
+      return [];
     }
   }
 
@@ -928,6 +998,7 @@ class NostrService {
       String? category;
       String? rarity;
       int? expiryTimestamp;
+      String? wish;
 
       for (final tag in tags) {
         if (tag is List && tag.isNotEmpty) {
@@ -960,6 +1031,9 @@ class NostrService {
               break;
             case 'expiry':
               expiryTimestamp = int.tryParse(tag[1].toString());
+              break;
+            case 'wish':
+              wish = tag[1].toString();
               break;
           }
         }
@@ -1062,6 +1136,7 @@ class NostrService {
         'banner': bannerUrl,
         'p3Hex': p3Hex,
         'eventTimestamp': eventTimestamp,
+        'wish': wish,
       };
       
       await _storageService.saveMarketBonData(bonData);

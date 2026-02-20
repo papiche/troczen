@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
+import '../../services/crypto_service.dart';
 import '../user_profile_screen.dart';
 
 /// ProfileView — Mon Profil
@@ -328,11 +330,78 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
                   fontStyle: FontStyle.italic,
                 ),
               ),
+              
+              if (contactsCount > 0) ...[
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white24),
+                const SizedBox(height: 8),
+                const Text(
+                  'Vos liens de confiance (N1) :',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                ...snapshot.data!.map((npub) => _buildContactRow(npub)),
+              ],
             ],
           ),
         );
       },
     );
+  }
+
+  Widget _buildContactRow(String npub) {
+    // Convertir npub hex en bech32 (npub1...) pour njump
+    final cryptoService = CryptoService();
+    String npubBech32 = npub;
+    try {
+      if (!npub.startsWith('npub1')) {
+        npubBech32 = cryptoService.encodeNpub(npub);
+      }
+    } catch (e) {
+      // Ignorer si erreur de conversion
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.person, color: Colors.white54, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${npubBech32.substring(0, 12)}...${npubBech32.substring(npubBech32.length - 4)}',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.open_in_new, color: Color(0xFF0A7EA4), size: 16),
+            onPressed: () => _openNjumpProfile(npubBech32),
+            tooltip: 'Voir le profil sur njump.me',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openNjumpProfile(String npubBech32) async {
+    final url = Uri.parse('https://njump.me/$npubBech32');
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Impossible d\'ouvrir le lien')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildInfoSection() {

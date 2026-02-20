@@ -22,6 +22,9 @@ class DuCalculationService {
   
   // Seuil minimum de liens réciproques pour déclencher le DU
   static const int _minMutualFollows = 5;
+  
+  // Durée de vie d'un bon DU (Monnaie fondante)
+  static const int _duExpirationDays = 28;
 
   DuCalculationService({
     required StorageService storageService,
@@ -135,12 +138,14 @@ class DuCalculationService {
     
     final parts = _cryptoService.shamirSplit(nsec);
     
+    final now = DateTime.now();
     final bon = Bon(
       bonId: bonId,
       value: value,
       issuerName: user.displayName,
       issuerNpub: user.npub,
-      createdAt: DateTime.now(),
+      createdAt: now,
+      expiresAt: now.add(const Duration(days: _duExpirationDays)), // Monnaie fondante
       status: BonStatus.active,
       p1: parts[0],
       p2: parts[1],
