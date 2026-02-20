@@ -6,8 +6,11 @@ import '../services/audit_trail_service.dart';
 import '../services/logger_service.dart';
 
 /// Dashboard Marchand TrocZen
-/// Analytics économiques basées uniquement sur P3 (kind 30303)
+/// ✅ CORRECTION: Analytics économiques basées sur les events kind 30303 du marché global
 /// ZÉRO donnée client - Offline-first - Temps réel
+///
+/// NOTE: Ce dashboard affiche les métriques du MARCHAND (bons émis par lui),
+/// mais utilise les données du marché global pour les comparaisons.
 class MerchantDashboardScreen extends StatefulWidget {
   final String merchantNpub;
   final String merchantName;
@@ -48,14 +51,26 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
     super.dispose();
   }
 
+  /// ✅ CORRECTION: Charge les données du marché global ET les bons du marchand
   Future<void> _loadMetrics() async {
     setState(() => _isLoading = true);
 
     try {
-      final bons = await _storageService.getBons();
-      final transfers = await _auditService.getAllTransfers();
+      // Charger en parallèle: wallet local, marché global, transferts
+      final results = await Future.wait([
+        _storageService.getBons(),  // Wallet local
+        _storageService.getMarketBonsData(),  // ✅ Marché global (kind 30303)
+        _auditService.getAllTransfers(),
+      ]);
+      
+      final localBons = results[0] as List<Bon>;
+      final marketBons = results[1] as List<Map<String, dynamic>>;
+      final transfers = results[2] as List<Map<String, dynamic>>;
 
-      _metrics = _calculateMetrics(bons, transfers);
+      _metrics = _calculateMetrics(localBons, marketBons, transfers);
+      
+      Logger.log('MerchantDashboard',
+          'Données chargées: ${localBons.length} locaux, ${marketBons.length} marché');
     } catch (e) {
       Logger.error('MerchantDashboard', 'Erreur chargement metrics', e);
     } finally {
@@ -63,45 +78,61 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
     }
   }
 
+  /// ✅ CORRECTION: Calcule les métriques depuis le marché global ET le wallet local
   DashboardMetrics _calculateMetrics(
-    List<Bon> bons,
+    List<Bon> localBons,
+    List<Map<String, dynamic>> marketBons,
     List<Map<String, dynamic>> transfers,
   ) {
     final now = DateTime.now();
 
-    // Filtrer bons du marchand
-    final myBons = bons.where((b) => b.issuerNpub == widget.merchantNpub).toList();
+    // Filtrer bons du marchand depuis le wallet local
+    final myLocalBons = localBons.where((b) => b.issuerNpub == widget.merchantNpub).toList();
+    
+    // ✅ NOUVEAU: Filtrer bons du marchand depuis le marché global
+    final myMarketBons = marketBons.where((b) => b['issuerNpub'] == widget.merchantNpub).toList();
 
-    // 1️⃣ Bons actifs (non expirés)
-    final activeBons = myBons.where((b) => 
-      b.expiresAt != null && b.expiresAt!.isAfter(now)
-    ).toList();
+    // ✅ CORRECTION: Utiliser les données du marché global (myMarketBons)
+    // pour les métriques du marchand, car myLocalBons ne contient que le wallet personnel
+    
+    // 1️⃣ Bons actifs (non expirés) depuis le marché
+    final activeBons = myMarketBons.where((b) {
+      final expiresAtStr = b['expiresAt'] as String?;
+      if (expiresAtStr == null) return true; // Sans expiration = actif
+      final expiresAt = DateTime.tryParse(expiresAtStr);
+      return expiresAt == null || expiresAt.isAfter(now);
+    }).toList();
 
     // 2️⃣ Valeur totale
     final totalValue = activeBons.fold<double>(
       0.0,
-      (sum, b) => sum + b.value,
+      (sum, b) => sum + ((b['value'] as num?)?.toDouble() ?? 0),
     );
 
     // 3️⃣ Bons brûlés (encaissés)
-    final burnedBons = myBons.where((b) => b.status == BonStatus.burned).length;
+    final burnedBons = myMarketBons.where((b) => b['status'] == 'burned').length;
 
     // 4️⃣ Bons expirés
-    final expiredBons = myBons.where((b) => 
-      b.expiresAt != null && 
-      b.expiresAt!.isBefore(now) && 
-      b.status != BonStatus.burned
-    ).length;
+    final expiredBons = myMarketBons.where((b) {
+      final expiresAtStr = b['expiresAt'] as String?;
+      if (expiresAtStr == null) return false;
+      final expiresAt = DateTime.tryParse(expiresAtStr);
+      return expiresAt != null &&
+             expiresAt.isBefore(now) &&
+             b['status'] != 'burned';
+    }).length;
 
     // 5️⃣ Taux d'encaissement
-    final encashRate = myBons.isNotEmpty ? burnedBons / myBons.length : 0.0;
+    final encashRate = myMarketBons.isNotEmpty ? burnedBons / myMarketBons.length : 0.0;
 
     // 6️⃣ Taux d'expiration
-    final expireRate = myBons.isNotEmpty ? expiredBons / myBons.length : 0.0;
+    final expireRate = myMarketBons.isNotEmpty ? expiredBons / myMarketBons.length : 0.0;
 
     // 7️⃣ Vitesse de circulation moyenne (en heures par transfert)
+    // Note: Les données du marché n'ont pas transferCount, on utilise une estimation
     final circulationSpeeds = <double>[];
-    for (final bon in myBons) {
+    for (final bon in myLocalBons) {
+      // Utiliser les données locales pour la vitesse (plus précises)
       if (bon.transferCount != null && bon.transferCount! > 0) {
         final ageHours = now.difference(bon.createdAt).inHours;
         final speed = ageHours / bon.transferCount!;
@@ -114,30 +145,37 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
 
     // 8️⃣ Distribution par valeur
     final valueDistribution = <double, int>{};
-    for (final bon in myBons) {
-      valueDistribution[bon.value] = (valueDistribution[bon.value] ?? 0) + 1;
+    for (final bon in myMarketBons) {
+      final value = (bon['value'] as num?)?.toDouble() ?? 0;
+      valueDistribution[value] = (valueDistribution[value] ?? 0) + 1;
     }
 
     // 9️⃣ Distribution par rareté
     final rarityDistribution = <String, int>{};
-    for (final bon in myBons) {
-      final rarity = bon.rarity ?? 'common';
+    for (final bon in myMarketBons) {
+      final rarity = (bon['rarity'] as String?) ?? 'common';
       rarityDistribution[rarity] = (rarityDistribution[rarity] ?? 0) + 1;
     }
 
     // 🔟 Flux temporel (par heure)
     final hourlyFlow = List.generate(24, (_) => 0);
-    for (final bon in myBons) {
-      final hour = bon.createdAt.hour;
-      hourlyFlow[hour]++;
+    for (final bon in myMarketBons) {
+      final createdAtStr = bon['createdAt'] as String?;
+      if (createdAtStr != null) {
+        final createdAt = DateTime.tryParse(createdAtStr);
+        if (createdAt != null) {
+          hourlyFlow[createdAt.hour]++;
+        }
+      }
     }
 
     // 1️⃣1️⃣ Réseau (acceptation croisée)
+    final myBonIds = myMarketBons.map((b) => b['bonId'] as String?).where((id) => id != null).toSet();
     final acceptedByOthers = transfers.where((t) =>
       t['receiver_npub'] != widget.merchantNpub &&
-      myBons.any((b) => b.bonId == t['bon_id'])
+      myBonIds.contains(t['bon_id'])
     ).length;
-    final networkRate = myBons.isNotEmpty ? acceptedByOthers / myBons.length : 0.0;
+    final networkRate = myMarketBons.isNotEmpty ? acceptedByOthers / myMarketBons.length : 0.0;
 
     // 1️⃣2️⃣ Score santé (0-100)
     final healthScore = _calculateHealthScore(
@@ -153,7 +191,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
         : null;
 
     return DashboardMetrics(
-      totalBons: myBons.length,
+      totalBons: myMarketBons.length,
       activeBons: activeBons.length,
       totalValue: totalValue,
       burnedBons: burnedBons,
@@ -167,6 +205,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen>
       networkRate: networkRate,
       healthScore: healthScore,
       lastActivity: lastTransfer,
+      marketBonsCount: marketBons.length,  // ✅ NOUVEAU: Total du marché
     );
   }
 
@@ -889,13 +928,14 @@ class DashboardMetrics {
   final int expiredBons;
   final double encashRate;
   final double expireRate;
-  final double avgCirculationSpeed; // en minutes
+  final double avgCirculationSpeed; // en heures par transfert
   final Map<double, int> valueDistribution;
   final Map<String, int> rarityDistribution;
   final List<int> hourlyFlow;
   final double networkRate;
   final double healthScore;
   final DateTime? lastActivity;
+  final int marketBonsCount;  // ✅ NOUVEAU: Total des bons sur le marché global
 
   DashboardMetrics({
     required this.totalBons,
@@ -912,5 +952,6 @@ class DashboardMetrics {
     required this.networkRate,
     required this.healthScore,
     this.lastActivity,
+    this.marketBonsCount = 0,
   });
 }

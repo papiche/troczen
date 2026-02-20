@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:hex/hex.dart';
+import 'package:uuid/uuid.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import '../services/audit_trail_service.dart';
 import 'ack_scanner_screen.dart';
-import 'package:uuid/uuid.dart';
 
 class OfferScreen extends StatefulWidget {
   final User user;
@@ -24,6 +25,7 @@ class _OfferScreenState extends State<OfferScreen> {
   final _qrService = QRService();
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
+  final _auditService = AuditTrailService();  // ✅ CONFORMITÉ: Logging des transferts
   final _uuid = const Uuid();
 
   Uint8List? _qrData;

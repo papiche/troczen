@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
+import '../services/audit_trail_service.dart';
 import '../models/market.dart';
 
 /// Écran pour scanner le QR code ACK du receveur
@@ -35,6 +37,8 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
   final _qrService = QRService();
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
+  final _auditService = AuditTrailService();  // ✅ CONFORMITÉ: Logging des transferts
+  final _uuid = const Uuid();
 
   bool _isProcessing = false;
   bool _isPublishing = false;  // ✅ NOUVEAU: état de publication Nostr
@@ -173,6 +177,11 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
 
       final publishSuccess = await _publishTransferToNostr();
 
+      // ✅ CONFORMITÉ FISCALE: Logger le transfert dans le audit trail local
+      await _logTransferToAuditTrail(
+        status: publishSuccess ? 'completed' : 'completed_offline',
+      );
+
       if (!mounted) return;
 
       if (publishSuccess) {
@@ -262,6 +271,38 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
     } catch (e) {
       debugPrint('⚠️ Erreur publication transfert Nostr: $e');
       return false;
+    }
+  }
+
+  /// ✅ CONFORMITÉ FISCALE: Log le transfert dans le audit trail local
+  /// Obligatoire pour les commerçants (traçabilité des transactions)
+  Future<void> _logTransferToAuditTrail({required String status}) async {
+    try {
+      // Récupérer les informations du bon
+      final bon = await _storageService.getBonById(widget.bonId);
+      final market = await _storageService.getMarket();
+      final user = await _storageService.getUser();
+
+      await _auditService.logTransfer(
+        id: _uuid.v4(),
+        timestamp: DateTime.now(),
+        senderName: user?.displayName, // ✅ CORRECTION: Utiliser displayName
+        senderNpub: user?.npub ?? 'unknown',
+        receiverName: null, // Non disponible à ce stade
+        receiverNpub: widget.receiverNpub ?? 'unknown',
+        amount: widget.bonValue ?? 0.0,
+        bonId: widget.bonId,
+        method: 'QR', // Scan QR code
+        status: status,
+        marketName: market?.name,
+        rarity: bon?.rarity,
+        challenge: widget.challenge,
+      );
+
+      debugPrint('✅ Transfert loggé dans audit trail: ${widget.bonId}');
+    } catch (e) {
+      debugPrint('⚠️ Erreur logging audit trail: $e');
+      // Ne pas bloquer le flux en cas d'erreur de logging
     }
   }
 

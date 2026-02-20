@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:hex/hex.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/qr_payload_v2.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import '../services/audit_trail_service.dart';
 import '../widgets/bon_reception_confirm_sheet.dart';
 import 'ack_screen.dart';
 
@@ -27,6 +29,8 @@ class _ScanScreenState extends State<ScanScreen> {
   final _qrService = QRService();
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
+  final _auditService = AuditTrailService();  // ✅ CONFORMITÉ: Logging des transferts
+  final _uuid = const Uuid();
 
   bool _isProcessing = false;
   bool _permissionGranted = false;
@@ -213,6 +217,15 @@ class _ScanScreenState extends State<ScanScreen> {
     );
 
     await _storageService.saveBon(bon);
+
+    // ✅ CONFORMITÉ FISCALE: Logger la réception du bon
+    await _logReceptionToAuditTrail(
+      bonId: payload.bonId,
+      value: payload.value,
+      issuerNpub: payload.issuerNpub,
+      issuerName: payload.issuerName,
+      status: 'received',
+    );
 
     if (!mounted) return;
 
@@ -568,5 +581,38 @@ class _ScanScreenState extends State<ScanScreen> {
         ),
       ],
     );
+  }
+
+  /// ✅ CONFORMITÉ FISCALE: Log la réception d'un bon dans le audit trail
+  /// Obligatoire pour les commerçants (traçabilité des transactions)
+  Future<void> _logReceptionToAuditTrail({
+    required String bonId,
+    required double value,
+    required String issuerNpub,
+    required String issuerName,
+    required String status,
+  }) async {
+    try {
+      final market = await _storageService.getMarket();
+
+      await _auditService.logTransfer(
+        id: _uuid.v4(),
+        timestamp: DateTime.now(),
+        senderName: issuerName,
+        senderNpub: issuerNpub,
+        receiverName: widget.user.displayName,
+        receiverNpub: widget.user.npub,
+        amount: value,
+        bonId: bonId,
+        method: 'QR',
+        status: status,
+        marketName: market?.name,
+      );
+
+      debugPrint('✅ Réception loggée dans audit trail: $bonId');
+    } catch (e) {
+      debugPrint('⚠️ Erreur logging réception: $e');
+      // Ne pas bloquer le flux en cas d'erreur de logging
+    }
   }
 }

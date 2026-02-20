@@ -9,7 +9,13 @@ import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/market.dart';
 import 'logger_service.dart';
+import 'audit_trail_service.dart';
 
+/// Service de stockage principal de l'application
+///
+/// ✅ OPTIMISÉ: Le cache P3 utilise maintenant SQLite au lieu de FlutterSecureStorage
+/// FlutterSecureStorage (Keychain/Keystore) n'est pas conçu pour stocker des MB de données
+/// et peut causer des OOM (Out Of Memory) sur iOS/Android
 class StorageService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -17,11 +23,14 @@ class StorageService {
     ),
   );
 
-  // Clés de stockage
+  // Instance du service SQLite pour le cache P3
+  final AuditTrailService _auditService = AuditTrailService();
+
+  // Clés de stockage (uniquement pour les petites données sensibles)
   static const String _userKey = 'user';
   static const String _bonsKey = 'bons';
   static const String _marketKey = 'market';
-  static const String _p3CacheKey = 'p3_cache';
+  static const String _p3CacheKey = 'p3_cache'; // ⚠️ Conservé pour migration
   static const String _onboardingCompleteKey = 'onboarding_complete';
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
@@ -160,100 +169,177 @@ class StorageService {
     await _secureStorage.delete(key: _marketKey);
   }
 
-  /// Sauvegarde une P3 dans le cache
-  /// Le cache P3 est une Map<bonId, p3Hex>
+  // ============================================================
+  // ✅ MÉTHODES P3 CACHE - Maintenant dans SQLite
+  // FlutterSecureStorage causait des OOM sur iOS/Android
+  // ============================================================
+
+  /// Sauvegarde une P3 dans le cache SQLite
+  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
   Future<void> saveP3ToCache(String bonId, String p3Hex) async {
-    final cache = await getP3Cache();
-    cache[bonId] = p3Hex;
-    await _secureStorage.write(
-      key: _p3CacheKey,
-      value: jsonEncode(cache),
-    );
+    await _auditService.saveP3ToCache(bonId, p3Hex);
   }
 
-  /// ✅ UI/UX: Insertion en lot (batch) pour le cache P3
-  /// Évite les freezes de l'UI lors de la synchronisation massive du marché
-  /// En une seule opération I/O au lieu de N opérations individuelles
+  /// ✅ OPTIMISÉ: Insertion en lot (batch) pour le cache P3
+  /// Utilise une transaction SQLite pour performance optimale
+  /// Évite les OOM et le Jank UI lors de la synchronisation massive
   Future<void> saveP3BatchToCache(Map<String, String> p3Batch) async {
     if (p3Batch.isEmpty) return;
     
     try {
-      // Récupérer le cache existant
-      final cache = await getP3Cache();
-      
-      // Fusionner avec les nouvelles données
-      cache.addAll(p3Batch);
-      
-      // Écrire une seule fois
-      await _secureStorage.write(
-        key: _p3CacheKey,
-        value: jsonEncode(cache),
-      );
-      
-      Logger.success('StorageService', '${p3Batch.length} P3 sauvegardées en lot');
+      await _auditService.saveP3BatchToCache(p3Batch);
+      Logger.success('StorageService', '${p3Batch.length} P3 sauvegardées en lot (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur saveP3BatchToCache', e);
       rethrow;
     }
   }
 
-  /// Récupère le cache P3 complet
+  /// Récupère le cache P3 complet depuis SQLite
   Future<Map<String, String>> getP3Cache() async {
-    final data = await _secureStorage.read(key: _p3CacheKey);
-    if (data == null) return {};
-    
-    final Map<String, dynamic> jsonMap = jsonDecode(data);
-    return jsonMap.map((key, value) => MapEntry(key, value.toString()));
+    return await _auditService.getP3Cache();
   }
 
-  /// Récupère une P3 depuis le cache
+  /// Récupère une P3 depuis le cache SQLite
   Future<String?> getP3FromCache(String bonId) async {
-    final cache = await getP3Cache();
-    return cache[bonId];
+    return await _auditService.getP3FromCache(bonId);
   }
 
-  /// Récupère la liste des P3 du marché depuis le cache
-  /// Retourne une liste de Map avec les métadonnées des P3
+  /// Récupère la liste des P3 du marché depuis SQLite
+  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
   Future<List<Map<String, dynamic>>> getP3List() async {
     try {
-      final data = await _secureStorage.read(key: 'market_p3_list');
-      if (data == null) return [];
-      
-      final List<dynamic> p3Data = jsonDecode(data);
-      return p3Data.cast<Map<String, dynamic>>();
+      return await _auditService.getMarketBonsData();
     } catch (e) {
       Logger.error('StorageService', 'Erreur getP3List', e);
       return [];
     }
   }
 
-  /// Sauvegarde la liste des P3 du marché
+  /// Sauvegarde la liste des P3 du marché dans SQLite
+  /// ✅ OPTIMISÉ: Transaction SQLite pour performance
   Future<void> saveP3List(List<Map<String, dynamic>> p3List) async {
     try {
-      await _secureStorage.write(
-        key: 'market_p3_list',
-        value: jsonEncode(p3List),
-      );
-      // Enregistrer le timestamp de la dernière sync
-      await _secureStorage.write(
-        key: 'market_p3_last_sync',
-        value: DateTime.now().millisecondsSinceEpoch.toString(),
-      );
-      Logger.success('StorageService', '${p3List.length} P3 sauvegardées');
+      await _auditService.saveMarketBonDataBatch(p3List);
+      await _auditService.saveLastP3Sync();
+      Logger.success('StorageService', '${p3List.length} P3 sauvegardées (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur saveP3List', e);
       rethrow;
     }
   }
 
+  /// ✅ OPTIMISÉ: Sauvegarde un P3 du marché avec ses métadonnées complètes
+  /// Utilise SQLite au lieu de FlutterSecureStorage
+  Future<void> saveMarketBonData(Map<String, dynamic> bonData) async {
+    try {
+      await _auditService.saveMarketBonData(bonData);
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur saveMarketBonData', e);
+    }
+  }
+
+  /// ✅ OPTIMISÉ: Sauvegarde en lot des données du marché (batch)
+  /// Transaction SQLite unique pour performance optimale
+  Future<void> saveMarketBonDataBatch(List<Map<String, dynamic>> bonDataList) async {
+    if (bonDataList.isEmpty) return;
+    
+    try {
+      await _auditService.saveMarketBonDataBatch(bonDataList);
+      Logger.success('StorageService', '${bonDataList.length} bons marché sauvegardés en lot (SQLite)');
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur saveMarketBonDataBatch', e);
+      rethrow;
+    }
+  }
+
+  /// ✅ CORRECTION: Récupère les données économiques du marché global
+  /// Retourne les métadonnées de tous les bons publiés sur le marché (kind 30303)
+  /// Utilisé par le Dashboard pour afficher la santé économique du marché
+  Future<List<Map<String, dynamic>>> getMarketBonsData() async {
+    return await getP3List();
+  }
+
+  /// ✅ CORRECTION: Récupère les données économiques agrégées pour le dashboard
+  /// Combine les données du marché global avec le wallet local
+  Future<Map<String, dynamic>> getMarketEconomicData() async {
+    try {
+      final marketBons = await getMarketBonsData();
+      final localBons = await getBons();
+      
+      final now = DateTime.now();
+      
+      // Volume total en circulation (bons actifs sur le marché)
+      final totalVolume = marketBons
+          .where((b) => b['status'] == 'active' || b['status'] == null)
+          .fold<double>(0.0, (sum, b) => sum + ((b['value'] as num?)?.toDouble() ?? 0));
+      
+      // Nombre de commerçants uniques
+      final uniqueIssuers = marketBons
+          .map((b) => b['issuerNpub'] as String?)
+          .where((npub) => npub != null)
+          .toSet()
+          .length;
+      
+      // Nombre total de bons sur le marché
+      final totalMarketBons = marketBons.length;
+      
+      // Bons créés cette semaine
+      final last7Days = now.subtract(const Duration(days: 7));
+      final weeklyBons = marketBons.where((b) {
+        final createdAt = b['createdAt'] as String?;
+        if (createdAt == null) return false;
+        return DateTime.tryParse(createdAt)?.isAfter(last7Days) ?? false;
+      }).length;
+      
+      // Distribution par valeur
+      final valueDistribution = <double, int>{};
+      for (final bon in marketBons) {
+        final value = (bon['value'] as num?)?.toDouble() ?? 0;
+        valueDistribution[value] = (valueDistribution[value] ?? 0) + 1;
+      }
+      
+      // Distribution par rareté
+      final rarityDistribution = <String, int>{};
+      for (final bon in marketBons) {
+        final rarity = (bon['rarity'] as String?) ?? 'common';
+        rarityDistribution[rarity] = (rarityDistribution[rarity] ?? 0) + 1;
+      }
+      
+      // Top émetteurs
+      final issuerTotals = <String, double>{};
+      for (final bon in marketBons) {
+        final issuerName = (bon['issuerName'] as String?) ?? 'Inconnu';
+        final value = (bon['value'] as num?)?.toDouble() ?? 0;
+        issuerTotals[issuerName] = (issuerTotals[issuerName] ?? 0) + value;
+      }
+      final topIssuers = issuerTotals.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      
+      return {
+        'totalVolume': totalVolume,
+        'uniqueIssuers': uniqueIssuers,
+        'totalMarketBons': totalMarketBons,
+        'weeklyBons': weeklyBons,
+        'valueDistribution': valueDistribution,
+        'rarityDistribution': rarityDistribution,
+        'topIssuers': topIssuers.take(5).toList(),
+        'localBonsCount': localBons.length,
+        'lastUpdate': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getMarketEconomicData', e);
+      return {};
+    }
+  }
+
   /// Vide le cache local des P3 du marché
+  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
   Future<void> clearP3Cache() async {
     try {
-      await _secureStorage.delete(key: 'market_p3_list');
-      await _secureStorage.delete(key: 'market_p3_last_sync');
-      // Vider aussi le cache P3 des bons individuels
-      await _secureStorage.delete(key: _p3CacheKey);
-      Logger.success('StorageService', 'Cache P3 vidé');
+      await _auditService.clearP3Cache();
+      await _auditService.clearMarketBons();
+      Logger.success('StorageService', 'Cache P3 vidé (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur clearP3Cache', e);
       rethrow;
@@ -261,13 +347,66 @@ class StorageService {
   }
 
   /// Récupère le timestamp de la dernière synchronisation P3
+  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
   Future<DateTime?> getLastP3Sync() async {
+    return await _auditService.getLastP3Sync();
+  }
+
+  /// ✅ MIGRATION: Migre les données P3 de FlutterSecureStorage vers SQLite
+  /// À appeler au démarrage de l'application pour les utilisateurs existants
+  Future<void> migrateP3CacheToSQLite() async {
     try {
-      final timestamp = await _secureStorage.read(key: 'market_p3_last_sync');
-      if (timestamp == null) return null;
-      return DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+      // Vérifier si des données existent dans l'ancien stockage
+      final oldP3CacheData = await _secureStorage.read(key: _p3CacheKey);
+      final oldMarketP3ListData = await _secureStorage.read(key: 'market_p3_list');
+      
+      bool migrated = false;
+      
+      // Migrer le cache P3 individuel
+      if (oldP3CacheData != null && oldP3CacheData.isNotEmpty) {
+        try {
+          final Map<String, dynamic> jsonMap = jsonDecode(oldP3CacheData);
+          final p3Cache = jsonMap.map((key, value) => MapEntry(key, value.toString()));
+          
+          if (p3Cache.isNotEmpty) {
+            await _auditService.saveP3BatchToCache(p3Cache);
+            await _secureStorage.delete(key: _p3CacheKey);
+            Logger.success('StorageService', 'Migration P3 cache: ${p3Cache.length} entrées migrées vers SQLite');
+            migrated = true;
+          }
+        } catch (e) {
+          Logger.error('StorageService', 'Erreur migration P3 cache', e);
+        }
+      }
+      
+      // Migrer les données du marché
+      if (oldMarketP3ListData != null && oldMarketP3ListData.isNotEmpty) {
+        try {
+          final List<dynamic> p3Data = jsonDecode(oldMarketP3ListData);
+          final marketBons = p3Data.cast<Map<String, dynamic>>();
+          
+          if (marketBons.isNotEmpty) {
+            await _auditService.saveMarketBonDataBatch(marketBons);
+            await _secureStorage.delete(key: 'market_p3_list');
+            Logger.success('StorageService', 'Migration marché: ${marketBons.length} bons migrés vers SQLite');
+            migrated = true;
+          }
+        } catch (e) {
+          Logger.error('StorageService', 'Erreur migration marché', e);
+        }
+      }
+      
+      // Migrer le timestamp de dernière sync
+      final oldSyncTimestamp = await _secureStorage.read(key: 'market_p3_last_sync');
+      if (oldSyncTimestamp != null) {
+        await _secureStorage.delete(key: 'market_p3_last_sync');
+      }
+      
+      if (migrated) {
+        Logger.success('StorageService', '✅ Migration P3 vers SQLite terminée avec succès');
+      }
     } catch (e) {
-      return null;
+      Logger.error('StorageService', 'Erreur migration P3 vers SQLite', e);
     }
   }
 

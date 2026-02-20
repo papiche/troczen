@@ -4,10 +4,14 @@ import 'dart:math' as math;
 import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
+import '../../services/logger_service.dart';
 
 /// DashboardView — Données économiques du marché
-/// Analytics basées sur les événements Nostr (kind 30303)
+/// ✅ CORRECTION: Analytics basées sur les événements Nostr (kind 30303) du marché global
 /// Données calculées localement depuis le cache Nostr — pas de serveur central
+///
+/// NOTE: Ce dashboard affiche la santé économique du MARCHÉ GLOBAL,
+/// pas seulement le portefeuille personnel de l'utilisateur.
 class DashboardView extends StatefulWidget {
   final User user;
 
@@ -24,7 +28,8 @@ class _DashboardViewState extends State<DashboardView>
   late TabController _tabController;
   
   DashboardMetrics? _metrics;
-  List<Bon> _allBons = [];
+  List<Bon> _localBons = [];  // Bons du wallet local
+  List<Map<String, dynamic>> _marketBons = [];  // ✅ NOUVEAU: Bons du marché global
   bool _isLoading = true;
 
   @override
@@ -43,62 +48,94 @@ class _DashboardViewState extends State<DashboardView>
     super.dispose();
   }
 
+  /// ✅ CORRECTION: Charge les données du marché global ET du wallet local
   Future<void> _loadMetrics() async {
     setState(() => _isLoading = true);
     
     try {
-      final bons = await _storageService.getBons();
-      final metrics = _calculateMetrics(bons);
+      // Charger les deux sources de données en parallèle
+      final results = await Future.wait([
+        _storageService.getBons(),  // Wallet local
+        _storageService.getMarketBonsData(),  // ✅ Marché global (kind 30303)
+      ]);
+      
+      _localBons = results[0] as List<Bon>;
+      _marketBons = results[1] as List<Map<String, dynamic>>;
+      
+      Logger.log('DashboardView',
+          'Données chargées: ${_localBons.length} bons locaux, ${_marketBons.length} bons marché');
+      
+      // Calculer les métriques depuis le marché global
+      final metrics = _calculateMetricsFromMarket(_marketBons, _localBons);
       
       setState(() {
-        _allBons = bons;
         _metrics = metrics;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('❌ Erreur chargement métriques: $e');
+      Logger.error('DashboardView', 'Erreur chargement métriques', e);
       setState(() => _isLoading = false);
     }
   }
 
-  DashboardMetrics _calculateMetrics(List<Bon> bons) {
+  /// ✅ CORRECTION: Calcule les métriques depuis les données du marché global
+  DashboardMetrics _calculateMetricsFromMarket(
+    List<Map<String, dynamic>> marketBons,
+    List<Bon> localBons,
+  ) {
     final now = DateTime.now();
     final last7Days = now.subtract(const Duration(days: 7));
     final last30Days = now.subtract(const Duration(days: 30));
     
-    // Volume total en circulation (bons actifs)
-    final totalVolume = bons
-        .where((b) => b.status == BonStatus.active)
-        .fold<double>(0.0, (sum, bon) => sum + bon.value);
+    // Volume total en circulation sur le MARCHÉ (bons actifs)
+    final totalVolume = marketBons
+        .where((b) => b['status'] == 'active' || b['status'] == null)
+        .fold<double>(0.0, (sum, bon) => sum + ((bon['value'] as num?)?.toDouble() ?? 0));
     
-    // Nombre de commerçants actifs (émetteurs uniques)
-    final activeMerchants = bons
-        .map((b) => b.issuerNpub)
+    // Nombre de commerçants actifs sur le marché (émetteurs uniques)
+    final activeMerchants = marketBons
+        .map((b) => b['issuerNpub'] as String?)
+        .where((npub) => npub != null && npub.isNotEmpty)
         .toSet()
         .length;
     
-    // Flux de la semaine
-    final weeklyInflow = bons
-        .where((b) => b.createdAt.isAfter(last7Days) && b.status == BonStatus.active)
-        .fold<double>(0.0, (sum, bon) => sum + bon.value);
+    // Bons créés cette semaine sur le marché
+    final weeklyMarketBons = marketBons.where((b) {
+      final createdAtStr = b['createdAt'] as String?;
+      if (createdAtStr == null) return false;
+      final createdAt = DateTime.tryParse(createdAtStr);
+      return createdAt != null && createdAt.isAfter(last7Days);
+    }).toList();
     
-    final weeklyOutflow = bons
-        .where((b) => 
-            b.createdAt.isAfter(last7Days) && 
-            (b.status == BonStatus.spent || b.status == BonStatus.burned))
-        .fold<double>(0.0, (sum, bon) => sum + bon.value);
+    final weeklyInflow = weeklyMarketBons
+        .where((b) => b['status'] == 'active' || b['status'] == null)
+        .fold<double>(0.0, (sum, bon) => sum + ((bon['value'] as num?)?.toDouble() ?? 0));
     
-    // Bons créés cette semaine
-    final weeklyBons = bons.where((b) => b.createdAt.isAfter(last7Days)).length;
+    // Bons dépensés/brûlés cette semaine
+    final weeklyOutflow = marketBons.where((b) {
+      final createdAtStr = b['createdAt'] as String?;
+      if (createdAtStr == null) return false;
+      final createdAt = DateTime.tryParse(createdAtStr);
+      return createdAt != null &&
+             createdAt.isAfter(last7Days) &&
+             (b['status'] == 'spent' || b['status'] == 'burned');
+    }).fold<double>(0.0, (sum, bon) => sum + ((bon['value'] as num?)?.toDouble() ?? 0));
     
     // Bons créés ce mois
-    final monthlyBons = bons.where((b) => b.createdAt.isAfter(last30Days)).length;
+    final monthlyBons = marketBons.where((b) {
+      final createdAtStr = b['createdAt'] as String?;
+      if (createdAtStr == null) return false;
+      final createdAt = DateTime.tryParse(createdAtStr);
+      return createdAt != null && createdAt.isAfter(last30Days);
+    }).length;
     
-    // Top 5 émetteurs (agrégés par valeur)
+    // Top 5 émetteurs sur le marché (agrégés par valeur)
     final issuerTotals = <String, double>{};
-    for (final bon in bons) {
-      if (bon.status == BonStatus.active) {
-        issuerTotals[bon.issuerName] = (issuerTotals[bon.issuerName] ?? 0) + bon.value;
+    for (final bon in marketBons) {
+      if (bon['status'] == 'active' || bon['status'] == null) {
+        final issuerName = (bon['issuerName'] as String?) ?? 'Inconnu';
+        final value = (bon['value'] as num?)?.toDouble() ?? 0;
+        issuerTotals[issuerName] = (issuerTotals[issuerName] ?? 0) + value;
       }
     }
     final topIssuers = issuerTotals.entries.toList()
@@ -107,11 +144,17 @@ class _DashboardViewState extends State<DashboardView>
     
     // Taux de croissance (semaine vs semaine précédente)
     final previousWeek = now.subtract(const Duration(days: 14));
-    final previousWeekBons = bons
-        .where((b) => b.createdAt.isAfter(previousWeek) && b.createdAt.isBefore(last7Days))
-        .length;
+    final previousWeekBons = marketBons.where((b) {
+      final createdAtStr = b['createdAt'] as String?;
+      if (createdAtStr == null) return false;
+      final createdAt = DateTime.tryParse(createdAtStr);
+      return createdAt != null &&
+             createdAt.isAfter(previousWeek) &&
+             createdAt.isBefore(last7Days);
+    }).length;
+    
     final growthRate = previousWeekBons > 0
-        ? ((weeklyBons - previousWeekBons) / previousWeekBons) * 100
+        ? ((weeklyMarketBons.length - previousWeekBons) / previousWeekBons) * 100
         : 100.0;
     
     // Moyenne journalière
@@ -122,12 +165,13 @@ class _DashboardViewState extends State<DashboardView>
       activeMerchants: activeMerchants,
       weeklyInflow: weeklyInflow,
       weeklyOutflow: weeklyOutflow,
-      weeklyBons: weeklyBons,
+      weeklyBons: weeklyMarketBons.length,
       monthlyBons: monthlyBons,
       topIssuers: top5,
       growthRate: growthRate,
       dailyAverage: dailyAverage,
-      totalBons: bons.length,
+      totalBons: marketBons.length,
+      localBonsCount: localBons.length,  // ✅ NOUVEAU: Ajouter le count local
     );
   }
 
@@ -565,17 +609,21 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Widget _buildLineChart() {
-    // Calculer l'évolution sur 30 jours
+    // ✅ CORRECTION: Calculer l'évolution sur 30 jours depuis le marché global
     final now = DateTime.now();
     final chartData = List.generate(30, (index) {
       final date = now.subtract(Duration(days: 29 - index));
-      final dayBons = _allBons.where((bon) {
-        return bon.createdAt.year == date.year &&
-               bon.createdAt.month == date.month &&
-               bon.createdAt.day == date.day &&
-               bon.status == BonStatus.active;
+      final dayBons = _marketBons.where((bon) {
+        final createdAtStr = bon['createdAt'] as String?;
+        if (createdAtStr == null) return false;
+        final createdAt = DateTime.tryParse(createdAtStr);
+        return createdAt != null &&
+               createdAt.year == date.year &&
+               createdAt.month == date.month &&
+               createdAt.day == date.day &&
+               (bon['status'] == 'active' || bon['status'] == null);
       });
-      final total = dayBons.fold<double>(0.0, (sum, bon) => sum + bon.value);
+      final total = dayBons.fold<double>(0.0, (sum, bon) => sum + ((bon['value'] as num?)?.toDouble() ?? 0));
       return FlSpot(index.toDouble(), total);
     });
     
@@ -670,25 +718,33 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Widget _buildBarChart() {
-    // Flux des 7 derniers jours
+    // ✅ CORRECTION: Flux des 7 derniers jours depuis le marché global
     final now = DateTime.now();
     final barData = List.generate(7, (index) {
       final date = now.subtract(Duration(days: 6 - index));
-      final dayInflowBons = _allBons.where((bon) {
-        return bon.createdAt.year == date.year &&
-               bon.createdAt.month == date.month &&
-               bon.createdAt.day == date.day &&
-               bon.status == BonStatus.active;
+      final dayInflowBons = _marketBons.where((bon) {
+        final createdAtStr = bon['createdAt'] as String?;
+        if (createdAtStr == null) return false;
+        final createdAt = DateTime.tryParse(createdAtStr);
+        return createdAt != null &&
+               createdAt.year == date.year &&
+               createdAt.month == date.month &&
+               createdAt.day == date.day &&
+               (bon['status'] == 'active' || bon['status'] == null);
       });
-      final inflow = dayInflowBons.fold<double>(0.0, (sum, bon) => sum + bon.value);
+      final inflow = dayInflowBons.fold<double>(0.0, (sum, bon) => sum + ((bon['value'] as num?)?.toDouble() ?? 0));
       
-      final dayOutflowBons = _allBons.where((bon) {
-        return bon.createdAt.year == date.year &&
-               bon.createdAt.month == date.month &&
-               bon.createdAt.day == date.day &&
-               (bon.status == BonStatus.spent || bon.status == BonStatus.burned);
+      final dayOutflowBons = _marketBons.where((bon) {
+        final createdAtStr = bon['createdAt'] as String?;
+        if (createdAtStr == null) return false;
+        final createdAt = DateTime.tryParse(createdAtStr);
+        return createdAt != null &&
+               createdAt.year == date.year &&
+               createdAt.month == date.month &&
+               createdAt.day == date.day &&
+               (bon['status'] == 'spent' || bon['status'] == 'burned');
       });
-      final outflow = dayOutflowBons.fold<double>(0.0, (sum, bon) => sum + bon.value);
+      final outflow = dayOutflowBons.fold<double>(0.0, (sum, bon) => sum + ((bon['value'] as num?)?.toDouble() ?? 0));
       
       return BarChartGroupData(
         x: index,
@@ -797,15 +853,16 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   Widget _buildPieChart() {
-    // Répartition par statut
-    final statusCounts = <BonStatus, int>{};
-    for (final bon in _allBons) {
-      statusCounts[bon.status] = (statusCounts[bon.status] ?? 0) + 1;
+    // ✅ CORRECTION: Répartition par statut depuis le marché global
+    final statusCounts = <String, int>{};
+    for (final bon in _marketBons) {
+      final status = (bon['status'] as String?) ?? 'active';
+      statusCounts[status] = (statusCounts[status] ?? 0) + 1;
     }
     
     final sections = statusCounts.entries.map((entry) {
-      final color = _getStatusColor(entry.key);
-      final percentage = (entry.value / _allBons.length) * 100;
+      final color = _getStatusColorFromString(entry.key);
+      final percentage = _marketBons.isNotEmpty ? (entry.value / _marketBons.length) * 100 : 0;
       
       return PieChartSectionData(
         value: entry.value.toDouble(),
@@ -865,13 +922,13 @@ class _DashboardViewState extends State<DashboardView>
                             width: 12,
                             height: 12,
                             decoration: BoxDecoration(
-                              color: _getStatusColor(entry.key),
+                              color: _getStatusColorFromString(entry.key),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${entry.key.name} (${entry.value})',
+                            '${_getStatusLabel(entry.key)} (${entry.value})',
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
@@ -904,6 +961,44 @@ class _DashboardViewState extends State<DashboardView>
         return Colors.grey;
       default:
         return Colors.white70;
+    }
+  }
+
+  /// ✅ NOUVEAU: Couleur du statut depuis une String (pour les données du marché)
+  Color _getStatusColorFromString(String status) {
+    switch (status) {
+      case 'active':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'expired':
+        return Colors.red;
+      case 'spent':
+        return Colors.blue;
+      case 'burned':
+        return Colors.grey;
+      default:
+        return Colors.white70;
+    }
+  }
+
+  /// ✅ NOUVEAU: Label du statut en français
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'active':
+        return 'Actif';
+      case 'pending':
+        return 'En attente';
+      case 'expired':
+        return 'Expiré';
+      case 'spent':
+        return 'Dépensé';
+      case 'burned':
+        return 'Brûlé';
+      case 'issued':
+        return 'Émis';
+      default:
+        return status;
     }
   }
 
@@ -1105,6 +1200,7 @@ class DashboardMetrics {
   final double growthRate;
   final double dailyAverage;
   final int totalBons;
+  final int localBonsCount;  // ✅ NOUVEAU: Nombre de bons dans le wallet local
 
   DashboardMetrics({
     required this.totalVolume,
@@ -1117,5 +1213,6 @@ class DashboardMetrics {
     required this.growthRate,
     required this.dailyAverage,
     required this.totalBons,
+    this.localBonsCount = 0,
   });
 }

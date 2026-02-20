@@ -740,6 +740,7 @@ class NostrService {
   }
 
   /// Traite un event Nostr reçu (Kind 30303 - Bons)
+  /// ✅ CORRECTION: Extrait et stocke les métadonnées complètes pour le Dashboard économique
   void _handleEvent(Map<String, dynamic> event) async {
     try {
       if (event['kind'] != 30303) return;
@@ -749,6 +750,13 @@ class NostrService {
       String? p3Cipher;
       String? p3Nonce;
       String? marketName;
+      // ✅ NOUVEAU: Extraire toutes les métadonnées économiques
+      String? issuerNpub;
+      String? issuerName;
+      double? value;
+      String? category;
+      String? rarity;
+      int? expiryTimestamp;
 
       for (final tag in tags) {
         if (tag is List && tag.isNotEmpty) {
@@ -766,6 +774,21 @@ class NostrService {
               break;
             case 'p3_nonce':
               p3Nonce = tag[1].toString();
+              break;
+            case 'issuer':
+              issuerNpub = tag[1].toString();
+              break;
+            case 'value':
+              value = double.tryParse(tag[1].toString());
+              break;
+            case 'category':
+              category = tag[1].toString();
+              break;
+            case 'rarity':
+              rarity = tag[1].toString();
+              break;
+            case 'expiry':
+              expiryTimestamp = int.tryParse(tag[1].toString());
               break;
           }
         }
@@ -796,36 +819,68 @@ class NostrService {
       Logger.log('NostrService', 'Bon reçu/déchiffré: $bonId');
 
       // EXTRACTION ET MISE EN CACHE DES IMAGES DU BON
+      String? pictureUrl;
+      String? bannerUrl;
       try {
         final content = event['content'];
         if (content != null && content is String) {
           final contentJson = jsonDecode(content);
           
           // Image principale du bon (picture)
-          final picture = contentJson['picture'] as String?;
-          if (picture != null && picture.isNotEmpty) {
-            Logger.log('NostrService', 'Mise en cache image bon: $picture');
+          pictureUrl = contentJson['picture'] as String?;
+          if (pictureUrl != null && pictureUrl.isNotEmpty) {
+            Logger.log('NostrService', 'Mise en cache image bon: $pictureUrl');
             _imageCache.getOrCacheImage(
-              url: picture,
+              url: pictureUrl,
               npub: bonId,
               type: 'logo'
             );
           }
           
           // Bannière du bon
-          final banner = contentJson['banner'] as String?;
-          if (banner != null && banner.isNotEmpty) {
-            Logger.log('NostrService', 'Mise en cache bannière bon: $banner');
+          bannerUrl = contentJson['banner'] as String?;
+          if (bannerUrl != null && bannerUrl.isNotEmpty) {
+            Logger.log('NostrService', 'Mise en cache bannière bon: $bannerUrl');
             _imageCache.getOrCacheImage(
-              url: banner,
+              url: bannerUrl,
               npub: bonId,
               type: 'banner'
             );
+          }
+          
+          // ✅ NOUVEAU: Extraire le nom de l'émetteur depuis le contenu
+          final displayName = contentJson['display_name'] as String?;
+          if (displayName != null && issuerName == null) {
+            // Extraire le nom de l'émetteur du display_name (ex: "Bon 50 ẐEN" -> pas utile)
+            // On garde issuerName tel quel s'il n'est pas dans le content
           }
         }
       } catch (e) {
         Logger.error('NostrService', 'Erreur parsing content bon pour images', e);
       }
+
+      // ✅ CORRECTION: Stocker les métadonnées complètes du bon pour le Dashboard économique
+      final bonData = {
+        'bonId': bonId,
+        'issuerNpub': issuerNpub,
+        'issuerName': issuerName ?? 'Commerçant',
+        'value': value ?? 0.0,
+        'category': category ?? 'generic',
+        'rarity': rarity ?? 'common',
+        'marketName': marketName,
+        'createdAt': eventDate.toIso8601String(),
+        'expiresAt': expiryTimestamp != null
+            ? DateTime.fromMillisecondsSinceEpoch(expiryTimestamp * 1000).toIso8601String()
+            : null,
+        'status': 'active', // Par défaut, un bon nouvellement publié est actif
+        'picture': pictureUrl,
+        'banner': bannerUrl,
+        'p3Hex': p3Hex,
+        'eventTimestamp': eventTimestamp,
+      };
+      
+      await _storageService.saveMarketBonData(bonData);
+      Logger.log('NostrService', 'Métadonnées bon stockées pour dashboard: $bonId (valeur: $value ẐEN)');
 
       onP3Received?.call(bonId, p3Hex);
     } catch (e) {
