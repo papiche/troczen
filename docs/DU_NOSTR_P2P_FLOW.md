@@ -81,7 +81,9 @@ L'application calcule localement :
 
 ### 3. Calcul Mathématique du DU
 Si l'utilisateur possède au moins 5 liens réciproques (seuil de sécurité contre la création de faux comptes Sybil), l'application calcule le nouveau DU selon la formule de la TRM adaptée :
-`DU_i(t+1) = DU_i(t) + C² * (M_n1 + sqrt(M_n2)) / (N1 + N2)`
+`DU_i(t+1) = DU_i(t) + C² * (M_n1 + M_n2 / sqrt(N2)) / (N1 + sqrt(N2))`
+
+*Note mathématique : L'utilisation de `sqrt(N2)` au dénominateur et pour pondérer `M_n2` permet de conserver l'invariance d'échelle de la TRM (si toute la masse double, le DU double) tout en amortissant l'impact du réseau étendu pour éviter une explosion exponentielle.*
 
 ### 4. Émission et Preuve (Monnaie Quantitative)
 Plutôt que de générer un seul gros bon avec une valeur décimale complexe (ex: 10.45 ẐEN), l'application **découpe automatiquement ce montant en coupures standards** (1, 2, 5, 10, 20, 50) pour optimiser les échanges et le rendu de monnaie sur le marché.

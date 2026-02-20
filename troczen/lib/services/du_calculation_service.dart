@@ -72,15 +72,20 @@ class DuCalculationService {
       // Simulation: M_n1 = part proportionnelle du volume total
       final mn1 = totalVolume * (mutuals.length / max(1, marketData['uniqueIssuers'] as int? ?? 10));
       // Simulation: M_n2 = masse étendue
-      final mn2 = totalVolume * 0.5; 
+      final mn2 = totalVolume * 0.5;
 
       // 5. Calculer le nouveau DU
-      // Formule: DU_new = DU_current + C² * (M_n1 + sqrt(M_n2)) / (N1 + N2)
+      // Formule corrigée pour l'invariance d'échelle :
+      // DU_new = DU_current + C² * (M_n1 + M_n2 / sqrt(N2)) / (N1 + sqrt(N2))
       final currentDu = await getCurrentGlobalDu();
       final n1 = mutuals.length;
-      final n2 = n1 * 3; // Estimation des amis d'amis
+      final n2 = max(1, n1 * 3); // Estimation des amis d'amis (évite div par 0)
       
-      final newDuValue = currentDu + (_cSquared * (mn1 + sqrt(mn2)) / (n1 + n2));
+      final sqrtN2 = sqrt(n2);
+      final effectiveMass = mn1 + (mn2 / sqrtN2);
+      final effectivePopulation = n1 + sqrtN2;
+      
+      final newDuValue = currentDu + (_cSquared * effectiveMass / effectivePopulation);
       
       // Plafond de sécurité (ex: max +5% par jour)
       final cappedDuValue = min(newDuValue, currentDu * 1.05);
