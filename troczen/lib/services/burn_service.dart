@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:hex/hex.dart';
 import 'crypto_service.dart';
 import 'nostr_service.dart';
 import 'storage_service.dart';
@@ -26,14 +27,17 @@ class BurnService {
     required String reason,
   }) async {
     try {
-      // 1. Récupérer P3 du cache
-      final p3 = await _storageService.getP3FromCache(bon.bonId);
-      if (p3 == null) {
+      // 1. ✅ SÉCURITÉ: Récupérer P3 du cache en Uint8List directement
+      final p3Bytes = await _storageService.getP3FromCacheBytes(bon.bonId);
+      if (p3Bytes == null) {
         throw Exception('P3 non trouvée pour ce bon');
       }
 
-      // 2. ✅ SÉCURITÉ: Reconstruire sk_B temporairement en Uint8List (P1 + P3)
-      final nsecBonBytes = _cryptoService.shamirCombineBytes(p1, null, p3);
+      // 2. Convertir P1 en Uint8List
+      final p1Bytes = Uint8List.fromList(HEX.decode(p1));
+
+      // 3. ✅ SÉCURITÉ: Reconstruire sk_B temporairement en Uint8List (P1 + P3)
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes);
 
       // 3. Publier event kind 5 sur Nostr
       final nostrService = NostrService(
@@ -48,6 +52,8 @@ class BurnService {
       if (!connected) {
         // ✅ SÉCURITÉ: Nettoyage RAM en cas d'erreur
         _cryptoService.secureZeroiseBytes(nsecBonBytes);
+        _cryptoService.secureZeroiseBytes(p1Bytes);
+        _cryptoService.secureZeroiseBytes(p3Bytes);
         throw Exception('Impossible de se connecter au relais');
       }
 
@@ -64,11 +70,15 @@ class BurnService {
       if (!burned) {
         // ✅ SÉCURITÉ: Nettoyage RAM en cas d'erreur
         _cryptoService.secureZeroiseBytes(nsecBonBytes);
+        _cryptoService.secureZeroiseBytes(p1Bytes);
+        _cryptoService.secureZeroiseBytes(p3Bytes);
         throw Exception('Échec publication burn');
       }
 
       // ✅ SÉCURITÉ: Nettoyage RAM après usage - utilise Uint8List
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(p1Bytes);
+      _cryptoService.secureZeroiseBytes(p3Bytes);
 
       // 4. Marquer le bon comme brûlé localement
       final burnedBon = bon.copyWith(

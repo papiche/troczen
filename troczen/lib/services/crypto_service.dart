@@ -378,14 +378,58 @@ class CryptoService {
   /// Retourne directement un Uint8List au lieu d'une String hexadécimale
   /// pour permettre à l'appelant de nettoyer la mémoire avec secureZeroiseBytes()
   ///
+  /// ⚠️ DÉPRÉCIÉ: Cette méthode accepte des String hex qui restent en mémoire.
+  /// Utilisez shamirCombineBytesDirect() qui accepte des Uint8List directement.
+  ///
   /// Lève [ShamirReconstructionException] si la reconstruction échoue.
   /// Lève [ArgumentError] si moins de 2 parts sont fournies.
+  @Deprecated('Utiliser shamirCombineBytesDirect avec Uint8List pour éviter les String en RAM')
   Uint8List shamirCombineBytes(String? part1Hex, String? part2Hex, String? part3Hex) {
+    // Convertir les String en Uint8List pour la méthode directe
+    Uint8List? p1, p2, p3;
+    if (part1Hex != null) p1 = Uint8List.fromList(HEX.decode(part1Hex));
+    if (part2Hex != null) p2 = Uint8List.fromList(HEX.decode(part2Hex));
+    if (part3Hex != null) p3 = Uint8List.fromList(HEX.decode(part3Hex));
+    
+    // Appeler la méthode directe
+    final result = shamirCombineBytesDirect(p1, p2, p3);
+    
+    // Nettoyer les Uint8List créés (les String hex restent malheureusement en mémoire)
+    if (p1 != null) secureZeroiseBytes(p1);
+    if (p2 != null) secureZeroiseBytes(p2);
+    if (p3 != null) secureZeroiseBytes(p3);
+    
+    return result;
+  }
+
+  /// ✅ SÉCURITÉ MAXIMALE: Reconstruit le secret à partir de Uint8List directement
+  ///
+  /// Cette méthode est la version sécurisée qui évite complètement les String.
+  /// Les parts doivent être passées en Uint8List dès la sortie du stockage.
+  /// L'appelant est responsable de nettoyer les parts après appel avec secureZeroiseBytes().
+  ///
+  /// Exemple d'utilisation sécurisée:
+  /// ```dart
+  /// final p2Bytes = await storageService.getSsssPart2Bytes(); // Uint8List direct
+  /// final p3Bytes = await storageService.getSsssPart3Bytes(); // Uint8List direct
+  /// try {
+  ///   final secret = cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+  ///   // utiliser secret...
+  ///   cryptoService.secureZeroiseBytes(secret);
+  /// } finally {
+  ///   cryptoService.secureZeroiseBytes(p2Bytes);
+  ///   cryptoService.secureZeroiseBytes(p3Bytes);
+  /// }
+  /// ```
+  ///
+  /// Lève [ShamirReconstructionException] si la reconstruction échoue.
+  /// Lève [ArgumentError] si moins de 2 parts sont fournies.
+  Uint8List shamirCombineBytesDirect(Uint8List? part1, Uint8List? part2, Uint8List? part3) {
     // Vérifier qu'on a au moins 2 parts
     final parts = <int, Uint8List>{};
-    if (part1Hex != null) parts[1] = Uint8List.fromList(HEX.decode(part1Hex));
-    if (part2Hex != null) parts[2] = Uint8List.fromList(HEX.decode(part2Hex));
-    if (part3Hex != null) parts[3] = Uint8List.fromList(HEX.decode(part3Hex));
+    if (part1 != null) parts[1] = part1;
+    if (part2 != null) parts[2] = part2;
+    if (part3 != null) parts[3] = part3;
     
     if (parts.length < 2) {
       throw ArgumentError('Au moins 2 parts requises pour reconstruction');
@@ -434,10 +478,8 @@ class CryptoService {
       secretBytes[i] = _gf256Add(term1, term2);
     }
     
-    // Nettoyer les parts intermédiaires
-    for (final part in parts.values) {
-      secureZeroiseBytes(part);
-    }
+    // ⚠️ NOTE: On ne nettoie PAS les parts ici car l'appelant peut vouloir les réutiliser
+    // L'appelant est responsable du nettoyage avec secureZeroiseBytes()
     
     return secretBytes;
   }

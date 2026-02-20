@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:hex/hex.dart';
 import '../config/app_config.dart';
 import '../models/bon.dart';
 import '../models/user.dart';
@@ -89,43 +90,60 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
       // 3. Republier sur Nostr avec métadonnées mises à jour
       final market = await _storage.getMarket();
       if (market != null && widget.bon.p2 != null) {
-        final p3 = await _storage.getP3FromCache(widget.bon.bonId);
+        // ✅ SÉCURITÉ: Récupérer P3 en Uint8List directement
+        final p3Bytes = await _storage.getP3FromCacheBytes(widget.bon.bonId);
         
-        if (p3 != null) {
-          final nostrService = NostrService(
-            cryptoService: _crypto,
-            storageService: _storage,
-          );
-
-          await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
+        if (p3Bytes != null) {
+          // ✅ SÉCURITÉ: Récupérer P2 en Uint8List directement
+          final p2Bytes = widget.bon.p2Bytes;
           
-          // Publication du profil du bon (kind 0)
-          await nostrService.publishUserProfile(
-            npub: widget.bon.bonId,
-            nsec: _crypto.shamirCombine(null, widget.bon.p2!, p3),
-            name: widget.bon.issuerName,
-            displayName: widget.bon.issuerName,
-            about: 'Bon ${widget.bon.value} ẐEN - ${market.name}',
-            picture: imageUrl,
-            banner: imageUrl,  // Utilise la même image pour le bandeau
-            website: widget.user.website,  // Par défaut: site du profil utilisateur
-            g1pub: widget.user.g1pub,  // Par défaut: g1pub du profil utilisateur
-          );
+          if (p2Bytes != null) {
+            final nostrService = NostrService(
+              cryptoService: _crypto,
+              storageService: _storage,
+            );
 
-          // Republier P3 avec nouvelles métadonnées
-          await nostrService.publishP3(
-            bonId: widget.bon.bonId,
-            p2Hex: widget.bon.p2!,
-            p3Hex: p3,
-            seedMarket: market.seedMarket,
-            issuerNpub: widget.user.npub,
-            marketName: market.name,
-            value: widget.bon.value,
-            category: _selectedCategory,
-            rarity: widget.bon.rarity,
-          );
+            await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
+            
+            // ✅ SÉCURITÉ: Reconstruire sk_B en Uint8List
+            final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+            final nsecHex = HEX.encode(nsecBonBytes);
+            
+            // Publication du profil du bon (kind 0)
+            await nostrService.publishUserProfile(
+              npub: widget.bon.bonId,
+              nsec: nsecHex,
+              name: widget.bon.issuerName,
+              displayName: widget.bon.issuerName,
+              about: 'Bon ${widget.bon.value} ẐEN - ${market.name}',
+              picture: imageUrl,
+              banner: imageUrl,  // Utilise la même image pour le bandeau
+              website: widget.user.website,  // Par défaut: site du profil utilisateur
+              g1pub: widget.user.g1pub,  // Par défaut: g1pub du profil utilisateur
+            );
+            
+            // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
+            _crypto.secureZeroiseBytes(nsecBonBytes);
+            _crypto.secureZeroiseBytes(p2Bytes);
+            _crypto.secureZeroiseBytes(p3Bytes);
 
-          await nostrService.disconnect();
+            // Republier P3 avec nouvelles métadonnées
+            // Note: publishP3 attend des String, mais les parts sont déjà en RAM
+            // On utilise les propriétés String du bon (déjà en mémoire)
+            await nostrService.publishP3(
+              bonId: widget.bon.bonId,
+              p2Hex: widget.bon.p2!,
+              p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
+              seedMarket: market.seedMarket,
+              issuerNpub: widget.user.npub,
+              marketName: market.name,
+              value: widget.bon.value,
+              category: _selectedCategory,
+              rarity: widget.bon.rarity,
+            );
+
+            await nostrService.disconnect();
+          }
         }
       }
 

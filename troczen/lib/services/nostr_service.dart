@@ -318,7 +318,10 @@ class NostrService {
       final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3Hex, seedMarket, now);
 
       // 2. ✅ SÉCURITÉ: Reconstruire sk_B ÉPHÉMÈRE (P2+P3) directement en Uint8List
-      final nsecBonBytes = _cryptoService.shamirCombineBytes(null, p2Hex, p3Hex);
+      // Convertir les String en Uint8List pour éviter les String en RAM
+      final p2Bytes = Uint8List.fromList(HEX.decode(p2Hex));
+      final p3Bytes = Uint8List.fromList(HEX.decode(p3Hex));
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
 
       // 3. Créer l'event Nostr avec tags optimisés pour dashboard
       final expiry = now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
@@ -357,6 +360,8 @@ class NostrService {
       
       // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(p2Bytes);
+      _cryptoService.secureZeroiseBytes(p3Bytes);
 
       // 6. Envoyer au relais
       final message = jsonEncode(['EVENT', event]);
@@ -480,7 +485,10 @@ class NostrService {
 
     try {
       // ✅ SÉCURITÉ: Reconstruire sk_B ÉPHÉMÈRE directement en Uint8List
-      final nsecBonBytes = _cryptoService.shamirCombineBytes(null, bonP2, bonP3);
+      // Convertir les String en Uint8List pour éviter les String en RAM
+      final p2Bytes = Uint8List.fromList(HEX.decode(bonP2));
+      final p3Bytes = Uint8List.fromList(HEX.decode(bonP3));
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
 
       // Contenu du transfert
       final content = {
@@ -515,6 +523,8 @@ class NostrService {
       
       // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(p2Bytes);
+      _cryptoService.secureZeroiseBytes(p3Bytes);
 
       final message = jsonEncode(['EVENT', event]);
       _channel!.sink.add(message);

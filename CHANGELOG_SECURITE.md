@@ -1,6 +1,73 @@
 # Changelog Sécurité — TrocZen
 
-Ce fichier consolide les cinq vagues de corrections de sécurité : analyse initiale (16 fév), correctifs appliqués (17 fév), corrections des bugs bloquants P0 (18 fév), durcissement cryptographique (19 fév), et corrections mémoire/clés (19 fév).
+Ce fichier consolide les six vagues de corrections de sécurité : analyse initiale (16 fév), correctifs appliqués (17 fév), corrections des bugs bloquants P0 (18 fév), durcissement cryptographique (19 fév), corrections mémoire/clés (19 fév), et élimination des Strings pour les parts SSSS (20 fév).
+
+---
+
+## Vague 6 — Élimination des Strings pour Parts SSSS (20 février 2026)
+
+### 🔒 Sécurité mémoire : Parts SSSS en Uint8List
+
+#### Problème identifié
+La méthode `shamirCombineBytes` prenait des `String` hexadécimales en entrée (`part1Hex`, `part2Hex`, `part3Hex`). Ces chaînes :
+- Sont **immuables** en Dart - elles restent en mémoire même après décodage
+- Les parts décodées en `Uint8List` étaient nettoyées, mais pas les Strings originales
+- Les clés privées des parts restaient potentiellement accessibles en mémoire sous forme de String
+
+#### Solution appliquée
+Création d'une nouvelle méthode `shamirCombineBytesDirect(Uint8List?, Uint8List?, Uint8List?)` qui :
+- ✅ Accepte directement des `Uint8List` au lieu de `String`
+- ✅ Permet à l'appelant de contrôler le cycle de vie des parts
+- ✅ Évite complètement les String intermédiaires
+- ✅ Déprécie l'ancienne méthode `shamirCombineBytes(String?, String?, String?)`
+
+```dart
+// ❌ AVANT — String hex qui reste en mémoire
+final nsecBonBytes = _cryptoService.shamirCombineBytes(null, p2Hex, p3Hex);
+// p2Hex et p3Hex restent en mémoire (Strings immuables)
+
+// ✅ APRÈS — Uint8List directement, nettoyables
+final p2Bytes = Uint8List.fromList(HEX.decode(p2Hex));
+final p3Bytes = await _storageService.getP3FromCacheBytes(bonId);
+try {
+  final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+  // utiliser nsecBonBytes...
+  _cryptoService.secureZeroiseBytes(nsecBonBytes);
+} finally {
+  _cryptoService.secureZeroiseBytes(p2Bytes);
+  _cryptoService.secureZeroiseBytes(p3Bytes);
+}
+```
+
+#### Nouvelles méthodes ajoutées
+
+**`crypto_service.dart`** :
+- `shamirCombineBytesDirect(Uint8List?, Uint8List?, Uint8List?)` — Reconstruction directe depuis Uint8List
+- Dépréciation de `shamirCombineBytes(String?, String?, String?)`
+
+**`storage_service.dart`** :
+- `getP3FromCacheBytes(String bonId)` — Retourne P3 en `Uint8List` directement
+
+**`models/bon.dart`** :
+- `p1Bytes` getter — Retourne P1 en `Uint8List`
+- `p2Bytes` getter — Retourne P2 en `Uint8List`
+- `p3Bytes` getter — Retourne P3 en `Uint8List`
+
+#### Fichiers modifiés
+- `crypto_service.dart` : Ajout de `shamirCombineBytesDirect()`, dépréciation de `shamirCombineBytes()`
+- `storage_service.dart` : Ajout de `getP3FromCacheBytes()`
+- `models/bon.dart` : Ajout des getters `p1Bytes`, `p2Bytes`, `p3Bytes`
+- `nostr_service.dart` : Migration vers `shamirCombineBytesDirect()`
+- `burn_service.dart` : Migration vers `shamirCombineBytesDirect()`
+- `ack_screen.dart` : Migration vers `shamirCombineBytesDirect()`
+- `offer_screen.dart` : Migration vers `shamirCombineBytesDirect()`
+- `bon_profile_screen.dart` : Migration vers `shamirCombineBytesDirect()`
+- `create_bon_screen.dart` : Migration vers `shamirCombineBytesDirect()`
+
+#### Impact sur l'architecture
+- Les parts SSSS sont maintenant manipulées en `Uint8List` dès la sortie du stockage
+- L'UI et les services évitent les conversions String intermédiaires
+- Le nettoyage mémoire est maintenant effectif pour toutes les données sensibles
 
 ---
 

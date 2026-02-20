@@ -209,6 +209,20 @@ class StorageService {
     return await _cacheService.getP3FromCache(bonId);
   }
 
+  /// ✅ SÉCURITÉ: Récupère une P3 en Uint8List directement (évite les String en RAM)
+  /// L'appelant DOIT appeler secureZeroiseBytes() après usage
+  /// Retourne null si la P3 n'existe pas ou si le décodage échoue
+  Future<Uint8List?> getP3FromCacheBytes(String bonId) async {
+    final p3Hex = await _cacheService.getP3FromCache(bonId);
+    if (p3Hex == null || p3Hex.isEmpty) return null;
+    try {
+      return Uint8List.fromList(HEX.decode(p3Hex));
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur décodage P3 bytes pour $bonId', e);
+      return null;
+    }
+  }
+
   /// Récupère la liste des P3 du marché depuis SQLite
   /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<List<Map<String, dynamic>>> getP3List() async {

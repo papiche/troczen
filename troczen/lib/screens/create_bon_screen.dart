@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:hex/hex.dart';
 import '../models/bon.dart';
 import '../models/user.dart';
 import '../models/market.dart';
@@ -251,9 +253,16 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           // Publication du profil du bon (kind 0)
           // Utilise les informations du profil utilisateur par défaut
           // Note: npub et nsec sont en format hex pour les opérations Nostr
+          
+          // ✅ SÉCURITÉ: Utiliser shamirCombineBytesDirect avec Uint8List
+          final p2Bytes = Uint8List.fromList(HEX.decode(p2));
+          final p3Bytes = Uint8List.fromList(HEX.decode(p3));
+          final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+          final nsecHex = HEX.encode(nsecBonBytes);
+          
           await nostrService.publishUserProfile(
             npub: bonNpubHex,
-            nsec: _cryptoService.shamirCombine(null, p2, p3),
+            nsec: nsecHex,
             name: _issuerNameController.text,
             displayName: _issuerNameController.text,
             about: 'Bon ${_valueController.text} ẐEN - ${_market!.name}',
@@ -264,6 +273,11 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                 : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
             g1pub: widget.user.g1pub,  // ✅ GÉNÉRÉ AUTOMATIQUEMENT
           );
+          
+          // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
+          _cryptoService.secureZeroiseBytes(nsecBonBytes);
+          _cryptoService.secureZeroiseBytes(p2Bytes);
+          _cryptoService.secureZeroiseBytes(p3Bytes);
 
           // Publication P3 chiffrée - AVEC P2 pour signature par le bon
           final published = await nostrService.publishP3(

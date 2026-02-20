@@ -97,11 +97,19 @@ class _OfferScreenState extends State<OfferScreen> {
       // Whitepaper (§3.2 Étape 1): "QR1: {B_id, P2, c, ts}_sig_E"
       // Le donneur prouve qu'il possède le bon en signant avec sk_B
       //
-      // Reconstruction éphémère de sk_B = shamirCombine(null, P2, P3)
-      final nsecBonHex = _cryptoService.shamirCombine(
-        null,              // P1 absent (pas nécessaire)
-        widget.bon.p2!,    // P2
-        p3,                // P3
+      // ✅ SÉCURITÉ: Reconstruction éphémère de sk_B avec Uint8List directement
+      final p2Bytes = widget.bon.p2Bytes;
+      final p3Bytes = await _storageService.getP3FromCacheBytes(widget.bon.bonId);
+      
+      if (p2Bytes == null || p3Bytes == null) {
+        _showError('Parts P2 ou P3 non disponibles.');
+        return;
+      }
+      
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(
+        null,     // P1 absent (pas nécessaire)
+        p2Bytes,  // P2 en Uint8List
+        p3Bytes,  // P3 en Uint8List
       );
       
       // Créer le message à signer: bonId || p2Cipher || nonce || challenge || timestamp
@@ -111,14 +119,14 @@ class _OfferScreenState extends State<OfferScreen> {
           challengeHex +
           timestamp.toRadixString(16).padLeft(8, '0');
       
-      // Signer avec la clé du bon
-      final signatureHex = _cryptoService.signMessage(messageToSign, nsecBonHex);
+      // Signer avec la clé du bon (Uint8List)
+      final signatureHex = _cryptoService.signMessageBytes(messageToSign, nsecBonBytes);
       final signatureBytes = Uint8List.fromList(HEX.decode(signatureHex));
       
-      // ✅ SÉCURITÉ: Nettoyage explicite RAM
-      // Note: En Dart les Strings sont immuables, mais on efface la référence
-      // ignore: unused_local_variable
-      final nsecBonHex_erase = nsecBonHex; // Pour documentation - sera GC
+      // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(p2Bytes);
+      _cryptoService.secureZeroiseBytes(p3Bytes);
 
       // ✅ CORRECTION HANDSHAKE: Encoder en format QR v2 (240 octets)
       // Le format v2 inclut: bonId, value, issuerNpub, encryptedP2, nonce, tag, challenge, issuerName, timestamp, signature

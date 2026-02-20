@@ -59,21 +59,29 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
     setState(() => _isGenerating = true);
 
     try {
-      // ✅ CORRECTION BUG P0: Récupérer P3 depuis le cache
+      // ✅ CORRECTION BUG P0: Récupérer P3 depuis le cache en Uint8List directement
       // widget.bon.p3 est presque toujours null (P3 est dans le cache, pas dans l'objet Bon)
-      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
+      final p3Bytes = await _storageService.getP3FromCacheBytes(widget.bon.bonId);
       
-      if (p3 == null) {
+      if (p3Bytes == null) {
         _showError('Erreur: P3 non trouvée dans le cache.\nSynchronisez avec le marché.');
         return;
       }
       
-      // ✅ SÉCURITÉ: Utiliser shamirCombineBytes qui retourne directement Uint8List
-      // Évite la création d'une String intermédiaire qui resterait en mémoire
-      final nsecBonBytes = _cryptoService.shamirCombineBytes(
-        null,          // P1 est absent
-        widget.bon.p2, // P2 est à sa bonne place
-        p3,            // P3 est à sa bonne place
+      // ✅ SÉCURITÉ: Récupérer P2 en Uint8List directement depuis le Bon
+      final p2Bytes = widget.bon.p2Bytes;
+      if (p2Bytes == null) {
+        _cryptoService.secureZeroiseBytes(p3Bytes);
+        _showError('Erreur: P2 non trouvée pour ce bon.');
+        return;
+      }
+      
+      // ✅ SÉCURITÉ: Utiliser shamirCombineBytesDirect avec Uint8List
+      // Évite complètement les String en RAM
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(
+        null,    // P1 est absent
+        p2Bytes, // P2 en Uint8List
+        p3Bytes, // P3 en Uint8List
       );
 
       // ✅ SÉCURITÉ: Utiliser signMessageBytes qui accepte Uint8List
@@ -81,6 +89,8 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
       
       // ✅ SÉCURITÉ: Nettoyage explicite RAM avec Uint8List
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(p2Bytes);
+      _cryptoService.secureZeroiseBytes(p3Bytes);
 
       // Encoder l'ACK en format binaire (97 octets)
       final ackBytes = _qrService.encodeAck(

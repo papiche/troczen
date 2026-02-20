@@ -1,5 +1,8 @@
 
-enum BonStatus { 
+import 'dart:typed_data';
+import 'package:hex/hex.dart';
+
+enum BonStatus {
   issued,    // Créé
   pending,   // En attente de confirmation
   active,    // Actif dans le wallet
@@ -200,6 +203,43 @@ class Bon {
       'Capacité': specialAbility ?? 'Aucune',
       'Émetteur': issuerName,
     };
+  }
+
+  // ==================== MÉTHODES SÉCURISÉES POUR PARTS SSSS ====================
+  // ✅ SÉCURITÉ: Ces méthodes retournent Uint8List au lieu de String
+  // pour permettre le nettoyage mémoire avec secureZeroiseBytes()
+  
+  /// ✅ SÉCURITÉ: Retourne P1 en Uint8List (null si absent)
+  /// L'appelant DOIT appeler secureZeroiseBytes() après usage
+  Uint8List? get p1Bytes {
+    if (p1 == null || p1!.isEmpty) return null;
+    try {
+      return Uint8List.fromList(HEX.decode(p1!));
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// ✅ SÉCURITÉ: Retourne P2 en Uint8List (null si absent)
+  /// L'appelant DOIT appeler secureZeroiseBytes() après usage
+  Uint8List? get p2Bytes {
+    if (p2 == null || p2!.isEmpty) return null;
+    try {
+      return Uint8List.fromList(HEX.decode(p2!));
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// ✅ SÉCURITÉ: Retourne P3 en Uint8List (null si absent)
+  /// L'appelant DOIT appeler secureZeroiseBytes() après usage
+  Uint8List? get p3Bytes {
+    if (p3 == null || p3!.isEmpty) return null;
+    try {
+      return Uint8List.fromList(HEX.decode(p3!));
+    } catch (e) {
+      return null;
+    }
   }
 
   Bon copyWith({
