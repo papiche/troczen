@@ -641,7 +641,9 @@ class NostrService {
     _channel!.sink.add(request);
   }
 
-  /// Synchronise tous les P3 d'un marché
+  /// ✅ UI/UX: Synchronise tous les P3 d'un marché avec insertion en lot
+  /// Utilise un batch pour éviter les freezes de l'UI lors de la synchronisation massive
+  /// Au lieu de N écritures I/O individuelles, on fait une seule écriture à la fin
   Future<int> syncMarketP3s(Market market) async {
     if (!_isConnected) {
       final connected = await connect(market.relayUrl ?? NostrConstants.defaultRelay);
@@ -650,17 +652,41 @@ class NostrService {
 
     int syncedCount = 0;
     final completer = Completer<int>();
+    
+    // ✅ UI/UX: Buffer pour accumulation des P3 avant insertion en lot
+    final Map<String, String> p3Batch = {};
+    const int batchSize = 50; // Écrire toutes les 50 P3 ou à la fin
+    
+    // ✅ UI/UX: Fonction pour écrire le batch de P3
+    Future<void> flushBatch() async {
+      if (p3Batch.isNotEmpty) {
+        final batchToWrite = Map<String, String>.from(p3Batch);
+        p3Batch.clear();
+        await _storageService.saveP3BatchToCache(batchToWrite);
+        Logger.log('NostrService', 'Batch de ${batchToWrite.length} P3 sauvegardé');
+      }
+    }
 
     final originalCallback = onP3Received;
     onP3Received = (bonId, p3Hex) async {
-      await _storageService.saveP3ToCache(bonId, p3Hex);
+      // ✅ UI/UX: Accumuler dans le batch au lieu d'écrire immédiatement
+      p3Batch[bonId] = p3Hex;
       syncedCount++;
       originalCallback?.call(bonId, p3Hex);
+      
+      // Écrire le batch si taille atteinte
+      if (p3Batch.length >= batchSize) {
+        await flushBatch();
+      }
     };
 
     await subscribeToMarket(market.name);
 
-    Timer(const Duration(seconds: 5), () {
+    // ✅ UI/UX: Timer avec flush final du batch
+    Timer(const Duration(seconds: 5), () async {
+      // Flush final des P3 restants
+      await flushBatch();
+      
       onP3Received = originalCallback;
       completer.complete(syncedCount);
     });

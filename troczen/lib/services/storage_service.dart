@@ -171,6 +171,32 @@ class StorageService {
     );
   }
 
+  /// ✅ UI/UX: Insertion en lot (batch) pour le cache P3
+  /// Évite les freezes de l'UI lors de la synchronisation massive du marché
+  /// En une seule opération I/O au lieu de N opérations individuelles
+  Future<void> saveP3BatchToCache(Map<String, String> p3Batch) async {
+    if (p3Batch.isEmpty) return;
+    
+    try {
+      // Récupérer le cache existant
+      final cache = await getP3Cache();
+      
+      // Fusionner avec les nouvelles données
+      cache.addAll(p3Batch);
+      
+      // Écrire une seule fois
+      await _secureStorage.write(
+        key: _p3CacheKey,
+        value: jsonEncode(cache),
+      );
+      
+      Logger.success('StorageService', '${p3Batch.length} P3 sauvegardées en lot');
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur saveP3BatchToCache', e);
+      rethrow;
+    }
+  }
+
   /// Récupère le cache P3 complet
   Future<Map<String, String>> getP3Cache() async {
     final data = await _secureStorage.read(key: _p3CacheKey);

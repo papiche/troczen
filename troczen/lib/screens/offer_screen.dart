@@ -26,11 +26,18 @@ class _OfferScreenState extends State<OfferScreen> {
   final _uuid = const Uuid();
 
   List<int>? _qrData;
-  int _timeRemaining = 30;
+  int _timeRemaining = 60;  // ✅ UI/UX: TTL augmenté à 60 secondes
   Timer? _timer;
   bool _isGenerating = true;
   bool _waitingForAck = false;
+  bool _isExpired = false;  // ✅ UI/UX: État d'expiration du QR
   String _currentChallenge = '';
+  
+  // ✅ UI/UX: Garder les données du QR actuel pour éviter la régénération
+  // Le challenge reste le même jusqu'à régénération manuelle ou scan réussi
+  String? _currentP2Cipher;
+  String? _currentNonce;
+  int? _currentTimestamp;
 
   @override
   void initState() {
@@ -45,7 +52,10 @@ class _OfferScreenState extends State<OfferScreen> {
   }
 
   Future<void> _generateQR() async {
-    setState(() => _isGenerating = true);
+    setState(() {
+      _isGenerating = true;
+      _isExpired = false;
+    });
 
     try {
       if (widget.bon.p2 == null || widget.bon.p3 == null) {
@@ -62,12 +72,17 @@ class _OfferScreenState extends State<OfferScreen> {
           p3,
         );
 
+        // ✅ UI/UX: Stocker les données chiffrées pour réutilisation
+        _currentP2Cipher = p2Encrypted['ciphertext']!;
+        _currentNonce = p2Encrypted['nonce']!;
+
         // Générer un challenge aléatoire
         final challenge = _uuid.v4().replaceAll('-', '').substring(0, 32);
         _currentChallenge = challenge;
 
         // Timestamp actuel
         final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        _currentTimestamp = timestamp;
 
         // ✅ CORRECTION P0-C: Signer le QR1 avec sk_B (clé du bon)
         // Whitepaper (007.md §3.2 Étape 1): "QR1: {B_id, P2, c, ts}_sig_E"
@@ -80,13 +95,14 @@ class _OfferScreenState extends State<OfferScreen> {
           p3,                // P3
         );
         
+        // ✅ UI/UX: TTL augmenté à 60 secondes (0x3c)
         // Créer le message à signer: bonId || p2Cipher || nonce || challenge || timestamp || ttl
         final messageToSign = widget.bon.bonId +
             p2Encrypted['ciphertext']! +
             p2Encrypted['nonce']! +
             challenge +
             timestamp.toRadixString(16).padLeft(8, '0') +
-            '1e'; // ttl = 30 = 0x1e
+            '3c'; // ttl = 60 = 0x3c
         
         // Signer avec la clé du bon
         final signature = _cryptoService.signMessage(messageToSign, nsecBonHex);
@@ -103,14 +119,15 @@ class _OfferScreenState extends State<OfferScreen> {
           nonceHex: p2Encrypted['nonce']!,
           challengeHex: challenge,
           timestamp: timestamp,
-          ttl: 30,
+          ttl: 60,  // ✅ UI/UX: TTL augmenté à 60 secondes
           signatureHex: signature,  // ✅ NOUVEAU: signature du donneur
         );
 
         setState(() {
           _qrData = qrBytes;
-          _timeRemaining = 30;
+          _timeRemaining = 60;  // ✅ UI/UX: 60 secondes
           _isGenerating = false;
+          _isExpired = false;
         });
 
         // Démarrer le compte à rebours
@@ -122,18 +139,21 @@ class _OfferScreenState extends State<OfferScreen> {
     }
   }
 
+  /// ✅ UI/UX: Timer avec état d'expiration au lieu de régénération automatique
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeRemaining > 0) {
         setState(() => _timeRemaining--);
       } else {
+        // ✅ UI/UX: Marquer comme expiré au lieu de régénérer automatiquement
         timer.cancel();
-        _regenerateQR();
+        setState(() => _isExpired = true);
       }
     });
   }
 
+  /// ✅ UI/UX: Régénération manuelle uniquement
   void _regenerateQR() {
     _timer?.cancel();
     _generateQR();
@@ -271,38 +291,81 @@ class _OfferScreenState extends State<OfferScreen> {
 
                 const SizedBox(height: 24),
 
-                // Compte à rebours
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: _timeRemaining <= 10 
-                        ? Colors.red.withOpacity(0.2) 
-                        : Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _timeRemaining <= 10 ? Colors.red : Colors.green,
-                      width: 2,
+                // ✅ UI/UX: Compte à rebours avec état d'expiration
+                if (_isExpired)
+                  // État expiré - message d'avertissement
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red, width: 2),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text(
+                          'QR code expiré',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  // État actif - compte à rebours
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _timeRemaining <= 15
+                          ? Colors.orange.withOpacity(0.2)
+                          : Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _timeRemaining <= 15 ? Colors.orange : Colors.green,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _timeRemaining <= 15 ? Icons.timer : Icons.timer_outlined,
+                          color: _timeRemaining <= 15 ? Colors.orange : Colors.green,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Expire dans: $_timeRemaining secondes',
+                          style: TextStyle(
+                            color: _timeRemaining <= 15 ? Colors.orange : Colors.green,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    'Expire dans: $_timeRemaining secondes',
-                    style: TextStyle(
-                      color: _timeRemaining <= 10 ? Colors.red : Colors.green,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 24),
 
-                // Bouton régénérer
+                // ✅ UI/UX: Bouton régénérer avec style adapté à l'état
                 ElevatedButton.icon(
-                  onPressed: _regenerateQR,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Régénérer'),
+                  onPressed: _isGenerating ? null : _regenerateQR,
+                  icon: _isGenerating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: Text(_isExpired ? 'Régénérer le QR code' : 'Régénérer'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0A7EA4),
+                    backgroundColor: _isExpired ? Colors.orange : const Color(0xFF0A7EA4),
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   ),
                 ),

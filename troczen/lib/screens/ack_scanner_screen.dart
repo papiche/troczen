@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
@@ -29,20 +30,82 @@ class AckScannerScreen extends StatefulWidget {
 }
 
 class _AckScannerScreenState extends State<AckScannerScreen> {
-  final MobileScannerController _scannerController = MobileScannerController(
-    formats: [BarcodeFormat.qrCode],
-  );
+  MobileScannerController? _scannerController;
   final _qrService = QRService();
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
 
   bool _isProcessing = false;
   bool _isPublishing = false;  // ✅ NOUVEAU: état de publication Nostr
+  bool _permissionGranted = false;
+  bool _isCheckingPermission = true;
+  bool _permanentlyDenied = false;
   String _statusMessage = 'Scannez le QR code de confirmation du receveur';
 
   @override
+  void initState() {
+    super.initState();
+    _checkCameraPermission();
+  }
+
+  /// ✅ UI/UX: Vérification et demande de permission caméra
+  Future<void> _checkCameraPermission() async {
+    setState(() => _isCheckingPermission = true);
+
+    final status = await Permission.camera.status;
+    
+    if (status.isGranted) {
+      _initScanner();
+      setState(() {
+        _permissionGranted = true;
+        _isCheckingPermission = false;
+      });
+    } else if (status.isDenied) {
+      // Première demande de permission
+      final result = await Permission.camera.request();
+      if (result.isGranted) {
+        _initScanner();
+        setState(() {
+          _permissionGranted = true;
+          _isCheckingPermission = false;
+        });
+      } else if (result.isPermanentlyDenied) {
+        setState(() {
+          _permanentlyDenied = true;
+          _isCheckingPermission = false;
+        });
+      } else {
+        setState(() {
+          _permissionGranted = false;
+          _isCheckingPermission = false;
+          _statusMessage = 'Permission caméra refusée';
+        });
+      }
+    } else if (status.isPermanentlyDenied) {
+      setState(() {
+        _permanentlyDenied = true;
+        _isCheckingPermission = false;
+      });
+    } else {
+      setState(() => _isCheckingPermission = false);
+    }
+  }
+
+  /// Initialise le scanner après obtention de la permission
+  void _initScanner() {
+    _scannerController = MobileScannerController(
+      formats: [BarcodeFormat.qrCode],
+    );
+  }
+
+  /// Ouvre les paramètres de l'application
+  Future<void> _openAppSettings() async {
+    await openAppSettings();
+  }
+
+  @override
   void dispose() {
-    _scannerController.dispose();
+    _scannerController?.dispose();
     super.dispose();
   }
 
@@ -218,85 +281,215 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
         title: const Text('Scanner confirmation'),
         backgroundColor: const Color(0xFF1E1E1E),
       ),
-      body: Column(
-        children: [
-          // Instructions
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFF1E1E1E),
-            child: Column(
-              children: [
-                Text(
-                  _statusMessage,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-                if (_isProcessing) ...[
-                  const SizedBox(height: 12),
-                  const CircularProgressIndicator(),
-                ],
-              ],
-            ),
-          ),
+      body: _buildBody(),
+    );
+  }
 
-          // Scanner
-          Expanded(
-            child: Stack(
-              children: [
+  /// ✅ UI/UX: Construction dynamique du body selon l'état de la permission
+  Widget _buildBody() {
+    // État de vérification en cours
+    if (_isCheckingPermission) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Color(0xFFFFB347)),
+            SizedBox(height: 24),
+            Text(
+              'Vérification des permissions...',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Permission refusée définitivement
+    if (_permanentlyDenied) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.camera_alt_outlined,
+                size: 80,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Accès caméra refusé',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'L\'application a besoin d\'accéder à votre caméra pour scanner les QR codes.\n\n'
+                'Vous avez précédemment refusé cette permission. '
+                'Veuillez l\'activer dans les paramètres de l\'application.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _openAppSettings,
+                icon: const Icon(Icons.settings),
+                label: const Text('Ouvrir les paramètres'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0A7EA4),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: _checkCameraPermission,
+                child: const Text(
+                  'Réessayer',
+                  style: TextStyle(color: Color(0xFFFFB347)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Permission non accordée
+    if (!_permissionGranted) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.camera_alt_outlined,
+                size: 80,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Permission caméra requise',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Pour scanner des QR codes, l\'application doit accéder à votre caméra.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _checkCameraPermission,
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Autoriser la caméra'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0A7EA4),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Permission accordée - afficher le scanner
+    return Column(
+      children: [
+        // Instructions
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          color: const Color(0xFF1E1E1E),
+          child: Column(
+            children: [
+              Text(
+                _statusMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+              if (_isProcessing) ...[
+                const SizedBox(height: 12),
+                const CircularProgressIndicator(),
+              ],
+            ],
+          ),
+        ),
+
+        // Scanner
+        Expanded(
+          child: Stack(
+            children: [
+              if (_scannerController != null)
                 MobileScanner(
-                  controller: _scannerController,
+                  controller: _scannerController!,
                   onDetect: _handleAckScan,
                 ),
-                
-                // Overlay avec cadre de scan
-                Center(
-                  child: Container(
-                    width: 280,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.green,
-                        width: 3,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+              
+              // Overlay avec cadre de scan
+              Center(
+                child: Container(
+                  width: 280,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.green,
+                      width: 3,
                     ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          // Info sécurité
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              border: Border(
-                top: BorderSide(color: Colors.green.withOpacity(0.3)),
               ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.security, color: Colors.green),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'La signature cryptographique prouve que le receveur possède bien les parts P2+P3',
-                    style: TextStyle(
-                      color: Colors.green[300],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
+            ],
+          ),
+        ),
+
+        // Info sécurité
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            border: Border(
+              top: BorderSide(color: Colors.green.withOpacity(0.3)),
             ),
           ),
-        ],
-      ),
+          child: Row(
+            children: [
+              const Icon(Icons.security, color: Colors.green),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'La signature cryptographique prouve que le receveur possède bien les parts P2+P3',
+                  style: TextStyle(
+                    color: Colors.green[300],
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
