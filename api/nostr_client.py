@@ -14,8 +14,49 @@ import websockets
 import ssl
 import os
 import time
+import re
+import unicodedata
 from datetime import datetime
 from typing import List, Dict, Optional
+
+
+def normalize_market_tag(market_name: str) -> str:
+    """
+    ✅ NIP-12: Normalise un nom de marché en tag de routage standardisé.
+    
+    Cette fonction garantit que tous les marchés sont indexables de la même façon
+    par tous les relais Nostr (Strfry, etc.)
+    
+    Exemples:
+        - "Marché de Paris" → "market_marche_de_paris"
+        - "ZEN-Lyon" → "market_zen_lyon"
+        - "Café du Coin" → "market_cafe_du_coin"
+    
+    Args:
+        market_name: Nom du marché (peut contenir accents, espaces, etc.)
+        
+    Returns:
+        Tag normalisé préfixé avec "market_"
+    """
+    # 1. Normalisation NFKD pour séparer les accents de leurs lettres
+    nfkd_form = unicodedata.normalize('NFKD', market_name)
+    
+    # 2. Retirer les diacritiques (accents) - garder seulement les caractères de base
+    without_diacritics = u"".join(
+        c for c in nfkd_form if not unicodedata.combining(c)
+    )
+    
+    # 3. Convertir en minuscules
+    lower = without_diacritics.lower()
+    
+    # 4. Remplacer tout ce qui n'est pas alphanumérique par underscore
+    sanitized = re.sub(r'[^a-z0-9]', '_', lower)
+    
+    # 5. Supprimer les underscores multiples et enlever les extrémités
+    cleaned = re.sub(r'_+', '_', sanitized).strip('_')
+    
+    # 6. Préfixer avec "market_"
+    return f"market_{cleaned}"
 
 # Import conditionnel pour le client synchrone
 try:
@@ -233,14 +274,14 @@ class NostrClient:
         Returns:
             Liste des bons
         """
-        # Filtres additionnels pour le marché
+        # ✅ NIP-12: Utiliser le filtre #t pour le routage (indexé par tous les relais)
         additional_filters = {}
         if market_name:
-            # Note: Le filtre par tag 'market' se fait après récupération
-            # car tous les relais supportent pas le filtrage par tags
-            pass
+            # Utiliser le tag normalisé pour le filtrage côté relai
+            market_tag = normalize_market_tag(market_name)
+            additional_filters["#t"] = [market_tag]
         
-        # Récupérer avec pagination
+        # Récupérer avec pagination (le filtrage est fait par le relai!)
         events = await self.query_events_paginated(
             kinds=[30303],
             max_results=max_results,
@@ -265,9 +306,8 @@ class NostrClient:
                         else:
                             tags[key] = value
                 
-                # Filtrer par market si spécifié
-                if market_name and tags.get("market") != market_name:
-                    continue
+                # ✅ Plus besoin de filtrer côté client - le relai l'a déjà fait!
+                # Le tag 'market' est conservé pour l'affichage UI (joli nom)
                 
                 # Extraire le bon ID depuis le tag 'd' (format: zen-{bonId})
                 bon_id = tags.get("d", "")
@@ -608,10 +648,18 @@ class NostrClientSync:
         Returns:
             Liste des bons
         """
-        # Récupérer avec pagination
+        # ✅ NIP-12: Utiliser le filtre #t pour le routage (indexé par tous les relais)
+        additional_filters = {}
+        if market_name:
+            # Utiliser le tag normalisé pour le filtrage côté relai
+            market_tag = normalize_market_tag(market_name)
+            additional_filters["#t"] = [market_tag]
+        
+        # Récupérer avec pagination (le filtrage est fait par le relai!)
         events = self.query_events_paginated(
             kinds=[30303],
-            max_results=max_results
+            max_results=max_results,
+            additional_filters=additional_filters
         )
         
         bons = []
@@ -632,9 +680,8 @@ class NostrClientSync:
                         else:
                             tags[key] = value
                 
-                # Filtrer par market si spécifié
-                if market_name and tags.get("market") != market_name:
-                    continue
+                # ✅ Plus besoin de filtrer côté client - le relai l'a déjà fait!
+                # Le tag 'market' est conservé pour l'affichage UI (joli nom)
                 
                 # Extraire le bon ID depuis le tag 'd' (format: zen-{bonId})
                 bon_id = tags.get("d", "")

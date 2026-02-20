@@ -208,6 +208,50 @@ class CryptoService {
     };
   }
 
+  // ==================== MARKET IDENTITY DERIVATION ====================
+  
+  /// ✅ v2.0.1: Dérive l'identité Nostr du marché de manière déterministe et sécurisée
+  ///
+  /// ⚠️ IMPORTANT: Cette méthode sépare cryptographiquement l'usage de la seed_market:
+  /// - seed_market → utilisé pour le chiffrement AES-GCM des P3
+  /// - dérivé SHA256(seed_market || "troczen_market_identity") → utilisé pour l'identité Nostr
+  ///
+  /// Cela évite la réutilisation de clés pour des usages différents (best practice crypto).
+  ///
+  /// Retourne un Map contenant:
+  /// - 'nsec': clé privée au format nsec1...
+  /// - 'npub': clé publique au format npub1...
+  /// - 'privateKeyHex': clé privée en hexadécimal (32 bytes)
+  /// - 'publicKeyHex': clé publique en hexadécimal (32 bytes)
+  Map<String, String> deriveMarketIdentity(String seedMarketHex) {
+    // 1. Décoder la seed du marché
+    final seedBytes = HEX.decode(seedMarketHex);
+    if (seedBytes.length != 32) {
+      throw ArgumentError('seedMarketHex doit faire 32 octets (64 caractères hex)');
+    }
+    
+    // 2. Créer le payload de dérivation pour séparer les usages cryptographiques
+    // nsec_market = SHA256(seed_market || "troczen_market_identity")
+    final derivationPayload = utf8.encode("troczen_market_identity");
+    final combinedBytes = Uint8List.fromList([...seedBytes, ...derivationPayload]);
+    
+    // 3. Hash SHA256 pour obtenir la clé privée du marché
+    final digest = sha256.convert(combinedBytes);
+    final privateKeyBytes = Uint8List.fromList(digest.bytes);
+    
+    // 4. Dériver la clé publique depuis la clé privée
+    final publicKeyHex = derivePublicKey(privateKeyBytes);
+    final privateKeyHex = HEX.encode(privateKeyBytes);
+    
+    // 5. Retourner la paire de clés avec les formats Bech32
+    return {
+      'nsec': encodeNsec(privateKeyHex),
+      'npub': encodeNpub(publicKeyHex),
+      'privateKeyHex': privateKeyHex,
+      'publicKeyHex': publicKeyHex,
+    };
+  }
+
   // ==================== NIP-19 BECH32 ENCODING ====================
   
   /// Encode une clé privée hexadécimale en format nsec1... (NIP-19)

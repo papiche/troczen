@@ -33,7 +33,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   final _uuid = const Uuid();
   
   bool _isCreating = false;
-  Market? _market;
+  List<Market> _markets = [];  // ✅ NOUVEAU: Liste des marchés disponibles
+  Market? _selectedMarket;     // ✅ NOUVEAU: Marché sélectionné pour l'émission
   bool _isLocalNetwork = false;
   Color _selectedColor = Colors.blue; // Couleur par défaut
   String _selectedRarity = 'common'; // Rareté sélectionnée
@@ -48,13 +49,19 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     _issuerNameController.text = widget.user.displayName;
     // Valeur par défaut: website du profil utilisateur
     _websiteController.text = widget.user.website ?? '';
-    _loadMarket();
+    _loadMarkets();
     _detectNetwork();
   }
 
-  Future<void> _loadMarket() async {
-    final market = await _storageService.getMarket();
-    setState(() => _market = market);
+  /// ✅ NOUVEAU: Charge la liste des marchés et sélectionne l'actif par défaut
+  Future<void> _loadMarkets() async {
+    final markets = await _storageService.getMarkets();
+    final activeMarket = await _storageService.getActiveMarket();
+    
+    setState(() {
+      _markets = markets;
+      _selectedMarket = activeMarket ?? (markets.isNotEmpty ? markets.first : null);
+    });
   }
 
   /// ✅ Détection automatique réseau local (borne wifi)
@@ -179,8 +186,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   Future<void> _createBon() async {
     if (!_formKey.currentState!.validate()) return;
     
-    if (_market == null || _market!.isExpired) {
-      _showError('Aucun marché configuré ou clé expirée.\nAllez dans Paramètres pour configurer le marché.');
+    if (_selectedMarket == null || _selectedMarket!.isExpired) {
+      _showError('Aucun marché configuré ou clé expirée.\nAllez dans Mes marchés pour rejoindre un marché.');
       return;
     }
 
@@ -201,7 +208,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final p3 = parts[2]; // Témoin (à publier)
 
       // 3. Chiffrer P3 avec K_day (clé du jour dérivée de la graine)
-      final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3, _market!.seedMarket, DateTime.now());
+      final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3, _selectedMarket!.seedMarket, DateTime.now());
 
       // 4. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
       await _storageService.saveP3ToCache(bonNpubHex, p3);
@@ -219,7 +226,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         p1: p1,
         p2: p2,
         p3: null, // P3 est dans le cache
-        marketName: _market!.name,
+        marketName: _selectedMarket!.name,
         color: _selectedColor.value,
         rarity: _useAutoRarity ? Bon.generateRarity() : _selectedRarity,
         uniqueId: Bon.generateUniqueId(bonNpub),
@@ -246,7 +253,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         );
 
         // Connexion au relais
-        final relayUrl = _market!.relayUrl ?? NostrConstants.defaultRelay;
+        final relayUrl = _selectedMarket!.relayUrl ?? NostrConstants.defaultRelay;
         final connected = await nostrService.connect(relayUrl);
 
         if (connected) {
@@ -265,7 +272,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             nsec: nsecHex,
             name: _issuerNameController.text,
             displayName: _issuerNameController.text,
-            about: 'Bon ${_valueController.text} ẐEN - ${_market!.name}',
+            about: 'Bon ${_valueController.text} ẐEN - ${_selectedMarket!.name}',
             picture: imageUrl,
             banner: imageUrl,  // Utilise la même image pour le bandeau
             website: _websiteController.text.trim().isNotEmpty
@@ -284,9 +291,9 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             bonId: bonNpubHex,
             p2Hex: p2,  // ✅ Pour reconstruction sk_B éphémère
             p3Hex: p3,
-            seedMarket: _market!.seedMarket,
+            seedMarket: _selectedMarket!.seedMarket,
             issuerNpub: widget.user.npub,
-            marketName: _market!.name,
+            marketName: _selectedMarket!.name,
             value: double.parse(_valueController.text),
             category: 'generic',  // TODO: Sélection UI
             rarity: Bon.generateRarity(),  // ✅ Génération aléatoire
@@ -445,7 +452,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                         ),
                       ),
                       child: Text(
-                        _market?.name.toUpperCase() ?? 'MARCHÉ',
+                        _selectedMarket?.name.toUpperCase() ?? 'MARCHÉ',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
@@ -777,7 +784,70 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
               const SizedBox(height: 24),
 
-              if (_market == null || _market!.isExpired)
+              // ✅ NOUVEAU: Sélecteur de marché
+              if (_markets.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E1E),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Marché d\'émission',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<Market>(
+                        value: _selectedMarket,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        dropdownColor: const Color(0xFF2A2A2A),
+                        style: const TextStyle(color: Colors.white),
+                        items: _markets.map((market) {
+                          return DropdownMenuItem(
+                            value: market,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.store,
+                                  size: 18,
+                                  color: market.isExpired ? Colors.red : Colors.orange,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    market.displayName,
+                                    style: TextStyle(
+                                      color: market.isExpired ? Colors.red : Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                if (market.isExpired)
+                                  Text(
+                                    '(Expiré)',
+                                    style: TextStyle(color: Colors.red[300], fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (market) {
+                          setState(() => _selectedMarket = market);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+              
+              if (_selectedMarket == null || _selectedMarket!.isExpired)
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -791,7 +861,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Configurez d\'abord le marché dans Paramètres',
+                          'Rejoignez d\'abord un marché dans "Mes marchés"',
                           style: TextStyle(color: Colors.grey[300]),
                         ),
                       ),

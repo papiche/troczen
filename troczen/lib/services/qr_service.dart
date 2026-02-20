@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import 'package:flutter/widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -484,5 +485,282 @@ class QRService {
     }
     
     return ~crc & 0xFFFFFFFF;
+  }
+  
+  // ==================== QR PARTAGE DE MARCHÉ ====================
+  // Format URI: troczen://market?name=Marche_Toulouse&seed=HEX64&relay=wss://...&validUntil=1708084800&mid=A1B2
+  // ✅ AMÉLIORÉ: Ajout du marketId (checksum 4 chars) pour garantir l'unicité
+  // Permet à un commerçant A de faire rentrer un commerçant B dans un marché via scan QR
+  
+  /// Magic number pour QR marché: "ZENM" (0x5A454E4D)
+  static const int _magicMarket = 0x5A454E4D;
+  
+  /// Taille du format QR marché binaire
+  /// - magic: 4 octets
+  /// - marketId: 2 octets (4 chars hex)
+  /// - nameLength: 1 octet
+  /// - name: max 32 octets
+  /// - seed: 32 octets (64 hex chars)
+  /// - relayLength: 1 octet
+  /// - relay: max 64 octets
+  /// - validUntil: 4 octets (uint32 timestamp)
+  /// - CRC32: 4 octets
+  /// Total max: 4 + 2 + 1 + 32 + 32 + 1 + 64 + 4 + 4 = 144 octets
+  static const int _qrMarketMaxSize = 144;
+  
+  /// Calcule le marketId (checksum 4 chars) depuis la seed
+  /// Utilise SHA256 pour générer un identifiant unique
+  String _calculateMarketId(String seedMarket) {
+    final bytes = utf8.encode(seedMarket);
+    final digest = sha256.convert(bytes);
+    return digest.toString().substring(0, 4).toUpperCase();
+  }
+  
+  /// Encode un marché en format URI pour QR code
+  /// ✅ AMÉLIORÉ: Inclut le marketId pour vérification d'unicité
+  /// Format: troczen://market?name=NAME&seed=HEX64&relay=URL&validUntil=TIMESTAMP&mid=MARKETID
+  String encodeMarketUri({
+    required String name,
+    required String seedMarket,
+    String? relayUrl,
+    required DateTime validUntil,
+    String? marketId,  // ✅ NOUVEAU: Optionnel, calculé si non fourni
+  }) {
+    // Calculer le marketId si non fourni
+    final mid = marketId ?? _calculateMarketId(seedMarket);
+    
+    final uri = Uri(
+      scheme: 'troczen',
+      host: 'market',
+      queryParameters: {
+        'name': name,
+        'seed': seedMarket,
+        if (relayUrl != null && relayUrl.isNotEmpty) 'relay': relayUrl,
+        'validUntil': validUntil.millisecondsSinceEpoch.toString(),
+        'mid': mid,  // ✅ NOUVEAU: Checksum pour vérification
+      },
+    );
+    return uri.toString();
+  }
+  
+  /// Décode une URI de marché depuis un QR code scanné
+  /// ✅ AMÉLIORÉ: Vérifie le marketId si présent
+  /// Retourne null si le format est invalide ou si le marketId ne correspond pas
+  Map<String, dynamic>? decodeMarketUri(String uriString) {
+    try {
+      final uri = Uri.tryParse(uriString);
+      if (uri == null) return null;
+      
+      // Vérifier le schéma
+      if (uri.scheme != 'troczen') return null;
+      if (uri.host != 'market') return null;
+      
+      final params = uri.queryParameters;
+      
+      // Champs obligatoires
+      final name = params['name'];
+      final seed = params['seed'];
+      final validUntilStr = params['validUntil'];
+      
+      if (name == null || seed == null || validUntilStr == null) {
+        return null;
+      }
+      
+      // Valider la seed (64 chars hex)
+      if (seed.length != 64 || !RegExp(r'^[0-9a-fA-F]+$').hasMatch(seed)) {
+        return null;
+      }
+      
+      final validUntil = int.tryParse(validUntilStr);
+      if (validUntil == null) return null;
+      
+      // ✅ NOUVEAU: Calculer et vérifier le marketId
+      final expectedMarketId = _calculateMarketId(seed);
+      final providedMarketId = params['mid'];
+      
+      if (providedMarketId != null) {
+        // Vérifier que le marketId correspond à la seed
+        if (providedMarketId.toUpperCase() != expectedMarketId) {
+          // Le marketId ne correspond pas - QR potentiellement corrompu ou falsifié
+          return null;
+        }
+      }
+      
+      return {
+        'name': name,
+        'seedMarket': seed.toLowerCase(), // Normaliser en minuscules
+        'relayUrl': params['relay'],
+        'validUntil': DateTime.fromMillisecondsSinceEpoch(validUntil),
+        'marketId': expectedMarketId,  // ✅ NOUVEAU: Inclure le marketId calculé
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// Encode un marché en format binaire compact (plus efficace pour QR)
+  Uint8List encodeMarketBinary({
+    required String name,
+    required String seedMarket,
+    String? relayUrl,
+    required DateTime validUntil,
+  }) {
+    // Calculer la taille exacte
+    final nameBytes = utf8.encode(name);
+    final relayBytes = relayUrl != null ? utf8.encode(relayUrl) : <int>[];
+    
+    final nameLen = nameBytes.length.clamp(0, 32);
+    final relayLen = relayBytes.length.clamp(0, 64);
+    
+    // Taille: 4 (magic) + 1 (nameLen) + nameLen + 32 (seed) + 1 (relayLen) + relayLen + 4 (validUntil) + 4 (CRC)
+    final totalSize = 4 + 1 + nameLen + 32 + 1 + relayLen + 4 + 4;
+    
+    final buffer = ByteData(totalSize);
+    int offset = 0;
+    
+    // Magic "ZENM"
+    buffer.setUint32(offset, _magicMarket, Endian.big);
+    offset += 4;
+    
+    // Nom du marché
+    buffer.setUint8(offset++, nameLen);
+    for (int i = 0; i < nameLen; i++) {
+      buffer.setUint8(offset++, nameBytes[i]);
+    }
+    
+    // Seed (32 octets binaires)
+    final seedBytes = HEX.decode(seedMarket);
+    for (int i = 0; i < 32; i++) {
+      buffer.setUint8(offset++, seedBytes[i]);
+    }
+    
+    // Relay URL
+    buffer.setUint8(offset++, relayLen);
+    for (int i = 0; i < relayLen; i++) {
+      buffer.setUint8(offset++, relayBytes[i]);
+    }
+    
+    // ValidUntil (timestamp Unix)
+    buffer.setUint32(offset, validUntil.millisecondsSinceEpoch ~/ 1000, Endian.big);
+    offset += 4;
+    
+    // CRC32
+    final dataWithoutCrc = buffer.buffer.asUint8List(0, offset);
+    final crc = _crc32(dataWithoutCrc);
+    buffer.setUint32(offset, crc, Endian.big);
+    
+    return buffer.buffer.asUint8List();
+  }
+  
+  /// Décode un marché depuis le format binaire
+  Map<String, dynamic>? decodeMarketBinary(Uint8List data) {
+    try {
+      if (data.length < 10) return null; // Minimum: magic + nameLen + seed + relayLen + validUntil + crc
+      
+      final buffer = ByteData.sublistView(data);
+      int offset = 0;
+      
+      // Vérifier magic
+      final magic = buffer.getUint32(offset, Endian.big);
+      if (magic != _magicMarket) return null;
+      offset += 4;
+      
+      // Nom
+      final nameLen = buffer.getUint8(offset++);
+      if (nameLen > 32 || offset + nameLen > data.length - 4) return null;
+      final name = utf8.decode(data.sublist(offset, offset + nameLen));
+      offset += nameLen;
+      
+      // Seed
+      if (offset + 32 > data.length - 4) return null;
+      final seedBytes = data.sublist(offset, offset + 32);
+      final seedMarket = HEX.encode(seedBytes);
+      offset += 32;
+      
+      // Relay
+      final relayLen = buffer.getUint8(offset++);
+      String? relayUrl;
+      if (relayLen > 0) {
+        if (offset + relayLen > data.length - 4) return null;
+        relayUrl = utf8.decode(data.sublist(offset, offset + relayLen));
+        offset += relayLen;
+      }
+      
+      // ValidUntil
+      if (offset + 4 > data.length - 4) return null;
+      final validUntilTimestamp = buffer.getUint32(offset, Endian.big);
+      offset += 4;
+      
+      // Vérifier CRC
+      final expectedCrc = buffer.getUint32(offset, Endian.big);
+      final actualCrc = _crc32(data.sublist(0, offset));
+      if (expectedCrc != actualCrc) {
+        return null; // CRC invalide = données corrompues
+      }
+      
+      return {
+        'name': name,
+        'seedMarket': seedMarket,
+        'relayUrl': relayUrl,
+        'validUntil': DateTime.fromMillisecondsSinceEpoch(validUntilTimestamp * 1000),
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// Tente de décoder automatiquement un QR marché (URI ou binaire)
+  Map<String, dynamic>? decodeMarketQr(String scannedData) {
+    // Essayer d'abord le format URI
+    if (scannedData.startsWith('troczen://')) {
+      return decodeMarketUri(scannedData);
+    }
+    
+    // Essayer le format binaire (Base64)
+    try {
+      final bytes = base64Decode(scannedData);
+      return decodeMarketBinary(bytes);
+    } catch (e) {
+      // Pas du Base64 valide
+    }
+    
+    return null;
+  }
+  
+  /// Génère un widget QR code pour partager un marché
+  Widget buildMarketQrWidget({
+    required String name,
+    required String seedMarket,
+    String? relayUrl,
+    required DateTime validUntil,
+    double size = 280,
+    bool useBinary = true, // Utiliser le format binaire (plus compact)
+  }) {
+    String qrData;
+    
+    if (useBinary) {
+      final binary = encodeMarketBinary(
+        name: name,
+        seedMarket: seedMarket,
+        relayUrl: relayUrl,
+        validUntil: validUntil,
+      );
+      qrData = base64Encode(binary);
+    } else {
+      qrData = encodeMarketUri(
+        name: name,
+        seedMarket: seedMarket,
+        relayUrl: relayUrl,
+        validUntil: validUntil,
+      );
+    }
+    
+    return QrImageView(
+      data: qrData,
+      version: QrVersions.auto,
+      size: size,
+      backgroundColor: const Color(0xFFFFFFFF),
+      errorCorrectionLevel: QrErrorCorrectLevel.M,
+    );
   }
 }

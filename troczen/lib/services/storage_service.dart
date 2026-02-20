@@ -33,7 +33,8 @@ class StorageService {
   // Clés de stockage (uniquement pour les petites données sensibles)
   static const String _userKey = 'user';
   static const String _bonsKey = 'bons';
-  static const String _marketKey = 'market';
+  static const String _marketsKey = 'markets';         // Liste des marchés
+  static const String _activeMarketKey = 'active_market'; // Marché actif par défaut
   static const String _onboardingCompleteKey = 'onboarding_complete';
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
@@ -152,24 +153,225 @@ class StorageService {
     );
   }
 
-  /// Sauvegarde les informations du marché
+  // ============================================================
+  // ✅ GESTION MULTI-MARCHÉS
+  // Permet à un utilisateur d'être membre de plusieurs marchés
+  // ============================================================
+
+  /// Récupère le marché actif (alias pour getActiveMarket)
+  /// Utilisé pour la compatibilité avec le code existant
+  Future<Market?> getMarket() async {
+    return await getActiveMarket();
+  }
+
+  /// Sauvegarde un marché (ajoute ou met à jour)
+  /// Si c'est le premier marché, il devient actif par défaut
   Future<void> saveMarket(Market market) async {
+    final markets = await getMarkets();
+    final existingIndex = markets.indexWhere((m) => m.name == market.name);
+    
+    if (existingIndex != -1) {
+      // Mettre à jour le marché existant
+      markets[existingIndex] = market;
+    } else {
+      // Ajouter nouveau marché (actif si premier)
+      final newMarket = markets.isEmpty ? market.copyWith(isActive: true) : market;
+      markets.add(newMarket);
+    }
+    
+    await _saveMarkets(markets);
+  }
+
+  /// Supprime tous les marchés (reset complet)
+  Future<void> deleteMarket() async {
+    await _secureStorage.delete(key: _marketsKey);
+  }
+
+  /// Récupère la liste de tous les marchés configurés
+  Future<List<Market>> getMarkets() async {
+    try {
+      final data = await _secureStorage.read(key: _marketsKey);
+      if (data == null) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(data);
+      return jsonList.map((json) => Market.fromJson(json)).toList();
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getMarkets', e);
+      return [];
+    }
+  }
+
+  /// Sauvegarde la liste complète des marchés
+  Future<void> _saveMarkets(List<Market> markets) async {
     await _secureStorage.write(
-      key: _marketKey,
-      value: jsonEncode(market.toJson()),
+      key: _marketsKey,
+      value: jsonEncode(markets.map((m) => m.toJson()).toList()),
     );
   }
 
-  /// Récupère les informations du marché
-  Future<Market?> getMarket() async {
-    final data = await _secureStorage.read(key: _marketKey);
-    if (data == null) return null;
-    return Market.fromJson(jsonDecode(data));
+  /// Ajoute un nouveau marché à la liste
+  /// ✅ AMÉLIORÉ: Utilise marketId (checksum de la seed) comme identifiant unique
+  /// Retourne true si ajouté, false si déjà existant (même marketId)
+  Future<bool> addMarket(Market market) async {
+    try {
+      final markets = await getMarkets();
+      
+      // ✅ MODIFIÉ: Vérifier si le marché existe déjà par marketId (unique)
+      final existingIndex = markets.indexWhere((m) => m.marketId == market.marketId);
+      if (existingIndex != -1) {
+        Logger.warn('StorageService', 'Marché "${market.fullName}" déjà existant (ID: ${market.marketId})');
+        return false;
+      }
+      
+      // Si c'est le premier marché, le marquer comme actif
+      final newMarket = markets.isEmpty
+          ? market.copyWith(isActive: true)
+          : market;
+      
+      markets.add(newMarket);
+      await _saveMarkets(markets);
+      
+      Logger.success('StorageService', 'Marché "${market.fullName}" ajouté (ID: ${market.marketId})');
+      return true;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur addMarket', e);
+      return false;
+    }
   }
 
-  /// Supprime les informations du marché
-  Future<void> deleteMarket() async {
-    await _secureStorage.delete(key: _marketKey);
+  /// Supprime un marché de la liste par son marketId
+  /// ✅ AMÉLIORÉ: Utilise marketId au lieu du nom
+  /// Retourne true si supprimé, false si non trouvé
+  Future<bool> removeMarket(String marketId) async {
+    try {
+      final markets = await getMarkets();
+      final initialLength = markets.length;
+      
+      // ✅ MODIFIÉ: Supprimer le marché par marketId
+      markets.removeWhere((m) => m.marketId == marketId);
+      
+      if (markets.length == initialLength) {
+        Logger.warn('StorageService', 'Marché avec ID "$marketId" non trouvé');
+        return false;
+      }
+      
+      // Si le marché supprimé était actif, activer le premier restant
+      if (markets.isNotEmpty && !markets.any((m) => m.isActive)) {
+        markets[0] = markets[0].copyWith(isActive: true);
+      }
+      
+      await _saveMarkets(markets);
+      Logger.success('StorageService', 'Marché avec ID "$marketId" supprimé');
+      return true;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur removeMarket', e);
+      return false;
+    }
+  }
+
+  /// Récupère le marché actuellement actif
+  /// Si aucun marché n'est actif, retourne le premier de la liste
+  Future<Market?> getActiveMarket() async {
+    try {
+      final markets = await getMarkets();
+      if (markets.isEmpty) return null;
+      
+      // Chercher le marché actif
+      final activeMarket = markets.firstWhere(
+        (m) => m.isActive,
+        orElse: () => markets.first,
+      );
+      
+      return activeMarket;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getActiveMarket', e);
+      return null;
+    }
+  }
+
+  /// Définit le marché actif par son marketId
+  /// ✅ AMÉLIORÉ: Utilise marketId au lieu du nom
+  /// Retourne true si succès, false si marché non trouvé
+  Future<bool> setActiveMarket(String marketId) async {
+    try {
+      final markets = await getMarkets();
+      final marketIndex = markets.indexWhere((m) => m.marketId == marketId);
+      
+      if (marketIndex == -1) {
+        Logger.warn('StorageService', 'Marché avec ID "$marketId" non trouvé');
+        return false;
+      }
+      
+      // Désactiver tous les marchés et activer le sélectionné
+      for (int i = 0; i < markets.length; i++) {
+        markets[i] = markets[i].copyWith(isActive: i == marketIndex);
+      }
+      
+      await _saveMarkets(markets);
+      Logger.success('StorageService', 'Marché "${markets[marketIndex].fullName}" défini comme actif');
+      return true;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur setActiveMarket', e);
+      return false;
+    }
+  }
+
+  /// Met à jour un marché existant
+  /// ✅ AMÉLIORÉ: Utilise marketId pour la recherche
+  /// Retourne true si mis à jour, false si non trouvé
+  Future<bool> updateMarket(Market market) async {
+    try {
+      final markets = await getMarkets();
+      final index = markets.indexWhere((m) => m.marketId == market.marketId);
+      
+      if (index == -1) {
+        Logger.warn('StorageService', 'Marché "${market.fullName}" non trouvé');
+        return false;
+      }
+      
+      markets[index] = market;
+      await _saveMarkets(markets);
+      Logger.success('StorageService', 'Marché "${market.fullName}" mis à jour');
+      return true;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur updateMarket', e);
+      return false;
+    }
+  }
+
+  /// Récupère un marché par son marketId
+  /// ✅ AMÉLIORÉ: Utilise marketId au lieu du nom
+  Future<Market?> getMarketById(String marketId) async {
+    final markets = await getMarkets();
+    try {
+      return markets.firstWhere((m) => m.marketId == marketId);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// Récupère un marché par son nom (peut retourner plusieurs)
+  /// ⚠️ DEPRECATED: Préférer getMarketById() pour l'unicité
+  Future<Market?> getMarketByName(String marketName) async {
+    final markets = await getMarkets();
+    try {
+      return markets.firstWhere((m) => m.name == marketName);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Vérifie si un marché existe par son marketId
+  /// ✅ AMÉLIORÉ: Utilise marketId au lieu du nom
+  Future<bool> hasMarket(String marketId) async {
+    final markets = await getMarkets();
+    return markets.any((m) => m.marketId == marketId);
+  }
+
+  /// Retourne le nombre de marchés configurés
+  Future<int> getMarketsCount() async {
+    final markets = await getMarkets();
+    return markets.length;
   }
 
   // ============================================================

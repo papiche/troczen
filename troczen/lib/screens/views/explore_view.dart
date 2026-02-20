@@ -23,7 +23,11 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   final _storageService = StorageService();
   late TabController _tabController;
   
-  Market? _currentMarket;
+  // ✅ NOUVEAU: Support multi-marchés
+  List<Market> _markets = [];
+  Market? _selectedMarket;  // Marché sélectionné pour le filtre (null = tous)
+  String _filterMode = 'all';  // 'all', 'active', ou nom du marché
+  
   List<Bon> _myIssuedBons = [];
   List<NostrProfile> _marketProfiles = [];
   bool _isLoading = true;
@@ -48,11 +52,14 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     setState(() => _isLoading = true);
     
     try {
-      final market = await _storageService.getMarket();
+      // ✅ NOUVEAU: Charger tous les marchés
+      final markets = await _storageService.getMarkets();
+      final activeMarket = await _storageService.getActiveMarket();
+      
       final allBons = await _storageService.getBons();
       
       // Filtrer les bons dont l'utilisateur est l'émetteur (possède P1)
-      final myBons = allBons.where((bon) => 
+      final myBons = allBons.where((bon) =>
         bon.issuerNpub == widget.user.npub && bon.p1 != null
       ).toList();
       
@@ -60,7 +67,8 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       final profiles = <NostrProfile>[];
       
       setState(() {
-        _currentMarket = market;
+        _markets = markets;
+        _selectedMarket = activeMarket;
         _myIssuedBons = myBons;
         _marketProfiles = profiles;
         _isLoading = false;
@@ -69,6 +77,14 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       debugPrint('❌ Erreur chargement données Explorer: $e');
       setState(() => _isLoading = false);
     }
+  }
+  
+  /// ✅ NOUVEAU: Filtre les bons selon le marché sélectionné
+  List<Bon> _getFilteredBons() {
+    if (_filterMode == 'all') {
+      return _myIssuedBons;
+    }
+    return _myIssuedBons.where((bon) => bon.marketName == _filterMode).toList();
   }
 
   @override
@@ -505,10 +521,18 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   Widget _buildMarketTab() {
     return RefreshIndicator(
       onRefresh: _loadData,
-      child: _currentMarket == null
+      child: _markets.isEmpty
           ? _buildNoMarketState()
           : CustomScrollView(
               slivers: [
+                // ✅ NOUVEAU: Filtres de marché
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: _buildMarketFilter(),
+                  ),
+                ),
+                
                 // En-tête du marché
                 SliverToBoxAdapter(
                   child: Padding(
@@ -602,6 +626,70 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     );
   }
 
+  /// ✅ NOUVEAU: Filtres de marché avec ChoiceChip
+  Widget _buildMarketFilter() {
+    if (_markets.length <= 1) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Filtrer par marché',
+          style: TextStyle(color: Colors.grey[400], fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // Option "Tous"
+              ChoiceChip(
+                label: const Text('Tous'),
+                selected: _filterMode == 'all',
+                selectedColor: Colors.orange,
+                backgroundColor: const Color(0xFF2A2A2A),
+                labelStyle: TextStyle(
+                  color: _filterMode == 'all' ? Colors.black : Colors.white,
+                ),
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _filterMode = 'all';
+                      _selectedMarket = null;
+                    });
+                  }
+                },
+              ),
+              // Un chip par marché
+              ..._markets.map((market) => ChoiceChip(
+                label: Text(market.displayName),
+                selected: _filterMode == market.name,
+                selectedColor: Colors.orange,
+                backgroundColor: const Color(0xFF2A2A2A),
+                labelStyle: TextStyle(
+                  color: _filterMode == market.name ? Colors.black : Colors.white,
+                ),
+                avatar: market.isExpired
+                    ? const Icon(Icons.warning, size: 16, color: Colors.red)
+                    : null,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _filterMode = market.name;
+                      _selectedMarket = market;
+                    });
+                  }
+                },
+              )),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMarketHeader() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -629,7 +717,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  _currentMarket!.name,
+                  _selectedMarket?.displayName ?? 'Tous les marchés',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

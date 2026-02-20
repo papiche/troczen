@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' as math;
 import '../../models/user.dart';
 import '../../models/bon.dart';
+import '../../models/market.dart';
 import '../../services/storage_service.dart';
 import '../../services/logger_service.dart';
 
@@ -12,6 +13,8 @@ import '../../services/logger_service.dart';
 ///
 /// NOTE: Ce dashboard affiche la santé économique du MARCHÉ GLOBAL,
 /// pas seulement le portefeuille personnel de l'utilisateur.
+///
+/// ✅ NOUVEAU: Support multi-marchés avec filtres
 class DashboardView extends StatefulWidget {
   final User user;
 
@@ -27,9 +30,13 @@ class _DashboardViewState extends State<DashboardView>
   
   late TabController _tabController;
   
+  // ✅ NOUVEAU: Support multi-marchés
+  List<Market> _markets = [];
+  String _filterMode = 'all';  // 'all' ou nom du marché
+  
   DashboardMetrics? _metrics;
   List<Bon> _localBons = [];  // Bons du wallet local
-  List<Map<String, dynamic>> _marketBons = [];  // ✅ NOUVEAU: Bons du marché global
+  List<Map<String, dynamic>> _marketBons = [];  // Bons du marché global
   bool _isLoading = true;
 
   @override
@@ -53,20 +60,22 @@ class _DashboardViewState extends State<DashboardView>
     setState(() => _isLoading = true);
     
     try {
-      // Charger les deux sources de données en parallèle
+      // ✅ NOUVEAU: Charger les marchés en parallèle
       final results = await Future.wait([
         _storageService.getBons(),  // Wallet local
-        _storageService.getMarketBonsData(),  // ✅ Marché global (kind 30303)
+        _storageService.getMarketBonsData(),  // Marché global (kind 30303)
+        _storageService.getMarkets(),  // ✅ NOUVEAU: Liste des marchés
       ]);
       
       _localBons = results[0] as List<Bon>;
       _marketBons = results[1] as List<Map<String, dynamic>>;
+      _markets = results[2] as List<Market>;
       
       Logger.log('DashboardView',
-          'Données chargées: ${_localBons.length} bons locaux, ${_marketBons.length} bons marché');
+          'Données chargées: ${_localBons.length} bons locaux, ${_marketBons.length} bons marché, ${_markets.length} marchés');
       
-      // Calculer les métriques depuis le marché global
-      final metrics = _calculateMetricsFromMarket(_marketBons, _localBons);
+      // Calculer les métriques depuis le marché global (filtré si nécessaire)
+      final metrics = _calculateMetricsFromMarket(_getFilteredMarketBons(), _getFilteredLocalBons());
       
       setState(() {
         _metrics = metrics;
@@ -76,6 +85,18 @@ class _DashboardViewState extends State<DashboardView>
       Logger.error('DashboardView', 'Erreur chargement métriques', e);
       setState(() => _isLoading = false);
     }
+  }
+  
+  /// ✅ NOUVEAU: Filtre les bons du marché selon le marché sélectionné
+  List<Map<String, dynamic>> _getFilteredMarketBons() {
+    if (_filterMode == 'all') return _marketBons;
+    return _marketBons.where((b) => b['marketName'] == _filterMode).toList();
+  }
+  
+  /// ✅ NOUVEAU: Filtre les bons locaux selon le marché sélectionné
+  List<Bon> _getFilteredLocalBons() {
+    if (_filterMode == 'all') return _localBons;
+    return _localBons.where((b) => b.marketName == _filterMode).toList();
   }
 
   /// ✅ CORRECTION: Calcule les métriques depuis les données du marché global
@@ -207,14 +228,92 @@ class _DashboardViewState extends State<DashboardView>
           ? const Center(child: CircularProgressIndicator())
           : _metrics == null
               ? _buildEmptyState()
-              : TabBarView(
-                  controller: _tabController,
+              : Column(
                   children: [
-                    _buildOverviewTab(),
-                    _buildChartsTab(),
-                    _buildTopIssuersTab(),
+                    // ✅ NOUVEAU: Filtres de marché
+                    if (_markets.length > 1)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1E1E),
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey[800]!),
+                          ),
+                        ),
+                        child: _buildMarketFilter(),
+                      ),
+                    
+                    // Contenu des onglets
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildOverviewTab(),
+                          _buildChartsTab(),
+                          _buildTopIssuersTab(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
+    );
+  }
+  
+  /// ✅ NOUVEAU: Filtres de marché avec ChoiceChip
+  Widget _buildMarketFilter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Filtrer par marché',
+          style: TextStyle(color: Colors.grey[400], fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // Option "Tous"
+              ChoiceChip(
+                label: const Text('Tous les marchés'),
+                selected: _filterMode == 'all',
+                selectedColor: Colors.orange,
+                backgroundColor: const Color(0xFF2A2A2A),
+                labelStyle: TextStyle(
+                  color: _filterMode == 'all' ? Colors.black : Colors.white,
+                ),
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _filterMode = 'all');
+                    _loadMetrics();
+                  }
+                },
+              ),
+              // Un chip par marché
+              ..._markets.map((market) => ChoiceChip(
+                label: Text(market.displayName),
+                selected: _filterMode == market.name,
+                selectedColor: Colors.orange,
+                backgroundColor: const Color(0xFF2A2A2A),
+                labelStyle: TextStyle(
+                  color: _filterMode == market.name ? Colors.black : Colors.white,
+                ),
+                avatar: market.isExpired
+                    ? const Icon(Icons.warning, size: 16, color: Colors.red)
+                    : null,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _filterMode = market.name);
+                    _loadMetrics();
+                  }
+                },
+              )),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

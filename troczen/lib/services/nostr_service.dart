@@ -12,6 +12,64 @@ import 'storage_service.dart';
 import 'image_cache_service.dart';
 import 'logger_service.dart';
 
+/// ✅ NIP-12: Normalise un nom de marché en tag de routage standardisé
+/// Cette fonction garantit que tous les marchés sont indexables de la même façon
+/// par tous les relais Nostr (Strfry, etc.)
+///
+/// Exemples:
+/// - "Marché de Paris" → "market_marche_de_paris"
+/// - "ZEN-Lyon" → "market_zen_lyon"
+/// - "Café du Coin" → "market_cafe_du_coin"
+String normalizeMarketTag(String marketName) {
+  // 1. Normalisation NFKD pour séparer les accents de leurs lettres
+  final normalized = marketName.runes.map((r) {
+    final char = String.fromCharCode(r);
+    // Décomposer les caractères accentués
+    if (char.codeUnitAt(0) > 127) {
+      // Caractère non-ASCII, on garde seulement la base
+      // Ex: 'é' → 'e', 'à' → 'a'
+      return _removeDiacritics(char);
+    }
+    return char;
+  }).join();
+  
+  // 2. Convertir en minuscules
+  final lower = normalized.toLowerCase();
+  
+  // 3. Remplacer tout ce qui n'est pas alphanumérique par underscore
+  final sanitized = lower.replaceAll(RegExp(r'[^a-z0-9]'), '_');
+  
+  // 4. Supprimer les underscores multiples et enlever les extrémités
+  final cleaned = sanitized.replaceAll(RegExp(r'_+'), '_').replaceAll(RegExp(r'^_|_$'), '');
+  
+  // 5. Préfixer avec "market_"
+  return 'market_$cleaned';
+}
+
+/// Retire les diacritiques d'un caractère (accents, etc.)
+String _removeDiacritics(String char) {
+  // Mapping manuel des caractères accentués courants vers leur base
+  const diacriticsMap = {
+    'à': 'a', 'â': 'a', 'ä': 'a', 'á': 'a', 'ã': 'a', 'å': 'a',
+    'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+    'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+    'ò': 'o', 'ó': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
+    'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+    'ç': 'c', 'ñ': 'n',
+    'œ': 'oe', 'æ': 'ae',
+    // Majuscules
+    'À': 'a', 'Â': 'a', 'Ä': 'a', 'Á': 'a', 'Ã': 'a', 'Å': 'a',
+    'È': 'e', 'É': 'e', 'Ê': 'e', 'Ë': 'e',
+    'Ì': 'i', 'Í': 'i', 'Î': 'i', 'Ï': 'i',
+    'Ò': 'o', 'Ó': 'o', 'Ô': 'o', 'Ö': 'o', 'Õ': 'o',
+    'Ù': 'u', 'Ú': 'u', 'Û': 'u', 'Ü': 'u',
+    'Ç': 'c', 'Ñ': 'n',
+    'Œ': 'oe', 'Æ': 'ae',
+  };
+  
+  return diacriticsMap[char] ?? char.toLowerCase();
+}
+
 /// Service de publication et synchronisation via Nostr
 /// Gère la publication des P3 (kind 30303) et la synchronisation
 ///
@@ -332,7 +390,8 @@ class NostrService {
         'created_at': now.millisecondsSinceEpoch ~/ 1000,
         'tags': [
           ['d', 'zen-$bonId'],
-          ['market', marketName],
+          ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
+          ['market', marketName],  // Gardé pour affichage UI (joli nom)
           ['currency', 'ZEN'],
           ['value', value.toString()],
           ['issuer', issuerNpub],
@@ -507,7 +566,8 @@ class NostrService {
         'tags': [
           ['p', receiverNpub],
           ['t', 'troczen-transfer'],
-          ['market', marketName],
+          ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
+          ['market', marketName],  // Gardé pour affichage UI (joli nom)
           ['bon', bonId],
           ['value', value.toString()],
         ],
@@ -558,7 +618,8 @@ class NostrService {
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         'tags': [
           ['e', bonId],
-          ['market', marketName],
+          ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
+          ['market', marketName],  // Gardé pour affichage UI (joli nom)
           ['reason', reason],
         ],
         'content': 'BURN | $reason',
@@ -602,7 +663,8 @@ class NostrService {
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         'tags': [
           ['e', bonId],
-          ['market', marketName],
+          ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
+          ['market', marketName],  // Gardé pour affichage UI (joli nom)
           ['reason', reason],
         ],
         'content': 'BURN | $reason',
@@ -625,17 +687,33 @@ class NostrService {
     }
   }
 
-  /// S'abonne aux events kind 30303 d'un marché
+  /// S'abonne aux events kind 30303 d'un marché unique
   Future<void> subscribeToMarket(String marketName, {int? since}) async {
+    await subscribeToMarkets([marketName], since: since);
+  }
+
+  /// ✅ NOUVEAU: S'abonne aux events kind 30303 de plusieurs marchés
+  /// Nostr supporte les tableaux pour les requêtes de tags
+  Future<void> subscribeToMarkets(List<String> marketNames, {int? since}) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
       return;
     }
 
-    final subscriptionId = 'zen-market-$marketName';
+    if (marketNames.isEmpty) {
+      Logger.warn('NostrService', 'Aucun marché à surveiller');
+      return;
+    }
+
+    // Créer un ID d'abonnement unique basé sur les marchés
+    final subscriptionId = 'zen-multi-${marketNames.length}';
+    
+    // ✅ NIP-12: Utiliser le tag 't' pour le filtrage (les relais n'indexent pas les tags personnalisés)
+    final marketTags = marketNames.map((m) => normalizeMarketTag(m)).toList();
+    
     final filters = <String, dynamic>{
       'kinds': [30303],
-      '#market': [marketName],
+      '#t': marketTags,  // ✅ NIP-12: Tag 't' indexé par tous les relais
     };
 
     if (since != null) {
@@ -649,6 +727,7 @@ class NostrService {
     ]);
 
     _channel!.sink.add(request);
+    Logger.log('NostrService', 'Abonné à ${marketNames.length} marché(s): ${marketNames.join(", ")}');
   }
 
   /// ✅ UI/UX: Synchronise tous les P3 d'un marché avec insertion en lot
@@ -695,6 +774,61 @@ class NostrService {
     // ✅ UI/UX: Timer avec flush final du batch
     Timer(const Duration(seconds: 5), () async {
       // Flush final des P3 restants
+      await flushBatch();
+      
+      onP3Received = originalCallback;
+      completer.complete(syncedCount);
+    });
+
+    return completer.future;
+  }
+
+  /// ✅ NOUVEAU: Synchronise les P3 de plusieurs marchés en parallèle
+  /// Utilise un abonnement unique avec filtre multi-marchés
+  Future<int> syncMarketsP3s(List<Market> markets) async {
+    if (markets.isEmpty) return 0;
+    
+    // Utiliser le relay du premier marché (ou défaut)
+    final relayUrl = markets.first.relayUrl ?? NostrConstants.defaultRelay;
+    
+    if (!_isConnected) {
+      final connected = await connect(relayUrl);
+      if (!connected) return 0;
+    }
+
+    int syncedCount = 0;
+    final completer = Completer<int>();
+    
+    // Buffer pour accumulation des P3
+    final Map<String, String> p3Batch = {};
+    const int batchSize = 50;
+    
+    Future<void> flushBatch() async {
+      if (p3Batch.isNotEmpty) {
+        final batchToWrite = Map<String, String>.from(p3Batch);
+        p3Batch.clear();
+        await _storageService.saveP3BatchToCache(batchToWrite);
+        Logger.log('NostrService', 'Batch de ${batchToWrite.length} P3 sauvegardé');
+      }
+    }
+
+    final originalCallback = onP3Received;
+    onP3Received = (bonId, p3Hex) async {
+      p3Batch[bonId] = p3Hex;
+      syncedCount++;
+      originalCallback?.call(bonId, p3Hex);
+      
+      if (p3Batch.length >= batchSize) {
+        await flushBatch();
+      }
+    };
+
+    // ✅ S'abonner à tous les marchés en une seule requête
+    final marketNames = markets.map((m) => m.name).toList();
+    await subscribeToMarkets(marketNames);
+
+    // Timer avec flush final
+    Timer(const Duration(seconds: 8), () async {
       await flushBatch();
       
       onP3Received = originalCallback;
@@ -809,9 +943,23 @@ class NostrService {
         return;
       }
 
-      final market = await _storageService.getMarket();
-      if (market == null || market.name != marketName) {
-        Logger.warn('NostrService', 'Event rejeté: marché incompatible ($marketName vs ${market?.name})');
+      // ✅ MULTI-MARCHÉS: Chercher le marché correspondant dans la liste configurée
+      final markets = await _storageService.getMarkets();
+      
+      // ✅ ANTI-SPAM: Ignorer silencieusement les événements des marchés inconnus
+      // Ne PAS lancer d'exception pour éviter un déluge de Snackbars d'erreur
+      Market? targetMarket;
+      for (final m in markets) {
+        if (m.name == marketName) {
+          targetMarket = m;
+          break;
+        }
+      }
+      
+      if (targetMarket == null) {
+        // Marché non configuré en local -> on ignore silencieusement
+        // C'est normal: l'utilisateur peut être sur un relais global avec d'autres marchés
+        Logger.debug('NostrService', 'Event ignoré: marché "$marketName" non configuré en local');
         return;
       }
 
@@ -822,7 +970,7 @@ class NostrService {
       final p3Hex = await _cryptoService.decryptP3WithSeed(
         p3Cipher,
         p3Nonce,
-        market.seedMarket,
+        targetMarket.seedMarket,
         eventDate,
       );
 
@@ -934,6 +1082,97 @@ class NostrService {
       Logger.log('NostrService', 'Métadonnées mises à jour pour $npub');
     } catch (e) {
       Logger.error('NostrService', 'Erreur traitement metadata', e);
+    }
+  }
+  
+  /// ✅ v2.0.1: Récupère le profil utilisateur (Kind 0) depuis le relais
+  /// Utilisé pour afficher la carte d'invitation d'un marché
+  Future<NostrProfile?> fetchUserProfile(String npub) async {
+    if (!_isConnected) {
+      Logger.error('NostrService', 'Non connecté au relais');
+      return null;
+    }
+    
+    try {
+      final completer = Completer<NostrProfile?>();
+      
+      // Envoyer une requête REQ pour le Kind 0 de ce npub
+      final subscriptionId = 'profile_${DateTime.now().millisecondsSinceEpoch}';
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'authors': [npub],
+          'kinds': [0],
+          'limit': 1,
+        }
+      ]);
+      
+      // Handler temporaire pour capturer la réponse
+      void Function(dynamic)? tempHandler;
+      tempHandler = (data) {
+        try {
+          final message = jsonDecode(data);
+          if (message is List && message.length >= 3) {
+            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
+              final event = message[2] as Map<String, dynamic>;
+              final content = event['content'] as String?;
+              if (content != null) {
+                final contentJson = jsonDecode(content);
+                final profile = NostrProfile(
+                  npub: npub,
+                  name: (contentJson['name'] as String?) ?? npub.substring(0, 8),
+                  displayName: contentJson['display_name'] as String?,
+                  about: contentJson['about'] as String?,
+                  picture: contentJson['picture'] as String?,
+                  banner: contentJson['banner'] as String?,
+                  website: contentJson['website'] as String?,
+                );
+                if (!completer.isCompleted) {
+                  completer.complete(profile);
+                }
+              }
+            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
+              // End of stored events - fermer le subscription
+              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+              if (!completer.isCompleted) {
+                completer.complete(null);
+              }
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing profile response', e);
+        }
+      };
+      
+      // Écouter temporairement
+      final originalSubscription = _subscription;
+      _subscription = _channel?.stream.listen(tempHandler);
+      
+      // Envoyer la requête
+      _channel?.sink.add(request);
+      
+      // Timeout après 5 secondes
+      Timer(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) {
+          _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(null);
+        }
+      });
+      
+      final profile = await completer.future;
+      
+      // Restaurer le handler original
+      await _subscription?.cancel();
+      _subscription = originalSubscription;
+      if (_channel != null && originalSubscription != null) {
+        _subscription = _channel?.stream.listen(_handleMessage);
+      }
+      
+      return profile;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération profil', e);
+      return null;
     }
   }
 

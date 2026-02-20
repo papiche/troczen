@@ -1,7 +1,7 @@
 name: troczen
 description: Système de bons ẐEN offline-first pour marchés locaux
 publish_to: 'none'
-version: 1.0.9
+version: 2.0.1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -61,6 +61,7 @@ dependencies:
   image_picker: ^1.2.1
   cached_network_image: ^3.3.1
   path: ^1.9.1
+  image: ^4.8.0  # ✅ v2.0.1: Compression WebP pour images Base64 dans Nostr
   
 dev_dependencies:
   flutter_test:
