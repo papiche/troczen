@@ -143,18 +143,23 @@ void main() {
       
       expect(parts.length, equals(3));
       
-      // Reconstruction avec toutes les combinaisons possibles
-      expect(cryptoService.shamirCombine(parts[0], parts[1], null), equals(secret), reason: 'P1+P2');
-      expect(cryptoService.shamirCombine(null, parts[1], parts[2]), equals(secret), reason: 'P2+P3');
-      expect(cryptoService.shamirCombine(parts[0], null, parts[2]), equals(secret), reason: 'P1+P3');
+      // Reconstruction avec toutes les combinaisons possibles (via Uint8List)
+      final p1Bytes = Uint8List.fromList(HEX.decode(parts[0]));
+      final p2Bytes = Uint8List.fromList(HEX.decode(parts[1]));
+      final p3Bytes = Uint8List.fromList(HEX.decode(parts[2]));
+      
+      expect(HEX.encode(cryptoService.shamirCombineBytesDirect(p1Bytes, p2Bytes, null)), equals(secret), reason: 'P1+P2');
+      expect(HEX.encode(cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes)), equals(secret), reason: 'P2+P3');
+      expect(HEX.encode(cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes)), equals(secret), reason: 'P1+P3');
     });
 
     test('Shamir combine échoue avec 1 seule part', () {
       final secret = '01' * 32;
       final parts = cryptoService.shamirSplit(secret);
+      final p1Bytes = Uint8List.fromList(HEX.decode(parts[0]));
       
       expect(
-        () => cryptoService.shamirCombine(parts[0], null, null),
+        () => cryptoService.shamirCombineBytesDirect(p1Bytes, null, null),
         throwsArgumentError,
       );
     });
@@ -168,11 +173,14 @@ void main() {
           Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)))
         );
         final parts = cryptoService.shamirSplit(secret);
+        final p1Bytes = Uint8List.fromList(HEX.decode(parts[0]));
+        final p2Bytes = Uint8List.fromList(HEX.decode(parts[1]));
+        final p3Bytes = Uint8List.fromList(HEX.decode(parts[2]));
         
         // Toutes les combinaisons doivent fonctionner
-        expect(cryptoService.shamirCombine(parts[0], parts[1], null), equals(secret));
-        expect(cryptoService.shamirCombine(null, parts[1], parts[2]), equals(secret));
-        expect(cryptoService.shamirCombine(parts[0], null, parts[2]), equals(secret));
+        expect(HEX.encode(cryptoService.shamirCombineBytesDirect(p1Bytes, p2Bytes, null)), equals(secret));
+        expect(HEX.encode(cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes)), equals(secret));
+        expect(HEX.encode(cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes)), equals(secret));
       }
     });
 

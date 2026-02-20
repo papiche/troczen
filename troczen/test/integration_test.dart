@@ -56,9 +56,12 @@ void main() {
         expect(p1, isNot(equals(p3)), reason: 'P1 et P3 doivent être différents');
 
         // 3. Vérifier que la reconstruction fonctionne avec n'importe quelle paire
-        final reconstructed12 = cryptoService.shamirCombine(p1, p2, null);
-        final reconstructed13 = cryptoService.shamirCombine(p1, null, p3);
-        final reconstructed23 = cryptoService.shamirCombine(null, p2, p3);
+        final p1Bytes = Uint8List.fromList(HEX.decode(p1));
+        final p2Bytes = Uint8List.fromList(HEX.decode(p2));
+        final p3Bytes = Uint8List.fromList(HEX.decode(p3));
+        final reconstructed12 = HEX.encode(cryptoService.shamirCombineBytesDirect(p1Bytes, p2Bytes, null));
+        final reconstructed13 = HEX.encode(cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes));
+        final reconstructed23 = HEX.encode(cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes));
 
         expect(reconstructed12, equals(bonNsecHex), reason: 'P1+P2 doit reconstruire la clé');
         expect(reconstructed13, equals(bonNsecHex), reason: 'P1+P3 doit reconstruire la clé');
@@ -149,9 +152,9 @@ void main() {
         final p3 = parts[2];
 
         // 2. Reconstruction éphémère (comme dans le flux réel)
-        final reconstructedNsecBytes = Uint8List.fromList(
-          HEX.decode(cryptoService.shamirCombine(null, p2, p3))
-        );
+        final p2Bytes = Uint8List.fromList(HEX.decode(p2));
+        final p3Bytes = Uint8List.fromList(HEX.decode(p3));
+        final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
 
         // Vérifier que la reconstruction est correcte
         expect(HEX.encode(reconstructedNsecBytes), equals(originalNsec));
@@ -336,8 +339,11 @@ void main() {
           expect(decryptedP2, equals(p2), reason: 'P2 déchiffré doit correspondre');
 
           // 4. Bob reconstruit nsec_B en RAM
-          final reconstructedNsec = cryptoService.shamirCombine(null, decryptedP2, p3);
-          expect(reconstructedNsec, equals(originalNsec), 
+          final decryptedP2Bytes = Uint8List.fromList(HEX.decode(decryptedP2));
+          final p3Bytes = Uint8List.fromList(HEX.decode(p3));
+          final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, decryptedP2Bytes, p3Bytes);
+          final reconstructedNsec = HEX.encode(reconstructedNsecBytes);
+          expect(reconstructedNsec, equals(originalNsec),
             reason: 'nsec_B reconstruit doit correspondre à l\'original');
 
           // 5. Bob signe le challenge
@@ -458,7 +464,10 @@ void main() {
           );
 
           // 4. Reconstruction et signature
-          final reconstructedNsec = cryptoService.shamirCombine(null, decryptedP2, p3);
+          final decryptedP2Bytes = Uint8List.fromList(HEX.decode(decryptedP2));
+          final p3Bytes = Uint8List.fromList(HEX.decode(p3));
+          final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, decryptedP2Bytes, p3Bytes);
+          final reconstructedNsec = HEX.encode(reconstructedNsecBytes);
           final signature = cryptoService.signMessage(decodedOffer['challenge'], reconstructedNsec);
 
           // 5. Génération de l'ACK
@@ -540,13 +549,16 @@ void main() {
           final parts = cryptoService.shamirSplit(originalNsec);
 
           // Parts valides - reconstruction correcte
-          final validReconstruction = cryptoService.shamirCombine(parts[0], parts[1], null);
+          final p0Bytes = Uint8List.fromList(HEX.decode(parts[0]));
+          final p1Bytes = Uint8List.fromList(HEX.decode(parts[1]));
+          final validReconstruction = HEX.encode(cryptoService.shamirCombineBytesDirect(p0Bytes, p1Bytes, null));
           expect(validReconstruction, equals(originalNsec), reason: 'Parts valides doivent reconstruire la clé');
 
           // Part corrompue (modifier un byte)
           // Note: Shamir ne détecte pas les parts corrompues, il reconstruit un résultat incorrect
           final corruptedP2 = parts[1].substring(0, 62) + 'ff';
-          final corruptedReconstruction = cryptoService.shamirCombine(parts[0], corruptedP2, null);
+          final corruptedP2Bytes = Uint8List.fromList(HEX.decode(corruptedP2));
+          final corruptedReconstruction = HEX.encode(cryptoService.shamirCombineBytesDirect(p0Bytes, corruptedP2Bytes, null));
           
           // Le résultat reconstruit sera différent de l'original
           expect(corruptedReconstruction, isNot(equals(originalNsec)),

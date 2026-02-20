@@ -34,7 +34,6 @@ class StorageService {
   static const String _userKey = 'user';
   static const String _bonsKey = 'bons';
   static const String _marketKey = 'market';
-  static const String _p3CacheKey = 'p3_cache'; // ⚠️ Conservé pour migration
   static const String _onboardingCompleteKey = 'onboarding_complete';
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
@@ -368,64 +367,6 @@ class StorageService {
   /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<DateTime?> getLastP3Sync() async {
     return await _cacheService.getLastP3Sync();
-  }
-
-  /// ✅ MIGRATION: Migre les données P3 de FlutterSecureStorage vers SQLite
-  /// À appeler au démarrage de l'application pour les utilisateurs existants
-  Future<void> migrateP3CacheToSQLite() async {
-    try {
-      // Vérifier si des données existent dans l'ancien stockage
-      final oldP3CacheData = await _secureStorage.read(key: _p3CacheKey);
-      final oldMarketP3ListData = await _secureStorage.read(key: 'market_p3_list');
-      
-      bool migrated = false;
-      
-      // Migrer le cache P3 individuel
-      if (oldP3CacheData != null && oldP3CacheData.isNotEmpty) {
-        try {
-          final Map<String, dynamic> jsonMap = jsonDecode(oldP3CacheData);
-          final p3Cache = jsonMap.map((key, value) => MapEntry(key, value.toString()));
-          
-          if (p3Cache.isNotEmpty) {
-            await _cacheService.saveP3BatchToCache(p3Cache);
-            await _secureStorage.delete(key: _p3CacheKey);
-            Logger.success('StorageService', 'Migration P3 cache: ${p3Cache.length} entrées migrées vers SQLite');
-            migrated = true;
-          }
-        } catch (e) {
-          Logger.error('StorageService', 'Erreur migration P3 cache', e);
-        }
-      }
-      
-      // Migrer les données du marché
-      if (oldMarketP3ListData != null && oldMarketP3ListData.isNotEmpty) {
-        try {
-          final List<dynamic> p3Data = jsonDecode(oldMarketP3ListData);
-          final marketBons = p3Data.cast<Map<String, dynamic>>();
-          
-          if (marketBons.isNotEmpty) {
-            await _cacheService.saveMarketBonDataBatch(marketBons);
-            await _secureStorage.delete(key: 'market_p3_list');
-            Logger.success('StorageService', 'Migration marché: ${marketBons.length} bons migrés vers SQLite');
-            migrated = true;
-          }
-        } catch (e) {
-          Logger.error('StorageService', 'Erreur migration marché', e);
-        }
-      }
-      
-      // Migrer le timestamp de dernière sync
-      final oldSyncTimestamp = await _secureStorage.read(key: 'market_p3_last_sync');
-      if (oldSyncTimestamp != null) {
-        await _secureStorage.delete(key: 'market_p3_last_sync');
-      }
-      
-      if (migrated) {
-        Logger.success('StorageService', '✅ Migration P3 vers SQLite terminée avec succès');
-      }
-    } catch (e) {
-      Logger.error('StorageService', 'Erreur migration P3 vers SQLite', e);
-    }
   }
 
   /// Efface tout le stockage (pour reset complet)

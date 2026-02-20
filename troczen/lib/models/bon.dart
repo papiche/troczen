@@ -14,7 +14,7 @@ enum BonStatus {
 class Bon {
   final String bonId;           // npub_bon (clé publique du bon en hex)
   // ✅ SÉCURITÉ: bonNsec supprimé - reconstruction éphémère uniquement
-  // final String bonNsec;      // ❌ NE PLUS STOCKER - voir crypto_service.shamirCombine()
+  // final String bonNsec;      // ❌ NE PLUS STOCKER - voir crypto_service.shamirCombineBytesDirect()
   final double value;           // Valeur en ẐEN
   final String issuerName;      // Nom de l'émetteur
   final String issuerNpub;      // npub de l'émetteur

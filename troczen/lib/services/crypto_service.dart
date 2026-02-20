@@ -65,20 +65,6 @@ class CryptoService {
     }
   }
   
-  /// @Deprecated('Utiliser secureZeroiseBytes(Uint8List) à la place - les Strings sont immuables en Dart')
-  /// ⚠️ DÉPRÉCIÉ: Cette méthode est inefficace car les Strings sont immuables en Dart.
-  /// La String originale reste en mémoire même après cette opération.
-  /// Utilisez secureZeroiseBytes(Uint8List) à la place.
-  @Deprecated('Utiliser secureZeroiseBytes(Uint8List) à la place - les Strings sont immuables en Dart')
-  void secureZeroise(String hexString) {
-    try {
-      final bytes = Uint8List.fromList(HEX.decode(hexString));
-      secureZeroiseBytes(bytes);
-    } catch (e) {
-      // Silently fail - string déjà collecté
-    }
-  }
-  
   /// ✅ SÉCURITÉ: Validation clé publique secp256k1
   /// Vérifie que la coordonnée x correspond à un point valide sur la courbe
   /// Utilise les constantes secp256k1 standardisées
@@ -358,48 +344,6 @@ class CryptoService {
       HEX.encode(p2Bytes),
       HEX.encode(p3Bytes),
     ];
-  }
-
-  /// Reconstruit le secret à partir de 2 parts quelconques (sur 3)
-  /// ✅ IMPLÉMENTATION: Utilise GF(256) pour garantir des résultats dans [0, 255]
-  ///
-  /// Lève [ShamirReconstructionException] si la reconstruction échoue.
-  /// Lève [ArgumentError] si moins de 2 parts sont fournies.
-  /// @Deprecated('Utiliser shamirCombineBytes qui retourne Uint8List pour permettre le nettoyage mémoire')
-  String shamirCombine(String? part1Hex, String? part2Hex, String? part3Hex) {
-    final result = shamirCombineBytes(part1Hex, part2Hex, part3Hex);
-    final hex = HEX.encode(result);
-    // Nettoyer le Uint8List après conversion
-    secureZeroiseBytes(result);
-    return hex;
-  }
-
-  /// ✅ SÉCURITÉ: Reconstruit le secret en Uint8List (permet le nettoyage mémoire)
-  /// Retourne directement un Uint8List au lieu d'une String hexadécimale
-  /// pour permettre à l'appelant de nettoyer la mémoire avec secureZeroiseBytes()
-  ///
-  /// ⚠️ DÉPRÉCIÉ: Cette méthode accepte des String hex qui restent en mémoire.
-  /// Utilisez shamirCombineBytesDirect() qui accepte des Uint8List directement.
-  ///
-  /// Lève [ShamirReconstructionException] si la reconstruction échoue.
-  /// Lève [ArgumentError] si moins de 2 parts sont fournies.
-  @Deprecated('Utiliser shamirCombineBytesDirect avec Uint8List pour éviter les String en RAM')
-  Uint8List shamirCombineBytes(String? part1Hex, String? part2Hex, String? part3Hex) {
-    // Convertir les String en Uint8List pour la méthode directe
-    Uint8List? p1, p2, p3;
-    if (part1Hex != null) p1 = Uint8List.fromList(HEX.decode(part1Hex));
-    if (part2Hex != null) p2 = Uint8List.fromList(HEX.decode(part2Hex));
-    if (part3Hex != null) p3 = Uint8List.fromList(HEX.decode(part3Hex));
-    
-    // Appeler la méthode directe
-    final result = shamirCombineBytesDirect(p1, p2, p3);
-    
-    // Nettoyer les Uint8List créés (les String hex restent malheureusement en mémoire)
-    if (p1 != null) secureZeroiseBytes(p1);
-    if (p2 != null) secureZeroiseBytes(p2);
-    if (p3 != null) secureZeroiseBytes(p3);
-    
-    return result;
   }
 
   /// ✅ SÉCURITÉ MAXIMALE: Reconstruit le secret à partir de Uint8List directement
