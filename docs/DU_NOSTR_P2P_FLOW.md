@@ -1,4 +1,4 @@
-# Flux d'Émission du Dividende Universel (DU) via Nostr P2P
+	# Flux d'Émission du Dividende Universel (DU) via Nostr P2P
 
 Ce document décrit le flux expérimental de calcul et d'émission d'un Dividende Universel (DU) local, basé sur le graphe social Nostr (follows réciproques) plutôt que sur une blockchain globale comme Duniter.
 
@@ -45,7 +45,7 @@ sequenceDiagram
     %% ÉTAPE 3 : CALCUL DU DU
     rect rgb(30, 30, 30)
     Note over App: 3. Calcul Mathématique du DU_i(t+1)
-    App->>App: DU_new = DU_current + C² * (M_n1 + sqrt(M_n2)) / (N1 + N2)
+    App->>App: DU_new = DU_current + C² * (M_n1 + M_n2 / sqrt(N2)) / (N1 + sqrt(N2))
     App->>App: Vérifie plafond journalier & horodatage
     end
     
@@ -97,3 +97,173 @@ Dans l'interface utilisateur (UI), la valeur de chaque bon est affichée de deux
 - **Valeur quantitative** : ex. "10 ẐEN" (pour faciliter le calcul mental au marché).
 - **Valeur relativiste** : ex. "0.95 DU" (calculée dynamiquement par rapport au DU du jour).
 Ils peuvent désormais être dépensés sur le marché via le mécanisme de double scan atomique hors-ligne.
+
+---
+
+## 1️⃣ Ce que “voit” un utilisateur (psychologie simple)
+
+Avec la formule :
+
+[
+DU_i(t+1) = DU_i(t) + C^2 \cdot \frac{M_{n1} + \frac{M_{n2}}{\sqrt{N2}}}{N1 + \sqrt{N2}}
+]
+
+Un utilisateur comprend très vite, même sans maths :
+
+> 👉 *“Ma création de ẐEN dépend des personnes que je fréquente et de la qualité de leurs réseaux.”*
+
+Ça déclenche **trois moteurs de motivation distincts**.
+
+---
+
+## 2️⃣ Effet n°1 — Incitation forte aux **nouvelles rencontres réelles**
+
+### Pourquoi ?
+
+* Ajouter **un nouveau lien N1** augmente :
+
+  * le numérateur (Mₙ₁)
+  * le dénominateur (N1)
+* Mais **pas de manière linéaire**
+
+👉 Résultat :
+
+* Un nouveau lien **pauvre mais réel** reste positif
+* Un lien fictif (Sybil) est **peu rentable**
+* Un lien actif et inséré localement est **très rentable**
+
+### Effet comportemental
+
+* Incitation à :
+
+  * aller sur des marchés
+  * rencontrer physiquement
+  * créer des follows **réciproques authentiques**
+* Désincitation à :
+
+  * créer des faux comptes
+  * accumuler des follows passifs
+
+👉 **La rencontre physique devient productive**, mais seulement si elle est sincère.
+
+---
+
+## 3️⃣ Effet n°2 — La richesse des personnes rencontrées compte… mais modérément
+
+### Rôle de Mₙ₁
+
+Rencontrer quelqu’un de déjà actif :
+
+* augmente ton DU
+* **sans effet exponentiel**
+* sans “effet baleine”
+
+Parce que :
+
+* Mₙ₁ est divisé par N1
+* donc chaque nouveau lien **dilue** un peu l’avantage
+
+👉 Tu veux :
+
+* des gens actifs
+* mais surtout des gens **insérés dans un réseau sain**
+
+### Effet psychologique subtil
+
+> “Je ne cherche pas le plus riche, je cherche le plus vivant.”
+
+C’est très différent d’une logique capitaliste classique.
+
+---
+
+## 4️⃣ Effet n°3 — L’intersection de groupes devient STRATÉGIQUE
+
+C’est là que ton idée devient **brillante**.
+
+### Pourquoi l’intersection est favorisée ?
+
+* N2 est :
+
+  * pondéré par √N2 (croissance lente)
+  * amorti au numérateur et au dénominateur
+* Donc :
+
+  * un N2 énorme mais diffus → peu rentable
+  * un N2 **densément interconnecté** → très rentable
+
+👉 Les **ponts entre communautés** deviennent précieux.
+
+### Exemple concret
+
+* Groupe A : producteurs
+* Groupe B : artisans
+* Groupe C : développeurs
+
+Quelqu’un qui :
+
+* appartient à A
+* rencontre B
+* introduit B à C
+
+👉 devient un **nœud de confiance inter-groupes**
+👉 son DU augmente plus vite que la moyenne
+👉 sans jamais devenir dominant
+
+💡 Tu récompenses :
+
+* la circulation
+* la médiation
+* la transversalité
+
+---
+
+## 5️⃣ Effet n°4 — Désincitation naturelle à l’accaparement
+
+### Pourquoi ?
+
+* Accumuler du ẐEN sans créer de liens :
+
+  * ne fait pas croître N1
+  * ne fait pas croître N2
+* Donc :
+
+  * ton DU stagne
+  * ta richesse devient relative
+
+👉 **La thésaurisation est inutile**.
+
+C’est un point **politique fort**, très audible pour une collectivité.
+
+---
+
+## 6️⃣ Effet n°5 — Émergence de rôles sociaux sains
+
+Sans les nommer, ton système fait émerger :
+
+| Rôle       | Pourquoi                          |
+| ---------- | --------------------------------- |
+| Tisseurs   | créent des ponts entre groupes    |
+| Animateurs | augmentent N1 local               |
+| Gardiens   | maintiennent la qualité des liens |
+| Passeurs   | relient N1 ↔ N2                   |
+
+👉 Ces rôles sont **rémunérés implicitement**, sans statut, sans pouvoir.
+
+---
+
+## 7️⃣ Résumé clair pour élus / partenaires
+
+Tu peux dire ceci **mot pour mot** :
+
+> *“La formule n’incite ni à l’accumulation, ni à la spéculation.
+> Elle récompense la rencontre réelle, la diversité des relations et l’interconnexion entre groupes locaux.
+> Plus une personne contribue à relier des communautés différentes, plus elle est reconnue par le système.”*
+
+---
+
+## 8️⃣ Phrase clé (à garder)
+
+> **Ce n’est pas la richesse qui crée la confiance,
+> c’est la confiance qui crée la richesse.**
+
+

@@ -209,18 +209,20 @@ CreateBonScreen
   → NostrService.publishP3(kind 30303)
 ```
 
-### Transfert atomique (double scan)
+### Transfert atomique (Mode Miroir)
+
+L'application utilise un "Mode Miroir" où l'écran est divisé en deux (QR en haut, Caméra en bas) pour permettre un échange instantané sans clic supplémentaire.
 
 ```
-DONNEUR
+DONNEUR (MirrorOfferScreen)
   K_P2 = SHA256(P3_from_cache)
   P2_enc = AES-GCM(K_P2, P2, nonce)
   challenge = Random.secure()
-  QR1 = [bonId | P2_enc | nonce | challenge | ts | ttl]  ← 113 ou 160 octets
-  ↓ affiche QR1
+  QR1 = [bonId | P2_enc | nonce | challenge | ts | ttl | sig]  ← 240 octets
+  ↓ affiche QR1 en haut, active caméra en bas
 
-RECEVEUR
-  ← scan QR1
+RECEVEUR (MirrorReceiveScreen)
+  ← scan QR1 avec caméra en bas
   P3 = cache[bonId]
   K_P2 = SHA256(P3)
   P2 = AES-GCM-decrypt(P2_enc, K_P2, nonce)
@@ -228,10 +230,10 @@ RECEVEUR
   signature = Schnorr.sign(challenge, nsec_bon_temp)
   efface nsec_bon_temp
   QR2 = [bonId | signature | 0x01]       ← 97 octets
-  ↓ affiche QR2
+  ↓ affiche QR2 en haut
 
 DONNEUR
-  ← scan QR2
+  ← scan QR2 avec caméra en bas
   Schnorr.verify(challenge, signature, npub_bon) → OK
   StorageService.deleteBon(bonId)         ← suppression P2
   NostrService.publish(kind 1, TRANSFER)
@@ -462,10 +464,10 @@ bon.stats           // {power, defense, speed, durability, valueMultiplier}
 - Compte à rebours TTL 30s avec régénération automatique
 - Challenge signé inclus dans le payload
 
-### Écrans ACK
+### Écrans Mode Miroir
 
-- `AckScreen` : affiche QR2 (signature du receveur)
-- `AckScannerScreen` : scan du QR2 par le donneur, vérification Schnorr, suppression P2
+- `MirrorOfferScreen` : Écran du donneur. Affiche le QR1 en haut et scanne le QR2 en bas.
+- `MirrorReceiveScreen` : Écran du receveur. Scanne le QR1 en bas et affiche le QR2 en haut.
 
 ---
 

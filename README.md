@@ -72,13 +72,13 @@ L'onboarding en 5 étapes guide la configuration : seed de marché, relais Nostr
 
 ### Donner un bon
 1. Sélectionner un bon dans le wallet → "Donner"
-2. Afficher le QR code (TTL 30s) au receveur
-3. Scanner le QR ACK du receveur pour finaliser
+2. L'écran se divise en deux (Mode Miroir) : le QR code s'affiche en haut, la caméra s'active en bas.
+3. Mettez votre téléphone face à celui du receveur. Le transfert se fait automatiquement.
 
 ### Recevoir un bon
-1. Scanner → lire le QR de l'offre
-2. Vérification automatique avec P3 du cache
-3. Afficher le QR ACK au donneur
+1. Cliquer sur "Recevoir" (Scanner)
+2. L'écran se divise en deux (Mode Miroir). Scannez le QR du donneur avec la moitié basse.
+3. Le QR de confirmation s'affiche automatiquement en haut. Laissez les téléphones face à face jusqu'au succès.
 
 ## Tests
 

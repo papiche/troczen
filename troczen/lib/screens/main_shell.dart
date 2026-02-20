@@ -6,7 +6,7 @@ import 'views/wallet_view.dart';
 import 'views/explore_view.dart';
 import 'views/dashboard_view.dart';
 import 'views/profile_view.dart';
-import 'scan_screen.dart';
+import 'mirror_receive_screen.dart';
 import 'create_bon_screen.dart';
 import 'settings_screen.dart';
 import '../services/storage_service.dart';
@@ -109,8 +109,8 @@ class _MainShellState extends State<MainShell> {
       case 0: // Wallet
         return FloatingActionButton.extended(
           onPressed: () => _navigateToScan(),
-          icon: const Icon(Icons.camera_alt),
-          label: const Text('Scanner'),
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Recevoir'),
           backgroundColor: const Color(0xFFFFB347),
         );
       
@@ -267,7 +267,7 @@ class _MainShellState extends State<MainShell> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ScanScreen(user: widget.user),
+        builder: (context) => MirrorReceiveScreen(user: widget.user),
       ),
     );
   }

@@ -8,7 +8,7 @@ import '../../services/burn_service.dart';
 import '../../services/crypto_service.dart';
 import '../../widgets/panini_card.dart';
 import '../../widgets/qr_explosion_widget.dart';
-import '../offer_screen.dart';
+import '../mirror_offer_screen.dart';
 
 /// WalletView — Bons dont je détiens P2
 /// Vue principale du commerçant receveur
@@ -856,7 +856,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => OfferScreen(user: widget.user, bon: bon),
+                          builder: (context) => MirrorOfferScreen(user: widget.user, bon: bon),
                         ),
                       );
                     },
