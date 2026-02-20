@@ -12,6 +12,7 @@ import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
 import '../services/api_service.dart';
+import '../services/du_calculation_service.dart';
 
 class CreateBonScreen extends StatefulWidget {
   final User user;
@@ -214,6 +215,17 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       await _storageService.saveP3ToCache(bonNpubHex, p3);
 
       // 5. Créer le bon (sans stocker bonNsec)
+      final nostrService = NostrService(
+        cryptoService: _cryptoService,
+        storageService: _storageService,
+      );
+      final duService = DuCalculationService(
+        storageService: _storageService,
+        nostrService: nostrService,
+        cryptoService: _cryptoService,
+      );
+      final currentDu = await duService.getCurrentGlobalDu();
+
       final bon = Bon(
         bonId: bonNpubHex,
         // bonNsec retiré - reconstruction via P2+P3 uniquement
@@ -233,6 +245,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         cardType: Bon.generateCardType(),
         specialAbility: Bon.generateSpecialAbility(_useAutoRarity ? Bon.generateRarity() : _selectedRarity),
         stats: Bon.generateStats(_useAutoRarity ? Bon.generateRarity() : _selectedRarity),
+        duAtCreation: currentDu,
       );
 
       // 6. Sauvegarder le bon
@@ -247,11 +260,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       // 8. ✅ PUBLIER PROFIL DU BON SUR NOSTR (kind 0)
       // SIGNÉ PAR LE BON LUI-MÊME (reconstruction éphémère P2+P3)
       try {
-        final nostrService = NostrService(
-          cryptoService: _cryptoService,
-          storageService: _storageService,
-        );
-
         // Connexion au relais
         final relayUrl = _selectedMarket!.relayUrl ?? NostrConstants.defaultRelay;
         final connected = await nostrService.connect(relayUrl);

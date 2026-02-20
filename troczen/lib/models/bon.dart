@@ -35,6 +35,7 @@ class Bon {
   final String? cardType;       // Type de carte (ex: "commerce", "service", "artisan")
   final String? specialAbility; // Capacité spéciale (ex: "double valeur", "résistant")
   final Map<String, dynamic>? stats; // Statistiques (ex: {"power": 5, "defense": 3})
+  final double? duAtCreation;   // Valeur du DU le jour de la création (pour calcul relativiste)
 
   Bon({
     required this.bonId,
@@ -59,6 +60,7 @@ class Bon {
     this.cardType = 'commerce',
     this.specialAbility,
     this.stats,
+    this.duAtCreation,
   });
 
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
@@ -191,6 +193,14 @@ class Bon {
     return '$minutes minutes restantes';
   }
 
+  // Calcul dynamique de la valeur relative actuelle
+  // Si le DU actuel n'est pas fourni, on utilise le DU à la création par défaut
+  double getRelativeValue(double currentGlobalDu) {
+    if (duAtCreation == null || duAtCreation == 0) return 0.0;
+    // La valeur relative est la valeur quantitative divisée par le DU actuel
+    return value / currentGlobalDu;
+  }
+
   // Obtenir les caractéristiques pour l'affichage
   Map<String, String> getCharacteristics() {
     return {
@@ -265,6 +275,7 @@ class Bon {
     String? cardType,
     String? specialAbility,
     Map<String, dynamic>? stats,
+    double? duAtCreation,
   }) {
     return Bon(
       bonId: bonId ?? this.bonId,
@@ -289,6 +300,7 @@ class Bon {
       cardType: cardType ?? this.cardType,
       specialAbility: specialAbility ?? this.specialAbility,
       stats: stats ?? this.stats,
+      duAtCreation: duAtCreation ?? this.duAtCreation,
     );
   }
 
@@ -312,6 +324,7 @@ class Bon {
       'rarity': rarity,
       'transferCount': transferCount,
       'issuerNostrProfile': issuerNostrProfile,
+      'duAtCreation': duAtCreation,
     };
   }
 
@@ -335,6 +348,7 @@ class Bon {
       rarity: json['rarity'] ?? 'common',
       transferCount: json['transferCount'] ?? 0,
       issuerNostrProfile: json['issuerNostrProfile'],
+      duAtCreation: json['duAtCreation']?.toDouble(),
     );
   }
 

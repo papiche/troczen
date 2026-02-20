@@ -186,18 +186,47 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
 
       if (publishSuccess) {
         setState(() => _statusMessage = 'Transfert confirmé !');
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (!mounted) return;
-        // Retourner avec succès
-        Navigator.pop(context, {'verified': true, 'published': true});
       } else {
         // Même si la publication échoue, le transfert local est validé
         // L'utilisateur pourra synchroniser plus tard
         setState(() => _statusMessage = 'Transfert local confirmé (sync en attente)');
-        await Future.delayed(const Duration(milliseconds: 800));
-        if (!mounted) return;
-        Navigator.pop(context, {'verified': true, 'published': false});
       }
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+
+      // ✅ NOUVEAU: Proposer de tisser un lien de confiance (Follow Nostr)
+      if (widget.receiverNpub != null) {
+        final shouldFollow = await _showFollowPrompt();
+        if (shouldFollow == true) {
+          await _storageService.addContact(widget.receiverNpub!);
+          
+          // Tenter de publier sur Nostr si connecté
+          final market = await _storageService.getMarket();
+          if (market != null && market.relayUrl != null) {
+            final nostrService = NostrService(
+              cryptoService: _cryptoService,
+              storageService: _storageService,
+            );
+            final connected = await nostrService.connect(market.relayUrl!);
+            if (connected) {
+              final user = await _storageService.getUser();
+              final contacts = await _storageService.getContacts();
+              if (user != null) {
+                await nostrService.publishContactList(
+                  npub: user.npub,
+                  nsec: user.nsec,
+                  contactsNpubs: contacts,
+                );
+              }
+              await nostrService.disconnect();
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context, {'verified': true, 'published': publishSuccess});
 
     } catch (e) {
       _showError('Erreur: $e');
@@ -304,6 +333,49 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
       debugPrint('⚠️ Erreur logging audit trail: $e');
       // Ne pas bloquer le flux en cas d'erreur de logging
     }
+  }
+
+  /// ✅ NOUVEAU: Affiche la modale pour proposer de tisser un lien de confiance
+  Future<bool?> _showFollowPrompt() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.handshake, color: Colors.orange),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Tisser un lien ?',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Échange réussi ! Voulez-vous ajouter ce commerçant à votre réseau de confiance ?\n\n'
+          'Avec 5 liens réciproques, vous participerez à la création monétaire (Dividende Universel).',
+          style: TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Plus tard', style: TextStyle(color: Colors.grey[400])),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Tisser le lien'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String message) {

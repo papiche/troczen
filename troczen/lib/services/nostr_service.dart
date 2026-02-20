@@ -11,6 +11,7 @@ import 'crypto_service.dart';
 import 'storage_service.dart';
 import 'image_cache_service.dart';
 import 'logger_service.dart';
+import 'du_calculation_service.dart';
 
 /// ✅ NIP-12: Normalise un nom de marché en tag de routage standardisé
 /// Cette fonction garantit que tous les marchés sont indexables de la même façon
@@ -777,6 +778,19 @@ class NostrService {
       await flushBatch();
       
       onP3Received = originalCallback;
+      
+      // ✅ NOUVEAU: Vérifier et générer le DU après la synchronisation
+      try {
+        final duService = DuCalculationService(
+          storageService: _storageService,
+          nostrService: this,
+          cryptoService: _cryptoService,
+        );
+        await duService.checkAndGenerateDU();
+      } catch (e) {
+        Logger.error('NostrService', 'Erreur lors de la vérification du DU', e);
+      }
+      
       completer.complete(syncedCount);
     });
 
@@ -832,6 +846,19 @@ class NostrService {
       await flushBatch();
       
       onP3Received = originalCallback;
+      
+      // ✅ NOUVEAU: Vérifier et générer le DU après la synchronisation
+      try {
+        final duService = DuCalculationService(
+          storageService: _storageService,
+          nostrService: this,
+          cryptoService: _cryptoService,
+        );
+        await duService.checkAndGenerateDU();
+      } catch (e) {
+        Logger.error('NostrService', 'Erreur lors de la vérification du DU', e);
+      }
+      
       completer.complete(syncedCount);
     });
 
@@ -1189,6 +1216,121 @@ class NostrService {
 
     final hash = sha256.convert(utf8.encode(serialized));
     return HEX.encode(hash.bytes);
+  }
+
+  /// ✅ PUBLIER LISTE DE CONTACTS (kind 3) - Follow
+  Future<bool> publishContactList({
+    required String npub,
+    required String nsec,
+    required List<String> contactsNpubs,
+  }) async {
+    if (!_isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      final tags = contactsNpubs.map((contact) => ['p', contact]).toList();
+
+      final event = {
+        'kind': 3,
+        'pubkey': npub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': tags,
+        'content': '',
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+
+      final signature = _cryptoService.signMessage(eventId, nsec);
+      event['sig'] = signature;
+
+      final message = jsonEncode(['EVENT', event]);
+      _channel!.sink.add(message);
+
+      Logger.log('NostrService', 'Liste de contacts publiée avec ${contactsNpubs.length} contacts');
+      return true;
+    } catch (e) {
+      onError?.call('Erreur publication contacts: $e');
+      return false;
+    }
+  }
+
+  /// ✅ RÉCUPÉRER LISTE DE CONTACTS (kind 3)
+  Future<List<String>> fetchContactList(String npub) async {
+    if (!_isConnected) {
+      Logger.error('NostrService', 'Non connecté au relais');
+      return [];
+    }
+
+    try {
+      final completer = Completer<List<String>>();
+      final contacts = <String>[];
+      
+      final subscriptionId = 'contacts_${DateTime.now().millisecondsSinceEpoch}';
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'authors': [npub],
+          'kinds': [3],
+          'limit': 1,
+        }
+      ]);
+
+      void Function(dynamic)? tempHandler;
+      tempHandler = (data) {
+        try {
+          final message = jsonDecode(data);
+          if (message is List && message.length >= 3) {
+            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
+              final event = message[2] as Map<String, dynamic>;
+              final tags = event['tags'] as List?;
+              if (tags != null) {
+                for (final tag in tags) {
+                  if (tag is List && tag.isNotEmpty && tag[0] == 'p' && tag.length > 1) {
+                    contacts.add(tag[1].toString());
+                  }
+                }
+              }
+            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
+              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+              if (!completer.isCompleted) {
+                completer.complete(contacts);
+              }
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing contacts response', e);
+        }
+      };
+
+      final originalSubscription = _subscription;
+      _subscription = _channel?.stream.listen(tempHandler);
+      
+      _channel?.sink.add(request);
+      
+      Timer(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) {
+          _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(contacts);
+        }
+      });
+      
+      final result = await completer.future;
+      
+      await _subscription?.cancel();
+      _subscription = originalSubscription;
+      if (_channel != null && originalSubscription != null) {
+        _subscription = _channel?.stream.listen(_handleMessage);
+      }
+      
+      return result;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération contacts', e);
+      return [];
+    }
   }
 
   /// ✅ PUBLIER LISTE DES RELAIS (kind 10002)

@@ -152,6 +152,10 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
         _buildProfileHeader(),
         const SizedBox(height: 24),
         
+        // Jauge de confiance (DU)
+        _buildTrustGaugeSection(),
+        const SizedBox(height: 24),
+
         // Statistiques
         if (_stats != null) ...[
           _buildStatsSection(),
@@ -248,6 +252,86 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTrustGaugeSection() {
+    return FutureBuilder<List<String>>(
+      future: _storageService.getContacts(),
+      builder: (context, snapshot) {
+        final contactsCount = snapshot.data?.length ?? 0;
+        final progress = (contactsCount / 5).clamp(0.0, 1.0);
+        final isUnlocked = contactsCount >= 5;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isUnlocked ? Colors.green : const Color(0xFFFFB347).withOpacity(0.3),
+              width: 2,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isUnlocked ? Icons.check_circle : Icons.handshake,
+                    color: isUnlocked ? Colors.green : const Color(0xFFFFB347),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Toile de confiance',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              Text(
+                '$contactsCount / 5 liens réciproques',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 12,
+                  backgroundColor: Colors.grey[800],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isUnlocked ? Colors.green : const Color(0xFFFFB347),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              Text(
+                isUnlocked
+                    ? '🌟 Félicitations ! Vous participez à la création monétaire (DU).'
+                    : 'Tissez 5 liens de confiance lors de vos échanges pour débloquer le Dividende Universel.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isUnlocked ? Colors.green[300] : Colors.grey[400],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

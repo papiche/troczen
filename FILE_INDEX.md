@@ -9,6 +9,7 @@
 | [007.md](007.md) | Whitepaper formel : modèle cryptographique, Tamarin/ProVerif, annexe comparative |
 | [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, analogies Ğ1/ẐEN/Euro |
 | [docs/TROCZEN_BOX_GUIDE.md](docs/TROCZEN_BOX_GUIDE.md) | Guide d'installation de la TrocZen Box (Raspberry Pi Solaire) |
+| [docs/DU_NOSTR_P2P_FLOW.md](docs/DU_NOSTR_P2P_FLOW.md) | Schéma de flux expérimental : Calcul du DU via le graphe social Nostr |
 
 ## Projet & état d'avancement
 

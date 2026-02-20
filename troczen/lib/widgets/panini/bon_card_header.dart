@@ -55,14 +55,35 @@ class BonCardHeader extends StatelessWidget {
               ],
             ],
           ),
-          Text(
-            '${bon.value.toStringAsFixed(0)} ẐEN',
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${bon.value.toStringAsFixed(0)} ẐEN',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              if (bon.duAtCreation != null)
+                Row(
+                  children: [
+                    Icon(Icons.trending_down, size: 12, color: Colors.red[400]),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${bon.getRelativeValue(10.0).toStringAsFixed(2)} DU', // 10.0 est le DU actuel simulé
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red[400],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
         ],
       ),

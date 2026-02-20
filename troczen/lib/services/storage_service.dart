@@ -36,6 +36,7 @@ class StorageService {
   static const String _marketsKey = 'markets';         // Liste des marchés
   static const String _activeMarketKey = 'active_market'; // Marché actif par défaut
   static const String _onboardingCompleteKey = 'onboarding_complete';
+  static const String _contactsKey = 'contacts'; // Liste des contacts (npubs)
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
@@ -661,5 +662,69 @@ class StorageService {
   Future<bool> hasNostrProfile() async {
     final user = await getUser();
     return user != null && user.npub.isNotEmpty;
+  }
+
+  // ============================================================
+  // ✅ GESTION DES CONTACTS (Réseau de confiance)
+  // ============================================================
+
+  /// Récupère la liste des contacts (npubs)
+  Future<List<String>> getContacts() async {
+    try {
+      final data = await _secureStorage.read(key: _contactsKey);
+      if (data == null) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(data);
+      return jsonList.map((e) => e.toString()).toList();
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getContacts', e);
+      return [];
+    }
+  }
+
+  /// Sauvegarde la liste complète des contacts
+  Future<void> saveContacts(List<String> contacts) async {
+    try {
+      // S'assurer qu'il n'y a pas de doublons
+      final uniqueContacts = contacts.toSet().toList();
+      await _secureStorage.write(
+        key: _contactsKey,
+        value: jsonEncode(uniqueContacts),
+      );
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur saveContacts', e);
+    }
+  }
+
+  /// Ajoute un contact à la liste
+  Future<bool> addContact(String npub) async {
+    try {
+      final contacts = await getContacts();
+      if (!contacts.contains(npub)) {
+        contacts.add(npub);
+        await saveContacts(contacts);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur addContact', e);
+      return false;
+    }
+  }
+
+  /// Supprime un contact de la liste
+  Future<bool> removeContact(String npub) async {
+    try {
+      final contacts = await getContacts();
+      if (contacts.contains(npub)) {
+        contacts.remove(npub);
+        await saveContacts(contacts);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur removeContact', e);
+      return false;
+    }
   }
 }
