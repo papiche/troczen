@@ -1,9 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
-import '../models/nostr_profile.dart';
 import '../services/qr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';

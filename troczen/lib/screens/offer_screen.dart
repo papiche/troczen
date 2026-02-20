@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:hex/hex.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
@@ -298,12 +297,10 @@ class _OfferScreenState extends State<OfferScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      // ✅ CORRECTION ENCODAGE: Utiliser Base64 pour les données binaires
-                      // Les bytes 0x00-0xFF ne peuvent pas être convertis directement en String
+                      // ✅ ENCODAGE: Utiliser Base64 pour les données binaires
                       child: _qrService.buildQrWidget(
                         _qrData!,
                         size: 280,
-                        onRetry: _regenerateQR,
                       ),
                     ),
                   ),

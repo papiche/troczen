@@ -3,8 +3,22 @@ import 'package:flutter/material.dart';
 import '../services/feedback_service.dart';
 import '../services/logger_service.dart';
 
-/// Widget animé montrant une explosion quand le QR code ne peut pas être généré
-/// à cause de caractères invalides dans les données binaires.
+/// Type d'explosion pour différencier les cas d'usage
+enum QrExplosionType {
+  /// Bon en cours d'échange - suppression impossible
+  bonTransferInProgress,
+  /// Erreur technique générique
+  technicalError,
+}
+
+/// Widget animé montrant une explosion pour signaler une action impossible.
+///
+/// Cas d'usage métier :
+/// - **Bon en cours d'échange** : L'utilisateur tente de supprimer un bon
+///   dont il possède P1 (Ancre) mais plus P2 (transféré à un autre porteur).
+///   Le bon ne peut pas être supprimé car il appartient maintenant au porteur actuel.
+///
+/// Le widget envoie automatiquement un rapport à l'API feedback pour traçabilité.
 class QrExplosionWidget extends StatefulWidget {
   final double size;
   final VoidCallback onRetry;
@@ -12,6 +26,15 @@ class QrExplosionWidget extends StatefulWidget {
   final FeedbackService? feedbackService;
   final String? appVersion;
   final String? platform;
+  
+  /// Type d'explosion pour adapter le message et le comportement
+  final QrExplosionType type;
+  
+  /// ID du bon concerné (pour les rapports)
+  final String? bonId;
+  
+  /// Valeur du bon (pour affichage)
+  final double? bonValue;
 
   const QrExplosionWidget({
     super.key,
@@ -21,6 +44,9 @@ class QrExplosionWidget extends StatefulWidget {
     this.feedbackService,
     this.appVersion,
     this.platform,
+    this.type = QrExplosionType.technicalError,
+    this.bonId,
+    this.bonValue,
   });
 
   @override
@@ -71,12 +97,21 @@ class _QrExplosionWidgetState extends State<QrExplosionWidget>
     _reportQrExplosion();
   }
   
-  /// Envoie un rapport automatique de l'erreur QR avec les logs
+  /// Envoie un rapport automatique à l'API feedback pour traçabilité
+  ///
+  /// Pour un bon en cours d'échange, cela permet de suivre les tentatives
+  /// de suppression et d'informer l'émetteur de l'état du bon.
   Future<void> _reportQrExplosion() async {
-    // Logger l'erreur localement
-    Logger.error(
+    // Logger l'événement localement
+    final typeLabel = widget.type == QrExplosionType.bonTransferInProgress
+        ? 'BON_TRANSFER_IN_PROGRESS'
+        : 'TECHNICAL_ERROR';
+    
+    Logger.info(
       'QR_EXPLOSION',
-      'QR Code explosion détectée: ${widget.errorMessage ?? "Données binaires invalides"}',
+      '[$typeLabel] ${widget.errorMessage ?? "Action impossible"} '
+      '${widget.bonId != null ? "Bon: ${widget.bonId!.substring(0, 8)}..." : ""} '
+      '${widget.bonValue != null ? "Valeur: ${widget.bonValue} Ẑ" : ""}',
     );
     
     if (widget.feedbackService == null) return;
@@ -84,11 +119,23 @@ class _QrExplosionWidgetState extends State<QrExplosionWidget>
     try {
       // Récupérer les logs récents pour les inclure dans le rapport
       final logsText = Logger.exportLogsText();
-      final logsJson = Logger.exportLogsJson();
       
-      // Construire la description complète avec les logs
-      final fullDescription = '''
-${widget.errorMessage ?? 'Le QR code n\'a pas pu être généré à cause de données binaires invalides.'}
+      // Construire la description selon le type
+      String title;
+      String description;
+      
+      if (widget.type == QrExplosionType.bonTransferInProgress) {
+        title = '🔒 Bon en cours d\'échange - Suppression impossible';
+        description = '''
+### Tentative de suppression d'un bon transféré
+
+**Bon ID**: ${widget.bonId ?? 'N/A'}
+**Valeur**: ${widget.bonValue != null ? '${widget.bonValue} Ẑ' : 'N/A'}
+
+**Raison**: L'utilisateur (émetteur) a tenté de supprimer un bon dont il possède P1 (l'Ancre) mais plus P2 (transféré).
+
+**Message affiché**:
+${widget.errorMessage ?? 'Ce bon a été transféré et ne peut pas être supprimé.'}
 
 ---
 ### Logs récents
@@ -98,24 +145,48 @@ $logsText
 ```
 
 ---
-### Logs JSON
-```json
-$logsJson
+*Rapport automatique - Traçabilité des transactions*
+''';
+      } else {
+        title = '💥 Erreur technique - Action impossible';
+        description = '''
+${widget.errorMessage ?? 'Une erreur technique est survenue.'}
+
+---
+### Logs récents
+
+```
+$logsText
 ```
 
 ---
 *Rapport automatique depuis QrExplosionWidget*
 ''';
+      }
 
       await widget.feedbackService!.reportBug(
-        title: '💥 QR Code Explosion - Caractères invalides',
-        description: fullDescription,
+        title: title,
+        description: description,
         appVersion: widget.appVersion,
         platform: widget.platform,
       );
-      Logger.success('QR_EXPLOSION', 'Rapport d\'explosion QR envoyé automatiquement avec logs');
+      Logger.success('QR_EXPLOSION', 'Rapport envoyé à l\'API feedback');
     } catch (e) {
-      Logger.warn('QR_EXPLOSION', 'Impossible d\'envoyer le rapport d\'explosion: $e');
+      Logger.warn('QR_EXPLOSION', 'Impossible d\'envoyer le rapport: $e');
+    }
+  }
+
+  /// Retourne le message par défaut selon le type d'explosion
+  String _getDefaultMessage() {
+    switch (widget.type) {
+      case QrExplosionType.bonTransferInProgress:
+        return 'Ce bon a été transféré à un autre porteur.\n\n'
+            'Vous conservez P1 (l\'Ancre) en tant qu\'émetteur,\n'
+            'mais P2 appartient maintenant au porteur actuel.\n\n'
+            'Un bon transféré ne peut pas être supprimé.';
+      case QrExplosionType.technicalError:
+        return 'Une erreur technique est survenue.\n\n'
+            'Veuillez réessayer ou contacter le support si le problème persiste.';
     }
   }
 
@@ -223,7 +294,7 @@ $logsJson
                   },
                 ),
                 
-                // Icône d'erreur
+                // Icône selon le type
                 AnimatedBuilder(
                   animation: _explosionAnimation,
                   builder: (context, child) {
@@ -232,9 +303,13 @@ $logsJson
                       child: Transform.scale(
                         scale: 0.5 + _explosionAnimation.value * 0.5,
                         child: Icon(
-                          Icons.error_outline,
+                          widget.type == QrExplosionType.bonTransferInProgress
+                              ? Icons.lock_outline
+                              : Icons.error_outline,
                           size: 60,
-                          color: Colors.red.shade600,
+                          color: widget.type == QrExplosionType.bonTransferInProgress
+                              ? Colors.orange.shade600
+                              : Colors.red.shade600,
                         ),
                       ),
                     );
@@ -246,46 +321,78 @@ $logsJson
           
           const SizedBox(height: 16),
           
-          // Message d'erreur
+          // Message adapté au type d'explosion
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
+                // Titre selon le type
                 Text(
-                  '💥 Oups ! Le QR code a explosé',
+                  widget.type == QrExplosionType.bonTransferInProgress
+                      ? '🔒 Bon en cours d\'échange'
+                      : '� Oups ! Une erreur est survenue',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red.shade700,
+                    color: widget.type == QrExplosionType.bonTransferInProgress
+                        ? Colors.orange.shade700
+                        : Colors.red.shade700,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
+                // Message détaillé
                 Text(
-                  widget.errorMessage ??
-                      'Les données binaires contiennent des caractères '
-                      'incompatibles avec l\'encodage QR.\n\n'
-                      'Cela peut arriver lorsque les données cryptées '
-                      'génèrent des séquences d\'octets invalides.',
+                  widget.errorMessage ?? _getDefaultMessage(),
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey.shade700,
                   ),
                   textAlign: TextAlign.center,
                 ),
+                // Info supplémentaire pour bon transféré
+                if (widget.type == QrExplosionType.bonTransferInProgress && widget.bonValue != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade300),
+                    ),
+                    child: Text(
+                      'Valeur: ${widget.bonValue} Ẑ',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade800,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           
           const SizedBox(height: 20),
           
-          // Bouton de régénération
+          // Bouton adapté au type
           ElevatedButton.icon(
             onPressed: widget.onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Générer un nouveau QR'),
+            icon: Icon(
+              widget.type == QrExplosionType.bonTransferInProgress
+                  ? Icons.close
+                  : Icons.refresh,
+            ),
+            label: Text(
+              widget.type == QrExplosionType.bonTransferInProgress
+                  ? 'Fermer'
+                  : 'Réessayer',
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange.shade600,
+              backgroundColor: widget.type == QrExplosionType.bonTransferInProgress
+                  ? Colors.orange.shade600
+                  : Colors.blue.shade600,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(
                 horizontal: 24,

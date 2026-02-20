@@ -105,7 +105,11 @@ class _ScanScreenState extends State<ScanScreen> {
     if (_isProcessing) return;
     
     final barcode = capture.barcodes.first;
-    if (barcode.rawBytes == null) return;
+    // ✅ CORRECTION P0: Utiliser rawValue au lieu de rawBytes
+    // rawBytes contient les octets bruts du QR (headers, padding, etc.)
+    // rawValue contient la chaîne proprement décodée par la bibliothèque
+    final base64String = barcode.rawValue;
+    if (base64String == null) return;
 
     setState(() {
       _isProcessing = true;
@@ -113,10 +117,8 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      // ✅ CORRECTION ENCODAGE: Le QR code est encodé en Base64
-      // Les bytes bruts du scanner sont les bytes de la chaîne Base64
-      // Il faut décoder cette chaîne pour obtenir les données binaires originales
-      final base64String = String.fromCharCodes(barcode.rawBytes!);
+      // ✅ CORRECTION P0: Le QR code est encodé en Base64
+      // rawValue contient directement la chaîne Base64
       final decodedBytes = base64Decode(base64String);
       
       // Tenter de décoder en QR v2

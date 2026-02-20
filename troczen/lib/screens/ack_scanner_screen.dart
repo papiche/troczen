@@ -114,7 +114,11 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
     if (_isProcessing) return;
     
     final barcode = capture.barcodes.first;
-    if (barcode.rawBytes == null) return;
+    // ✅ CORRECTION P0: Utiliser rawValue au lieu de rawBytes
+    // rawBytes contient les octets bruts du QR (headers, padding, etc.)
+    // rawValue contient la chaîne proprement décodée par la bibliothèque
+    final base64String = barcode.rawValue;
+    if (base64String == null) return;
 
     setState(() {
       _isProcessing = true;
@@ -122,9 +126,8 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
     });
 
     try {
-      // ✅ CORRECTION ENCODAGE: Le QR ACK est encodé en Base64
-      // Il faut décoder la chaîne Base64 pour obtenir les données binaires
-      final base64String = String.fromCharCodes(barcode.rawBytes!);
+      // ✅ CORRECTION P0: Le QR ACK est encodé en Base64
+      // rawValue contient directement la chaîne Base64
       final decodedBytes = base64Decode(base64String);
       
       // Décoder le QR ACK binaire (97 octets)

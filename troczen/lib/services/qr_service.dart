@@ -5,7 +5,6 @@ import 'package:flutter/widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/qr_payload_v2.dart';
 import '../models/bon.dart';
-import '../widgets/qr_explosion_widget.dart';
 
 class QRService {
   // Magic number pour format QR v2: "ZEN" + version 0x02
@@ -409,83 +408,26 @@ class QRService {
     );
   }
   
-  /// Vérifie si les bytes contiennent des caractères valides pour un QR code
-  /// Les QR codes supportent: bytes 0x00-0xFF mais certains encodages peuvent
-  /// poser problème avec les caractères de contrôle (0x00-0x1F, 0x7F-0x9F)
-  bool _hasValidQrCharacters(Uint8List payload) {
-    for (final byte in payload) {
-      // Les caractères de contrôle C0 (0x00-0x1F) et C1 (0x7F-0x9F)
-      // peuvent causer des problèmes d'encodage
-      // On autorise: tab (0x09), LF (0x0A), CR (0x0D)
-      if (byte < 0x20 && byte != 0x09 && byte != 0x0A && byte != 0x0D) {
-        return false;
-      }
-      // Caractères de contrôle C1 (0x7F-0x9F)
-      if (byte >= 0x7F && byte <= 0x9F) {
-        return false;
-      }
-      // Surrogates UTF-16 invalides (0xD800-0xDFFF)
-      if (byte >= 0xD8 && byte <= 0xDF) {
-        return false;
-      }
-    }
-    return true;
-  }
-  
-  /// Tente de valider que la chaîne peut être encodée en QR
-  bool _canEncodeAsQr(String data) {
-    try {
-      // Vérifier que la chaîne ne contient pas de caractères invalides
-      // pour l'encodage QR (alphanumeric, byte, kanji modes)
-      for (final codeUnit in data.codeUnits) {
-        // Vérifier les surrogate pairs
-        if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
-          return false;
-        }
-        // Vérifier les caractères de contrôle problématiques
-        if (codeUnit < 0x20 && codeUnit != 0x09 && codeUnit != 0x0A && codeUnit != 0x0D) {
-          return false;
-        }
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-  
   /// Génère un widget QR code à partir de données binaires
   ///
-  /// ✅ CORRECTION ENCODAGE: Utilise systématiquement Base64
-  /// Les données binaires (0x00-0xFF) ne peuvent pas être converties
-  /// directement en String via fromCharCodes() car cela produit des
-  /// caractères de contrôle Unicode invalides pour les QR codes.
-  ///
-  /// Solution: Encoder en Base64 pour garantir des caractères valides.
+  /// ✅ ENCODAGE: Utilise systématiquement Base64
+  /// Les données binaires (0x00-0xFF) sont encodées en Base64 (A-Za-z0-9+/=)
+  /// pour garantir des caractères valides pour les QR codes.
   /// Le scanner doit décoder en Base64 avant de traiter les bytes.
   Widget buildQrWidget(
     Uint8List payload, {
     double size = 280,
-    VoidCallback? onRetry,
   }) {
-    try {
-      // ✅ CORRECTION: Encoder en Base64 pour garantir des caractères valides
-      // Les bytes binaires (0x00-0xFF) → Base64 (A-Za-z0-9+/=)
-      final base64String = base64Encode(payload);
-      
-      return QrImageView(
-        data: base64String,
-        version: QrVersions.auto,
-        size: size,
-        backgroundColor: const Color(0xFFFFFFFF),
-        errorCorrectionLevel: QrErrorCorrectLevel.M,
-      );
-    } catch (e) {
-      return QrExplosionWidget(
-        size: size,
-        onRetry: onRetry ?? () {},
-        errorMessage: 'Erreur lors de l\'encodage Base64: ${e.toString()}',
-      );
-    }
+    // Encoder en Base64 pour garantir des caractères valides
+    final base64String = base64Encode(payload);
+    
+    return QrImageView(
+      data: base64String,
+      version: QrVersions.auto,
+      size: size,
+      backgroundColor: const Color(0xFFFFFFFF),
+      errorCorrectionLevel: QrErrorCorrectLevel.M,
+    );
   }
   
   // ==================== UTILITAIRES ====================

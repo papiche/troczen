@@ -5,6 +5,7 @@ import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../services/logger_service.dart';
 import '../../widgets/panini_card.dart';
+import '../../widgets/qr_explosion_widget.dart';
 import '../offer_screen.dart';
 
 /// WalletView — Bons dont je détiens P2
@@ -657,6 +658,29 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
 
   Future<void> _deleteBon(Bon bon) async {
     if (_isUpdating) return;
+    
+    // ✅ RÈGLE MÉTIER: Un émetteur (P1) ne peut pas supprimer un bon transféré (P2 absent)
+    // Whitepaper: P1 = Ancre détenue par l'émetteur, P2 = Voyageur détenu par le porteur
+    // Si P1 présent mais P2 absent, le bon a été transféré et ne peut être supprimé
+    if (bon.p1 != null && bon.p2 == null) {
+      // Afficher l'explosion au lieu de supprimer
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: QrExplosionWidget(
+            size: 300,
+            type: QrExplosionType.bonTransferInProgress,
+            bonId: bon.bonId,
+            bonValue: bon.value,
+            onRetry: () => Navigator.pop(context),
+          ),
+        ),
+      );
+      return;
+    }
+    
     setState(() => _isUpdating = true);
     try {
       final storageService = StorageService();
