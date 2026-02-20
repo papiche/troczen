@@ -9,13 +9,16 @@ import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/market.dart';
 import 'logger_service.dart';
-import 'audit_trail_service.dart';
+import 'cache_database_service.dart';
 
 /// Service de stockage principal de l'application
 ///
-/// ✅ OPTIMISÉ: Le cache P3 utilise maintenant SQLite au lieu de FlutterSecureStorage
-/// FlutterSecureStorage (Keychain/Keystore) n'est pas conçu pour stocker des MB de données
-/// et peut causer des OOM (Out Of Memory) sur iOS/Android
+/// ✅ SÉPARÉ: Le cache P3 utilise maintenant une base SQLite dédiée (CacheDatabaseService)
+/// - AuditTrailService: journal d'audit pour conformité RGPD/fiscale
+/// - CacheDatabaseService: données éphémères du réseau (P3, marché)
+///
+/// Cette séparation évite la suppression accidentelle du cache lors d'une
+/// demande RGPD (droit à l'oubli) qui ne doit effacer que les données personnelles
 class StorageService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
@@ -23,8 +26,9 @@ class StorageService {
     ),
   );
 
-  // Instance du service SQLite pour le cache P3
-  final AuditTrailService _auditService = AuditTrailService();
+  // Instance du service SQLite pour le cache réseau (P3, marché)
+  // ✅ SÉPARÉ de l'audit trail pour indépendance du cycle de vie
+  final CacheDatabaseService _cacheService = CacheDatabaseService();
 
   // Clés de stockage (uniquement pour les petites données sensibles)
   static const String _userKey = 'user';
@@ -175,9 +179,9 @@ class StorageService {
   // ============================================================
 
   /// Sauvegarde une P3 dans le cache SQLite
-  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
+  /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<void> saveP3ToCache(String bonId, String p3Hex) async {
-    await _auditService.saveP3ToCache(bonId, p3Hex);
+    await _cacheService.saveP3ToCache(bonId, p3Hex);
   }
 
   /// ✅ OPTIMISÉ: Insertion en lot (batch) pour le cache P3
@@ -187,7 +191,7 @@ class StorageService {
     if (p3Batch.isEmpty) return;
     
     try {
-      await _auditService.saveP3BatchToCache(p3Batch);
+      await _cacheService.saveP3BatchToCache(p3Batch);
       Logger.success('StorageService', '${p3Batch.length} P3 sauvegardées en lot (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur saveP3BatchToCache', e);
@@ -197,19 +201,19 @@ class StorageService {
 
   /// Récupère le cache P3 complet depuis SQLite
   Future<Map<String, String>> getP3Cache() async {
-    return await _auditService.getP3Cache();
+    return await _cacheService.getP3Cache();
   }
 
   /// Récupère une P3 depuis le cache SQLite
   Future<String?> getP3FromCache(String bonId) async {
-    return await _auditService.getP3FromCache(bonId);
+    return await _cacheService.getP3FromCache(bonId);
   }
 
   /// Récupère la liste des P3 du marché depuis SQLite
-  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
+  /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<List<Map<String, dynamic>>> getP3List() async {
     try {
-      return await _auditService.getMarketBonsData();
+      return await _cacheService.getMarketBonsData();
     } catch (e) {
       Logger.error('StorageService', 'Erreur getP3List', e);
       return [];
@@ -217,11 +221,11 @@ class StorageService {
   }
 
   /// Sauvegarde la liste des P3 du marché dans SQLite
-  /// ✅ OPTIMISÉ: Transaction SQLite pour performance
+  /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<void> saveP3List(List<Map<String, dynamic>> p3List) async {
     try {
-      await _auditService.saveMarketBonDataBatch(p3List);
-      await _auditService.saveLastP3Sync();
+      await _cacheService.saveMarketBonDataBatch(p3List);
+      await _cacheService.saveLastP3Sync();
       Logger.success('StorageService', '${p3List.length} P3 sauvegardées (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur saveP3List', e);
@@ -229,23 +233,23 @@ class StorageService {
     }
   }
 
-  /// ✅ OPTIMISÉ: Sauvegarde un P3 du marché avec ses métadonnées complètes
-  /// Utilise SQLite au lieu de FlutterSecureStorage
+  /// ✅ SÉPARÉ: Sauvegarde un P3 du marché avec ses métadonnées complètes
+  /// Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<void> saveMarketBonData(Map<String, dynamic> bonData) async {
     try {
-      await _auditService.saveMarketBonData(bonData);
+      await _cacheService.saveMarketBonData(bonData);
     } catch (e) {
       Logger.error('StorageService', 'Erreur saveMarketBonData', e);
     }
   }
 
-  /// ✅ OPTIMISÉ: Sauvegarde en lot des données du marché (batch)
+  /// ✅ SÉPARÉ: Sauvegarde en lot des données du marché (batch)
   /// Transaction SQLite unique pour performance optimale
   Future<void> saveMarketBonDataBatch(List<Map<String, dynamic>> bonDataList) async {
     if (bonDataList.isEmpty) return;
     
     try {
-      await _auditService.saveMarketBonDataBatch(bonDataList);
+      await _cacheService.saveMarketBonDataBatch(bonDataList);
       Logger.success('StorageService', '${bonDataList.length} bons marché sauvegardés en lot (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur saveMarketBonDataBatch', e);
@@ -334,11 +338,11 @@ class StorageService {
   }
 
   /// Vide le cache local des P3 du marché
-  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
+  /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<void> clearP3Cache() async {
     try {
-      await _auditService.clearP3Cache();
-      await _auditService.clearMarketBons();
+      await _cacheService.clearP3Cache();
+      await _cacheService.clearMarketBons();
       Logger.success('StorageService', 'Cache P3 vidé (SQLite)');
     } catch (e) {
       Logger.error('StorageService', 'Erreur clearP3Cache', e);
@@ -347,9 +351,9 @@ class StorageService {
   }
 
   /// Récupère le timestamp de la dernière synchronisation P3
-  /// ✅ OPTIMISÉ: Utilise SQLite au lieu de FlutterSecureStorage
+  /// ✅ SÉPARÉ: Utilise CacheDatabaseService (base dédiée au cache réseau)
   Future<DateTime?> getLastP3Sync() async {
-    return await _auditService.getLastP3Sync();
+    return await _cacheService.getLastP3Sync();
   }
 
   /// ✅ MIGRATION: Migre les données P3 de FlutterSecureStorage vers SQLite
@@ -369,7 +373,7 @@ class StorageService {
           final p3Cache = jsonMap.map((key, value) => MapEntry(key, value.toString()));
           
           if (p3Cache.isNotEmpty) {
-            await _auditService.saveP3BatchToCache(p3Cache);
+            await _cacheService.saveP3BatchToCache(p3Cache);
             await _secureStorage.delete(key: _p3CacheKey);
             Logger.success('StorageService', 'Migration P3 cache: ${p3Cache.length} entrées migrées vers SQLite');
             migrated = true;
@@ -386,7 +390,7 @@ class StorageService {
           final marketBons = p3Data.cast<Map<String, dynamic>>();
           
           if (marketBons.isNotEmpty) {
-            await _auditService.saveMarketBonDataBatch(marketBons);
+            await _cacheService.saveMarketBonDataBatch(marketBons);
             await _secureStorage.delete(key: 'market_p3_list');
             Logger.success('StorageService', 'Migration marché: ${marketBons.length} bons migrés vers SQLite');
             migrated = true;

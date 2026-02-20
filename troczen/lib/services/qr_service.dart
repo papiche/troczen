@@ -433,16 +433,23 @@ class QRService {
   // ==================== UTILITAIRES ====================
   
   /// Encode un nom en 20 octets fixes (UTF-8, tronqué/paddé avec des zéros)
+  /// ✅ CORRECTION: Troncature UTF-8 sécurisée via runes pour éviter
+  /// de couper au milieu d'un caractère multi-octets
   Uint8List _encodeNameFixed(String name, int length) {
-    final bytes = utf8.encode(name);
-    final result = Uint8List(length);
+    // Convertir en runes, limiter, puis encoder
+    var chars = name.runes.toList();
+    var bytes = utf8.encode(String.fromCharCodes(chars));
     
-    // Copier jusqu'à min(bytes.length, length)
-    final copyLength = bytes.length < length ? bytes.length : length;
-    for (int i = 0; i < copyLength; i++) {
-      result[i] = bytes[i];
+    // Réduire progressivement si trop long, en respectant les caractères UTF-8
+    while (bytes.length > length && chars.isNotEmpty) {
+      chars.removeLast();
+      bytes = utf8.encode(String.fromCharCodes(chars));
     }
     
+    final result = Uint8List(length);
+    for (int i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i];
+    }
     // Le reste est déjà à zéro (Uint8List par défaut)
     return result;
   }
