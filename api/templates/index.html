@@ -544,6 +544,28 @@
                 <img src="/api/apk/qr" alt="QR Code" width="180" height="180">
                 <p>Scannez pour installer TrocZen</p>
             </div>
+            
+            <!-- QR Codes TrocZen Box (si MARKET_SEED configuré) -->
+            <div id="boxQrSection" class="box-qr-section" style="display: none; margin-top: 30px;">
+                <h3 style="color: #000; margin-bottom: 20px;">📡 Configuration TrocZen Box</h3>
+                <div style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap;">
+                    <div class="qr-box">
+                        <img id="wifiQrImg" src="" alt="QR WiFi" width="150" height="150" style="border-radius: 8px;">
+                        <p style="color: #333; margin-top: 10px; font-size: 0.9rem;">
+                            <strong>Étape 1</strong><br>Connectez-vous au WiFi
+                        </p>
+                    </div>
+                    <div class="qr-box">
+                        <img id="marketQrImg" src="" alt="QR Market" width="150" height="150" style="border-radius: 8px;">
+                        <p style="color: #333; margin-top: 10px; font-size: 0.9rem;">
+                            <strong>Étape 2</strong><br>Scannez dans l'app
+                        </p>
+                    </div>
+                </div>
+                <p style="color: rgba(0,0,0,0.6); margin-top: 15px; font-size: 0.85rem;">
+                    SSID: <strong id="wifiSsidDisplay">TrocZen-Marche</strong>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -865,7 +887,33 @@
                     logWarn('loadData', 'Aucun APK disponible');
                 }
                 
-                // 4. Charger les données Nostr
+                // 4. Charger les QR codes de la TrocZen Box (si configuré)
+                logInfo('loadData', 'Vérification configuration TrocZen Box...');
+                try {
+                    const boxQrResponse = await fetch('/api/box/qr');
+                    const boxQrData = await boxQrResponse.json();
+                    
+                    if (boxQrData.success) {
+                        logSuccess('loadData', 'TrocZen Box configurée, affichage des QR codes', boxQrData);
+                        
+                        // Afficher la section QR Box
+                        const boxQrSection = document.getElementById('boxQrSection');
+                        if (boxQrSection) {
+                            boxQrSection.style.display = 'block';
+                            
+                            // Remplir les images QR
+                            document.getElementById('wifiQrImg').src = boxQrData.wifi.qr_base64;
+                            document.getElementById('marketQrImg').src = boxQrData.market.qr_base64;
+                            document.getElementById('wifiSsidDisplay').textContent = boxQrData.wifi.ssid;
+                        }
+                    } else {
+                        logInfo('loadData', 'TrocZen Box non configurée (MARKET_SEED absent)');
+                    }
+                } catch (e) {
+                    logInfo('loadData', 'QR codes Box non disponibles (normal si MARKET_SEED non configuré)');
+                }
+                
+                // 5. Charger les données Nostr
                 logInfo('loadData', 'Chargement des données Nostr pour HACKATHON...');
                 loadNostrMerchants('HACKATHON');
                 

@@ -41,6 +41,13 @@ IPFS_TIMEOUT = int(os.getenv('IPFS_TIMEOUT', '30'))  # Timeout en secondes
 # ✅ Fichier de métadonnées IPFS pour les APK
 APK_IPFS_META_FILE = APK_FOLDER / 'ipfs_meta.json'
 
+# ✅ Configuration TrocZen Box
+MARKET_SEED = os.getenv('MARKET_SEED', '')  # Seed du marché (64 chars hex)
+MARKET_NAME = os.getenv('MARKET_NAME', 'marche-local')  # Nom du marché
+WIFI_SSID = os.getenv('WIFI_SSID', 'TrocZen-Marche')  # SSID WiFi de la Box
+WIFI_PASSWORD = os.getenv('WIFI_PASSWORD', '0penS0urce!')  # Mot de passe WiFi
+BOX_IP = os.getenv('BOX_IP', '10.42.0.1')  # IP locale de la Box
+
 # Pool de threads pour les uploads IPFS asynchrones
 IPFS_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix='ipfs_upload')
 
@@ -377,11 +384,75 @@ def get_config():
             }
         },
         'box_mode': {
-            'wifi_ssid': 'TrocZen-Marche',  # SSID par défaut de la TrocZen Box
-            'wifi_password_hint': 'Dérivé de la market_seed via SHA256',
-            'local_ip': '10.42.0.1'  # IP par défaut du hotspot Raspberry Pi
+            'wifi_ssid': WIFI_SSID,
+            'wifi_password': WIFI_PASSWORD if MARKET_SEED else None,
+            'local_ip': BOX_IP,
+            'market_seed_configured': bool(MARKET_SEED),
+            'market_name': MARKET_NAME
         },
         'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/box/qr', methods=['GET'])
+def get_box_qr_codes():
+    """
+    Génère les QR codes pour la TrocZen Box.
+    
+    Retourne:
+    - wifi_qr: QR code pour se connecter au WiFi de la Box
+    - market_qr: QR code contenant la market_seed (format troczen://market?seed=...)
+    
+    Nécessite que MARKET_SEED soit configuré dans .env
+    """
+    if not MARKET_SEED:
+        return jsonify({
+            'success': False,
+            'error': 'MARKET_SEED not configured',
+            'message': 'Configurez MARKET_SEED dans .env pour activer les QR codes'
+        }), 400
+    
+    # Générer le QR code WiFi
+    # Format: WIFI:T:WPA;S:<SSID>;P:<password>;;
+    wifi_qr_data = f"WIFI:T:WPA;S:{WIFI_SSID};P:{WIFI_PASSWORD};;"
+    
+    # Générer le QR code Market (format troczen://)
+    # Format: troczen://market?seed=<seed>&name=<market_name>
+    market_qr_data = f"troczen://market?seed={MARKET_SEED}&name={MARKET_NAME}"
+    
+    # Créer les QR codes
+    def generate_qr_base64(data):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convertir en base64
+        img_io = BytesIO()
+        img.save(img_io, 'PNG')
+        img_io.seek(0)
+        return base64.b64encode(img_io.read()).decode('utf-8')
+    
+    return jsonify({
+        'success': True,
+        'wifi': {
+            'ssid': WIFI_SSID,
+            'password': WIFI_PASSWORD,
+            'qr_data': wifi_qr_data,
+            'qr_base64': f"data:image/png;base64,{generate_qr_base64(wifi_qr_data)}"
+        },
+        'market': {
+            'name': MARKET_NAME,
+            'seed': MARKET_SEED[:16] + '...',  # Tronqué pour sécurité
+            'qr_data': market_qr_data,
+            'qr_base64': f"data:image/png;base64,{generate_qr_base64(market_qr_data)}"
+        },
+        'box_ip': BOX_IP
     })
 
 
