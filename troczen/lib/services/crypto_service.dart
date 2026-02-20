@@ -208,6 +208,16 @@ class CryptoService {
     };
   }
 
+  // ==================== WI-FI PASSWORD DERIVATION ====================
+
+  /// Génère un mot de passe Wi-Fi WPA2 déterministe à partir de la graine du marché
+  String deriveWifiPassword(String seedMarketHex) {
+    final bytes = utf8.encode(seedMarketHex + "wifi_password");
+    final digest = sha256.convert(bytes);
+    // Retourne les 12 premiers caractères encodés en Base58 (plus lisible que l'hex)
+    return base58.encode(Uint8List.fromList(digest.bytes)).substring(0, 12);
+  }
+
   // ==================== MARKET IDENTITY DERIVATION ====================
   
   /// ✅ v2.0.1: Dérive l'identité Nostr du marché de manière déterministe et sécurisée

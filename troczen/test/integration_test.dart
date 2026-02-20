@@ -298,9 +298,10 @@ void main() {
             challengeHex: challenge,
             timestamp: timestamp,
             ttl: ttl,
+            signatureHex: '0' * 128, // Dummy signature
           );
 
-          expect(qrData.length, equals(113), reason: 'QR offre doit faire 113 octets');
+          expect(qrData.length, equals(177), reason: 'QR offre doit faire 177 octets');
 
           // 5. Décoder et vérifier
           final decoded = qrService.decodeOffer(qrData);
@@ -449,6 +450,7 @@ void main() {
             challengeHex: challenge,
             timestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
             ttl: 300,
+            signatureHex: '0' * 128, // Dummy signature
           );
 
           // === BOB (Receveur) ===

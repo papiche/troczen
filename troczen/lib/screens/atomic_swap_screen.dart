@@ -354,13 +354,41 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       final p2Encrypted = await _cryptoService.encryptP2(widget.bon.p2!, p3);
       _challenge = DateTime.now().millisecondsSinceEpoch.toString();
 
+      // Signer le QR avec la clé du bon
+      final p2Bytes = widget.bon.p2Bytes;
+      final p3Bytes = await _storageService.getP3FromCacheBytes(widget.bon.bonId);
+      
+      if (p2Bytes == null || p3Bytes == null) {
+        throw Exception('Parts P2 ou P3 non disponibles');
+      }
+      
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(
+        null,
+        p2Bytes,
+        p3Bytes,
+      );
+      
+      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final messageToSign = widget.bon.bonId +
+          p2Encrypted['ciphertext']! +
+          p2Encrypted['nonce']! +
+          _challenge! +
+          timestamp.toRadixString(16).padLeft(8, '0');
+          
+      final signatureHex = _cryptoService.signMessageBytes(messageToSign, nsecBonBytes);
+      
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(p2Bytes);
+      _cryptoService.secureZeroiseBytes(p3Bytes);
+
       final qrBytes = _qrService.encodeOffer(
         bonIdHex: widget.bon.bonId,
         p2CipherHex: p2Encrypted['ciphertext']!,
         nonceHex: p2Encrypted['nonce']!,
         challengeHex: _challenge!,
-        timestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        timestamp: timestamp,
         ttl: 120,
+        signatureHex: signatureHex,
       );
 
       setState(() => _qrData = qrBytes);

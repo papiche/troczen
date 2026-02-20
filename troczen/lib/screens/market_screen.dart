@@ -10,6 +10,7 @@ import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
 import '../services/image_compression_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 /// Écran de gestion des marchés multi-marchés
 /// 
@@ -117,6 +118,133 @@ class _MarketScreenState extends State<MarketScreen> {
         );
       }
     }
+  }
+
+  /// Affiche le QR de connexion Wi-Fi pour un marché
+  void _showWifiQr(Market market) {
+    final wifiPassword = _cryptoService.deriveWifiPassword(market.seedMarket);
+    final qrData = _qrService.generateWifiQrData('TrocZen-Marche', wifiPassword);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[800],
+                    ),
+                    child: Icon(
+                      Icons.wifi,
+                      color: Colors.blue[400],
+                      size: 24,
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Réseau Wi-Fi du marché',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          market.displayName,
+                          style: TextStyle(
+                            color: Colors.blue[300],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              
+              // QR Code
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: QrImageView(
+                  data: qrData,
+                  version: QrVersions.auto,
+                  size: 220,
+                  backgroundColor: const Color(0xFFFFFFFF),
+                  errorCorrectionLevel: QrErrorCorrectLevel.M,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[300], size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Scannez ce QR avec l\'appareil photo de votre téléphone pour vous connecter au réseau Wi-Fi du marché.',
+                        style: TextStyle(color: Colors.blue[300], fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Détails
+              _buildDetailRow('Réseau (SSID)', 'TrocZen-Marche'),
+              _buildDetailRow('Mot de passe', wifiPassword),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Affiche le QR de partage pour un marché
@@ -1317,19 +1445,28 @@ class _MarketScreenState extends State<MarketScreen> {
                   const SizedBox(height: 12),
                   
                   // Actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
                     children: [
+                      // Partager Wi-Fi
+                      TextButton.icon(
+                        onPressed: () => _showWifiQr(market),
+                        icon: const Icon(Icons.wifi, size: 18),
+                        label: const Text('Wi-Fi'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue[300],
+                        ),
+                      ),
                       // Partager (QR)
                       TextButton.icon(
                         onPressed: () => _showMarketQr(market),
                         icon: const Icon(Icons.qr_code, size: 18),
                         label: const Text('Partager'),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.blue,
+                          foregroundColor: Colors.orange,
                         ),
                       ),
-                      const SizedBox(width: 8),
                       // Quitter
                       TextButton.icon(
                         onPressed: () => _removeMarket(market),

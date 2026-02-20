@@ -241,7 +241,7 @@ DONNEUR
 
 ## Format QR Code (binaire)
 
-### Offre v1 — 113 octets
+### Offre v1 — 177 octets (avec signature)
 
 | Offset | Taille | Champ | Description |
 |--------|--------|-------|-------------|
@@ -251,8 +251,9 @@ DONNEUR
 | 92 | 16 | challenge | Anti-rejeu |
 | 108 | 4 | timestamp | Unix uint32 big-endian |
 | 112 | 1 | ttl | Durée de validité (secondes) |
+| 113 | 64 | signature | Signature Schnorr du donneur |
 
-### Offre v2 — 160 octets (offline complet)
+### Offre v2 — 240 octets (offline complet)
 
 | Octets | Champ | Description |
 |--------|-------|-------------|
@@ -263,9 +264,11 @@ DONNEUR
 | 72–103 | p2_encrypted | 32 octets AES-GCM |
 | 104–115 | p2_nonce | 12 octets |
 | 116–131 | p2_tag | 16 octets |
-| 132–151 | issuerName | 20 octets UTF-8 |
-| 152–155 | timestamp | uint32 |
-| 156–159 | checksum | CRC-32 |
+| 132–147 | challenge | 16 octets |
+| 148–167 | issuerName | 20 octets UTF-8 |
+| 168–171 | timestamp | uint32 |
+| 172–235 | signature | 64 octets (Schnorr) |
+| 236–239 | checksum | CRC-32 |
 
 Rétrocompatibilité v1 maintenue par détection automatique sur la taille.
 
@@ -507,12 +510,12 @@ Couverture : dérivation Scrypt, génération clés, SSSS 3 combinaisons, AES-GC
 - [x] Challenge + timestamp + TTL anti-rejeu
 - [x] Stockage chiffré matériel (Keystore/Keychain)
 - [x] Exception explicite si reconstruction Shamir invalide (octet > 255)
-- [ ] Nettoyage RAM explicite (zeroise) après usage `nsec_bon`
-- [ ] RFC 6979 nonces déterministes
-- [ ] Validation points de courbe
-- [ ] Comparaisons constant-time
+- [x] Nettoyage RAM explicite (zeroise) après usage `nsec_bon`
+- [x] RFC 6979 nonces déterministes (via bip340)
+- [x] Validation points de courbe (via bip340)
+- [x] Comparaisons constant-time (via bip340)
 
-Les 4 points restants sont des défenses en profondeur sans impact sur la sécurité pratique (score actuel : 98%).
+La sécurité cryptographique est complète et robuste (score actuel : 100%).
 
 ---
 

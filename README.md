@@ -7,7 +7,7 @@ Application Flutter pour la création, le transfert et l'encaissement de bons de
 - **Offline-first** : Fonctionne sans Internet après synchronisation initiale
 - **Cryptographie** : SSSS polynomial (2,3), AES-GCM, Schnorr secp256k1, Scrypt
 - **Handshake atomique** : Double scan (QR offer → QR ACK) empêche la double dépense
-- **QR codes binaires** : Format compact v1 (113 octets) et v2 offline-complet (160 octets)
+- **QR codes binaires** : Format compact v1 (177 octets) et v2 offline-complet (240 octets)
 - **Interface Panini** : Cartes à collectionner avec système de rareté
 - **Décentralisé** : Synchronisation via protocole Nostr (kind 30303)
 - **NFC** : Transfert de bons par approche des appareils (⚠️ expérimental)
@@ -110,6 +110,7 @@ K_day = HMAC-SHA256(seed_market, "daily-key-" || YYYY-MM-DD)
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Cryptographie, flux de données, formats QR, composants UI |
 | [007.md](007.md) | Whitepaper formel : modèle de sécurité, Tamarin/ProVerif |
 | [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, Ğ1/ẐEN/Euro |
+| [docs/TROCZEN_BOX_GUIDE.md](docs/TROCZEN_BOX_GUIDE.md) | Guide d'installation de la TrocZen Box (Raspberry Pi Solaire) |
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | État du projet, métriques, roadmap, commandes |
 | [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md) | Corrections sécurité (3 vagues, fév. 2026) |
 | [GUIDE_TESTS.md](GUIDE_TESTS.md) | Stratégie de tests, scénarios terrain |

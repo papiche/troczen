@@ -10,7 +10,7 @@ void main() {
   });
 
   group('QRService - Offer Encoding/Decoding', () {
-    test('encodeOffer génère exactement 113 octets', () {
+    test('encodeOffer génère exactement 177 octets', () {
       final qrData = qrService.encodeOffer(
         bonIdHex: '0' * 64,
         p2CipherHex: '1' * 96,
@@ -18,9 +18,10 @@ void main() {
         challengeHex: '3' * 32,
         timestamp: 1234567890,
         ttl: 30,
+        signatureHex: '4' * 128,
       );
 
-      expect(qrData.length, equals(113));
+      expect(qrData.length, equals(177));
     });
 
     test('decodeOffer reconstruit les données correctement', () {
@@ -30,6 +31,7 @@ void main() {
       final challenge = 'd' * 32;
       final timestamp = 1700000000;
       final ttl = 30;
+      final signature = 'e' * 128;
 
       final encoded = qrService.encodeOffer(
         bonIdHex: bonId,
@@ -38,6 +40,7 @@ void main() {
         challengeHex: challenge,
         timestamp: timestamp,
         ttl: ttl,
+        signatureHex: signature,
       );
 
       final decoded = qrService.decodeOffer(encoded);
@@ -48,10 +51,11 @@ void main() {
       expect(decoded['challenge'], equals(challenge));
       expect(decoded['timestamp'], equals(timestamp));
       expect(decoded['ttl'], equals(ttl));
+      expect(decoded['signature'], equals(signature));
     });
 
     test('decodeOffer rejette les données de mauvaise taille', () {
-      final badData = Uint8List(100); // Devrait être 113
+      final badData = Uint8List(100); // Devrait être 177
 
       expect(
         () => qrService.decodeOffer(badData),
@@ -153,6 +157,7 @@ void main() {
           challengeHex: '3' * 32,
           timestamp: 1234567890,
           ttl: 30,
+          signatureHex: '4' * 128,
         );
 
         final decoded = qrService.decodeOffer(encoded);

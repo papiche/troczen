@@ -64,6 +64,7 @@ class NfcService {
         challengeHex: challenge,
         timestamp: timestamp,
         ttl: ttl,
+        signatureHex: '00' * 64, // Dummy signature pour le mock NFC
       );
 
       await NfcManager.instance.startSession(

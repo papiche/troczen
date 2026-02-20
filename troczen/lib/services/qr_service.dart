@@ -20,7 +20,6 @@ class QRService {
   /// Le QR doit être signé par le donneur pour prouver la propriété du bon.
   
   /// Encode une offre en format binaire compact avec signature (177 octets)
-  /// ✅ CORRECTION P0-C: Ajout de la signature du donneur
   /// Structure:
   /// - bon_id: 32 octets
   /// - p2_cipher: 48 octets
@@ -28,7 +27,7 @@ class QRService {
   /// - challenge: 16 octets
   /// - timestamp: 4 octets (uint32)
   /// - ttl: 1 octet (uint8)
-  /// - signature: 64 octets (Schnorr) ✅ NOUVEAU
+  /// - signature: 64 octets (Schnorr)
   Uint8List encodeOffer({
     required String bonIdHex,
     required String p2CipherHex,
@@ -36,18 +35,15 @@ class QRService {
     required String challengeHex,
     required int timestamp,
     required int ttl,
-    String? signatureHex,  // ✅ NOUVEAU: signature du donneur (64 octets = 128 hex chars)
+    required String signatureHex,
   }) {
     final bonId = HEX.decode(bonIdHex);
     final p2Cipher = HEX.decode(p2CipherHex);
     final nonce = HEX.decode(nonceHex);
     final challenge = HEX.decode(challengeHex);
+    final signature = HEX.decode(signatureHex);
     
-    // ✅ CORRECTION P0-C: Taille variable selon présence de signature
-    final hasSignature = signatureHex != null && signatureHex.isNotEmpty;
-    final totalSize = hasSignature ? 177 : 113;
-    
-    final buffer = ByteData(totalSize);
+    final buffer = ByteData(177);
     int offset = 0;
     
     // bon_id (32 octets)
@@ -77,26 +73,20 @@ class QRService {
     // ttl (1 octet)
     buffer.setUint8(offset++, ttl);
     
-    // ✅ CORRECTION P0-C: signature (64 octets) - NOUVEAU
-    if (hasSignature) {
-      final signature = HEX.decode(signatureHex);
-      for (int i = 0; i < 64; i++) {
-        buffer.setUint8(offset++, signature[i]);
-      }
+    // signature (64 octets)
+    for (int i = 0; i < 64; i++) {
+      buffer.setUint8(offset++, signature[i]);
     }
     
     return buffer.buffer.asUint8List();
   }
 
-  /// Décode une offre depuis le format binaire
-  /// ✅ CORRECTION P0-C: Supporte les deux formats (avec/sans signature)
+  /// Décode une offre depuis le format binaire (177 octets)
   Map<String, dynamic> decodeOffer(Uint8List data) {
-    // ✅ CORRECTION P0-C: Accepter les deux tailles
-    if (data.length != 113 && data.length != 177) {
-      throw Exception('Format invalide: taille attendue 113 ou 177 octets, reçu ${data.length}');
+    if (data.length != 177) {
+      throw Exception('Format invalide: taille attendue 177 octets, reçu ${data.length}');
     }
     
-    final hasSignature = data.length == 177;
     final buffer = ByteData.sublistView(data);
     int offset = 0;
     
@@ -124,12 +114,9 @@ class QRService {
     final ttl = buffer.getUint8(offset);
     offset += 1;
     
-    // ✅ CORRECTION P0-C: signature (optionnel)
-    String? signature;
-    if (hasSignature) {
-      final sigBytes = data.sublist(offset, offset + 64);
-      signature = HEX.encode(sigBytes);
-    }
+    // signature
+    final sigBytes = data.sublist(offset, offset + 64);
+    final signature = HEX.encode(sigBytes);
     
     return {
       'bonId': HEX.encode(bonId),
@@ -138,7 +125,7 @@ class QRService {
       'challenge': HEX.encode(challenge),
       'timestamp': timestamp,
       'ttl': ttl,
-      'signature': signature,  // ✅ NOUVEAU
+      'signature': signature,
     };
   }
 
@@ -431,6 +418,14 @@ class QRService {
     );
   }
   
+  // ==================== WI-FI QR CODE ====================
+
+  /// Génère une chaîne au format standard pour connexion Wi-Fi automatique
+  String generateWifiQrData(String ssid, String password) {
+    // Format standard compris par tous les appareils iOS/Android
+    return 'WIFI:T:WPA;S:$ssid;P:$password;;';
+  }
+
   // ==================== UTILITAIRES ====================
   
   /// Encode un nom en 20 octets fixes (UTF-8, tronqué/paddé avec des zéros)
