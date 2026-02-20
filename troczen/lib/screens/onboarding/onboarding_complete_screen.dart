@@ -22,7 +22,15 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
   late Animation<double> _scaleAnimation;
   
   bool _isCreatingAccount = false;
-  bool _accountCreated = false;
+  
+  // Contrôleurs pour les champs salt/pepper
+  final _saltController = TextEditingController();
+  final _pepperController = TextEditingController();
+  bool _obscurePepper = true;
+  
+  // Validation
+  String? _saltError;
+  String? _pepperError;
   
   @override
   void initState() {
@@ -53,6 +61,8 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
   @override
   void dispose() {
     _animationController.dispose();
+    _saltController.dispose();
+    _pepperController.dispose();
     super.dispose();
   }
   
@@ -105,7 +115,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                     const SizedBox(height: 16),
                     
                     Text(
-                      'Votre profil a été configuré avec succès',
+                      'Créez vos identifiants de récupération',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[400],
@@ -113,14 +123,143 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                       textAlign: TextAlign.center,
                     ),
                     
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 32),
                     
-                    // Récapitulatif
+                    // Formulaire Salt/Pepper
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: const Color(0xFF2A2A2A),
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey[800]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Explication
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Color(0xFFFFB347), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Ces identifiants permettent de retrouver votre compte. Gardez-les précieusement !',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          
+                          // Champ Salt (identifiant)
+                          Text(
+                            'Identifiant (Salt)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[300],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _saltController,
+                            decoration: InputDecoration(
+                              hintText: 'Ex: mon.pseudo@domaine.com',
+                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              filled: true,
+                              fillColor: const Color(0xFF1A1A1A),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              errorText: _saltError,
+                              prefixIcon: const Icon(Icons.person, color: Color(0xFFFFB347)),
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            onChanged: (_) => _clearErrors(),
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Champ Pepper (mot de passe)
+                          Text(
+                            'Mot de passe (Pepper)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[300],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _pepperController,
+                            obscureText: _obscurePepper,
+                            decoration: InputDecoration(
+                              hintText: 'Minimum 8 caractères',
+                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              filled: true,
+                              fillColor: const Color(0xFF1A1A1A),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              errorText: _pepperError,
+                              prefixIcon: const Icon(Icons.lock, color: Color(0xFFFFB347)),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePepper ? Icons.visibility : Icons.visibility_off,
+                                  color: Colors.grey[500],
+                                ),
+                                onPressed: () {
+                                  setState(() => _obscurePepper = !_obscurePepper);
+                                },
+                              ),
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            onChanged: (_) => _clearErrors(),
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Avertissement de sécurité
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '⚠️ Ces identifiants sont irrécupérables si vous les perdez. Notez-les dans un endroit sûr !',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.orange[300],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Récapitulatif compact
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey[800]!),
                       ),
                       child: Column(
@@ -130,27 +269,18 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                             label: 'Nom',
                             value: state.displayName ?? 'Non défini',
                           ),
-                          const Divider(height: 24, color: Colors.grey),
+                          const Divider(height: 16, color: Colors.grey),
                           _buildInfoRow(
                             icon: Icons.cloud,
-                            label: 'Relais Nostr',
+                            label: 'Relais',
                             value: _shortenUrl(state.relayUrl),
                           ),
-                          const Divider(height: 24, color: Colors.grey),
-                          _buildInfoRow(
-                            icon: Icons.sync,
-                            label: 'Bons synchronisés',
-                            value: '${state.p3Count} bon${state.p3Count > 1 ? 's' : ''}',
-                          ),
-                          if (state.activityTags.isNotEmpty) ...[
-                            const Divider(height: 24, color: Colors.grey),
+                          if (state.p3Count > 0) ...[
+                            const Divider(height: 16, color: Colors.grey),
                             _buildInfoRow(
-                              icon: Icons.label,
-                              label: 'Tags',
-                              value: state.activityTags.take(2).join(', ') +
-                                  (state.activityTags.length > 2
-                                      ? ' +${state.activityTags.length - 2}'
-                                      : ''),
+                              icon: Icons.sync,
+                              label: 'Bons',
+                              value: '${state.p3Count}',
                             ),
                           ],
                         ],
@@ -242,7 +372,49 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     return '${url.substring(0, 27)}...';
   }
   
+  /// Efface les messages d'erreur
+  void _clearErrors() {
+    if (_saltError != null || _pepperError != null) {
+      setState(() {
+        _saltError = null;
+        _pepperError = null;
+      });
+    }
+  }
+  
+  /// Valide les identifiants salt/pepper
+  bool _validateCredentials() {
+    bool isValid = true;
+    
+    // Validation du salt (identifiant)
+    final salt = _saltController.text.trim();
+    if (salt.isEmpty) {
+      setState(() => _saltError = 'L\'identifiant est requis');
+      isValid = false;
+    } else if (salt.length < 3) {
+      setState(() => _saltError = 'Minimum 3 caractères');
+      isValid = false;
+    }
+    
+    // Validation du pepper (mot de passe)
+    final pepper = _pepperController.text;
+    if (pepper.isEmpty) {
+      setState(() => _pepperError = 'Le mot de passe est requis');
+      isValid = false;
+    } else if (pepper.length < 8) {
+      setState(() => _pepperError = 'Minimum 8 caractères');
+      isValid = false;
+    }
+    
+    return isValid;
+  }
+  
   Future<void> _completeOnboarding() async {
+    // Valider les identifiants avant de continuer
+    if (!_validateCredentials()) {
+      return;
+    }
+    
     setState(() => _isCreatingAccount = true);
     
     try {
@@ -261,14 +433,14 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       );
       await storageService.saveMarket(market);
       
-      // 2. Créer l'utilisateur avec credentials par défaut
-      // (L'utilisateur pourra se connecter plus tard avec login/password)
-      final tempLogin = 'user_${DateTime.now().millisecondsSinceEpoch}';
-      final tempPassword = 'temp123456';
+      // 2. Créer l'utilisateur avec les identifiants fournis (salt/pepper)
+      // Ces identifiants permettent de régénérer la clé privée de manière déterministe
+      final salt = _saltController.text.trim();
+      final pepper = _pepperController.text;
       
       final privateKeyBytes = await cryptoService.derivePrivateKey(
-        tempLogin,
-        tempPassword,
+        salt,
+        pepper,
       );
       
       final privateKeyHex = privateKeyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -316,10 +488,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       // 4. Marquer l'onboarding comme complété
       await storageService.markOnboardingComplete();
       
-      setState(() {
-        _accountCreated = true;
-        _isCreatingAccount = false;
-      });
+      setState(() => _isCreatingAccount = false);
       
       // 5. Navigation vers l'écran principal
       if (!mounted) return;
