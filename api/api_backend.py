@@ -345,6 +345,109 @@ def health():
     })
 
 
+# ==================== CONFIGURATION & HEALTH ====================
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """
+    Configuration publique de l'API.
+    Permet à l'app Flutter de découvrir les services disponibles.
+    
+    Utilisé par l'onboarding Flutter (Étape 2) pour:
+    - Vérifier la connectivité API
+    - Découvrir les URLs des services (Nostr, IPFS)
+    - Adapter la configuration automatiquement
+    """
+    return jsonify({
+        'success': True,
+        'version': '1.0.0',
+        'services': {
+            'api': {
+                'url': request.host_url.rstrip('/'),
+                'status': 'ok'
+            },
+            'nostr': {
+                'relay_url': os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777'),
+                'enabled': os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+            },
+            'ipfs': {
+                'gateway': IPFS_GATEWAY,
+                'api_url': IPFS_API_URL,
+                'enabled': IPFS_ENABLED
+            }
+        },
+        'box_mode': {
+            'wifi_ssid': 'TrocZen-Marche',  # SSID par défaut de la TrocZen Box
+            'wifi_password_hint': 'Dérivé de la market_seed via SHA256',
+            'local_ip': '10.42.0.1'  # IP par défaut du hotspot Raspberry Pi
+        },
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/health/services', methods=['GET'])
+def services_health():
+    """
+    Vérification de santé de tous les services.
+    
+    Utilisé par l'onboarding Flutter (Étape 2) pour:
+    - Tester la connectivité Nostr
+    - Tester la connectivité IPFS
+    - Afficher le statut des services
+    """
+    results = {
+        'api': 'ok',
+        'nostr': 'unknown',
+        'ipfs': 'unknown'
+    }
+    
+    # Test Nostr
+    NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
+    NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+    
+    if NOSTR_ENABLED:
+        try:
+            import socket
+            from urllib.parse import urlparse
+            parsed = urlparse(NOSTR_RELAY)
+            host = parsed.hostname or '127.0.0.1'
+            port = parsed.port or 7777
+            
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            
+            results['nostr'] = 'ok' if result == 0 else 'unreachable'
+        except Exception as e:
+            results['nostr'] = f'error: {str(e)[:50]}'
+    else:
+        results['nostr'] = 'disabled'
+    
+    # Test IPFS
+    if IPFS_ENABLED:
+        try:
+            response = requests.post(
+                f'{IPFS_API_URL}/api/v0/id',
+                timeout=5
+            )
+            results['ipfs'] = 'ok' if response.status_code == 200 else 'error'
+        except Exception as e:
+            results['ipfs'] = f'error: {str(e)[:50]}'
+    else:
+        results['ipfs'] = 'disabled'
+    
+    # Statut global
+    all_ok = all(v in ['ok', 'disabled', 'unknown'] for v in results.values())
+    
+    return jsonify({
+        'success': True,
+        'status': 'healthy' if all_ok else 'degraded',
+        'services': results,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
 # ==================== UPLOAD IMAGES ====================
 
 @app.route('/api/upload/image', methods=['POST'])
@@ -835,6 +938,105 @@ def get_nostr_profiles():
             'error': str(e),
             'profiles': []
         })
+
+
+@app.route('/api/nostr/profile', methods=['POST'])
+def publish_nostr_profile():
+    """
+    Publier un profil Nostr (kind 0) via l'API.
+    
+    Utilisé par l'onboarding Flutter (Étape 4) comme fallback
+    si la connexion directe au relais Nostr échoue.
+    
+    Body JSON attendu:
+    {
+        "name": "Nom affiché",
+        "about": "Description (optionnel)",
+        "picture": "URL IPFS de la photo (optionnel)",
+        "zen_tags": ["boulanger", "maraicher"],  // Tags TrocZen
+        "g1_pubkey": "G1PublicKeyBase58",  // Optionnel
+        "market": "marche-toulouse"
+    }
+    
+    Retourne:
+    {
+        "success": true,
+        "event_id": "...",
+        "npub": "npub1..."
+    }
+    """
+    NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
+    NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
+    
+    if not NOSTR_ENABLED:
+        return jsonify({
+            'success': False,
+            'error': 'Nostr disabled on this server'
+        }), 503
+    
+    # Récupérer les données du profil
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+    
+    # Construire le contenu du profil (kind 0)
+    profile_content = {
+        'name': name,
+        'about': data.get('about', ''),
+        'picture': data.get('picture', ''),
+        # Extensions TrocZen
+        'zen_tags': data.get('zen_tags', []),
+        'g1_pubkey': data.get('g1_pubkey', ''),
+        'market': data.get('market', '')
+    }
+    
+    try:
+        # Utiliser le client Nostr pour publier
+        client = NostrClientSync(relay_url=NOSTR_RELAY)
+        
+        if not client.connect():
+            return jsonify({
+                'success': False,
+                'error': 'Failed to connect to Nostr relay'
+            }), 503
+        
+        # Publier le profil
+        # Note: Le client Nostr doit gérer la signature avec la clé privée
+        # Si le client ne supporte pas la publication, on retourne les données
+        # pour que l'app Flutter puisse publier directement
+        
+        # Tenter de publier si le client le supporte
+        if hasattr(client, 'publish_profile'):
+            result = client.publish_profile(profile_content)
+            client.disconnect()
+            return jsonify({
+                'success': True,
+                'event_id': result.get('event_id'),
+                'npub': result.get('npub'),
+                'message': 'Profile published successfully'
+            })
+        else:
+            client.disconnect()
+            # Fallback: retourner les données formatées pour publication directe
+            return jsonify({
+                'success': True,
+                'message': 'Profile data prepared. Publish directly from app.',
+                'profile_content': profile_content,
+                'kind': 0,
+                'relay': NOSTR_RELAY
+            })
+        
+    except Exception as e:
+        print(f"❌ Erreur publication profil Nostr: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/nostr/bons/all', methods=['GET'])
