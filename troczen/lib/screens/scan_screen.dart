@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -112,8 +113,14 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      // ✅ NOUVEAU: Tenter de décoder en QR v2 d'abord
-      final qrV2Payload = _qrService.decodeQr(barcode.rawBytes!);
+      // ✅ CORRECTION ENCODAGE: Le QR code est encodé en Base64
+      // Les bytes bruts du scanner sont les bytes de la chaîne Base64
+      // Il faut décoder cette chaîne pour obtenir les données binaires originales
+      final base64String = String.fromCharCodes(barcode.rawBytes!);
+      final decodedBytes = base64Decode(base64String);
+      
+      // Tenter de décoder en QR v2
+      final qrV2Payload = _qrService.decodeQr(decodedBytes);
       
       if (qrV2Payload != null) {
         // Format QR v2 détecté - Fonctionnement offline complet
@@ -123,12 +130,12 @@ class _ScanScreenState extends State<ScanScreen> {
 
       // ❌ SÉCURITÉ: Format v1 (113 octets) rejeté - manque de métadonnées
       // Les QR codes V1 peuvent créer des bons avec valeur 0.0
-      // Forcer l'usage du format V2 (160 octets) avec métadonnées complètes
+      // Forcer l'usage du format V2 (240 octets) avec métadonnées complètes
       _showError('QR code obsolète (V1).\nVeuillez utiliser un QR code au format V2.');
       return;
 
     } catch (e) {
-      _showError('Erreur: $e');
+      _showError('Erreur de décodage: $e');
     } finally {
       setState(() {
         _isProcessing = false;
@@ -207,19 +214,19 @@ class _ScanScreenState extends State<ScanScreen> {
 
     if (!mounted) return;
 
-    // Générer un challenge pour l'ACK
-    final challengeBytes = HEX.encode(Uint8List.fromList(
-      List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
-    ));
+    // ✅ CORRECTION HANDSHAKE: Utiliser le challenge du payload QR v2
+    // Whitepaper (§3.2 Étape 1): Le Donneur génère le challenge, le Receveur le signe.
+    // Le challenge est déjà inclus dans le QrPayloadV2 et extrait lors du décodage.
+    final challengeHex = payload.challengeHex;
 
-    // Naviguer vers l'écran ACK
+    // Naviguer vers l'écran ACK avec le challenge du Donneur
     await Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => AckScreen(
           user: widget.user,
           bon: bon,
-          challenge: challengeBytes,
+          challenge: challengeHex,  // ✅ Challenge du Donneur, pas généré localement
         ),
       ),
     );

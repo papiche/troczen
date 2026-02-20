@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -121,8 +122,13 @@ class _AckScannerScreenState extends State<AckScannerScreen> {
     });
 
     try {
+      // ✅ CORRECTION ENCODAGE: Le QR ACK est encodé en Base64
+      // Il faut décoder la chaîne Base64 pour obtenir les données binaires
+      final base64String = String.fromCharCodes(barcode.rawBytes!);
+      final decodedBytes = base64Decode(base64String);
+      
       // Décoder le QR ACK binaire (97 octets)
-      final ackData = _qrService.decodeAck(barcode.rawBytes!);
+      final ackData = _qrService.decodeAck(decodedBytes);
 
       // ✅ SÉCURITÉ 100%: Valider la clé publique d'abord
       if (!_cryptoService.isValidPublicKey(ackData['bonId'])) {

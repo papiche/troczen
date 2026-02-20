@@ -214,17 +214,31 @@ class QRService {
     return remaining > 0 ? remaining : 0;
   }
 
-  // ==================== FORMAT QR V2 (160 octets) ====================
+  // ==================== FORMAT QR V2 (240 octets) ====================
+  // ✅ CORRECTION HANDSHAKE: Taille passée de 160 à 240 octets
+  // Ajout du champ challenge (16 octets) pour le handshake cryptographique
+  // Ajout du champ signature (64 octets) pour l'authentification du Donneur
+  // Whitepaper (§3.2): Le Donneur génère un challenge que le Receveur doit signer.
+  // Whitepaper (§3.2): Le QR doit être signé par le Donneur pour prouver la propriété.
   
-  /// Encode un bon en payload QR v2 (160 octets) pour fonctionnement offline
-  /// Inclut toutes les métadonnées nécessaires (valeur, émetteur, etc.)
+  /// Taille du format QR v2 (avec challenge et signature)
+  static const int _qrV2Size = 240;
+  
+  /// Encode un bon en payload QR v2 (240 octets) pour fonctionnement offline
+  /// Inclut toutes les métadonnées nécessaires (valeur, émetteur, challenge, signature)
+  ///
+  /// ✅ CORRECTION HANDSHAKE: Ajout des paramètres challenge et signature
+  /// Le challenge est généré par le Donneur et doit être signé par le Receveur.
+  /// La signature prouve que le Donneur possède le bon (clé privée reconstituée).
   Uint8List encodeQrV2({
     required Bon bon,
     required String encryptedP2Hex,
     required Uint8List p2Nonce,
     required Uint8List p2Tag,
+    required Uint8List challenge,   // ✅ NOUVEAU: challenge du Donneur (16 octets)
+    required Uint8List signature,   // ✅ NOUVEAU: signature Schnorr du Donneur (64 octets)
   }) {
-    final buffer = ByteData(160);
+    final buffer = ByteData(_qrV2Size);
     int offset = 0;
     
     // 0-3: Magic + version (0x5A454E02 = "ZEN" + 0x02)
@@ -264,19 +278,29 @@ class QRService {
       buffer.setUint8(offset++, p2Tag[i]);
     }
     
-    // 132-151: issuerName (20 octets UTF-8, tronqué/paddé)
+    // 132-147: challenge (16 octets) ✅ NOUVEAU
+    for (int i = 0; i < 16; i++) {
+      buffer.setUint8(offset++, challenge[i]);
+    }
+    
+    // 148-167: issuerName (20 octets UTF-8, tronqué/paddé)
     final nameBytes = _encodeNameFixed(bon.issuerName, 20);
     for (int i = 0; i < 20; i++) {
       buffer.setUint8(offset++, nameBytes[i]);
     }
     
-    // 152-155: timestamp (uint32 big-endian, epoch Unix)
-    final timestamp = bon.createdAt.millisecondsSinceEpoch ~/ 1000;
+    // 168-171: timestamp (uint32 big-endian, epoch Unix)
+    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     buffer.setUint32(offset, timestamp, Endian.big);
     offset += 4;
     
-    // 156-159: checksum CRC-32 des octets 0-155
-    final dataForChecksum = buffer.buffer.asUint8List(0, 156);
+    // 172-235: signature (64 octets) ✅ NOUVEAU
+    for (int i = 0; i < 64; i++) {
+      buffer.setUint8(offset++, signature[i]);
+    }
+    
+    // 236-239: checksum CRC-32 des octets 0-235
+    final dataForChecksum = buffer.buffer.asUint8List(0, 236);
     final checksum = _crc32(dataForChecksum);
     buffer.setUint32(offset, checksum, Endian.big);
     
@@ -285,6 +309,8 @@ class QRService {
   
   /// Décode un payload QR (détecte automatiquement v1 ou v2)
   /// Retourne null si checksum invalide
+  ///
+  /// ✅ CORRECTION HANDSHAKE: Supporte le format v2 avec challenge et signature (240 octets)
   QrPayloadV2? decodeQr(Uint8List bytes) {
     if (bytes.length < 4) return null;
     
@@ -292,7 +318,8 @@ class QRService {
     final buffer = ByteData.sublistView(bytes);
     final possibleMagic = buffer.getUint32(0, Endian.big);
     
-    if (possibleMagic == _magicV2 && bytes.length == 160) {
+    // ✅ CORRECTION HANDSHAKE: Accepter uniquement le format v2 complet (240 octets)
+    if (possibleMagic == _magicV2 && bytes.length == _qrV2Size) {
       return _decodeQrV2(bytes);
     }
     
@@ -301,8 +328,9 @@ class QRService {
   }
   
   /// Décode spécifiquement un payload QR v2
+  /// ✅ CORRECTION HANDSHAKE: Extrait le challenge et la signature du payload
   QrPayloadV2? _decodeQrV2(Uint8List bytes) {
-    if (bytes.length != 160) return null;
+    if (bytes.length != _qrV2Size) return null;
     
     final buffer = ByteData.sublistView(bytes);
     int offset = 0;
@@ -338,21 +366,29 @@ class QRService {
     final p2Tag = bytes.sublist(offset, offset + 16);
     offset += 16;
     
-    // 132-151: issuerName
+    // 132-147: challenge ✅ NOUVEAU
+    final challenge = bytes.sublist(offset, offset + 16);
+    offset += 16;
+    
+    // 148-167: issuerName
     final nameBytes = bytes.sublist(offset, offset + 20);
     offset += 20;
     final issuerName = _decodeNameFixed(nameBytes);
     
-    // 152-155: timestamp
+    // 168-171: timestamp
     final timestamp = buffer.getUint32(offset, Endian.big);
     offset += 4;
     final emittedAt = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
     
-    // 156-159: checksum
+    // 172-235: signature ✅ NOUVEAU
+    final signature = bytes.sublist(offset, offset + 64);
+    offset += 64;
+    
+    // 236-239: checksum
     final storedChecksum = buffer.getUint32(offset, Endian.big);
     
     // Vérifier le checksum
-    final dataForChecksum = bytes.sublist(0, 156);
+    final dataForChecksum = bytes.sublist(0, 236);
     final computedChecksum = _crc32(dataForChecksum);
     
     if (storedChecksum != computedChecksum) {
@@ -367,6 +403,8 @@ class QRService {
       encryptedP2: encryptedP2,
       p2Nonce: p2Nonce,
       p2Tag: p2Tag,
+      challenge: challenge,   // ✅ NOUVEAU
+      signature: signature,   // ✅ NOUVEAU
       emittedAt: emittedAt,
     );
   }
@@ -415,91 +453,23 @@ class QRService {
     }
   }
   
-  /// Résultat de la génération du widget QR
-  /// Peut être soit un QR code valide, soit une explosion en cas d'erreur
+  /// Génère un widget QR code à partir de données binaires
+  ///
+  /// ✅ CORRECTION ENCODAGE: Utilise systématiquement Base64
+  /// Les données binaires (0x00-0xFF) ne peuvent pas être converties
+  /// directement en String via fromCharCodes() car cela produit des
+  /// caractères de contrôle Unicode invalides pour les QR codes.
+  ///
+  /// Solution: Encoder en Base64 pour garantir des caractères valides.
+  /// Le scanner doit décoder en Base64 avant de traiter les bytes.
   Widget buildQrWidget(
     Uint8List payload, {
     double size = 280,
     VoidCallback? onRetry,
   }) {
-    // Vérifier si les bytes contiennent des caractères valides
-    if (!_hasValidQrCharacters(payload)) {
-      return QrExplosionWidget(
-        size: size,
-        onRetry: onRetry ?? () {},
-        errorMessage: _getInvalidBytesMessage(payload),
-      );
-    }
-    
-    // Tenter de créer la chaîne
-    final qrString = String.fromCharCodes(payload);
-    
-    // Vérifier que la chaîne peut être encodée
-    if (!_canEncodeAsQr(qrString)) {
-      return QrExplosionWidget(
-        size: size,
-        onRetry: onRetry ?? () {},
-        errorMessage: 'La conversion des données binaires a produit '
-            'des caractères invalides pour le QR code.',
-      );
-    }
-    
-    // Tenter de générer le QR code
     try {
-      return QrImageView(
-        data: qrString,
-        version: QrVersions.auto,
-        size: size,
-        backgroundColor: const Color(0xFFFFFFFF),
-        errorCorrectionLevel: QrErrorCorrectLevel.M,
-      );
-    } catch (e) {
-      return QrExplosionWidget(
-        size: size,
-        onRetry: onRetry ?? () {},
-        errorMessage: 'Erreur lors de la génération du QR code: ${e.toString()}',
-      );
-    }
-  }
-  
-  /// Génère un message d'erreur détaillé sur les bytes invalides
-  String _getInvalidBytesMessage(Uint8List payload) {
-    final invalidBytes = <int>[];
-    final invalidPositions = <int>[];
-    
-    for (int i = 0; i < payload.length; i++) {
-      final byte = payload[i];
-      if (byte < 0x20 && byte != 0x09 && byte != 0x0A && byte != 0x0D) {
-        invalidBytes.add(byte);
-        invalidPositions.add(i);
-      } else if (byte >= 0x7F && byte <= 0x9F) {
-        invalidBytes.add(byte);
-        invalidPositions.add(i);
-      }
-    }
-    
-    if (invalidBytes.isEmpty) {
-      return 'Les données binaires contiennent des séquences invalides.';
-    }
-    
-    final hexBytes = invalidBytes.take(5).map((b) => '0x${b.toRadixString(16).padLeft(2, '0').toUpperCase()}').join(', ');
-    final positions = invalidPositions.take(5).join(', ');
-    
-    return 'Bytes invalides détectés: $hexBytes\n'
-        'Positions: $positions\n\n'
-        'Ces caractères de contrôle ne peuvent pas être '
-        'représentés correctement dans un QR code.';
-  }
-  
-  /// Version sécurisée qui utilise l'encodage Base64 pour éviter les problèmes
-  /// de caractères invalides (augmente la taille du QR d'environ 33%)
-  Widget buildQrWidgetSafe(
-    Uint8List payload, {
-    double size = 280,
-    VoidCallback? onRetry,
-  }) {
-    try {
-      // Encoder en Base64 pour garantir des caractères valides
+      // ✅ CORRECTION: Encoder en Base64 pour garantir des caractères valides
+      // Les bytes binaires (0x00-0xFF) → Base64 (A-Za-z0-9+/=)
       final base64String = base64Encode(payload);
       
       return QrImageView(

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/user.dart';
@@ -35,7 +36,7 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
   
-  List<int>? _ackQrData;
+  Uint8List? _ackQrData;  // ✅ CORRECTION: Utiliser Uint8List au lieu de List<int>
   bool _isGenerating = true;
   // ❌ CORRECTION P0-A: _transferPublished supprimé - plus besoin
   late AnimationController _checkmarkController;
@@ -299,11 +300,10 @@ class _AckScreenState extends State<AckScreen> with SingleTickerProviderStateMix
                               ),
                             ],
                           ),
-                          child: QrImageView(
-                            data: String.fromCharCodes(_ackQrData!),
-                            version: QrVersions.auto,
+                          // ✅ CORRECTION ENCODAGE: Utiliser Base64 pour les données binaires
+                          child: _qrService.buildQrWidget(
+                            _ackQrData!,
                             size: 280,
-                            backgroundColor: Colors.white,
                           ),
                         ),
                       ),

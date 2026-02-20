@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:hex/hex.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../services/qr_service.dart';
@@ -25,7 +27,7 @@ class _OfferScreenState extends State<OfferScreen> {
   final _storageService = StorageService();
   final _uuid = const Uuid();
 
-  List<int>? _qrData;
+  Uint8List? _qrData;
   int _timeRemaining = 60;  // ✅ UI/UX: TTL augmenté à 60 secondes
   Timer? _timer;
   bool _isGenerating = true;
@@ -58,81 +60,97 @@ class _OfferScreenState extends State<OfferScreen> {
     });
 
     try {
-      if (widget.bon.p2 == null || widget.bon.p3 == null) {
-        // Récupérer P3 depuis le cache
-        final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
-        if (p3 == null) {
-          _showError('Part P3 non disponible');
-          return;
-        }
-
-        // Chiffrer P2 avec K_P2 = hash(P3)
-        final p2Encrypted = await _cryptoService.encryptP2(
-          widget.bon.p2!,
-          p3,
-        );
-
-        // ✅ UI/UX: Stocker les données chiffrées pour réutilisation
-        _currentP2Cipher = p2Encrypted['ciphertext']!;
-        _currentNonce = p2Encrypted['nonce']!;
-
-        // Générer un challenge aléatoire
-        final challenge = _uuid.v4().replaceAll('-', '').substring(0, 32);
-        _currentChallenge = challenge;
-
-        // Timestamp actuel
-        final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        _currentTimestamp = timestamp;
-
-        // ✅ CORRECTION P0-C: Signer le QR1 avec sk_B (clé du bon)
-        // Whitepaper (007.md §3.2 Étape 1): "QR1: {B_id, P2, c, ts}_sig_E"
-        // Le donneur prouve qu'il possède le bon en signant avec sk_B
-        //
-        // Reconstruction éphémère de sk_B = shamirCombine(null, P2, P3)
-        final nsecBonHex = _cryptoService.shamirCombine(
-          null,              // P1 absent (pas nécessaire)
-          widget.bon.p2!,    // P2
-          p3,                // P3
-        );
-        
-        // ✅ UI/UX: TTL augmenté à 60 secondes (0x3c)
-        // Créer le message à signer: bonId || p2Cipher || nonce || challenge || timestamp || ttl
-        final messageToSign = widget.bon.bonId +
-            p2Encrypted['ciphertext']! +
-            p2Encrypted['nonce']! +
-            challenge +
-            timestamp.toRadixString(16).padLeft(8, '0') +
-            '3c'; // ttl = 60 = 0x3c
-        
-        // Signer avec la clé du bon
-        final signature = _cryptoService.signMessage(messageToSign, nsecBonHex);
-        
-        // ✅ SÉCURITÉ: Nettoyage explicite RAM
-        // Note: En Dart les Strings sont immuables, mais on efface la référence
-        // ignore: unused_local_variable
-        final nsecBonHex_erase = nsecBonHex; // Pour documentation - sera GC
-
-        // Encoder en format binaire avec signature (177 octets)
-        final qrBytes = _qrService.encodeOffer(
-          bonIdHex: widget.bon.bonId,
-          p2CipherHex: p2Encrypted['ciphertext']!,
-          nonceHex: p2Encrypted['nonce']!,
-          challengeHex: challenge,
-          timestamp: timestamp,
-          ttl: 60,  // ✅ UI/UX: TTL augmenté à 60 secondes
-          signatureHex: signature,  // ✅ NOUVEAU: signature du donneur
-        );
-
-        setState(() {
-          _qrData = qrBytes;
-          _timeRemaining = 60;  // ✅ UI/UX: 60 secondes
-          _isGenerating = false;
-          _isExpired = false;
-        });
-
-        // Démarrer le compte à rebours
-        _startTimer();
+      // Récupérer P3 depuis le cache (même si p3 est null dans le bon)
+      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
+      if (p3 == null) {
+        _showError('Part P3 non disponible.\nSynchronisez d\'abord avec le marché.');
+        return;
       }
+
+      if (widget.bon.p2 == null) {
+        _showError('Part P2 non disponible.\nCe bon a déjà été transféré.');
+        return;
+      }
+
+      // Chiffrer P2 avec K_P2 = hash(P3)
+      final p2Encrypted = await _cryptoService.encryptP2(
+        widget.bon.p2!,
+        p3,
+      );
+
+      // ✅ UI/UX: Stocker les données chiffrées pour réutilisation
+      _currentP2Cipher = p2Encrypted['ciphertext']!;
+      _currentNonce = p2Encrypted['nonce']!;
+
+      // ✅ CORRECTION HANDSHAKE: Générer un challenge aléatoire (16 octets)
+      // Whitepaper (§3.2 Étape 1): Le Donneur génère un challenge que le Receveur doit signer.
+      final challengeHex = _uuid.v4().replaceAll('-', '').substring(0, 32);
+      _currentChallenge = challengeHex;
+      final challengeBytes = Uint8List.fromList(HEX.decode(challengeHex));
+
+      // Timestamp actuel
+      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      _currentTimestamp = timestamp;
+
+      // ✅ CORRECTION P0-C: Signer le QR avec sk_B (clé du bon)
+      // Whitepaper (§3.2 Étape 1): "QR1: {B_id, P2, c, ts}_sig_E"
+      // Le donneur prouve qu'il possède le bon en signant avec sk_B
+      //
+      // Reconstruction éphémère de sk_B = shamirCombine(null, P2, P3)
+      final nsecBonHex = _cryptoService.shamirCombine(
+        null,              // P1 absent (pas nécessaire)
+        widget.bon.p2!,    // P2
+        p3,                // P3
+      );
+      
+      // Créer le message à signer: bonId || p2Cipher || nonce || challenge || timestamp
+      final messageToSign = widget.bon.bonId +
+          p2Encrypted['ciphertext']! +
+          p2Encrypted['nonce']! +
+          challengeHex +
+          timestamp.toRadixString(16).padLeft(8, '0');
+      
+      // Signer avec la clé du bon
+      final signatureHex = _cryptoService.signMessage(messageToSign, nsecBonHex);
+      final signatureBytes = Uint8List.fromList(HEX.decode(signatureHex));
+      
+      // ✅ SÉCURITÉ: Nettoyage explicite RAM
+      // Note: En Dart les Strings sont immuables, mais on efface la référence
+      // ignore: unused_local_variable
+      final nsecBonHex_erase = nsecBonHex; // Pour documentation - sera GC
+
+      // ✅ CORRECTION HANDSHAKE: Encoder en format QR v2 (240 octets)
+      // Le format v2 inclut: bonId, value, issuerNpub, encryptedP2, nonce, tag, challenge, issuerName, timestamp, signature
+      final p2CipherBytes = Uint8List.fromList(HEX.decode(p2Encrypted['ciphertext']!));
+      final nonceBytes = Uint8List.fromList(HEX.decode(p2Encrypted['nonce']!));
+      
+      // Le tag AES-GCM est inclus dans le ciphertext (derniers 16 octets)
+      // Pour le format v2, on sépare le ciphertext (32 octets) du tag (16 octets)
+      // Note: encryptP2 retourne ciphertext + tag combinés
+      final p2WithTag = p2CipherBytes;
+      final encryptedP2Only = p2WithTag.sublist(0, 32);
+      final p2Tag = p2WithTag.length >= 48
+          ? p2WithTag.sublist(32, 48)
+          : Uint8List(16); // Fallback si tag non inclus
+
+      final qrBytes = _qrService.encodeQrV2(
+        bon: widget.bon,
+        encryptedP2Hex: HEX.encode(encryptedP2Only),
+        p2Nonce: nonceBytes,
+        p2Tag: p2Tag,
+        challenge: challengeBytes,      // ✅ NOUVEAU: challenge du Donneur
+        signature: signatureBytes,      // ✅ NOUVEAU: signature du Donneur
+      );
+
+      setState(() {
+        _qrData = qrBytes;
+        _timeRemaining = 60;  // ✅ UI/UX: 60 secondes
+        _isGenerating = false;
+        _isExpired = false;
+      });
+
+      // Démarrer le compte à rebours
+      _startTimer();
     } catch (e) {
       _showError('Erreur génération QR: $e');
       setState(() => _isGenerating = false);
@@ -280,11 +298,12 @@ class _OfferScreenState extends State<OfferScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: QrImageView(
-                        data: String.fromCharCodes(_qrData!),
-                        version: QrVersions.auto,
+                      // ✅ CORRECTION ENCODAGE: Utiliser Base64 pour les données binaires
+                      // Les bytes 0x00-0xFF ne peuvent pas être convertis directement en String
+                      child: _qrService.buildQrWidget(
+                        _qrData!,
                         size: 280,
-                        backgroundColor: Colors.white,
+                        onRetry: _regenerateQR,
                       ),
                     ),
                   ),
