@@ -379,6 +379,6 @@ C'est une combinaison cohérente spectralement.
 
 ---
 
-Chaque utlisateur de TrocZen sur UPlanet ORIGIN et UPlanet ẐEN est en droit de disposer d'un jeu de société où l'intelligence collective n'est plus collectée, mais partagée dans le respect de lois Universelles !!
+Chaque utlisateur de TrocZen sur UPlanet ORIGIN et UPlanet ẐEN est en droit de disposer d'un jeu de société où l'intelligence collective n'est plus collectée, mais partagée dans le respect de lois et principes Universels !!
 
 ---
