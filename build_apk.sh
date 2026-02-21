@@ -97,6 +97,34 @@ echo "   CID: $IPFS_CID"
 echo "   Lien: https://$IPFS_GATEWAY/ipfs/$IPFS_CID/$APK_NAME"
 
 # ============================================
+# Nettoyage des anciens CIDs TrocZen
+# ============================================
+# Lire l'ancien CID depuis ipfs_meta.json s'il existe
+META_FILE="$DEST_DIR/ipfs_meta.json"
+if [ -f "$META_FILE" ]; then
+    # Extraire tous les anciens CIDs du fichier JSON
+    OLD_CIDS=$(grep -o '"cid": "[^"]*"' "$META_FILE" | cut -d'"' -f4)
+    
+    if [ -n "$OLD_CIDS" ]; then
+        echo ""
+        echo "🧹 Nettoyage des anciens CIDs TrocZen..."
+        
+        for old_cid in $OLD_CIDS; do
+            # Ne pas unpin le nouveau CID (cas de rebuild même version)
+            if [ "$old_cid" != "$IPFS_CID" ]; then
+                echo "   Unpin: $old_cid"
+                ipfs pin rm "$old_cid" 2>/dev/null || true
+            fi
+        done
+        
+        # Exécuter le garbage collector pour libérer l'espace
+        echo "   Garbage collection..."
+        echo " Lancez .... ipfs repo gc"
+        echo "✅ Anciens CIDs supprimés et espace libéré"
+    fi
+fi
+
+# ============================================
 # Mise à jour des templates
 # ============================================
 echo ""

@@ -42,7 +42,7 @@ IPFS_TIMEOUT = int(os.getenv('IPFS_TIMEOUT', '30'))  # Timeout en secondes
 APK_IPFS_META_FILE = APK_FOLDER / 'ipfs_meta.json'
 
 # ✅ Configuration TrocZen Box
-MARKET_SEED = os.getenv('MARKET_SEED', '')  # Seed du marché (64 chars hex)
+MARKET_SEED = os.getenv('MARKET_SEED', '0000000000000000000000000000000000000000000000000000000000000000')  # Seed du marché (64 chars hex)
 MARKET_NAME = os.getenv('MARKET_NAME', 'marche-local')  # Nom du marché
 WIFI_SSID = os.getenv('WIFI_SSID', 'TrocZen-Marche')  # SSID WiFi de la Box
 WIFI_PASSWORD = os.getenv('WIFI_PASSWORD', '0penS0urce!')  # Mot de passe WiFi
@@ -754,17 +754,36 @@ def download_apk(filename):
 
 @app.route('/api/apk/qr')
 def apk_qr_code():
-    """Générer QR code pour téléchargement APK"""
+    """Générer QR code pour téléchargement APK
     
-    # URL de téléchargement
-    apk_info = get_latest_apk().get_json()
+    Privilégie l'URL IPFS pour un accès décentralisé.
+    Fallback vers l'URL locale si IPFS non disponible.
+    """
+    
+    # Récupérer les infos APK
+    result = get_latest_apk()
+    
+    # Gérer le cas où get_latest_apk retourne un tuple (response, status_code)
+    if isinstance(result, tuple):
+        # Erreur 404 - pas d'APK disponible
+        apk_info = result[0].get_json()
+        return jsonify(apk_info), 404
+    
+    apk_info = result.get_json()
     
     if 'error' in apk_info:
         return jsonify(apk_info), 404
     
-    # URL complète
-    base_url = request.host_url.rstrip('/')
-    download_url = f"{base_url}{apk_info['download_url']}"
+    # Privilégier l'URL IPFS pour un accès décentralisé
+    # Le QR code pointe directement vers IPFS si disponible
+    if apk_info.get('ipfs_url'):
+        download_url = apk_info['ipfs_url']
+        print(f'✅ QR code APK: URL IPFS utilisée: {download_url}')
+    else:
+        # Fallback: URL locale
+        base_url = request.host_url.rstrip('/')
+        download_url = f"{base_url}{apk_info['download_url']}"
+        print(f'⚠️ QR code APK: URL locale utilisée (IPFS non disponible): {download_url}')
     
     # Générer QR code
     qr = qrcode.QRCode(
@@ -937,13 +956,20 @@ def market_page(market_name):
     for i, m in enumerate(marche_data.get('merchants', [])[:5]):
         print(f'  └─ Marchand {i+1}: {m.get("name", "N/A")} ({m.get("bons_count", 0)} bons, issuer: {m.get("pubkey", "N/A")[:16]}...)')
     
+    # Récupérer les infos APK de manière sécurisée
+    apk_result = get_latest_apk()
+    if isinstance(apk_result, tuple):
+        apk_info = apk_result[0].get_json()
+    else:
+        apk_info = apk_result.get_json()
+    
     return render_template(
         'market.html',
         market_name=marche_data.get('market_name', market_name),
         merchants=marche_data.get('merchants', []),
         total_bons=marche_data.get('total_bons', 0),
         total_merchants=marche_data.get('total_merchants', 0),
-        apk_info=get_latest_apk().get_json()
+        apk_info=apk_info
     )
 
 
