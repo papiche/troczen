@@ -88,6 +88,10 @@ class NostrService {
   bool _isConnected = false;
   String? _currentRelayUrl;
   
+  // ✅ CORRECTION: Map pour routage interne des handlers temporaires
+  // Évite l'erreur "Stream has already been listened to" en utilisant un seul listen()
+  final Map<String, Function(List<dynamic>)> _subscriptionHandlers = {};
+  
   // ✅ Sync automatique en arrière-plan
   Timer? _backgroundSyncTimer;
   bool _autoSyncEnabled = false;
@@ -531,6 +535,7 @@ class NostrService {
   }
 
   /// ✅ RÉCUPÉRER HISTORIQUE DES TRANSFERTS D'UN BON (kind 1)
+  /// ✅ CORRECTION: Utilise le système de routage interne au lieu de stream.listen()
   Future<List<Map<String, dynamic>>> fetchBonTransfers(String bonId) async {
     if (!_isConnected) {
       Logger.error('NostrService', 'Non connecté au relais');
@@ -542,6 +547,25 @@ class NostrService {
       final transfers = <Map<String, dynamic>>[];
       
       final subscriptionId = 'transfers_${DateTime.now().millisecondsSinceEpoch}';
+      
+      // ✅ CORRECTION: Enregistrer le handler temporaire dans la map
+      _subscriptionHandlers[subscriptionId] = (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>;
+            transfers.add(event);
+          } else if (message[0] == 'EOSE') {
+            _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+            _subscriptionHandlers.remove(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(transfers);
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing transfers response', e);
+        }
+      };
+
       final request = jsonEncode([
         'REQ',
         subscriptionId,
@@ -550,48 +574,18 @@ class NostrService {
           '#bon': [bonId],
         }
       ]);
-
-      void Function(dynamic)? tempHandler;
-      tempHandler = (data) {
-        try {
-          final message = jsonDecode(data);
-          if (message is List && message.length >= 3) {
-            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
-              final event = message[2] as Map<String, dynamic>;
-              transfers.add(event);
-            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
-              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
-              if (!completer.isCompleted) {
-                completer.complete(transfers);
-              }
-            }
-          }
-        } catch (e) {
-          Logger.error('NostrService', 'Erreur parsing transfers response', e);
-        }
-      };
-
-      final originalSubscription = _subscription;
-      _subscription = _channel?.stream.listen(tempHandler);
       
       _channel?.sink.add(request);
       
       Timer(const Duration(seconds: 5), () {
+        _subscriptionHandlers.remove(subscriptionId);
         if (!completer.isCompleted) {
           _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(transfers);
         }
       });
       
-      final result = await completer.future;
-      
-      await _subscription?.cancel();
-      _subscription = originalSubscription;
-      if (_channel != null && originalSubscription != null) {
-        _subscription = _channel?.stream.listen(_handleMessage);
-      }
-      
-      return result;
+      return await completer.future;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération transferts', e);
       return [];
@@ -936,6 +930,7 @@ class NostrService {
   }
 
   /// Gère les messages reçus du relais
+  /// ✅ CORRECTION: Route les messages vers les handlers temporaires enregistrés
   void _handleMessage(dynamic data) {
     try {
       final message = jsonDecode(data);
@@ -943,6 +938,13 @@ class NostrService {
       if (message is! List || message.isEmpty) return;
 
       final messageType = message[0];
+      final subscriptionId = message.length > 1 ? message[1] as String? : null;
+
+      // ✅ CORRECTION: D'abord router vers les handlers temporaires si présents
+      if (subscriptionId != null && _subscriptionHandlers.containsKey(subscriptionId)) {
+        _subscriptionHandlers[subscriptionId]!(message);
+        // Ne pas return ici car on veut aussi traiter les events globaux
+      }
 
       switch (messageType) {
         case 'EVENT':
@@ -973,6 +975,11 @@ class NostrService {
           onError?.call('Notice: $notice');
           break;
         case 'EOSE':
+          // ✅ CORRECTION: Nettoyer le handler temporaire si présent
+          if (subscriptionId != null && _subscriptionHandlers.containsKey(subscriptionId)) {
+            // Le handler temporaire a déjà été appelé ci-dessus
+            // On peut optionnellement le supprimer ici si nécessaire
+          }
           break;
       }
     } catch (e) {
@@ -1189,6 +1196,7 @@ class NostrService {
   
   /// ✅ v2.0.1: Récupère le profil utilisateur (Kind 0) depuis le relais
   /// Utilisé pour afficher la carte d'invitation d'un marché
+  /// ✅ CORRECTION: Utilise le système de routage interne au lieu de stream.listen()
   Future<NostrProfile?> fetchUserProfile(String npub) async {
     if (!_isConnected) {
       Logger.error('NostrService', 'Non connecté au relais');
@@ -1200,6 +1208,41 @@ class NostrService {
       
       // Envoyer une requête REQ pour le Kind 0 de ce npub
       final subscriptionId = 'profile_${DateTime.now().millisecondsSinceEpoch}';
+      
+      // ✅ CORRECTION: Enregistrer le handler temporaire dans la map
+      _subscriptionHandlers[subscriptionId] = (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>;
+            final content = event['content'] as String?;
+            if (content != null) {
+              final contentJson = jsonDecode(content);
+              final profile = NostrProfile(
+                npub: npub,
+                name: (contentJson['name'] as String?) ?? npub.substring(0, 8),
+                displayName: contentJson['display_name'] as String?,
+                about: contentJson['about'] as String?,
+                picture: contentJson['picture'] as String?,
+                banner: contentJson['banner'] as String?,
+                website: contentJson['website'] as String?,
+              );
+              if (!completer.isCompleted) {
+                completer.complete(profile);
+              }
+            }
+          } else if (message[0] == 'EOSE') {
+            // End of stored events - fermer le subscription
+            _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+            _subscriptionHandlers.remove(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(null);
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing profile response', e);
+        }
+      };
+      
       final request = jsonEncode([
         'REQ',
         subscriptionId,
@@ -1210,68 +1253,19 @@ class NostrService {
         }
       ]);
       
-      // Handler temporaire pour capturer la réponse
-      void Function(dynamic)? tempHandler;
-      tempHandler = (data) {
-        try {
-          final message = jsonDecode(data);
-          if (message is List && message.length >= 3) {
-            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
-              final event = message[2] as Map<String, dynamic>;
-              final content = event['content'] as String?;
-              if (content != null) {
-                final contentJson = jsonDecode(content);
-                final profile = NostrProfile(
-                  npub: npub,
-                  name: (contentJson['name'] as String?) ?? npub.substring(0, 8),
-                  displayName: contentJson['display_name'] as String?,
-                  about: contentJson['about'] as String?,
-                  picture: contentJson['picture'] as String?,
-                  banner: contentJson['banner'] as String?,
-                  website: contentJson['website'] as String?,
-                );
-                if (!completer.isCompleted) {
-                  completer.complete(profile);
-                }
-              }
-            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
-              // End of stored events - fermer le subscription
-              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
-              if (!completer.isCompleted) {
-                completer.complete(null);
-              }
-            }
-          }
-        } catch (e) {
-          Logger.error('NostrService', 'Erreur parsing profile response', e);
-        }
-      };
-      
-      // Écouter temporairement
-      final originalSubscription = _subscription;
-      _subscription = _channel?.stream.listen(tempHandler);
-      
       // Envoyer la requête
       _channel?.sink.add(request);
       
       // Timeout après 5 secondes
       Timer(const Duration(seconds: 5), () {
+        _subscriptionHandlers.remove(subscriptionId);
         if (!completer.isCompleted) {
           _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(null);
         }
       });
       
-      final profile = await completer.future;
-      
-      // Restaurer le handler original
-      await _subscription?.cancel();
-      _subscription = originalSubscription;
-      if (_channel != null && originalSubscription != null) {
-        _subscription = _channel?.stream.listen(_handleMessage);
-      }
-      
-      return profile;
+      return await completer.future;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération profil', e);
       return null;
@@ -1333,6 +1327,7 @@ class NostrService {
   }
 
   /// ✅ RÉCUPÉRER LISTE DE CONTACTS (kind 3)
+  /// ✅ CORRECTION: Utilise le système de routage interne au lieu de stream.listen()
   Future<List<String>> fetchContactList(String npub) async {
     if (!_isConnected) {
       Logger.error('NostrService', 'Non connecté au relais');
@@ -1344,6 +1339,32 @@ class NostrService {
       final contacts = <String>[];
       
       final subscriptionId = 'contacts_${DateTime.now().millisecondsSinceEpoch}';
+      
+      // ✅ CORRECTION: Enregistrer le handler temporaire dans la map
+      _subscriptionHandlers[subscriptionId] = (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>;
+            final tags = event['tags'] as List?;
+            if (tags != null) {
+              for (final tag in tags) {
+                if (tag is List && tag.isNotEmpty && tag[0] == 'p' && tag.length > 1) {
+                  contacts.add(tag[1].toString());
+                }
+              }
+            }
+          } else if (message[0] == 'EOSE') {
+            _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+            _subscriptionHandlers.remove(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(contacts);
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing contacts response', e);
+        }
+      };
+
       final request = jsonEncode([
         'REQ',
         subscriptionId,
@@ -1353,55 +1374,18 @@ class NostrService {
           'limit': 1,
         }
       ]);
-
-      void Function(dynamic)? tempHandler;
-      tempHandler = (data) {
-        try {
-          final message = jsonDecode(data);
-          if (message is List && message.length >= 3) {
-            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
-              final event = message[2] as Map<String, dynamic>;
-              final tags = event['tags'] as List?;
-              if (tags != null) {
-                for (final tag in tags) {
-                  if (tag is List && tag.isNotEmpty && tag[0] == 'p' && tag.length > 1) {
-                    contacts.add(tag[1].toString());
-                  }
-                }
-              }
-            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
-              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
-              if (!completer.isCompleted) {
-                completer.complete(contacts);
-              }
-            }
-          }
-        } catch (e) {
-          Logger.error('NostrService', 'Erreur parsing contacts response', e);
-        }
-      };
-
-      final originalSubscription = _subscription;
-      _subscription = _channel?.stream.listen(tempHandler);
       
       _channel?.sink.add(request);
       
       Timer(const Duration(seconds: 5), () {
+        _subscriptionHandlers.remove(subscriptionId);
         if (!completer.isCompleted) {
           _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(contacts);
         }
       });
       
-      final result = await completer.future;
-      
-      await _subscription?.cancel();
-      _subscription = originalSubscription;
-      if (_channel != null && originalSubscription != null) {
-        _subscription = _channel?.stream.listen(_handleMessage);
-      }
-      
-      return result;
+      return await completer.future;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération contacts', e);
       return [];
@@ -1469,16 +1453,70 @@ class NostrService {
       final Set<String> extractedTags = {};
       final subscriptionId = 'zen-tags-${DateTime.now().millisecondsSinceEpoch}';
       
-      // Sauvegarder le callback original
-      final originalOnTagsReceived = onTagsReceived;
-      
-      // Timer pour fermer l'abonnement après un délai
-      final timer = Timer(const Duration(seconds: 5), () {
-        _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
-        if (!completer.isCompleted) {
-          completer.complete(extractedTags.toList()..sort());
+      // ✅ CORRECTION: Enregistrer le handler temporaire dans la map
+      _subscriptionHandlers[subscriptionId] = (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>?;
+            if (event != null) {
+              final content = event['content'] as String?;
+              if (content != null) {
+                final contentJson = jsonDecode(content);
+                
+                // Extraire les tags du profil
+                // Les tags peuvent être dans différents champs selon le format NIP-24
+                
+                // 1. Tags explicites dans le champ 'tags' (NIP-24)
+                final tags = contentJson['tags'] as List?;
+                if (tags != null) {
+                  for (final tag in tags) {
+                    if (tag is List && tag.isNotEmpty && tag[0] == 't') {
+                      final tagValue = tag.length > 1 ? tag[1]?.toString() : null;
+                      if (tagValue != null && tagValue.isNotEmpty) {
+                        extractedTags.add(tagValue);
+                      }
+                    }
+                  }
+                }
+                
+                // 2. Champ 'activity' ou 'profession' personnalisé
+                final activity = contentJson['activity'] as String?;
+                if (activity != null && activity.isNotEmpty) {
+                  extractedTags.add(activity);
+                }
+                
+                final profession = contentJson['profession'] as String?;
+                if (profession != null && profession.isNotEmpty) {
+                  extractedTags.add(profession);
+                }
+                
+                // 3. Extraire du champ 'about' si contient des hashtags
+                final about = contentJson['about'] as String?;
+                if (about != null) {
+                  // Rechercher des hashtags dans le texte
+                  final hashtagRegex = RegExp(r'#(\w+)');
+                  final matches = hashtagRegex.allMatches(about);
+                  for (final match in matches) {
+                    final hashtag = match.group(1);
+                    if (hashtag != null && hashtag.isNotEmpty) {
+                      extractedTags.add(hashtag);
+                    }
+                  }
+                }
+              }
+            }
+          } else if (message[0] == 'EOSE') {
+            // End of Stored Events
+            _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+            _subscriptionHandlers.remove(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(extractedTags.toList()..sort());
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing tags response', e);
         }
-      });
+      };
 
       // Créer un abonnement pour les events kind 0 (métadonnées)
       final request = jsonEncode([
@@ -1492,82 +1530,17 @@ class NostrService {
       
       _channel!.sink.add(request);
       
-      // Écouter les réponses
-      final subscription = _channel!.stream.listen((data) {
-        try {
-          final message = jsonDecode(data);
-          
-          if (message is List && message.isNotEmpty) {
-            if (message[0] == 'EVENT' && message[1] == subscriptionId) {
-              final event = message[2] as Map<String, dynamic>?;
-              if (event != null) {
-                final content = event['content'] as String?;
-                if (content != null) {
-                  final contentJson = jsonDecode(content);
-                  
-                  // Extraire les tags du profil
-                  // Les tags peuvent être dans différents champs selon le format NIP-24
-                  
-                  // 1. Tags explicites dans le champ 'tags' (NIP-24)
-                  final tags = contentJson['tags'] as List?;
-                  if (tags != null) {
-                    for (final tag in tags) {
-                      if (tag is List && tag.isNotEmpty && tag[0] == 't') {
-                        final tagValue = tag.length > 1 ? tag[1]?.toString() : null;
-                        if (tagValue != null && tagValue.isNotEmpty) {
-                          extractedTags.add(tagValue);
-                        }
-                      }
-                    }
-                  }
-                  
-                  // 2. Champ 'activity' ou 'profession' personnalisé
-                  final activity = contentJson['activity'] as String?;
-                  if (activity != null && activity.isNotEmpty) {
-                    extractedTags.add(activity);
-                  }
-                  
-                  final profession = contentJson['profession'] as String?;
-                  if (profession != null && profession.isNotEmpty) {
-                    extractedTags.add(profession);
-                  }
-                  
-                  // 3. Extraire du champ 'about' si contient des hashtags
-                  final about = contentJson['about'] as String?;
-                  if (about != null) {
-                    // Rechercher des hashtags dans le texte
-                    final hashtagRegex = RegExp(r'#(\w+)');
-                    final matches = hashtagRegex.allMatches(about);
-                    for (final match in matches) {
-                      final hashtag = match.group(1);
-                      if (hashtag != null && hashtag.isNotEmpty) {
-                        extractedTags.add(hashtag);
-                      }
-                    }
-                  }
-                }
-              }
-            } else if (message[0] == 'EOSE' && message[1] == subscriptionId) {
-              // End of Stored Events
-              timer.cancel();
-              _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
-              if (!completer.isCompleted) {
-                completer.complete(extractedTags.toList()..sort());
-              }
-            }
-          }
-        } catch (e) {
-          Logger.error('NostrService', 'Erreur parsing tags response', e);
+      // Timer pour fermer l'abonnement après un délai
+      Timer(const Duration(seconds: 5), () {
+        _subscriptionHandlers.remove(subscriptionId);
+        if (!completer.isCompleted) {
+          _channel?.sink.add(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(extractedTags.toList()..sort());
         }
       });
       
       // Attendre le résultat
       final result = await completer.future;
-      
-      // Nettoyer
-      await subscription.cancel();
-      timer.cancel();
-      onTagsReceived = originalOnTagsReceived;
       
       Logger.log('NostrService', 'Tags extraits: ${result.length} tags uniques');
       onTagsReceived?.call(result);

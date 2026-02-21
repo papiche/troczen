@@ -154,9 +154,10 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                           ),
                           const SizedBox(height: 20),
                           
-                          // Champ Salt (identifiant)
+                          // ✅ CORRECTION: Wording utilisateur-friendly (pas de jargon technique)
+                          // Champ Login (identifiant)
                           Text(
-                            'Identifiant (Salt)',
+                            'Login (Identifiant unique)',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[300],
@@ -184,9 +185,10 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                           
                           const SizedBox(height: 16),
                           
-                          // Champ Pepper (mot de passe)
+                          // ✅ CORRECTION: Wording utilisateur-friendly (pas de jargon technique)
+                          // Champ Mot de passe
                           Text(
-                            'Mot de passe (Pepper)',
+                            'Mot de passe',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[300],

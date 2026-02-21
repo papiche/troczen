@@ -41,7 +41,7 @@ cd troczen && flutter test test/qr_service_test.dart
 
 **Couverture** : 13 tests
 
-- Encodage/décodage offre v1 (113 octets) ✅
+- Encodage/décodage offre v1 (177 octets avec signature Schnorr) ✅
 - Encodage/décodage ACK (97 octets) ✅
 - Gestion TTL et expiration ✅
 - Edge cases ✅
@@ -99,7 +99,10 @@ void main() {
       qrService = QRService();
     });
 
-    test('encodeOffer génère 113 octets', () {
+    // ✅ CORRECTION: Taille du QR Offre v1 = 177 octets (avec signature Schnorr)
+    // Ancien format sans signature: 113 octets
+    // Nouveau format avec signature: 113 + 64 = 177 octets
+    test('encodeOffer génère 177 octets (avec signature Schnorr)', () {
       final qrBytes = qrService.encodeOffer(
         bonIdHex: 'a' * 64,
         p2CipherHex: 'b' * 96,
@@ -107,9 +110,10 @@ void main() {
         challengeHex: 'd' * 32,
         timestamp: 1708084800,
         ttl: 30,
+        signatureHex: 'e' * 128, // 64 octets = 128 caractères hex
       );
 
-      expect(qrBytes.length, equals(113));
+      expect(qrBytes.length, equals(177));
     });
 
     test('encodeOffer/decodeOffer sont réciproques', () {
@@ -119,6 +123,7 @@ void main() {
       final challenge = 'abcd' * 8;
       final timestamp = 1708084800;
       final ttl = 30;
+      final signature = 'f' * 128; // 64 octets = 128 caractères hex
 
       final encoded = qrService.encodeOffer(
         bonIdHex: bonId,
@@ -127,6 +132,7 @@ void main() {
         challengeHex: challenge,
         timestamp: timestamp,
         ttl: ttl,
+        signatureHex: signature,
       );
 
       final decoded = qrService.decodeOffer(encoded);
@@ -134,6 +140,7 @@ void main() {
       expect(decoded['bonId'], equals(bonId));
       expect(decoded['timestamp'], equals(timestamp));
       expect(decoded['ttl'], equals(ttl));
+      expect(decoded['signature'], equals(signature));
     });
 
     test('encodeAck génère 97 octets', () {

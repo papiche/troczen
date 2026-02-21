@@ -210,7 +210,7 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
       });
 
     } catch (e) {
-      throw e;
+      rethrow;
     }
   }
 

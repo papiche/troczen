@@ -37,6 +37,9 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
   Future<void> _startSync() async {
     if (_isSyncing) return;
     
+    // ✅ CORRECTION: Vérifier mounted avant setState
+    if (!mounted) return;
+    
     setState(() {
       _isSyncing = true;
       _syncFailed = false;
@@ -55,6 +58,7 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       }
       
       // Étape 1: Connexion au relais Nostr
+      if (!mounted) return;
       setState(() => _currentStep = 'Connexion au relais Nostr...');
       await Future.delayed(const Duration(milliseconds: 500));
       
@@ -72,6 +76,10 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       }
       
       // Étape 2: Requête des événements kind:30303 (P3)
+      if (!mounted) {
+        await nostrService.disconnect();
+        return;
+      }
       setState(() => _currentStep = 'Requête des événements P3 (kind:30303)...');
       await Future.delayed(const Duration(milliseconds: 500));
       
@@ -85,6 +93,8 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       // Configurer le callback pour recevoir les P3
       nostrService.onP3Received = (bonId, p3Hex) async {
         receivedP3s.add({'bonId': bonId, 'p3': p3Hex});
+        // ✅ CORRECTION: Vérifier mounted dans le callback
+        if (!mounted) return;
         setState(() {
           _p3Count = receivedP3s.length;
           _currentStep = 'Réception des P3... ($_p3Count trouvés)';
@@ -95,10 +105,18 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       await nostrService.subscribeToMarket(marketName);
       
       // Étape 3: Attendre la réception des événements (5 secondes)
+      if (!mounted) {
+        await nostrService.disconnect();
+        return;
+      }
       setState(() => _currentStep = 'Écoute des événements P3...');
       await Future.delayed(const Duration(seconds: 5));
       
       // Étape 4: Déchiffrement et stockage des P3
+      if (!mounted) {
+        await nostrService.disconnect();
+        return;
+      }
       if (receivedP3s.isNotEmpty) {
         setState(() => _currentStep = 'Déchiffrement et stockage des P3...');
         
@@ -116,6 +134,10 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       }
       
       // Étape 5: Synchronisation terminée
+      if (!mounted) {
+        await nostrService.disconnect();
+        return;
+      }
       setState(() {
         _currentStep = 'Synchronisation terminée — $_p3Count bons trouvés';
         _syncCompleted = true;
@@ -129,6 +151,8 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       
     } catch (e) {
       debugPrint('❌ Erreur sync P3: $e');
+      // ✅ CORRECTION: Vérifier mounted avant setState
+      if (!mounted) return;
       setState(() {
         _currentStep = 'Erreur: ${e.toString()}';
         _syncFailed = true;

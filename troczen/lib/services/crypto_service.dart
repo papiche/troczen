@@ -362,15 +362,30 @@ class CryptoService {
     return generator.generateKeyPair();
   }
 
-  /// Découpe une clé en 3 parts avec Shamir Secret Sharing (2-sur-3)
-  /// ✅ IMPLÉMENTATION: Shamir polynomial sur GF(2^8) avec tables logarithmiques
-  /// ⚠️ NOTE: Cette implémentation utilise GF(256) pour garantir que toutes les valeurs
-  ///    restent dans [0, 255], évitant ainsi les erreurs de reconstruction.
-  /// Retourne [P1, P2, P3]
+  /// ✅ SÉCURITÉ MAXIMALE: Découpe une clé en 3 parts avec Shamir Secret Sharing (2-sur-3)
+  /// Retourne directement des Uint8List pour éviter les String en RAM.
   ///
-  /// Lève [ShamirReconstructionException] si la seed contient des valeurs incompatibles.
-  List<String> shamirSplit(String secretHex) {
-    final secretBytes = HEX.decode(secretHex);
+  /// Cette méthode est la version sécurisée qui évite complètement les String hexadécimales.
+  /// L'appelant est responsable de convertir en Hex uniquement pour la sauvegarde.
+  ///
+  /// Exemple d'utilisation sécurisée:
+  /// ```dart
+  /// final parts = cryptoService.shamirSplitBytes(secretBytes);
+  /// try {
+  ///   // Sauvegarder en convertissant en hex juste avant l'écriture
+  ///   await storageService.saveSsssPart1(HEX.encode(parts[0]));
+  ///   await storageService.saveSsssPart2(HEX.encode(parts[1]));
+  ///   await storageService.saveSsssPart3(HEX.encode(parts[2]));
+  /// } finally {
+  ///   // Nettoyer les parts de la RAM
+  ///   for (final part in parts) {
+  ///     cryptoService.secureZeroiseBytes(part);
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Lève [ArgumentError] si le secret n'a pas 32 octets.
+  List<Uint8List> shamirSplitBytes(Uint8List secretBytes) {
     if (secretBytes.length != 32) {
       throw ArgumentError('Secret doit faire 32 octets');
     }
@@ -393,11 +408,32 @@ class CryptoService {
       p3Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 3));
     }
     
-    return [
-      HEX.encode(p1Bytes),
-      HEX.encode(p2Bytes),
-      HEX.encode(p3Bytes),
-    ];
+    return [p1Bytes, p2Bytes, p3Bytes];
+  }
+
+  /// Découpe une clé en 3 parts avec Shamir Secret Sharing (2-sur-3)
+  /// ⚠️ DÉPRÉCIÉ: Utilisez shamirSplitBytes() pour une meilleure sécurité mémoire.
+  /// Cette méthode conserve les String en RAM - à éviter pour les nouvelles implémentations.
+  ///
+  /// ✅ IMPLÉMENTATION: Shamir polynomial sur GF(2^8) avec tables logarithmiques
+  /// ⚠️ NOTE: Cette implémentation utilise GF(256) pour garantir que toutes les valeurs
+  ///    restent dans [0, 255], évitant ainsi les erreurs de reconstruction.
+  /// Retourne [P1, P2, P3]
+  ///
+  /// Lève [ShamirReconstructionException] si la seed contient des valeurs incompatibles.
+  @Deprecated('Utilisez shamirSplitBytes() pour éviter les String en RAM')
+  List<String> shamirSplit(String secretHex) {
+    final secretBytes = Uint8List.fromList(HEX.decode(secretHex));
+    try {
+      final parts = shamirSplitBytes(secretBytes);
+      return [
+        HEX.encode(parts[0]),
+        HEX.encode(parts[1]),
+        HEX.encode(parts[2]),
+      ];
+    } finally {
+      secureZeroiseBytes(secretBytes);
+    }
   }
 
   /// ✅ SÉCURITÉ MAXIMALE: Reconstruit le secret à partir de Uint8List directement

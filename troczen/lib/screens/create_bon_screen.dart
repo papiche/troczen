@@ -904,7 +904,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<Market>(
-                        value: _selectedMarket,
+                        initialValue: _selectedMarket,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

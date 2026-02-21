@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'dart:typed_data';
+import 'package:hex/hex.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/market.dart';
@@ -131,12 +133,23 @@ class DuCalculationService {
   }
 
   /// Crée un bon individuel et le publie sur Nostr
+  /// ✅ SÉCURITÉ: Utilise shamirSplitBytes() pour éviter les String en RAM
   Future<void> _createAndPublishBon(User user, Market market, double value, double currentDu) async {
     final keys = _cryptoService.generateNostrKeyPair();
     final bonId = keys['publicKeyHex']!;
-    final nsec = keys['privateKeyHex']!;
+    final nsecHex = keys['privateKeyHex']!;
     
-    final parts = _cryptoService.shamirSplit(nsec);
+    // ✅ SÉCURITÉ: Convertir en Uint8List et utiliser shamirSplitBytes
+    final nsecBytes = Uint8List.fromList(HEX.decode(nsecHex));
+    final parts = _cryptoService.shamirSplitBytes(nsecBytes);
+    
+    // Nettoyer la clé privée originale immédiatement
+    _cryptoService.secureZeroiseBytes(nsecBytes);
+    
+    // Convertir en hex uniquement pour la sauvegarde
+    final p1Hex = HEX.encode(parts[0]);
+    final p2Hex = HEX.encode(parts[1]);
+    final p3Hex = HEX.encode(parts[2]);
     
     final now = DateTime.now();
     final bon = Bon(
@@ -147,9 +160,9 @@ class DuCalculationService {
       createdAt: now,
       expiresAt: now.add(const Duration(days: _duExpirationDays)), // Monnaie fondante
       status: BonStatus.active,
-      p1: parts[0],
-      p2: parts[1],
-      p3: parts[2],
+      p1: p1Hex,
+      p2: p2Hex,
+      p3: p3Hex,
       marketName: market.name,
       rarity: 'common',
       cardType: 'DU',
@@ -158,18 +171,23 @@ class DuCalculationService {
 
     // Sauvegarder localement
     await _storageService.saveBon(bon);
-    await _storageService.saveP3ToCache(bonId, parts[2]);
+    await _storageService.saveP3ToCache(bonId, p3Hex);
 
     // Publier sur Nostr
     await _nostrService.publishP3(
       bonId: bonId,
-      p2Hex: parts[1],
-      p3Hex: parts[2],
+      p2Hex: p2Hex,
+      p3Hex: p3Hex,
       seedMarket: market.seedMarket,
       issuerNpub: user.npub,
       marketName: market.name,
       value: value,
       category: 'DU',
     );
+    
+    // ✅ SÉCURITÉ: Nettoyer les parts de la RAM après sauvegarde
+    for (final part in parts) {
+      _cryptoService.secureZeroiseBytes(part);
+    }
   }
 }

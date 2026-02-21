@@ -27,7 +27,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _displayNameController = TextEditingController();
   final _aboutController = TextEditingController();
-  final _g1PublicKeyController = TextEditingController();
   final _customTagController = TextEditingController();
   final _focusNode = FocusNode();
   
@@ -81,7 +80,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   void dispose() {
     _displayNameController.dispose();
     _aboutController.dispose();
-    _g1PublicKeyController.dispose();
     _customTagController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -372,40 +370,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                     ],
                     
                     const SizedBox(height: 32),
-                    
-                    // Section C: Clé Ğ1 (optionnelle)
-                    _buildSectionTitle('Clé Ğ1 (optionnel pour v1.007)'),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Importez votre clé publique Ğ1 au format base58',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _g1PublicKeyController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Clé publique Ğ1 (facultatif)',
-                        labelStyle: TextStyle(color: Colors.grey[400]),
-                        hintText: 'ex: 4q3f7...',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                        prefixIcon: const Icon(Icons.key, color: Color(0xFFFFB347)),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey[700]!),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderSide: BorderSide(color: Color(0xFFFFB347)),
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF2A2A2A),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -720,9 +684,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
           ? null
           : _aboutController.text.trim(),
       activityTags: _selectedTags,
-      g1PublicKey: _g1PublicKeyController.text.trim().isEmpty
-          ? null
-          : _g1PublicKeyController.text.trim(),
+      // ✅ CORRECTION: La clé G1 est dérivée automatiquement, pas saisie manuellement
+      g1PublicKey: null,
       pictureUrl: pictureUrl,
     );
     
