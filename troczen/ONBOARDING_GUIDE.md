@@ -162,7 +162,7 @@ final response = await http.head(Uri.parse(url));
 
 ---
 
-### Étape 4️⃣ : Création du Profil Nostr+Ğ1
+### Étape 4️⃣ : Création du Profil Nostr (et DU local)
 
 **Fichier** : [`onboarding_profile_screen.dart`](lib/screens/onboarding/onboarding_profile_screen.dart)
 
@@ -193,8 +193,9 @@ Chips sélectionnables multi-choix par catégorie :
 #### Section C — Clé Ğ1 (Optionnelle)
 
 - Format Base58
-- Facultatif pour v1.007
-- Obligatoire pour provisionnement (v1.008+)
+- Facultatif pour v2.0.1+
+- **Non requis** : Le système utilise désormais le **DU Nostr P2P** (création monétaire basée sur le graphe social)
+- Peut servir pour interopérabilité future avec l'écosystème Ğ1/Duniter
 
 **Publication Nostr** :
 ```dart
@@ -236,10 +237,14 @@ Chips sélectionnables multi-choix par catégorie :
 1. Sauvegarder le marché avec la seed
 2. Créer un utilisateur avec credentials temporaires
 3. Dériver clés Nostr (npub/nsec)
-4. Générer clé Ğ1 (g1pub)
+4. Générer clé Ğ1 (g1pub) — optionnel, pour interopérabilité
 5. Publier le profil sur Nostr (kind 0)
-6. Marquer l'onboarding comme complété
-7. Navigation vers `WalletScreen`
+6. **Créer le Bon Zéro de bootstrap** (0 ẐEN, validité 28 jours)
+7. Initialiser le calcul du DU local (graphe social Nostr)
+8. Marquer l'onboarding comme complété
+9. Navigation vers `WalletScreen`
+
+> **Note** : Le Bon Zéro (0 ẐEN, TTL 28j) sert de "ticket d'entrée" sur le marché. Il évite l'asymétrie monétaire tout en permettant à l'utilisateur de participer aux échanges. À chaque transfert, l'app propose de suivre l'émetteur pour activer le DU. Voir [`docs/DU_NOSTR_P2P_FLOW.md`](../../docs/DU_NOSTR_P2P_FLOW.md) pour les détails.
 
 ---
 
@@ -287,8 +292,9 @@ class OnboardingState {
   String? displayName;       // Nom affiché
   String? about;             // Description
   List<String> activityTags; // Tags d'activité
-  String? g1PublicKey;       // Clé publique Ğ1
+  String? g1PublicKey;       // Clé publique Ğ1 (optionnelle, interopérabilité)
   String? marketName;        // Nom du marché
+  // DU Nostr P2P : calculé dynamiquement via le graphe social (follows réciproques)
 }
 ```
 
@@ -390,7 +396,7 @@ Toutes déjà présentes dans `pubspec.yaml` :
 - ✅ `web_socket_channel` : Nostr WebSocket
 - ✅ `hex` : Conversion hex
 
-### Améliorations Futures (v1.008+)
+### Améliorations Futures et en cours
 
 - [ ] Upload photo de profil via IPFS
 - [ ] Saisie libre de tags personnalisés
@@ -398,8 +404,9 @@ Toutes déjà présentes dans `pubspec.yaml` :
 - [ ] Support multi-langues
 - [ ] Animations Lottie pour les transitions
 - [ ] Tutoriel interactif post-onboarding
-- [ ] Validation temps réel de la clé Ğ1
 - [ ] Sauvegarde backup de la seed
+- [ ] Visualisation du graphe social (N1/N2) pour le DU
+- [ ] Indicateur de confiance (nombre de follows réciproques)
 
 ---
 

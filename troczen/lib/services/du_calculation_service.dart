@@ -27,6 +27,9 @@ class DuCalculationService {
   
   // Durée de vie d'un bon DU (Monnaie fondante)
   static const int _duExpirationDays = 28;
+  
+  // DU initial au lancement du marché (100 ẐEN/jour)
+  static const double _initialDuValue = 100.0;
 
   DuCalculationService({
     required StorageService storageService,
@@ -107,11 +110,152 @@ class DuCalculationService {
     }
   }
 
-  /// Récupère la valeur actuelle du DU global (simulé pour l'instant)
+  /// Récupère la valeur actuelle du DU global
+  /// Au lancement du marché, DU(0) = 100 ẐEN/jour
   Future<double> getCurrentGlobalDu() async {
     // Dans une vraie implémentation, cette valeur serait calculée par consensus
     // ou récupérée depuis un oracle Nostr
-    return 10.0; // Valeur de base
+    // Pour l'instant, on retourne la valeur initiale
+    return _initialDuValue; // 100 ẐEN au lancement
+  }
+
+  /// Génère un bon de bootstrap pour un nouvel utilisateur
+  /// Bon à 0 ẐEN avec TTL de 28 jours (évite l'asymétrie monétaire)
+  /// Ce bon sert de "ticket d'entrée" sur le marché
+  Future<bool> generateBootstrapAllocation(User user, Market market) async {
+    try {
+      Logger.log('DuCalculationService', 'Génération bon bootstrap (0 ẐEN, 28j) pour ${user.displayName}');
+      
+      final now = DateTime.now();
+      final expirationDate = now.add(const Duration(days: _duExpirationDays));
+      
+      // Créer un bon à 0 ẐEN avec validité 28 jours
+      await _createBootstrapBon(user, market, expirationDate);
+      
+      // Marquer l'utilisateur comme ayant reçu son bootstrap et enregistrer l'expiration
+      await _storageService.setBootstrapReceived(true, expirationDate: expirationDate);
+      
+      Logger.success('DuCalculationService', 'Bon bootstrap créé avec succès');
+      return true;
+    } catch (e) {
+      Logger.error('DuCalculationService', 'Erreur génération bootstrap', e);
+      return false;
+    }
+  }
+
+  /// Régénère un Bon Zéro si l'utilisateur a transféré le précédent
+  /// et n'a pas encore atteint N1 ≥ 5 (DU non actif)
+  /// La date d'expiration reste celle du Bon Zéro initial
+  Future<bool> regenerateBootstrapIfNeeded(User user, Market market) async {
+    try {
+      // Vérifier si le DU est déjà actif (N1 ≥ 5)
+      final contacts = await _storageService.getContacts();
+      if (contacts.length >= _minMutualFollows) {
+        Logger.log('DuCalculationService', 'DU déjà actif (N1=${contacts.length}), pas de régénération');
+        return false;
+      }
+
+      // Vérifier si le Bon Zéro initial a expiré
+      final isExpired = await _storageService.isBootstrapExpired();
+      if (isExpired) {
+        Logger.log('DuCalculationService', 'Bon Zéro initial expiré, pas de régénération');
+        return false;
+      }
+
+      // Récupérer la date d'expiration initiale
+      final initialExpiration = await _storageService.getBootstrapExpiration();
+      if (initialExpiration == null) {
+        Logger.warn('DuCalculationService', 'Pas de date d\'expiration initiale trouvée');
+        return false;
+      }
+
+      // Vérifier si l'utilisateur a encore un Bon Zéro actif dans son portefeuille
+      final bons = await _storageService.getBons();
+      final hasActiveBootstrap = bons.any((b) =>
+        b.cardType == 'bootstrap' &&
+        b.value == 0.0 &&
+        b.status == BonStatus.active &&
+        !b.isExpired
+      );
+
+      if (hasActiveBootstrap) {
+        Logger.log('DuCalculationService', 'Un Bon Zéro actif existe déjà');
+        return false;
+      }
+
+      // Créer un nouveau Bon Zéro avec la même expiration que l'initial
+      Logger.log('DuCalculationService', 'Régénération Bon Zéro pour ${user.displayName}');
+      await _createBootstrapBon(user, market, initialExpiration);
+      
+      Logger.success('DuCalculationService', 'Bon Zéro régénéré avec succès');
+      return true;
+    } catch (e) {
+      Logger.error('DuCalculationService', 'Erreur régénération bootstrap', e);
+      return false;
+    }
+  }
+
+  /// Crée un bon de bootstrap à 0 ẐEN avec une date d'expiration spécifiée
+  Future<void> _createBootstrapBon(User user, Market market, DateTime expirationDate) async {
+    final keys = _cryptoService.generateNostrKeyPair();
+    final bonId = keys['publicKeyHex']!;
+    final nsecHex = keys['privateKeyHex']!;
+    
+    // Convertir en Uint8List et utiliser shamirSplitBytes
+    final nsecBytes = Uint8List.fromList(HEX.decode(nsecHex));
+    final parts = _cryptoService.shamirSplitBytes(nsecBytes);
+    
+    // Nettoyer la clé privée originale immédiatement
+    _cryptoService.secureZeroiseBytes(nsecBytes);
+    
+    // Convertir en hex uniquement pour la sauvegarde
+    final p1Hex = HEX.encode(parts[0]);
+    final p2Hex = HEX.encode(parts[1]);
+    final p3Hex = HEX.encode(parts[2]);
+    
+    final now = DateTime.now();
+    final bon = Bon(
+      bonId: bonId,
+      value: 0.0, // 0 ẐEN - pas d'asymétrie monétaire
+      issuerName: user.displayName,
+      issuerNpub: user.npub,
+      createdAt: now,
+      expiresAt: expirationDate, // Utilise l'expiration passée en paramètre
+      status: BonStatus.active,
+      p1: p1Hex,
+      p2: p2Hex,
+      p3: p3Hex,
+      marketName: market.name,
+      rarity: 'bootstrap', // Rareté spéciale pour le bon de bootstrap
+      cardType: 'bootstrap',
+      duAtCreation: 0.0, // Pas de DU à la création
+    );
+
+    // Sauvegarder localement
+    await _storageService.saveBon(bon);
+    await _storageService.saveP3ToCache(bonId, p3Hex);
+
+    // Publier sur Nostr
+    await _nostrService.publishP3(
+      bonId: bonId,
+      p2Hex: p2Hex,
+      p3Hex: p3Hex,
+      seedMarket: market.seedMarket,
+      issuerNpub: user.npub,
+      marketName: market.name,
+      value: 0.0,
+      category: 'bootstrap',
+    );
+    
+    // Nettoyer les parts de la RAM après sauvegarde
+    for (final part in parts) {
+      _cryptoService.secureZeroiseBytes(part);
+    }
+  }
+
+  /// Vérifie si l'utilisateur a déjà reçu son allocation de bootstrap
+  Future<bool> hasReceivedBootstrap() async {
+    return await _storageService.hasReceivedBootstrap();
   }
 
   /// Génère des bons en coupures standards (1, 2, 5, 10, 20, 50)

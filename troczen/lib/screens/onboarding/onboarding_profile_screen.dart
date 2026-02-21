@@ -6,6 +6,8 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/nostr_service.dart';
 import '../../services/crypto_service.dart';
+import '../../services/image_compression_service.dart';
+import '../../services/logger_service.dart';
 import 'onboarding_flow.dart';
 
 /// Étape 4: Création du Profil Nostr+Ğ1
@@ -37,6 +39,9 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   File? _selectedProfileImage;
   bool _uploadingImage = false;
   bool _loadingDynamicTags = false;
+  
+  /// ✅ v2.0.2: Miniature base64 pour l'événement Nostr (offline-first)
+  String? _base64Avatar;
   
   // Tags prédéfinis par catégorie
   final Map<String, List<String>> _predefinedTags = {
@@ -626,13 +631,27 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   }
   
   void _pickProfileImage() async {
-    final XFile? image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 800,
-      imageQuality: 85,
-    );
-    if (image != null) {
-      setState(() => _selectedProfileImage = File(image.path));
+    // Utiliser le service de compression pour obtenir une miniature base64
+    final imageService = ImageCompressionService();
+    final dataUri = await imageService.pickAndCompressAvatar();
+    
+    if (dataUri != null) {
+      // Stocker la miniature base64 pour l'événement Nostr
+      _base64Avatar = dataUri;
+      
+      // Aussi récupérer le fichier original pour upload IPFS optionnel
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _selectedProfileImage = File(image.path);
+        });
+      }
+      
+      Logger.log('OnboardingProfile', 'Avatar base64 généré: ${dataUri.length} chars');
     }
   }
   
@@ -646,7 +665,12 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     
     String? pictureUrl;
     
-    // Upload de l'avatar si une image a été sélectionnée
+    // ✅ v2.0.2: Toujours utiliser la miniature base64 comme fallback
+    // Elle sera incluse dans l'événement Nostr et fonctionnera offline
+    pictureUrl = _base64Avatar;
+    
+    // Upload de l'avatar vers IPFS si une image a été sélectionnée
+    // (optionnel, pour avoir une URL permanente décentralisée)
     if (_selectedProfileImage != null) {
       setState(() => _uploadingImage = true);
       
@@ -663,16 +687,21 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
             npub: user.npub,
             imageFile: _selectedProfileImage!,
             type: 'avatar',
+            waitForIpfs: false, // Ne pas bloquer, on a déjà le base64
           );
           
           if (result != null) {
-            // Utiliser ipfs_url en priorité, sinon url
-            pictureUrl = result['ipfs_url'] ?? result['url'];
+            // Utiliser ipfs_url en priorité, sinon garder le base64
+            final ipfsUrl = result['ipfs_url'] ?? result['url'];
+            if (ipfsUrl != null && ipfsUrl.isNotEmpty) {
+              pictureUrl = ipfsUrl;
+              Logger.success('OnboardingProfile', 'Avatar uploadé: $ipfsUrl');
+            }
           }
         }
       } catch (e) {
-        debugPrint('❌ Erreur upload avatar: $e');
-        // Continuer même si l'upload échoue
+        Logger.warn('OnboardingProfile', 'Upload avatar échoué, utilisation base64: $e');
+        // Continuer avec le base64 - c'est le fallback offline-first
       } finally {
         setState(() => _uploadingImage = false);
       }
@@ -688,6 +717,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
       g1PublicKey: null,
       pictureUrl: pictureUrl,
     );
+    
+    Logger.log('OnboardingProfile', 'Profil configuré avec pictureUrl: ${pictureUrl != null ? "${pictureUrl.length} chars" : "null"}');
     
     widget.onNext();
   }

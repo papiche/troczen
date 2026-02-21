@@ -123,8 +123,10 @@ class _LogsScreenState extends State<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: const Text('🐛 Logs HACKATHON'),
+        title: const Text('🐛 Logs'),
+        backgroundColor: const Color(0xFF1E1E1E),
         actions: [
           IconButton(
             icon: const Icon(Icons.copy),
@@ -144,19 +146,24 @@ class _LogsScreenState extends State<LogsScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: Colors.orange.shade100,
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              border: Border(
+                bottom: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.orange),
+                    const Icon(Icons.info_outline, color: Color(0xFFFFB347)),
                     const SizedBox(width: 8),
                     Text(
-                      'Mode HACKATHON - ${Logger.logCount} logs',
+                      'Logs de l\'application - ${Logger.logCount} entrées',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange,
+                        color: Color(0xFFFFB347),
                       ),
                     ),
                   ],
@@ -166,7 +173,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   'API: ${AppConfig.defaultApiUrl}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.orange.shade700,
+                    color: Colors.orange.shade300,
                   ),
                 ),
               ],
@@ -174,8 +181,9 @@ class _LogsScreenState extends State<LogsScreen> {
           ),
 
           // Filtres
-          Padding(
+          Container(
             padding: const EdgeInsets.all(8),
+            color: const Color(0xFF1E1E1E),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -199,10 +207,17 @@ class _LogsScreenState extends State<LogsScreen> {
           // Liste des logs
           Expanded(
             child: _logs.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Aucun log à afficher',
-                      style: TextStyle(color: Colors.grey),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.article_outlined, size: 64, color: Colors.grey[700]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Aucun log à afficher',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
@@ -218,26 +233,38 @@ class _LogsScreenState extends State<LogsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: const Color(0xFF1E1E1E),
               border: Border(
-                top: BorderSide(color: Colors.grey.shade300),
+                top: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
+                const Text(
                   'Soumettre une issue',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _issueController,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
                     hintText: 'Décrivez le problème rencontré...',
-                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: const OutlineInputBorder(),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey[700]!),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFFFB347)),
+                    ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: const Color(0xFF2A2A2A),
                   ),
                   maxLines: 2,
                 ),
@@ -247,8 +274,12 @@ class _LogsScreenState extends State<LogsScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: _copyLogsToClipboard,
-                        icon: const Icon(Icons.copy),
+                        icon: const Icon(Icons.copy, size: 18),
                         label: const Text('Copier JSON'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[300],
+                          side: BorderSide(color: Colors.grey[600]!),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -264,11 +295,11 @@ class _LogsScreenState extends State<LogsScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.send),
+                            : const Icon(Icons.send, size: 18),
                         label: Text(_isSubmitting ? 'Envoi...' : 'Soumettre'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFFFFB347),
+                          foregroundColor: Colors.black,
                         ),
                       ),
                     ),
@@ -293,36 +324,53 @@ class _LogsScreenState extends State<LogsScreen> {
           _loadLogs();
         });
       },
-      selectedColor: Colors.orange.shade200,
+      selectedColor: const Color(0xFFFFB347),
+      backgroundColor: const Color(0xFF2A2A2A),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black : Colors.grey[300],
+      ),
+      checkmarkColor: Colors.black,
     );
   }
 
   Widget _buildLogTile(LogEntry log) {
     Color bgColor;
+    Color borderColor;
+    Color textColor;
     switch (log.level) {
       case 'error':
-        bgColor = Colors.red.shade50;
+        bgColor = Colors.red.withValues(alpha: 0.15);
+        borderColor = Colors.red.withValues(alpha: 0.4);
+        textColor = Colors.red.shade300;
         break;
       case 'warn':
-        bgColor = Colors.orange.shade50;
+        bgColor = Colors.orange.withValues(alpha: 0.15);
+        borderColor = Colors.orange.withValues(alpha: 0.4);
+        textColor = Colors.orange.shade300;
         break;
       case 'success':
-        bgColor = Colors.green.shade50;
+        bgColor = Colors.green.withValues(alpha: 0.15);
+        borderColor = Colors.green.withValues(alpha: 0.4);
+        textColor = Colors.green.shade300;
         break;
       case 'info':
-        bgColor = Colors.blue.shade50;
+        bgColor = Colors.blue.withValues(alpha: 0.15);
+        borderColor = Colors.blue.withValues(alpha: 0.4);
+        textColor = Colors.blue.shade300;
         break;
       default:
-        bgColor = Colors.grey.shade50;
+        bgColor = Colors.grey.withValues(alpha: 0.15);
+        borderColor = Colors.grey.withValues(alpha: 0.4);
+        textColor = Colors.grey.shade300;
     }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,33 +381,35 @@ class _LogsScreenState extends State<LogsScreen> {
                 log.timestamp.toIso8601String().split('T').last,
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey.shade600,
+                  color: Colors.grey[500],
                   fontFamily: 'monospace',
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   log.tag,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             log.message,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontFamily: 'monospace',
+              color: Colors.white,
             ),
           ),
         ],

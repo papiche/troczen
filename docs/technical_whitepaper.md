@@ -71,33 +71,34 @@ Maintenant que le jeu est clair, superposons‑lui notre réalité économique.
 *   **L’Institution** : La Banque Centrale Européenne (BCE) est l’autorité centrale. Elle décide combien d’euros sont créés et à quelles conditions (taux d’intérêt, etc.). C’est une pyramide de confiance centralisée.
 *   **L’Utilisateur** : Vous et moi, nous utilisons ces euros. Nous n’avons aucun droit de regard sur leur création. La confiance est un acte de foi en l’institution.
 
-#### Le système TrocZen (Ğ1 et ẐEN)
-Ici, nous remplaçons la pyramide par un réseau distribué.
+#### Le système TrocZen (DU Nostr P2P)
+Ici, nous remplaçons la pyramide par un réseau distribué **hyper-relativiste**.
 
-*   **L’Institution de Premier Niveau : La Monnaie Libre Ğ1 (le “Socle de Confiance”)**
-    *   La Ğ1 n’est pas créée par une banque, mais par un **Dividende Universel (DU)** distribué également à chaque membre humain (une fois identifié dans une “Toile de Confiance”).
-    *   **Son rôle** : Elle est la **réserve de valeur fondamentale et le régulateur d’identité**. Posséder des Ğ1, c’est être reconnu comme un membre actif et fiable de la communauté élargie. L’institution, ici, c’est le **protocole mathématique** et la **communauté** qui le fait vivre.
-    *   **Analogique** : La Ğ1, c’est comme l’or ou la confiance absolue dans un village. C’est ce qui est rare et distribué équitablement.
+*   **L'Institution de Premier Niveau : La Toile de Confiance Nostr (le "Socle de Confiance")**
+    *   Contrairement à un système adossé à une blockchain externe (Ğ1), TrocZen implémente son **propre Dividende Universel (DU) local** basé sur la Théorie Relative de la Monnaie (TRM).
+    *   **Son rôle** : La création monétaire est **intrinsèque au réseau** et calculée localement par chaque participant, basée sur son graphe social Nostr (follows réciproques).
+    *   **Analogie** : C'est comme un village où chaque habitant crée sa propre monnaie, mais la quantité créée dépend de la qualité et de l'étendue de ses relations de confiance.
 
-*   **L’Institution de Second Niveau : La Monnaie Locale ẐEN (les “Bons d’Échange”)**
-    *   Les ẐEN sont créés par les commerçants et les membres de la communauté locale. Ce sont des **promesses d’achat**, des bons de réduction ou de service.
-    *   **Problème** : Si tout le monde peut créer des ẐEN sans limite, on risque l’inflation locale ou la création de “fausses promesses”. Il faut une **régulation**.
-    *   **La Solution : Le Jumelage Ğ1 ↔ ẐEN**
-        *   Pour avoir le **droit d’émettre** des ẐEN, un commerçant doit **provisionner** son “compte d’émission” avec des Ğ1.
-        *   **La règle est simple et transparente : 1 Ğ1 = 10 Ẑ**. (Ce taux est fixé pour l’exemple, il pourrait être variable selon les marchés.)
-        *   Si un commerçant veut émettre pour 100 Ẑ de bons, il doit bloquer 10 Ğ1 dans un mécanisme de provisionnement (smart‑contract ou suivi local avec preuve cryptographique).
+*   **L'Institution de Second Niveau : La Monnaie Locale ẐEN (les "Bons d'Échange")**
+    *   Les ẐEN sont créés par les membres de la communauté locale via le mécanisme de DU. Ce sont des **promesses d'achat**, des bons de réduction ou de service.
+    *   **Problème** : Si tout le monde peut créer des ẐEN sans limite, on risque l'inflation locale ou la création de "fausses promesses". Il faut une **régulation**.
+    *   **La Solution : Le DU Hyper-Relativiste**
+        *   La création monétaire est **calculée localement** selon la formule TRM adaptée : `DU(t+1) = DU(t) + c² × (M_n1 + M_n2/√N2) / (N1 + √N2)`
+        *   **N1** = nombre d'amis directs réciproques (minimum 5 requis), **N2** = amis d'amis.
+        *   **M_n1** et **M_n2** = masses monétaires détenues par ces réseaux.
+        *   Ce mécanisme **récompense la rencontre réelle et l'interconnexion** entre communautés, pas l'accumulation.
 
-#### Comparaison Directe : L’Acte de Création Monétaire
+#### Comparaison Directe : L'Acte de Création Monétaire
 
-| Concept | Système Euro (€) | Système TrocZen (Ğ1 ↔ ẐEN) |
+| Concept | Système Euro (€) | Système TrocZen (DU Nostr P2P) |
 | :--- | :--- | :--- |
-| **Droit de créer** | Accordé par une banque centrale après analyse de crédit. | Accordé par la possession de Ğ1 (monnaie libre). |
-| **Régulation** | Centralisée, opaque (taux directeurs). | Décentralisée, transparente (taux de change fixe et provisionnement). |
-| **Garantie** | Garantie par l’État et la banque centrale. | Garantie par la cryptographie (le jeu de post‑it) et la confiance du réseau Ğ1. |
-| **Identité** | Identité légale (papiers, KYC). | Identité vivante (Toile de Confiance Ğ1) + Identité numérique (Nostr). |
-| **But** | Fluidifier l’économie nationale. | Fluidifier l’économie locale en reliant l’identité vivante à la capacité d’échange. |
+| **Droit de créer** | Accordé par une banque centrale après analyse de crédit. | Accordé par la participation à la Toile de Confiance Nostr (follows réciproques). |
+| **Régulation** | Centralisée, opaque (taux directeurs). | Décentralisée, transparente (formule TRM adaptée, calcul local). |
+| **Garantie** | Garantie par l'État et la banque centrale. | Garantie par la cryptographie (SSSS, Nostr) et la confiance du réseau social. |
+| **Identité** | Identité légale (papiers, KYC). | Identité numérique (Nostr npub/nsec) + Toile de Confiance (follows réciproques). |
+| **But** | Fluidifier l'économie nationale. | Fluidifier l'économie locale en récompensant les liens sociaux authentiques. |
 
-**En clair :** Dans le système Euro, l’institution bancaire dit “*Tu as le droit de créer de la valeur (via un prêt) parce que nous analysons ton dossier*”. Dans TrocZen, le protocole dit “*Tu as le droit de créer des ẐEN parce que tu es un membre actif de la communauté Ğ1, et tu en apportes la preuve en provisionnant une partie de ta confiance (tes Ğ1).*”
+**En clair :** Dans le système Euro, l'institution bancaire dit "*Tu as le droit de créer de la valeur (via un prêt) parce que nous analysons ton dossier*". Dans TrocZen, le protocole dit "*Tu crées des ẐEN proportionnellement à ton insertion dans la communauté locale, prouvée par tes liens réciproques sur Nostr.*"
 
 C’est un passage d’une **confiance hiérarchique** à une **confiance distribuée et mathématiquement prouvée**.
 
@@ -123,19 +124,34 @@ C’est un passage d’une **confiance hiérarchique** à une **confiance distri
 
 ### 3.2. Workflow Technique (Cycle de Vie d’un Bon)
 
-#### 3.2.1. Émission (Avec Provisionnement Ğ1)
-1.  **Vérification** : L’application vérifie que le portefeuille Ğ1 de l’utilisateur a un solde suffisant pour provisionner l’émission (ex: pour créer 100 Ẑ, il faut 10 Ğ1 bloqués). Ce mécanisme est géré par un oracle ou un contrat sur la blockchain Ğ1 (ou un simple suivi local avec preuve cryptographique).
+#### 3.2.1. Émission (Via DU Nostr P2P)
+
+##### Cas A : Utilisateur existant (N1 ≥ 5 liens réciproques)
+1.  **Calcul du DU local** :
+    *   L'application synchronise le graphe social Nostr (Kind 3 - Contact List).
+    *   Elle calcule **N1** (amis directs réciproques) et **N2** (amis d'amis).
+    *   Si N1 ≥ 5 (seuil anti-Sybil), elle calcule le DU selon la formule : `DU(t+1) = DU(t) + c² × (M_n1 + M_n2/√N2) / (N1 + √N2)`.
+    *   Le DU est **découpé en coupures standards** (1, 2, 5, 10, 20, 50 ẐEN) pour faciliter les échanges.
 2.  **Création du Bon** :
-    *   Génération d’une nouvelle paire de clés Nostr (`nsec_bon`, `npub_bon`).
+    *   Génération d'une nouvelle paire de clés Nostr (`nsec_bon`, `npub_bon`).
     *   Application de SSSS sur `nsec_bon` → obtention de `P1`, `P2`, `P3`.
 3.  **Publication** :
     *   Calcul de la clé du jour `K_day` à partir de la graine du marché (voir §3.4).
     *   Chiffrement de `P3` avec `K_day` → `P3_cipher`.
-    *   Création et publication d’un événement Nostr de kind **30303** contenant `npub_bon`, `P3_cipher` et le timestamp du jour.
+    *   Création et publication d'un événement Nostr de kind **30303** contenant `npub_bon`, `P3_cipher`, le timestamp et la **preuve de calcul WoT** (pubkeys N1/N2 utilisées).
 4.  **Stockage Local** :
-    *   `P1` est stocké localement (c’est l’ancre).
-    *   `P2` est stocké comme “disponible” dans le portefeuille.
+    *   `P1` est stocké localement (c'est l'ancre).
+    *   `P2` est stocké comme "disponible" dans le portefeuille.
     *   Le `npub_bon` et les métadonnées (valeur, émetteur) sont enregistrés.
+
+##### Cas B : Nouvel utilisateur (Bon Zéro de Bootstrap)
+1.  **Problème** : Un nouvel utilisateur n'a pas encore de liens réciproques (N1 = 0), donc pas de DU.
+2.  **Solution** : **Bon Zéro** à l'inscription :
+    *   Valeur : **0 ẐEN** (évite l'asymétrie monétaire).
+    *   Validité : 28 jours (monnaie fondante).
+    *   Rôle : "Ticket d'entrée" sur le marché, propage le graphe social.
+    *   À chaque transfert, l'app propose de suivre l'émetteur → active le DU.
+3.  **Transition** : Une fois N1 ≥ 5 atteint, le DU automatique s'active.
 
 #### 3.2.2. Synchronisation et Cache des P3
 1.  L’application interroge périodiquement le ou les relais Nostr configurés.
@@ -163,11 +179,13 @@ C’est un passage d’une **confiance hiérarchique** à une **confiance distri
     *   Vérifie la signature pour confirmer que le receveur a bien pris possession du bon.
     *   **Supprime définitivement** `P2` de son portefeuille local.
 
-### 3.3. Sécurité et Régulation par la Ğ1
+### 3.3. Sécurité et Régulation par le DU Hyper-Relativiste
 
-*   **Limitation de l’Émission** : Le provisionnement en Ğ1 est une preuve cryptographique de “poids” dans la communauté. Il empêche la création massive et non souveraine de ẐEN. C’est une forme de **preuve de réserve**.
-*   **Révocation** : Si un bon est émis frauduleusement, l’émetteur peut utiliser sa `P1` pour le révoquer, mais cela pourrait entraîner la perte de sa provision en Ğ1 (mécanisme de “slashing” à définir).
+*   **Limitation de l'Émission** : La création monétaire est régulée par la **Toile de Confiance Nostr**. Le seuil minimum de 5 liens réciproques (N1 ≥ 5) empêche les attaques Sybil. La formule DU favorise les liens authentiques et l'interconnexion entre communautés.
+*   **Preuve de Calcul WoT** : Chaque bon émis inclut une preuve cryptographique des pubkeys N1/N2 utilisées pour le calcul du DU. Les autres nœuds peuvent vérifier que la création monétaire était légitime.
+*   **Révocation** : Si un bon est émis frauduleusement, l'émetteur peut utiliser sa `P1` pour le révoquer. Son DU futur sera impacté négativement car son réseau social sera remis en question.
 *   **Confidentialité** : Les transferts sont visibles localement mais pas sur Nostr. Seule la création (`P3`) est publique (mais chiffrée). La vie privée des transactions est préservée.
+*   **Invariance d'échelle TRM** : L'utilisation de `√N2` au dénominateur et pour pondérer `M_n2` garantit que si toute la masse double, le DU double aussi. C'est le principe fondamental de la Théorie Relative de la Monnaie.
 
 ### 3.4. Gestion Simplifiée de la Clé de Marché : La Graine Quotidienne
 
@@ -191,7 +209,7 @@ Au-delà de la technique, cette architecture ouvre des perspectives philosophiqu
 
 ### 4.1. Le ẐEN : Capturer la Valeur de l'Ancien Monde pour les Communs
 
-Le ẐEN devient un **outil de comptabilité coopérative**. Il permet de gérer l'inévitable interaction avec le "monde de la dette" (l'économie en Euros) sans contaminer la pureté du Dividende Universel (DU) de la Ğ1.
+Le ẐEN devient un **outil de comptabilité coopérative**. Il permet de gérer l'inévitable interaction avec le "monde de la dette" (l'économie en Euros) tout en préservant la souveraineté monétaire locale.
 
 *   **Le constat** : Pour construire des communs (serveurs, ateliers, fermes), nous devons encore acheter du matériel dans le système Euro. Comment financer ces achats sans tomber dans la spéculation ou la dépendance ?
 *   **La solution ẐEN** : Un contributeur qui apporte un bien ou un service payé en Euros (ex: achat d'un serveur, heures de travail facturées) peut être **crédité en ẐEN** par la communauté, selon un taux de conversion défini collectivement. Il a alors le choix :
@@ -200,37 +218,38 @@ Le ẐEN devient un **outil de comptabilité coopérative**. Il permet de gérer
 
 **C'est ainsi que le travail bénévole, ou l'apport en nature, se transforme en capital collectif, mesuré et traçable via le ẐEN, sans passer par un mécanisme de dette.**
 
-### 4.2. Comprendre la Nécessité de la Ğ1 : Le DU comme Droit de Vote
+### 4.2. Comprendre le DU Nostr P2P : La Confiance qui Crée la Richesse
 
-Le mécanisme de provisionnement (1 Ğ1 = 10 Ẑ) n'est pas qu'une règle technique. C'est une **leçon d'économie politique** pour l'utilisateur.
+Le mécanisme de DU local basé sur le graphe social Nostr n'est pas qu'une règle technique. C'est une **leçon d'économie politique** pour l'utilisateur.
 
-*   Pour créer des ẐEN (et donc participer à l'économie locale), il faut **d'abord posséder des Ğ1**.
-*   Et pour posséder des Ğ1, il faut **être membre de la Toile de Confiance** et recevoir le **Dividende Universel (DU)**.
-*   Le DU n'est pas un simple revenu. Dans cette vision élargie, il devient un **point de vote**, une preuve de participation à la communauté. Plus on reçoit de DU (car on est membre depuis longtemps), plus on a de poids pour :
-    *   Proposer de nouveaux projets.
-    *   Valider l'émission de ẐEN pour des projets collectifs.
-    *   Participer aux décisions sur la répartition des ressources (les 3×1/3 : Trésorerie, R&D, Actifs).
+*   Pour créer des ẐEN (et donc participer à l'économie locale), il faut **tisser des liens de confiance réciproques** sur Nostr.
+*   Le DU n'est pas un simple revenu. Il devient un **point de vote**, une preuve de participation à la communauté. Plus on a de liens authentiques, plus on contribue à l'interconnexion entre groupes, plus son DU augmente.
+*   La formule DU favorise :
+    *   **Les rencontres réelles** : Un lien réciproque authentique augmente N1.
+    *   **L'intersection de groupes** : Être le pont entre communautés (A ↔ B ↔ C) est très rentable.
+    *   **La diversité des relations** : Un N2 densément interconnecté est plus précieux qu'un N2 diffus.
 
-Ainsi, le circuit Ğ1 → ẐEN crée une **démocratie des contributeurs**, où le pouvoir de vote est proportionnel à l'ancienneté et à la participation, et non à la richesse accumulée.
+**Ce n'est pas la richesse qui crée la confiance, c'est la confiance qui crée la richesse.**
 
-### 4.3. Le Triptyque Ğ1 / ẐEN / Euro : Un Système à Trois Étages
+Ainsi, le système TrocZen crée une **démocratie des contributeurs**, où le pouvoir de création monétaire est proportionnel à l'insertion sociale et à la capacité de tisser des liens, et non à la richesse accumulée.
 
-Nous arrivons à une vision claire d'un système monétaire et social à trois niveaux, en parfaite cohérence avec les piliers d'UPlanet.
+### 4.3. Le Système ẐEN / Euro : Une Interface à Deux Étages
+
+Nous arrivons à une vision claire d'un système monétaire et social à deux niveaux, en parfaite cohérence avec les piliers d'UPlanet.
 
 | Niveau | Monnaie / Outil | Rôle | Origine | Gouvernance |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Socle de Confiance** | **Ğ1 (June)** | Mesure de la valeur relative, Dividende Universel, droit de vote. | Création monétaire égalitaire par le DU. | Toile de Confiance (1 humaine = 1 voix). |
-| **2. Outil d'Échange Local** | **ẐEN** | Monnaie d'usage quotidien, bons de réduction, comptabilité des communs. | Création par provisionnement de Ğ1 (1Ğ1 = 10Ẑ). | Communauté locale (via les portefeuilles Ğ1/ẐEN). |
-| **3. Interface avec l'Ancien Monde**| **Euro (€)** | Achats externes, paiement des factures du monde "dette". | Apports des contributeurs, conversion de ẐEN. | Caisse commune, gérée par la communauté. |
+| **1. Socle de Confiance** | **ẐEN (DU Nostr P2P)** | Monnaie d'usage quotidien, Dividende Universel local, comptabilité des communs. | Création monétaire par formule TRM adaptée (DU hyper-relativiste). | Toile de Confiance Nostr (follows réciproques). |
+| **2. Interface avec l'Ancien Monde**| **Euro (€)** | Achats externes, paiement des factures du monde "dette". | Apports des contributeurs, conversion de ẐEN. | Caisse commune, gérée par la communauté. |
 
 ### 4.4. Une Invitation à l'Action : Rejoindre le Mouvement
 
 Ce modèle technique n'est pas une utopie. Il est en cours de construction. Rejoindre TrocZen et UPlanet, c'est choisir de :
 
-1.  **Devenir acteur** de son économie locale en utilisant et en émettant des ẐEN.
-2.  **Comprendre** la monnaie libre en recevant son DU Ğ1 et en voyant comment il permet de créer de la valeur locale.
+1.  **Devenir acteur** de son économie locale en utilisant et en émettant des ẐEN via le DU quotidien.
+2.  **Comprendre** la monnaie libre hyper-relativiste en voyant comment son réseau social influence sa capacité de création monétaire.
 3.  **Contribuer** aux projets de la communauté (logiciels, matériels low-tech, communs) et être rétribué en ẐEN pour ses apports.
-4.  **Voter** avec son DU pour orienter les ressources collectives vers les projets qui construisent la résilience commune (énergie, information, inclusion).
+4.  **Tisser des liens** pour augmenter son DU et orienter les ressources collectives vers les projets qui construisent la résilience commune (énergie, information, inclusion).
 
 Comme l'explique la page UPlanet, il s'agit de passer d'un monde de "services publics" verticaux à un monde de **"biens communs" horizontaux**, où chaque utilisateur est un **bâtisseur souverain**. Le ẐEN est l'outil comptable qui rend cette transition possible et transparente.
 
@@ -238,7 +257,7 @@ Comme l'explique la page UPlanet, il s'agit de passer d'un monde de "services pu
 
 ## Conclusion : Une Nouvelle Souveraineté Monétaire
 
-TrocZen, adossé à la Ğ1 et intégré à la vision d'UPlanet, n'est pas juste une application de bons de réduction. C'est un **protocole d'émission monétaire décentralisé** et un **outil de gouvernance des communs**. Il démontre qu'il est possible de créer de la valeur locale (les ẐEN) en s'ancrant sur une monnaie libre et équitable (la Ğ1), et d'utiliser cette dynamique pour financer collectivement les infrastructures de notre autonomie.
+TrocZen, avec son DU Nostr P2P intégré à la vision d'UPlanet, n'est pas juste une application de bons de réduction. C'est un **protocole d'émission monétaire décentralisé** et un **outil de gouvernance des communs**. Il démontre qu'il est possible de créer de la valeur locale (les ẐEN) de manière autonome, basée sur la confiance sociale réelle (le graphe Nostr), et d'utiliser cette dynamique pour financer collectivement les infrastructures de notre autonomie.
 
 C'est un pas vers une société où l'acte de créer de la monnaie n'est plus un privilège institutionnel, mais une **capacité répartie**, liée à notre existence et à notre contribution au sein de la communauté. Le marché devient alors un espace de handshakes atomiques où la confiance n'est plus un postulat, mais une propriété émergente du système, au service de la construction d'un monde résilient et désirable.
 

@@ -7,7 +7,7 @@
 | [README.md](README.md) | Point d'entrée : installation, architecture, utilisation |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture technique détaillée, flux de données, formats |
 | [007.md](007.md) | Whitepaper formel : modèle cryptographique, Tamarin/ProVerif, annexe comparative |
-| [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, analogies Ğ1/ẐEN/Euro |
+| [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, DU Nostr P2P/ẐEN/Euro |
 | [docs/TROCZEN_BOX_GUIDE.md](docs/TROCZEN_BOX_GUIDE.md) | Guide d'installation de la TrocZen Box (Raspberry Pi Solaire) |
 | [docs/DU_NOSTR_P2P_FLOW.md](docs/DU_NOSTR_P2P_FLOW.md) | Schéma de flux expérimental : Calcul du DU via le graphe social Nostr |
 | [docs/ARTICLE_FORUM_ML.md](docs/ARTICLE_FORUM_ML.md) | Article de présentation complet pour les forums Monnaie Libre et Duniter |

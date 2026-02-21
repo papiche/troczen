@@ -11,6 +11,8 @@ enum QrExplosionType {
   technicalError,
   /// Bon brûlé/encaissé avec succès par l'émetteur
   bonBurned,
+  /// Bootstrap expiré - DU non activé dans les 28 jours
+  bootstrapExpired,
 }
 
 /// Widget animé montrant une explosion pour signaler une action impossible.
@@ -193,6 +195,12 @@ $logsText
         return '🔥 Bon encaissé avec succès !\n\n'
             'La boucle est bouclée.\n'
             'Ce bon a été détruit et ne peut plus être utilisé.';
+      case QrExplosionType.bootstrapExpired:
+        return '⏰ Délai de bootstrap expiré !\n\n'
+            'Le DU(ẐEN) n\'a pas été activé dans les 28 jours.\n'
+            'Vous n\'avez pas tissé assez de liens de confiance (N1 < 5).\n\n'
+            'L\'application doit être réinitialisée.\n'
+            'Trouvez 5 contacts en confiance pour activer le DU !';
     }
   }
 
@@ -311,11 +319,19 @@ $logsText
                         child: Icon(
                           widget.type == QrExplosionType.bonTransferInProgress
                               ? Icons.lock_outline
-                              : Icons.error_outline,
+                              : widget.type == QrExplosionType.bootstrapExpired
+                                  ? Icons.timer_off
+                                  : widget.type == QrExplosionType.bonBurned
+                                      ? Icons.local_fire_department
+                                      : Icons.error_outline,
                           size: 60,
                           color: widget.type == QrExplosionType.bonTransferInProgress
                               ? Colors.orange.shade600
-                              : Colors.red.shade600,
+                              : widget.type == QrExplosionType.bootstrapExpired
+                                  ? Colors.purple.shade600
+                                  : widget.type == QrExplosionType.bonBurned
+                                      ? Colors.green.shade600
+                                      : Colors.red.shade600,
                         ),
                       ),
                     );
@@ -335,14 +351,22 @@ $logsText
                 // Titre selon le type
                 Text(
                   widget.type == QrExplosionType.bonTransferInProgress
-                      ? '🔒 Bon en cours d\'échange'
-                      : '� Oups ! Une erreur est survenue',
+                      ? '🔒 Bon en cours d'échange'
+                      : widget.type == QrExplosionType.bootstrapExpired
+                          ? '⏰ Bootstrap Expiré'
+                          : widget.type == QrExplosionType.bonBurned
+                              ? '🔥 Bon Encaissé'
+                              : '💥 Oups ! Une erreur est survenue',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: widget.type == QrExplosionType.bonTransferInProgress
                         ? Colors.orange.shade700
-                        : Colors.red.shade700,
+                        : widget.type == QrExplosionType.bootstrapExpired
+                            ? Colors.purple.shade700
+                            : widget.type == QrExplosionType.bonBurned
+                                ? Colors.green.shade700
+                                : Colors.red.shade700,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -388,17 +412,29 @@ $logsText
             icon: Icon(
               widget.type == QrExplosionType.bonTransferInProgress
                   ? Icons.close
-                  : Icons.refresh,
+                  : widget.type == QrExplosionType.bootstrapExpired
+                      ? Icons.delete_forever
+                      : widget.type == QrExplosionType.bonBurned
+                          ? Icons.check
+                          : Icons.refresh,
             ),
             label: Text(
               widget.type == QrExplosionType.bonTransferInProgress
                   ? 'Fermer'
-                  : 'Réessayer',
+                  : widget.type == QrExplosionType.bootstrapExpired
+                      ? 'Réinitialiser'
+                      : widget.type == QrExplosionType.bonBurned
+                          ? 'OK'
+                          : 'Réessayer',
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: widget.type == QrExplosionType.bonTransferInProgress
                   ? Colors.orange.shade600
-                  : Colors.blue.shade600,
+                  : widget.type == QrExplosionType.bootstrapExpired
+                      ? Colors.purple.shade600
+                      : widget.type == QrExplosionType.bonBurned
+                          ? Colors.green.shade600
+                          : Colors.blue.shade600,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(
                 horizontal: 24,

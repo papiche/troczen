@@ -37,6 +37,8 @@ class StorageService {
   static const String _activeMarketKey = 'active_market'; // Marché actif par défaut
   static const String _onboardingCompleteKey = 'onboarding_complete';
   static const String _contactsKey = 'contacts'; // Liste des contacts (npubs)
+  static const String _bootstrapReceivedKey = 'bootstrap_received'; // Bon Zéro reçu
+  static const String _bootstrapExpirationKey = 'bootstrap_expiration'; // Date expiration Bon Zéro initial
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
@@ -748,6 +750,100 @@ class StorageService {
     } catch (e) {
       Logger.error('StorageService', 'Erreur removeContact', e);
       return false;
+    }
+  }
+
+  // ============================================================
+  // GESTION DU BON ZÉRO (Bootstrap pour nouveaux utilisateurs)
+  // ============================================================
+
+  /// Vérifie si l'utilisateur a déjà reçu son Bon Zéro initial
+  Future<bool> hasReceivedBootstrap() async {
+    try {
+      final value = await _secureStorage.read(key: _bootstrapReceivedKey);
+      return value == 'true';
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur hasReceivedBootstrap', e);
+      return false;
+    }
+  }
+
+  /// Marque l'utilisateur comme ayant reçu son Bon Zéro
+  /// et enregistre la date d'expiration initiale (28 jours)
+  Future<void> setBootstrapReceived(bool received, {DateTime? expirationDate}) async {
+    try {
+      await _secureStorage.write(
+        key: _bootstrapReceivedKey,
+        value: received.toString(),
+      );
+      
+      // Enregistrer la date d'expiration initiale
+      if (expirationDate != null) {
+        await _secureStorage.write(
+          key: _bootstrapExpirationKey,
+          value: expirationDate.toIso8601String(),
+        );
+      }
+      
+      Logger.log('StorageService', 'Bon Zéro marqué comme reçu: $received');
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur setBootstrapReceived', e);
+    }
+  }
+
+  /// Récupère la date d'expiration du Bon Zéro initial
+  /// Retourne null si non défini
+  Future<DateTime?> getBootstrapExpiration() async {
+    try {
+      final value = await _secureStorage.read(key: _bootstrapExpirationKey);
+      if (value == null) return null;
+      return DateTime.parse(value);
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getBootstrapExpiration', e);
+      return null;
+    }
+  }
+
+  /// Vérifie si le Bon Zéro initial a expiré
+  Future<bool> isBootstrapExpired() async {
+    final expiration = await getBootstrapExpiration();
+    if (expiration == null) return true;
+    return DateTime.now().isAfter(expiration);
+  }
+
+  /// Vérifie si le bootstrap a expiré ET que le DU n'est pas activé (N1 < 5)
+  /// C'est la condition pour l'auto-destruction de l'application
+  Future<bool> isBootstrapExpiredAndDuNotActive() async {
+    // Vérifier si l'utilisateur a reçu un bootstrap
+    final hasBootstrap = await hasReceivedBootstrap();
+    if (!hasBootstrap) return false; // Pas de bootstrap = pas d'expiration
+    
+    // Vérifier si le bootstrap a expiré
+    final isExpired = await isBootstrapExpired();
+    if (!isExpired) return false; // Pas encore expiré
+    
+    // Vérifier si le DU est activé (N1 ≥ 5)
+    final contacts = await getContacts();
+    final hasEnoughContacts = contacts.length >= 5; // _minMutualFollows = 5
+    
+    // Si le bootstrap est expiré ET qu'on n'a pas assez de contacts = auto-destruction
+    return !hasEnoughContacts;
+  }
+
+  /// Supprime toutes les données de l'application (réinitialisation complète)
+  /// Inclut le stockage sécurisé ET le cache SQLite
+  Future<void> clearAllData() async {
+    try {
+      // Supprimer toutes les données du stockage sécurisé
+      await _secureStorage.deleteAll();
+      
+      // Vider le cache SQLite
+      await _cacheService.clearAllCache();
+      
+      Logger.info('StorageService', 'Toutes les données ont été supprimées');
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur lors de la suppression des données', e);
+      rethrow;
     }
   }
 }

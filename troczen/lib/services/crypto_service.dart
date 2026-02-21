@@ -29,7 +29,7 @@ class ShamirReconstructionException implements Exception {
       'La reconstruction de votre seed a échoué. '
       'Vos parts peuvent être incompatibles ou corrompues.\n\n'
       'Si vous êtes développeur et souhaitez améliorer cette implémentation, '
-      'rendez-vous sur: https://github.com/TrocZen/TrocZen/issues';
+      'rendez-vous sur: https://github.com/papiche/troczen/issues';
   
   @override
   String toString() => 'ShamirReconstructionException: $message';
@@ -37,6 +37,17 @@ class ShamirReconstructionException implements Exception {
 
 class CryptoService {
   final Random _secureRandom = Random.secure();
+  
+  /// ✅ HACKATHON: Seed constante (32 octets à zéro) - MARCHE GLOBAL - UPLANET ORIGIN
+  /// 0000000000000000000000000000000000000000000000000000000000000000
+  /// Utilisée le marchés "HACKATHON" (clarté totale et espace de fongibilité du ẐEN)
+  static final Uint8List HACKATHON_SEED = Uint8List(32); // 32 octets à zéro
+  
+  /// Retourne true si la seed correspond à HACKATHON_SEED
+  bool _isHackathonSeed(String seedHex) {
+    final hackathonSeedHex = '0' * 64; // 32 octets à zéro en hex
+    return seedHex == hackathonSeedHex;
+  }
   
   /// ✅ SÉCURITÉ: Nettoyage sécurisé de la mémoire pour Uint8List
   /// Remplit le tableau d'octets avec des zéros de manière sécurisée
@@ -498,7 +509,7 @@ class CryptoService {
           customUserMessage: 'Les parts fournies sont identiques ou corrompues.\n\n'
               'Vérifiez que vous avez bien scanné deux parts différentes.\n\n'
               'Si le problème persiste, contactez le support ou visitez: '
-              'https://github.com/TrocZen/TrocZen/issues',
+              'https://github.com/papiche/troczen/issues',
         );
       }
       
@@ -987,13 +998,26 @@ class CryptoService {
   }
 
   /// ✅ Chiffre P3 avec K_day (clé du jour dérivée de la graine)
+  /// En mode HACKATHON (seed à zéro), retourne P3 non chiffré pour lisibilité JSON
   Future<Map<String, String>> encryptP3WithSeed(String p3Hex, String seedHex, DateTime date) async {
+    // Mode HACKATHON: P3 reste en clair pour faciliter les tests et la lisibilité Nostr
+    if (_isHackathonSeed(seedHex)) {
+      return {
+        'ciphertext': p3Hex, // P3 non chiffré
+        'nonce': '0' * 24,   // Nonce factice (12 octets à zéro en hex)
+      };
+    }
     final kDay = getDailyMarketKey(seedHex, date);
     return encryptP3(p3Hex, kDay);
   }
 
   /// ✅ Déchiffre P3 avec K_day (clé du jour dérivée de la graine)
+  /// En mode HACKATHON (seed à zéro), retourne le ciphertext tel quel (P3 non chiffré)
   Future<String> decryptP3WithSeed(String ciphertextHex, String nonceHex, String seedHex, DateTime date) async {
+    // Mode HACKATHON: P3 était en clair, le ciphertext EST le P3
+    if (_isHackathonSeed(seedHex)) {
+      return ciphertextHex; // Retourne directement le "ciphertext" qui est en fait P3 en clair
+    }
     final kDay = getDailyMarketKey(seedHex, date);
     return decryptP3(ciphertextHex, nonceHex, kDay);
   }

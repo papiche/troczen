@@ -208,179 +208,225 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
+        backgroundColor: Color(0xFF121212),
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Logo / Titre
-                  const Icon(
-                    Icons.wallet,
-                    size: 80,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Logo / Titre
+                const SizedBox(height: 20),
+                const Icon(
+                  Icons.wallet,
+                  size: 72,
+                  color: Color(0xFFFFB347),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'TrocZen',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
                     color: Color(0xFFFFB347),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'TrocZen',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFB347),
-                    ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Le troc local, simple et zen',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[400],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Le troc local, simple et zen',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[400],
+                ),
+                const SizedBox(height: 36),
+
+                // Formulaire
+                TextFormField(
+                  controller: _loginController,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  autofillHints: const ['username'],
+                  decoration: InputDecoration(
+                    labelText: 'Login (identifiant unique)',
+                    labelStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: const Icon(Icons.person, color: Color(0xFFFFB347)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey[700]!),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Formulaire
-                  TextFormField(
-                    controller: _loginController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Login (identifiant unique)',
-                      labelStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: const Icon(Icons.person, color: Color(0xFFFFB347)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey[700]!),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFFFB347)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF2A2A2A),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFFFB347), width: 2),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer un login';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Mot de passe',
-                      labelStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: const Icon(Icons.lock, color: Color(0xFFFFB347)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey[700]!),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFFFB347)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF2A2A2A),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red[400]!),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Veuillez entrer un mot de passe';
-                      }
-                      if (value.length < 8) {
-                        return 'Le mot de passe doit contenir au moins 8 caractères';
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  TextFormField(
-                    controller: _displayNameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Nom d\'affichage (optionnel)',
-                      labelStyle: TextStyle(color: Colors.grey[400]),
-                      prefixIcon: const Icon(Icons.badge, color: Color(0xFFFFB347)),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey[700]!),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color(0xFFFFB347)),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF2A2A2A),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red[400]!, width: 2),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    filled: true,
+                    fillColor: const Color(0xFF2A2A2A),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Veuillez entrer un login';
+                    }
+                    if (value.trim().length < 3) {
+                      return 'Le login doit contenir au moins 3 caractères';
+                    }
+                    return null;
+                  },
+                ),
 
-                  const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
-                  ElevatedButton(
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  autofillHints: const ['newPassword'],
+                  decoration: InputDecoration(
+                    labelText: 'Mot de passe',
+                    labelStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: const Icon(Icons.lock, color: Color(0xFFFFB347)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey[700]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFFFB347), width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red[400]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red[400]!, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF2A2A2A),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Veuillez entrer un mot de passe';
+                    }
+                    if (value.length < 8) {
+                      return 'Le mot de passe doit contenir au moins 8 caractères';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _displayNameController,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  textInputAction: TextInputAction.done,
+                  autocorrect: false,
+                  autofillHints: const ['name'],
+                  onFieldSubmitted: (_) => _createUser(),
+                  decoration: InputDecoration(
+                    labelText: 'Nom d\'affichage (optionnel)',
+                    labelStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: const Icon(Icons.badge, color: Color(0xFFFFB347)),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey[700]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFFFB347), width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF2A2A2A),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Bouton créer
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
                     onPressed: _isProcessing ? null : _createUser,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB347),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      disabledBackgroundColor: Colors.grey[700],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: _isProcessing
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Text(
                             'Créer mon compte',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 17,
                               fontWeight: FontWeight.bold,
                               color: Colors.black,
                             ),
                           ),
                   ),
+                ),
 
-                  const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.blue),
-                        const SizedBox(height: 8),
-                        Text(
+                // Info box
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue[300], size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
                           'Votre login et mot de passe génèrent votre identité cryptographique. Ne les perdez pas !',
-                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey[300],
                             fontSize: 12,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

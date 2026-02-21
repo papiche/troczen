@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/nostr_service.dart';
+import '../../services/du_calculation_service.dart';
 import '../../models/market.dart';
 import '../../models/user.dart';
 import '../main_shell.dart';
@@ -487,7 +488,30 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         // Continuer même si la publication échoue
       }
       
-      // 4. Marquer l'onboarding comme complété
+      // 4. Générer le Bon Zéro de bootstrap (0 ẐEN, TTL 28j)
+      try {
+        final nostrService = NostrService(
+          cryptoService: cryptoService,
+          storageService: storageService,
+        );
+        
+        final duService = DuCalculationService(
+          storageService: storageService,
+          nostrService: nostrService,
+          cryptoService: cryptoService,
+        );
+        
+        // Vérifier que l'utilisateur n'a pas déjà reçu le bootstrap
+        if (!await storageService.hasReceivedBootstrap()) {
+          await duService.generateBootstrapAllocation(user, market);
+          debugPrint('✅ Bon Zéro (bootstrap) créé pour ${user.displayName}');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur génération Bon Zéro: $e');
+        // Continuer même si le bootstrap échoue
+      }
+      
+      // 5. Marquer l'onboarding comme complété
       await storageService.markOnboardingComplete();
       
       setState(() => _isCreatingAccount = false);

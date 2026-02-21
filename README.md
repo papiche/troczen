@@ -109,7 +109,8 @@ K_day = HMAC-SHA256(seed_market, "daily-key-" || YYYY-MM-DD)
 |---------|---------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Cryptographie, flux de données, formats QR, composants UI |
 | [007.md](007.md) | Whitepaper formel : modèle de sécurité, Tamarin/ProVerif |
-| [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, Ğ1/ẐEN/Euro |
+| [docs/technical_whitepaper.md](docs/technical_whitepaper.md) | Livre blanc pédagogique : jeu de post-it, DU Nostr P2P/ẐEN/Euro |
+| [docs/DU_NOSTR_P2P_FLOW.md](docs/DU_NOSTR_P2P_FLOW.md) | Flux d'émission du DU via Nostr P2P (TRM adaptée) |
 | [docs/TROCZEN_BOX_GUIDE.md](docs/TROCZEN_BOX_GUIDE.md) | Guide d'installation de la TrocZen Box (Raspberry Pi Solaire) |
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | État du projet, métriques, roadmap, commandes |
 | [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md) | Corrections sécurité (3 vagues, fév. 2026) |
@@ -134,9 +135,7 @@ python api_backend.py
 
 ## Roadmap
 
-**v1.3 — Mars 2026** : sync P3 automatique en arrière-plan, graphiques Dashboard, tests d'intégration.
-
-**v2.0** : multi-marchés, PWA, intégration provisionnement Ğ1 (1 Ğ1 = 10 ẐEN), export PDF/CSV.
+**v4.0** : multi-marchés, PWA, DU Nostr P2P (création monétaire hyper-relativiste basée sur le graphe social), point de fork multi applicatif.
 
 ## Contribution
 
