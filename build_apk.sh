@@ -105,6 +105,9 @@ echo "📝 Mise à jour des templates..."
 # Retour à la racine du projet
 cd ..
 
+# Chemin absolu depuis la racine du projet
+DEST_DIR="api/apks"
+
 # Mise à jour du README.md
 cat > "$DEST_DIR/README.md" << EOF
 # Téléchargement des APK TrocZen
