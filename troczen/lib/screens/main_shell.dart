@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import '../models/user.dart';
 import '../config/app_config.dart';
 import 'views/wallet_view.dart';
@@ -9,10 +8,12 @@ import 'views/profile_view.dart';
 import 'mirror_receive_screen.dart';
 import 'create_bon_screen.dart';
 import 'settings_screen.dart';
+import 'logs_screen.dart';
+import 'feedback_screen.dart';
 import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
-import '../services/feedback_service.dart';
+import '../services/logger_service.dart';
 
 /// MainShell — Architecture de navigation principale
 /// 4 onglets : Wallet, Explorer, Dashboard, Profil
@@ -31,7 +32,6 @@ class _MainShellState extends State<MainShell> {
   int _currentTab = 0;
   final _storageService = StorageService();
   final _cryptoService = CryptoService();
-  final _feedbackService = FeedbackService();
   late final NostrService _nostrService;
   bool _isSyncing = false;
 
@@ -237,6 +237,19 @@ class _MainShellState extends State<MainShell> {
                   
                   const Divider(color: Colors.white24),
                   
+                  // Logs
+                  ListTile(
+                    leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
+                    title: const Text('Logs de l\'application', style: TextStyle(color: Colors.white)),
+                    subtitle: Text(
+                      'Voir les événements (${Logger.logCount} entrées)',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    onTap: () => _navigateToLogs(),
+                  ),
+                  
+                  const Divider(color: Colors.white24),
+                  
                   // À propos
                   ListTile(
                     leading: const Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
@@ -247,10 +260,10 @@ class _MainShellState extends State<MainShell> {
                   
                   // Feedback
                   ListTile(
-                    leading: const Icon(Icons.feedback_outlined, color: Color(0xFF0A7EA4)),
+                    leading: const Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
                     title: const Text('Envoyer un feedback', style: TextStyle(color: Colors.white)),
                     subtitle: const Text('Signaler un bug ou suggérer', style: TextStyle(color: Colors.white70)),
-                    onTap: () => _sendFeedback(),
+                    onTap: () => _navigateToFeedback(),
                   ),
                 ],
               ),
@@ -309,6 +322,26 @@ class _MainShellState extends State<MainShell> {
       context,
       MaterialPageRoute(
         builder: (context) => SettingsScreen(user: widget.user),
+      ),
+    );
+  }
+
+  void _navigateToLogs() {
+    Navigator.pop(context); // Fermer le drawer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LogsScreen(),
+      ),
+    );
+  }
+
+  void _navigateToFeedback() {
+    Navigator.pop(context); // Fermer le drawer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FeedbackScreen(user: widget.user),
       ),
     );
   }
@@ -508,244 +541,4 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _sendFeedback() {
-    Navigator.pop(context); // Fermer le drawer
-    
-    // Afficher le dialog de feedback
-    showDialog(
-      context: context,
-      builder: (context) => _FeedbackDialog(
-        feedbackService: _feedbackService,
-        user: widget.user,
-      ),
-    );
-  }
-}
-
-/// Dialog de feedback utilisateur
-class _FeedbackDialog extends StatefulWidget {
-  final FeedbackService feedbackService;
-  final User user;
-
-  const _FeedbackDialog({
-    required this.feedbackService,
-    required this.user,
-  });
-
-  @override
-  State<_FeedbackDialog> createState() => _FeedbackDialogState();
-}
-
-class _FeedbackDialogState extends State<_FeedbackDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _emailController = TextEditingController();
-  
-  String _feedbackType = 'feedback';
-  bool _isSending = false;
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitFeedback() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isSending = true);
-
-    try {
-      final result = await widget.feedbackService.sendFeedback(
-        type: _feedbackType,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        email: _emailController.text.trim().isEmpty
-            ? null
-            : _emailController.text.trim(),
-        appVersion: AppConfig.appVersion,
-        platform: Platform.isAndroid ? 'Android' : 'iOS',
-      );
-
-      if (!mounted) return;
-
-      if (result.success) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ ${result.message}\nIssue #${result.issueNumber}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ ${result.error}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Erreur: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1E1E1E),
-      title: const Text(
-        'Envoyer un feedback',
-        style: TextStyle(color: Colors.white),
-      ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Type de feedback
-              DropdownButtonFormField<String>(
-                initialValue: _feedbackType,
-                dropdownColor: const Color(0xFF2A2A2A),
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Type',
-                  labelStyle: TextStyle(color: Colors.white70),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'bug', child: Text('🐛 Bug')),
-                  DropdownMenuItem(value: 'feature', child: Text('✨ Suggestion')),
-                  DropdownMenuItem(value: 'feedback', child: Text('💬 Feedback')),
-                  DropdownMenuItem(value: 'question', child: Text('❓ Question')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _feedbackType = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              
-              // Titre
-              TextFormField(
-                controller: _titleController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Titre',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  hintText: 'Résumé en quelques mots',
-                  hintStyle: TextStyle(color: Colors.white38),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Le titre est requis';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              
-              // Description
-              TextFormField(
-                controller: _descriptionController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  hintText: 'Décrivez votre feedback en détail',
-                  hintStyle: TextStyle(color: Colors.white38),
-                ),
-                maxLines: 5,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La description est requise';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              
-              // Email (optionnel)
-              TextFormField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Email (optionnel)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  hintText: 'Pour une réponse',
-                  hintStyle: TextStyle(color: Colors.white38),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              
-              // Info sécurité
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.lock, color: Colors.blue, size: 16),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Envoyé de manière sécurisée via notre serveur',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSending ? null : () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        ElevatedButton(
-          onPressed: _isSending ? null : _submitFeedback,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFB347),
-            foregroundColor: Colors.black,
-          ),
-          child: _isSending
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation(Colors.black),
-                  ),
-                )
-              : const Text('Envoyer'),
-        ),
-      ],
-    );
-  }
 }

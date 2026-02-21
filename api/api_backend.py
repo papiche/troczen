@@ -26,9 +26,10 @@ from nostr_client import NostrClientSync  # Utiliser le client synchrone pour Fl
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-UPLOAD_FOLDER = Path('./uploads')
-APK_FOLDER = Path('./apks')
+# Configuration - chemins relatifs au script, pas au CWD
+SCRIPT_DIR = Path(__file__).parent.resolve()
+UPLOAD_FOLDER = SCRIPT_DIR / 'uploads'
+APK_FOLDER = SCRIPT_DIR / 'apks'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
