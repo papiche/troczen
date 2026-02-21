@@ -1,10 +1,10 @@
 {
   "apks": {
     "troczen-3.0.1.apk": {
-      "cid": "QmcT8cYBo8u1QuC5KHvoqWesMPKyxXary6Gq8WQPBBQtjc",
-      "size": 77884327,
-      "checksum": "",
-      "uploaded_at": "2026-02-20T21:57:00+00:00",
+      "cid": "QmYfGscoQozCCLAdoDjrM8LVB9As4PfZPPwWFTcQgLGvpo",
+      "size": 77935442,
+      "checksum": "fb218326a7732ecf3047995eb9a3853ae14d6aaf968fb6b853729b4fcdaeed6e",
+      "uploaded_at": "2026-02-21T00:51:18+01:00",
       "version": "3.0.1"
     }
   }

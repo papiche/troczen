@@ -11,13 +11,14 @@
 | [docs/TROCZEN_BOX_GUIDE.md](docs/TROCZEN_BOX_GUIDE.md) | Guide d'installation de la TrocZen Box (Raspberry Pi Solaire) |
 | [docs/DU_NOSTR_P2P_FLOW.md](docs/DU_NOSTR_P2P_FLOW.md) | Schéma de flux expérimental : Calcul du DU via le graphe social Nostr |
 | [docs/ARTICLE_FORUM_ML.md](docs/ARTICLE_FORUM_ML.md) | Article de présentation complet pour les forums Monnaie Libre et Duniter |
+| [docs/ASTROPORT_PAF_INTEGRATION.md](docs/ASTROPORT_PAF_INTEGRATION.md) | Architecture technique pour l'intégration de la PAF (Armateur/Capitaine) |
 
 ## Projet & état d'avancement
 
 | Fichier | Contenu |
 |---------|---------|
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | Résumé exécutif, état fonctionnel, roadmap, commandes essentielles |
-| [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md) | 3 vagues de corrections sécurité (16–18 fév 2026) |
+| [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md) | plusieurs vagues de corrections sécurité (16–20 fév 2026) |
 | [GUIDE_TESTS.md](GUIDE_TESTS.md) | Stratégie de test, tests unitaires, intégration, terrain |
 
 ## Fonctionnalités spécifiques
@@ -25,7 +26,6 @@
 | Fichier | Contenu |
 |---------|---------|
 | [DASHBOARD_MARCHAND_DOC.md](DASHBOARD_MARCHAND_DOC.md) | Analytics économiques P3, formules, dashboard |
-| [NOUVELLES_FEATURES.md](NOUVELLES_FEATURES.md) | NFC, ACK, échanges atomiques, gamification |
 
 ## API & Backend
 
@@ -106,21 +106,3 @@
         ├── nostr_service_test.dart       # 6 tests unitaires
         └── integration_test.dart         # 16 tests d'intégration (flux critiques)
 ```
-
-## Documents supprimés (archivés dans ce commit)
-
-Ces fichiers ont été fusionnés pour éviter la redondance :
-
-- `SYNTHESE_FINALE.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
-- `IMPLEMENTATION_FINALE.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
-- `AUDIT_SECURITE_FINAL.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
-- `CORRECTIONS_SECURITE.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
-- `CORRECTIONS_APPLIQUEES.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
-- `CORRECTIONS_BUGS_P0.md` → [CHANGELOG_SECURITE.md](CHANGELOG_SECURITE.md)
-- `VERIFICATION_CONFORMITE.md` → absorbé dans [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
-- `troczen/RECAPITULATIF_FINAL.md` → [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
-- `troczen/NAVIGATION_V4_GUIDE.md` → [NAVIGATION_V4.md](NAVIGATION_V4.md)
-- `troczen/MIGRATION_NAVIGATION_V4.md` → [NAVIGATION_V4.md](NAVIGATION_V4.md)
-- `troczen/PARTIE_4_REFONTE_NAVIGATION_RESUME.md` → [NAVIGATION_V4.md](NAVIGATION_V4.md)
-- `troczen/V1008_IMPLEMENTATION_COMPLETE.md` → [CHANGELOG_V1008.md](CHANGELOG_V1008.md)
-- `troczen/V1008_AVATAR_SYNC_IMPLEMENTATION.md` → [CHANGELOG_V1008.md](CHANGELOG_V1008.md)
