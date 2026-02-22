@@ -14,8 +14,6 @@ enum BonStatus {
 
 class Bon {
   final String bonId;           // npub_bon (clé publique du bon en hex)
-  // ✅ SÉCURITÉ: bonNsec supprimé - reconstruction éphémère uniquement
-  // final String bonNsec;      // ❌ NE PLUS STOCKER - voir crypto_service.shamirCombineBytesDirect()
   final double value;           // Valeur en ẐEN
   final String issuerName;      // Nom de l'émetteur
   final String issuerNpub;      // npub de l'émetteur
@@ -46,7 +44,6 @@ class Bon {
 
   Bon({
     required this.bonId,
-    // bonNsec retiré
     required this.value,
     required this.issuerName,
     required this.issuerNpub,
@@ -285,7 +282,6 @@ class Bon {
 
   Bon copyWith({
     String? bonId,
-    // bonNsec retiré
     double? value,
     String? issuerName,
     String? issuerNpub,
@@ -315,7 +311,6 @@ class Bon {
   }) {
     return Bon(
       bonId: bonId ?? this.bonId,
-      // bonNsec retiré
       value: value ?? this.value,
       issuerName: issuerName ?? this.issuerName,
       issuerNpub: issuerNpub ?? this.issuerNpub,
@@ -348,7 +343,6 @@ class Bon {
   Map<String, dynamic> toJson() {
     return {
       'bonId': bonId,
-      // 'bonNsec' retiré pour ne jamais stocker sk_B
       'value': value,
       'issuerName': issuerName,
       'issuerNpub': issuerNpub,
@@ -383,7 +377,6 @@ class Bon {
   factory Bon.fromJson(Map<String, dynamic> json) {
     return Bon(
       bonId: json['bonId'],
-      // bonNsec retiré
       value: (json['value'] as num).toDouble(),
       issuerName: json['issuerName'],
       issuerNpub: json['issuerNpub'],

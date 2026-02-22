@@ -228,7 +228,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final bonKeys = _cryptoService.generateNostrKeyPair();
       final bonNsecHex = bonKeys['privateKeyHex']!;  // Format hex pour shamirSplit
       final bonNpubHex = bonKeys['publicKeyHex']!;   // Format hex pour les identifiants
-      final bonNsec = bonKeys['nsec']!;              // Format Bech32 pour affichage
       final bonNpub = bonKeys['npub']!;              // Format Bech32 pour affichage
 
       // 2. Découper en 3 parts avec SSSS (utilise le format bytes)
@@ -239,13 +238,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final p3 = HEX.encode(partsBytes[2]); // Témoin (à publier)
       _cryptoService.secureZeroiseBytes(bonNsecBytes);
 
-      // 3. Chiffrer P3 avec K_day (clé du jour dérivée de la graine)
-      final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3, _selectedMarket!.seedMarket, DateTime.now());
-
-      // 4. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
+      // 3. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
       await _storageService.saveP3ToCache(bonNpubHex, p3);
 
-      // 5. Créer le bon (sans stocker bonNsec)
+      // 4. Créer le bon
       final nostrService = NostrService(
         cryptoService: _cryptoService,
         storageService: _storageService,
@@ -259,7 +255,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
       final bon = Bon(
         bonId: bonNpubHex,
-        // bonNsec retiré - reconstruction via P2+P3 uniquement
         value: double.parse(_valueController.text),
         issuerName: _issuerNameController.text,
         issuerNpub: widget.user.npub,

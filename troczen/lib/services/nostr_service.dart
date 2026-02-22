@@ -836,7 +836,7 @@ class NostrService {
       _channel!.sink.add(message);
       
       Logger.log('NostrService',
-          'Circuit révélé: $bonId | ${valueZen}ẐEN | $hopCount hops | $ageDays jours');
+          'Circuit révélé: $bonId | $valueZenẐEN | $hopCount hops | $ageDays jours');
 
       return true;
     } catch (e) {
@@ -1209,7 +1209,7 @@ class NostrService {
           
           // ✅ NOUVEAU: Extraire le nom de l'émetteur depuis le contenu
           final displayName = contentJson['display_name'] as String?;
-          if (displayName != null && issuerName == null) {
+          if (displayName != null) {
             // Extraire le nom de l'émetteur du display_name (ex: "Bon 50 ẐEN" -> pas utile)
             // On garde issuerName tel quel s'il n'est pas dans le content
           }

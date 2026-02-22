@@ -423,20 +423,6 @@ class CryptoService {
     return [p1Bytes, p2Bytes, p3Bytes];
   }
 
-  @Deprecated('Utilisez shamirSplitBytes() pour éviter les String en RAM')
-  List<String> shamirSplit(String secretHex) {
-    final secretBytes = Uint8List.fromList(HEX.decode(secretHex));
-    try {
-      final parts = shamirSplitBytes(secretBytes);
-      return [
-        HEX.encode(parts[0]),
-        HEX.encode(parts[1]),
-        HEX.encode(parts[2]),
-      ];
-    } finally {
-      secureZeroiseBytes(secretBytes);
-    }
-  }
 
   /// ✅ SÉCURITÉ MAXIMALE: Reconstruit le secret à partir de Uint8List directement
   ///
