@@ -40,6 +40,7 @@ class StorageService {
   static const String _contactsKey = 'contacts'; // Liste des contacts (npubs)
   static const String _bootstrapReceivedKey = 'bootstrap_received'; // Bon Zéro reçu
   static const String _bootstrapExpirationKey = 'bootstrap_expiration'; // Date expiration Bon Zéro initial
+  static const String _appModeKey = 'app_mode'; // Mode d'utilisation (0=Flâneur, 1=Artisan, 2=Alchimiste)
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
@@ -983,6 +984,34 @@ class StorageService {
     } catch (e) {
       Logger.error('StorageService', 'Erreur lors de la suppression des données', e);
       rethrow;
+    }
+  }
+
+  // ============================================================
+  // ✅ GESTION DU MODE D'UTILISATION (Progressive Disclosure)
+  // 3 modes : Flâneur (0), Artisan (1), Alchimiste (2)
+  // ============================================================
+
+  /// Sauvegarde le mode d'utilisation de l'application
+  /// 0 = Flâneur (Client/Acheteur), 1 = Artisan (Commerçant), 2 = Alchimiste (Expert)
+  Future<void> setAppMode(int modeIndex) async {
+    try {
+      await _secureStorage.write(key: _appModeKey, value: modeIndex.toString());
+      Logger.log('StorageService', 'Mode d\'application défini: $modeIndex');
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur setAppMode', e);
+    }
+  }
+
+  /// Récupère le mode d'utilisation de l'application
+  /// Retourne 0 (Flâneur) par défaut si non défini
+  Future<int> getAppMode() async {
+    try {
+      final mode = await _secureStorage.read(key: _appModeKey);
+      return mode != null ? int.parse(mode) : 0; // Défaut : Flâneur
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getAppMode', e);
+      return 0; // Défaut : Flâneur en cas d'erreur
     }
   }
 }

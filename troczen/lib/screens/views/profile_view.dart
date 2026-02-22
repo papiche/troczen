@@ -1,11 +1,16 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
+import '../../services/logger_service.dart';
 import '../user_profile_screen.dart';
 
 /// ProfileView — Mon Profil
@@ -1052,14 +1057,122 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
     ).then((_) => _loadUserProfile());
   }
 
-  void _exportUserData() {
-    // TODO: Implémenter l'export des données utilisateur
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Export des données à venir'),
-        backgroundColor: Color(0xFF0A7EA4),
-      ),
-    );
+  /// ✅ IMPLÉMENTÉ: Exporte les données utilisateur au format JSON
+  /// Génère un fichier JSON contenant le profil et les bons, puis le partage via share_plus
+  Future<void> _exportUserData() async {
+    try {
+      Logger.info('ProfileView', 'Début export données utilisateur');
+      
+      // Récupérer toutes les données
+      final user = await _storageService.getUser();
+      final bons = await _storageService.getBons();
+      final market = await _storageService.getMarket();
+      final contacts = await _storageService.getContacts();
+      
+      if (user == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Aucun utilisateur trouvé'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Construire le JSON d'export
+      final exportData = {
+        'version': '1.0',
+        'exportDate': DateTime.now().toIso8601String(),
+        'user': {
+          'npub': user.npubBech32,  // Format Bech32 pour compatibilité
+          'displayName': user.displayName,
+          'website': user.website,
+          'g1pub': user.g1pub,
+          'activityTags': user.activityTags,
+          'createdAt': user.createdAt.toIso8601String(),
+        },
+        'market': market != null ? {
+          'name': market.name,
+          'displayName': market.displayName,
+          'seedMarket': market.seedMarket,
+          'validUntil': market.validUntil.toIso8601String(),
+          'relayUrl': market.relayUrl,
+          'isActive': market.isActive,
+        } : null,
+        'contacts': contacts,
+        'bons': bons.map((bon) => {
+          'bonId': bon.bonId,
+          'value': bon.value,
+          'issuerName': bon.issuerName,
+          'issuerNpub': bon.issuerNpub,
+          'marketName': bon.marketName,
+          'status': bon.status.name,
+          'createdAt': bon.createdAt.toIso8601String(),
+          'transferCount': bon.transferCount,
+          'rarity': bon.rarity,
+        }).toList(),
+        'statistics': {
+          'totalBons': bons.length,
+          'activeBons': bons.where((b) => b.status == BonStatus.active).length,
+          'totalValue': bons.fold<double>(0.0, (sum, b) => sum + b.value),
+          'contactsCount': contacts.length,
+        },
+      };
+      
+      // Convertir en JSON formaté
+      const encoder = JsonEncoder.withIndent('  ');
+      final jsonString = encoder.convert(exportData);
+      
+      // Créer un fichier temporaire
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'troczen_export_${user.displayName.replaceAll(' ', '_')}_$timestamp.json';
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsString(jsonString);
+      
+      Logger.success('ProfileView', 'Export créé: ${file.path}');
+      
+      if (!mounted) return;
+      
+      // Partager le fichier
+      final result = await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Export TrocZen - ${user.displayName}',
+        text: 'Mes données TrocZen exportées le ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+      );
+      
+      if (result.status == ShareResultStatus.success) {
+        Logger.success('ProfileView', 'Export partagé avec succès');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Données exportées avec succès'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      
+      // Nettoyer le fichier temporaire après un délai
+      Future.delayed(const Duration(minutes: 5), () {
+        if (file.existsSync()) {
+          file.deleteSync();
+          Logger.info('ProfileView', 'Fichier temporaire supprimé');
+        }
+      });
+      
+    } catch (e) {
+      Logger.error('ProfileView', 'Erreur lors de l\'export: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur lors de l\'export: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   void _copyToClipboard(String text) {

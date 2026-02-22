@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
+import '../models/app_mode.dart';
 import '../config/app_config.dart';
 import 'views/wallet_view.dart';
 import 'views/explore_view.dart';
 import 'views/dashboard_view.dart';
+import 'views/dashboard_simple_view.dart';
 import 'views/profile_view.dart';
 import 'mirror_receive_screen.dart';
 import 'create_bon_screen.dart';
@@ -15,8 +17,13 @@ import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
 
-/// MainShell — Architecture de navigation principale
-/// 4 onglets : Wallet, Explorer, Dashboard, Profil
+/// MainShell — Architecture de navigation principale adaptative
+///
+/// ✅ PROGRESSIVE DISCLOSURE : La navigation s'adapte au mode utilisateur
+/// - Mode Flâneur (0) : 2 onglets (Wallet, Profil)
+/// - Mode Artisan (1) : 4 onglets (Wallet, Explorer, Dashboard Simple, Profil)
+/// - Mode Alchimiste (2) : 4 onglets (Wallet, Explorer, Dashboard Avancé, Profil)
+///
 /// FAB contextuel selon l'onglet actif
 /// Drawer pour paramètres avancés
 class MainShell extends StatefulWidget {
@@ -34,6 +41,10 @@ class _MainShellState extends State<MainShell> {
   final _cryptoService = CryptoService();
   late final NostrService _nostrService;
   bool _isSyncing = false;
+  
+  // ✅ PROGRESSIVE DISCLOSURE
+  AppMode _appMode = AppMode.flaneur;
+  bool _isLoadingMode = true;
 
   @override
   void initState() {
@@ -42,7 +53,23 @@ class _MainShellState extends State<MainShell> {
       cryptoService: _cryptoService,
       storageService: _storageService,
     );
+    _loadAppMode();
     _initAutoSync();
+  }
+  
+  /// ✅ Charge le mode d'utilisation depuis le storage
+  Future<void> _loadAppMode() async {
+    try {
+      final modeIndex = await _storageService.getAppMode();
+      setState(() {
+        _appMode = AppMode.fromIndex(modeIndex);
+        _isLoadingMode = false;
+      });
+      Logger.log('MainShell', 'Mode chargé: ${_appMode.label}');
+    } catch (e) {
+      Logger.error('MainShell', 'Erreur chargement mode', e);
+      setState(() => _isLoadingMode = false);
+    }
   }
 
   Future<void> _initAutoSync() async {
@@ -64,22 +91,80 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Afficher un loader pendant le chargement du mode
+    if (_isLoadingMode) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF121212),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+        ),
+      );
+    }
+    
     return Scaffold(
       body: IndexedStack(
         index: _currentTab,
-        children: [
-          WalletView(user: widget.user),      // 0 — Mon Wallet
-          ExploreView(user: widget.user),     // 1 — Explorer / Marché
-          DashboardView(user: widget.user),   // 2 — Dashboard économique
-          ProfileView(user: widget.user),     // 3 — Mon Profil
-        ],
+        children: _buildViews(),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTab,
         onDestinationSelected: (index) {
           setState(() => _currentTab = index);
         },
-        destinations: const [
+        destinations: _buildDestinations(),
+      ),
+      floatingActionButton: _buildMainFAB(),
+      drawer: _buildSettingsDrawer(),
+    );
+  }
+  
+  /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique des vues selon le mode
+  List<Widget> _buildViews() {
+    switch (_appMode) {
+      case AppMode.flaneur:
+        // Mode Flâneur : Wallet + Profil uniquement
+        return [
+          WalletView(user: widget.user),    // 0
+          ProfileView(user: widget.user),   // 1
+        ];
+      
+      case AppMode.artisan:
+        // Mode Artisan : Wallet + Explorer + Dashboard Simple + Profil
+        return [
+          WalletView(user: widget.user),          // 0
+          ExploreView(user: widget.user),         // 1
+          DashboardSimpleView(user: widget.user), // 2
+          ProfileView(user: widget.user),         // 3
+        ];
+      
+      case AppMode.alchimiste:
+        // Mode Alchimiste : Wallet + Explorer + Dashboard Avancé + Profil
+        return [
+          WalletView(user: widget.user),      // 0
+          ExploreView(user: widget.user),     // 1
+          DashboardView(user: widget.user),   // 2
+          ProfileView(user: widget.user),     // 3
+        ];
+    }
+  }
+  
+  /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique de la navigation selon le mode
+  List<NavigationDestination> _buildDestinations() {
+    switch (_appMode) {
+      case AppMode.flaneur:
+        return const [
+          NavigationDestination(
+            icon: Icon(Icons.wallet),
+            label: 'Wallet',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person),
+            label: 'Profil',
+          ),
+        ];
+      
+      case AppMode.artisan:
+        return const [
           NavigationDestination(
             icon: Icon(Icons.wallet),
             label: 'Wallet',
@@ -90,21 +175,56 @@ class _MainShellState extends State<MainShell> {
           ),
           NavigationDestination(
             icon: Icon(Icons.bar_chart),
-            label: 'Dashboard',
+            label: 'Caisse',
           ),
           NavigationDestination(
             icon: Icon(Icons.person),
             label: 'Profil',
           ),
-        ],
-      ),
-      floatingActionButton: _buildMainFAB(),
-      drawer: _buildSettingsDrawer(),
-    );
+        ];
+      
+      case AppMode.alchimiste:
+        return const [
+          NavigationDestination(
+            icon: Icon(Icons.wallet),
+            label: 'Wallet',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.explore),
+            label: 'Explorer',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.analytics),
+            label: 'Observatoire',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person),
+            label: 'Profil',
+          ),
+        ];
+    }
   }
 
-  /// FAB contextuel selon l'onglet actif
+  /// FAB contextuel selon l'onglet actif et le mode
   Widget? _buildMainFAB() {
+    // Mode Flâneur
+    if (_appMode.isFlaneur) {
+      switch (_currentTab) {
+        case 0: // Wallet
+          return FloatingActionButton.extended(
+            onPressed: () => _navigateToScan(),
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('Recevoir'),
+            backgroundColor: const Color(0xFFFFB347),
+          );
+        case 1: // Profil
+          return null;
+        default:
+          return null;
+      }
+    }
+    
+    // Mode Artisan et Alchimiste
     switch (_currentTab) {
       case 0: // Wallet
         return FloatingActionButton.extended(
@@ -122,7 +242,7 @@ class _MainShellState extends State<MainShell> {
           backgroundColor: const Color(0xFFFFB347),
         );
       
-      case 2: // Dashboard
+      case 2: // Dashboard (Simple ou Avancé)
         return FloatingActionButton.extended(
           onPressed: () => _exportDashboardData(),
           icon: const Icon(Icons.upload),
@@ -180,6 +300,23 @@ class _MainShellState extends State<MainShell> {
                       color: Colors.white70,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  // ✅ Affichage du mode actuel
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _appMode.label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -188,7 +325,17 @@ class _MainShellState extends State<MainShell> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  // Configuration réseau
+                  // ✅ FEEDBACK : Accessible à TOUS les modes (priorité utilisateur)
+                  ListTile(
+                    leading: const Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
+                    title: const Text('💬 Envoyer un feedback', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                    subtitle: const Text('Signaler un bug ou suggérer une amélioration', style: TextStyle(color: Colors.white70)),
+                    onTap: () => _navigateToFeedback(),
+                  ),
+                  
+                  const Divider(color: Colors.white24),
+                  
+                  // Configuration réseau (tous modes)
                   ListTile(
                     leading: const Icon(Icons.network_check, color: Color(0xFFFFB347)),
                     title: const Text('Relais Nostr / API', style: TextStyle(color: Colors.white)),
@@ -196,74 +343,72 @@ class _MainShellState extends State<MainShell> {
                     onTap: () => _navigateToSettings(),
                   ),
                   
-                  const Divider(color: Colors.white24),
-                  
-                  // Exporter seed de marché
-                  ListTile(
-                    leading: const Icon(Icons.qr_code, color: Color(0xFFFFB347)),
-                    title: const Text('Exporter seed marché', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Afficher le QR code', style: TextStyle(color: Colors.white70)),
-                    onTap: () => _exportMarketSeed(),
-                  ),
-                  
-                  const Divider(color: Colors.white24),
-                  
-                  // Synchroniser Nostr
-                  ListTile(
-                    leading: _isSyncing
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Color(0xFFFFB347)),
-                            ),
-                          )
-                        : const Icon(Icons.sync, color: Color(0xFFFFB347)),
-                    title: const Text('Synchroniser Nostr', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Actualiser les P3 du marché', style: TextStyle(color: Colors.white70)),
-                    onTap: _isSyncing ? null : () => _syncNostr(),
-                  ),
-                  
-                  const Divider(color: Colors.white24),
-                  
-                  // Vider cache P3
-                  ListTile(
-                    leading: const Icon(Icons.delete_sweep, color: Colors.orange),
-                    title: const Text('Vider cache P3', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Supprimer les P3 locales', style: TextStyle(color: Colors.white70)),
-                    onTap: () => _clearP3Cache(),
-                  ),
-                  
-                  const Divider(color: Colors.white24),
-                  
-                  // Logs
-                  ListTile(
-                    leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
-                    title: const Text('Logs de l\'application', style: TextStyle(color: Colors.white)),
-                    subtitle: Text(
-                      'Voir les événements (${Logger.logCount} entrées)',
-                      style: const TextStyle(color: Colors.white70),
+                  // ✅ PROGRESSIVE DISCLOSURE : Fonctionnalités avancées selon le mode
+                  if (_appMode.isArtisan || _appMode.isAlchimiste) ...[
+                    const Divider(color: Colors.white24),
+                    
+                    // Synchroniser Nostr (Artisan+)
+                    ListTile(
+                      leading: _isSyncing
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(Color(0xFFFFB347)),
+                              ),
+                            )
+                          : const Icon(Icons.sync, color: Color(0xFFFFB347)),
+                      title: const Text('Synchroniser Nostr', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Actualiser les P3 du marché', style: TextStyle(color: Colors.white70)),
+                      onTap: _isSyncing ? null : () => _syncNostr(),
                     ),
-                    onTap: () => _navigateToLogs(),
-                  ),
+                  ],
+                  
+                  // ✅ ALCHIMISTE UNIQUEMENT : Outils techniques avancés
+                  if (_appMode.isAlchimiste) ...[
+                    const Divider(color: Colors.white24),
+                    
+                    // Exporter seed de marché (Alchimiste uniquement)
+                    ListTile(
+                      leading: const Icon(Icons.qr_code, color: Color(0xFFFFB347)),
+                      title: const Text('Exporter seed marché', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Afficher le QR code', style: TextStyle(color: Colors.white70)),
+                      onTap: () => _exportMarketSeed(),
+                    ),
+                    
+                    const Divider(color: Colors.white24),
+                    
+                    // Vider cache P3 (Alchimiste uniquement)
+                    ListTile(
+                      leading: const Icon(Icons.delete_sweep, color: Colors.orange),
+                      title: const Text('Vider cache P3', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Supprimer les P3 locales', style: TextStyle(color: Colors.white70)),
+                      onTap: () => _clearP3Cache(),
+                    ),
+                    
+                    const Divider(color: Colors.white24),
+                    
+                    // Logs (Alchimiste uniquement)
+                    ListTile(
+                      leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
+                      title: const Text('Logs de l\'application', style: TextStyle(color: Colors.white)),
+                      subtitle: Text(
+                        'Voir les événements techniques (${Logger.logCount} entrées)',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      onTap: () => _navigateToLogs(),
+                    ),
+                  ],
                   
                   const Divider(color: Colors.white24),
                   
-                  // À propos
+                  // À propos (tous modes)
                   ListTile(
                     leading: const Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
                     title: const Text('À propos', style: TextStyle(color: Colors.white)),
                     subtitle: const Text('Version et informations', style: TextStyle(color: Colors.white70)),
                     onTap: () => _showAboutDialog(),
-                  ),
-                  
-                  // Feedback
-                  ListTile(
-                    leading: const Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
-                    title: const Text('Envoyer un feedback', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Signaler un bug ou suggérer', style: TextStyle(color: Colors.white70)),
-                    onTap: () => _navigateToFeedback(),
                   ),
                 ],
               ),

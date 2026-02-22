@@ -55,7 +55,7 @@ dependencies:
   http: ^0.13.6
   
   # Permissions
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.1
   
   # Image Handling (v1.008+)
   image_picker: ^1.2.1
@@ -64,6 +64,7 @@ dependencies:
   image: ^4.8.0  # ✅ v2.0.1: Compression WebP pour images Base64 dans Nostr
   url_launcher: ^6.3.2
   synchronized: ^3.4.0
+  share_plus: ^12.0.1  # ✅ Partage de fichiers (export données utilisateur)
   
 dev_dependencies:
   flutter_test:

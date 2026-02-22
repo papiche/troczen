@@ -98,6 +98,9 @@ class NostrService {
   Duration _autoSyncInterval = const Duration(minutes: 5);
   Market? _lastSyncedMarket;
   
+  // ✅ SÉCURITÉ: Flag pour éviter les syncs concurrentes
+  bool _isSyncing = false;
+  
   // ✅ NOUVEAU: Gestion de l'état de l'application (arrière-plan/ premier plan)
   bool _isAppInBackground = false;
   
@@ -891,14 +894,27 @@ class NostrService {
   /// ✅ UI/UX: Synchronise tous les P3 d'un marché avec insertion en lot
   /// Utilise un batch pour éviter les freezes de l'UI lors de la synchronisation massive
   /// Au lieu de N écritures I/O individuelles, on fait une seule écriture à la fin
+  /// ✅ SÉCURITÉ: Protégé contre les syncs concurrentes
   Future<int> syncMarketP3s(Market market) async {
-    if (!_isConnected) {
-      final connected = await connect(market.relayUrl ?? NostrConstants.defaultRelay);
-      if (!connected) return 0;
+    // ✅ SÉCURITÉ: Éviter les syncs concurrentes
+    if (_isSyncing) {
+      Logger.info('NostrService', 'Sync déjà en cours, abandon de la nouvelle demande');
+      return 0;
     }
+    
+    _isSyncing = true;
+    
+    try {
+      if (!_isConnected) {
+        final connected = await connect(market.relayUrl ?? NostrConstants.defaultRelay);
+        if (!connected) {
+          _isSyncing = false;
+          return 0;
+        }
+      }
 
-    int syncedCount = 0;
-    final completer = Completer<int>();
+      int syncedCount = 0;
+      final completer = Completer<int>();
     
     // ✅ UI/UX: Buffer pour accumulation des P3 avant insertion en lot
     final Map<String, String> p3Batch = {};
@@ -929,8 +945,16 @@ class NostrService {
 
     await subscribeToMarket(market.name);
 
+    // ✅ SÉCURITÉ: Timeout dynamique selon la taille estimée du marché
+    final estimatedSize = market.merchantCount ?? 100;
+    final timeoutSeconds = (5 + (estimatedSize ~/ 20)).clamp(5, 30);
+    final timeout = Duration(seconds: timeoutSeconds);
+    
+    Logger.info('NostrService',
+        'Sync démarrée avec timeout de ${timeout.inSeconds}s (marché: ${market.displayName})');
+
     // ✅ UI/UX: Timer avec flush final du batch
-    Timer(const Duration(seconds: 5), () async {
+    Timer(timeout, () async {
       // Flush final des P3 restants
       await flushBatch();
       
@@ -948,10 +972,23 @@ class NostrService {
         Logger.error('NostrService', 'Erreur lors de la vérification du DU', e);
       }
       
+      // ✅ SÉCURITÉ: Vérification de cohérence post-sync
+      try {
+        final marketBons = await _storageService.getMarketBonsData();
+        Logger.success('NostrService',
+            'Sync terminée: $syncedCount P3 reçus, ${marketBons.length} en cache');
+      } catch (e) {
+        Logger.info('NostrService', 'Impossible de vérifier la cohérence: $e');
+      }
+      
       completer.complete(syncedCount);
     });
 
     return completer.future;
+    } finally {
+      // ✅ SÉCURITÉ: Toujours libérer le verrou, même en cas d'erreur
+      _isSyncing = false;
+    }
   }
 
   /// ✅ NOUVEAU: Synchronise les P3 de plusieurs marchés en parallèle

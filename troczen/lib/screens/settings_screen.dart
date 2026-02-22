@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/market.dart';
+import '../models/app_mode.dart';
 import '../services/storage_service.dart';
 import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
@@ -30,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _cryptoService = CryptoService();
 
   Market? _currentMarket;
+  AppMode _currentMode = AppMode.flaneur;
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -42,8 +44,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     // Initialiser un marché par défaut si aucun n'existe
     final market = await _storageService.initializeDefaultMarket();
+    
+    // Charger le mode actuel
+    final modeIndex = await _storageService.getAppMode();
+    final mode = AppMode.fromIndex(modeIndex);
+    
     setState(() {
       _currentMarket = market;
+      _currentMode = mode;
       _marketNameController.text = market.name;
       _seedMarketController.text = market.seedMarket;
       _relayUrlController.text = market.relayUrl ?? AppConfig.defaultRelayUrl;
@@ -131,6 +139,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ✅ Sélecteur de mode d'utilisation
+              const Text(
+                'Mode d\'utilisation',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Choisissez comment vous utilisez principalement TrocZen',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              _buildModeSelector(),
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 24),
+              
               const Text(
                 'Configuration du Marché',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -342,5 +366,148 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+  
+  /// ✅ PROGRESSIVE DISCLOSURE : Sélecteur de mode d'utilisation
+  Widget _buildModeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        children: AppMode.values.map((mode) {
+          final isSelected = _currentMode == mode;
+          return GestureDetector(
+            onTap: () => _changeMode(mode),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? const LinearGradient(
+                        colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isSelected ? null : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white.withOpacity(0.2) : Colors.grey[800],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      mode.label.split(' ')[0], // Emoji uniquement
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          mode.label,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white : Colors.grey[300],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          mode.description,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected ? Colors.white.withOpacity(0.8) : Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isSelected)
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+  
+  /// Change le mode d'utilisation
+  Future<void> _changeMode(AppMode newMode) async {
+    if (newMode == _currentMode) return;
+    
+    // Confirmation si passage à un mode inférieur
+    if (newMode.value < _currentMode.value) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: const Text('Changer de mode', style: TextStyle(color: Colors.white)),
+          content: Text(
+            'Passer en mode ${newMode.label} masquera certaines fonctionnalités avancées. Continuer ?',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFFFB347)),
+              child: const Text('Confirmer'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirm != true) return;
+    }
+    
+    try {
+      await _storageService.setAppMode(newMode.value);
+      setState(() => _currentMode = newMode);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Mode changé en ${newMode.label}. Redémarrez l\'application pour appliquer les changements.'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
