@@ -5,6 +5,9 @@ import '../../models/bon.dart';
 import '../../models/market.dart';
 import '../../models/nostr_profile.dart';
 import '../../services/storage_service.dart';
+import '../../services/nostr_service.dart';
+import '../../services/crypto_service.dart';
+import '../../services/logger_service.dart';
 import '../market_screen.dart';
 import '../create_bon_screen.dart';
 
@@ -31,6 +34,11 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   List<Bon> _myIssuedBons = [];
   List<NostrProfile> _marketProfiles = [];
   bool _isLoading = true;
+  
+  // ✅ WOTX: Mode Expert - Certification des pairs
+  List<Map<String, dynamic>> _pendingRequests = [];
+  bool _isLoadingRequests = false;
+  bool _isAttesting = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -38,7 +46,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);  // ✅ WOTX: 3 onglets
     _loadData();
   }
 
@@ -111,6 +119,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
           tabs: const [
             Tab(text: 'Mes émissions'),
             Tab(text: 'Marché'),
+            Tab(text: 'Savoir-faire'),  // ✅ WOTX: Nouvel onglet
           ],
         ),
       ),
@@ -121,6 +130,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
               children: [
                 _buildMyEmissionsTab(),
                 _buildMarketTab(),
+                _buildSkillsTab(),  // ✅ WOTX: Nouvel onglet
               ],
             ),
     );
@@ -1016,5 +1026,375 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
         '${date.year}';
+  }
+
+  // ============================================================
+  // SOUS-ONGLET 3 : SAVOIR-FAIRE (WOTX - Mode Expert)
+  // ============================================================
+
+  /// Charge les demandes de certification en attente
+  Future<void> _loadPendingRequests() async {
+    if (widget.user.activityTags == null || widget.user.activityTags!.isEmpty) {
+      Logger.info('ExploreView', 'Pas de compétences définies - Mode Expert non disponible');
+      return;
+    }
+    
+    final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+    Logger.info('ExploreView', 'Chargement demandes pour compétences: ${widget.user.activityTags}');
+    
+    setState(() => _isLoadingRequests = true);
+    
+    try {
+      final nostrService = NostrService(
+        cryptoService: CryptoService(),
+        storageService: _storageService,
+      );
+      
+      if (await nostrService.connect(relayUrl)) {
+        final requests = await nostrService.fetchPendingSkillRequests(
+          mySkills: widget.user.activityTags!,
+          myNpub: widget.user.npub,
+        );
+        
+        Logger.success('ExploreView', '${requests.length} demandes trouvées');
+        setState(() => _pendingRequests = requests);
+        await nostrService.disconnect();
+      }
+    } catch (e) {
+      Logger.error('ExploreView', 'Erreur chargement demandes', e);
+    } finally {
+      setState(() => _isLoadingRequests = false);
+    }
+  }
+
+  /// Publie une attestation pour un demandeur
+  Future<void> _attestUser(Map<String, dynamic> request) async {
+    setState(() => _isAttesting = true);
+    
+    final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+    Logger.info('ExploreView', 'Attestation pour ${request['pubkey']} - skill: ${request['skill']}');
+    
+    try {
+      final nostrService = NostrService(
+        cryptoService: CryptoService(),
+        storageService: _storageService,
+      );
+      
+      if (await nostrService.connect(relayUrl)) {
+        final success = await nostrService.publishSkillAttestation(
+          myNpub: widget.user.npub,
+          myNsec: widget.user.nsec,
+          requestId: request['id'],
+          requesterNpub: request['pubkey'],
+          permitId: request['permit_id'] ?? 'PERMIT_${request['skill']?.toUpperCase()}_X1',
+          motivation: 'Certification par pair',
+        );
+        
+        await nostrService.disconnect();
+        
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Attestation publiée avec succès !'),
+              backgroundColor: Color(0xFF4CAF50),
+            ),
+          );
+          // Retirer de la liste locale
+          setState(() {
+            _pendingRequests.removeWhere((r) => r['id'] == request['id']);
+          });
+        }
+      }
+    } catch (e) {
+      Logger.error('ExploreView', 'Erreur attestation', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isAttesting = false);
+    }
+  }
+
+  /// Construit l'onglet Savoir-faire
+  Widget _buildSkillsTab() {
+    return RefreshIndicator(
+      onRefresh: _loadPendingRequests,
+      child: CustomScrollView(
+        slivers: [
+          // En-tête explicatif
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Titre
+                  const Text(
+                    'Mode Expert',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFB347),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Explication pédagogique
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A2A2A),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.lightbulb_outline, color: Color(0xFFFFB347), size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Pourquoi attester les autres ?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFFB347),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'En validant les compétences de vos pairs, vous augmentez la qualité de votre réseau local. '
+                          'Plus votre réseau est compétent, plus le multiplicateur de votre Dividende Universel (Alpha) '
+                          'sera élevé lors du prochain calcul de la TrocZen Box.',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Mes compétences
+                  Text(
+                    'Vos compétences: ${widget.user.activityTags?.join(", ") ?? "Aucune"}',
+                    style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Liste des demandes en attente
+          if (_isLoadingRequests)
+            const SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+                ),
+              ),
+            )
+          else if (_pendingRequests.isEmpty)
+            SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[600]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Aucune demande en attente',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Les demandes de certification pour vos compétences apparaîtront ici',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _loadPendingRequests,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Actualiser'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFB347),
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final request = _pendingRequests[index];
+                  return _buildRequestCard(request);
+                },
+                childCount: _pendingRequests.length,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Construit une carte de demande de certification
+  Widget _buildRequestCard(Map<String, dynamic> request) {
+    final createdAt = DateTime.fromMillisecondsSinceEpoch(
+      (request['created_at'] as int) * 1000,
+    );
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: const Color(0xFF2A2A2A),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: const Color(0xFFFFB347).withOpacity(0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête: Avatar + Nom
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: const Color(0xFFFFB347),
+                  child: Text(
+                    request['pubkey'].toString().substring(0, 2).toUpperCase(),
+                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request['pubkey'].toString().substring(0, 16) + '...',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        'Demande: ${request['skill']}',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFB347).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    request['permit_id']?.toString().replaceAll('PERMIT_', '') ?? 'X1',
+                    style: const TextStyle(color: Color(0xFFFFB347), fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Motivation
+            if (request['content'] != null)
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _extractMotivation(request['content']),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            
+            const SizedBox(height: 12),
+            
+            // Date
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text(
+                  _formatDate(createdAt),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Bouton d'action
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isAttesting ? null : () => _attestUser(request),
+                icon: _isAttesting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      )
+                    : const Icon(Icons.check_circle, color: Colors.black),
+                label: Text(
+                  _isAttesting ? 'Signature...' : '✔️ Attester (Signer)',
+                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB347),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Extrait la motivation du contenu JSON
+  String _extractMotivation(String? content) {
+    if (content == null) return 'Pas de motivation indiquée';
+    try {
+      final json = Map<String, dynamic>.from(
+        Map<String, dynamic>.from(
+          {}..addAll({'raw': content}),
+        ),
+      );
+      // Essayer de parser le JSON
+      if (content.startsWith('{')) {
+        final decoded = Map<String, dynamic>.from(
+          {}..addAll({'raw': content}),
+        );
+        return decoded['motivation']?.toString() ?? content;
+      }
+      return content;
+    } catch (e) {
+      return content;
+    }
   }
 }

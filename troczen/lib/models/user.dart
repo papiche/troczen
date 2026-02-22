@@ -8,6 +8,8 @@ class User {
   final String? website;       // Site web du profil
   final String? g1pub;         // Clé publique Ğ1 (Base58)
   final String? picture;       // URL de l'avatar
+  final String? relayUrl;      // URL du relai Nostr de l'utilisateur
+  final List<String>? activityTags;  // Tags d'activité/savoir-faire (WoTx)
 
   User({
     required this.npub,
@@ -17,6 +19,8 @@ class User {
     this.website,
     this.g1pub,
     this.picture,
+    this.relayUrl,
+    this.activityTags,
   });
 
   /// Retourne la clé publique en format Bech32 NIP-19 (npub1...)
@@ -40,6 +44,8 @@ class User {
       if (website != null) 'website': website,
       if (g1pub != null) 'g1pub': g1pub,
       if (picture != null) 'picture': picture,
+      if (relayUrl != null) 'relayUrl': relayUrl,
+      if (activityTags != null) 'activityTags': activityTags,
     };
   }
 
@@ -52,6 +58,10 @@ class User {
       website: json['website'],
       g1pub: json['g1pub'],
       picture: json['picture'],
+      relayUrl: json['relayUrl'],
+      activityTags: json['activityTags'] != null
+          ? List<String>.from(json['activityTags'])
+          : null,
     );
   }
 }

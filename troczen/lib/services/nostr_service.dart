@@ -1762,6 +1762,187 @@ class NostrService {
     }
   }
 
+  // ============================================================================
+  // MODE EXPERT - Certification WoTx (Kind 30502)
+  // ============================================================================
+
+  /// Récupère les demandes de certification (Kind 30501) pour des compétences spécifiques
+  /// Exclut les demandes de l'utilisateur actuel (monNpub)
+  Future<List<Map<String, dynamic>>> fetchPendingSkillRequests({
+    required List<String> mySkills,
+    required String myNpub,
+  }) async {
+    if (!_isConnected || mySkills.isEmpty) return [];
+    
+    try {
+      final completer = Completer<List<Map<String, dynamic>>>();
+      final List<Map<String, dynamic>> requests = [];
+      final subId = 'skill_req_${DateTime.now().millisecondsSinceEpoch}';
+      
+      _subscriptionHandlers[subId] = (message) {
+        if (message[0] == 'EVENT') {
+          final event = message[2] as Map<String, dynamic>;
+          final pubkey = event['pubkey'] as String;
+          
+          // Exclure mes propres demandes
+          if (pubkey == myNpub) return;
+          
+          final tags = event['tags'] as List;
+          String? skill;
+          String? permitId;
+          
+          for (final tag in tags) {
+            if (tag is List && tag.isNotEmpty) {
+              if (tag[0] == 't' && tag.length > 1) {
+                skill = tag[1].toString();
+              } else if (tag[0] == 'permit_id' && tag.length > 1) {
+                permitId = tag[1].toString();
+              }
+            }
+          }
+          
+          // Vérifier que la compétence est dans mes skills
+          if (skill != null && mySkills.any((s) => s.toLowerCase() == skill!.toLowerCase())) {
+            requests.add({
+              'id': event['id'],
+              'pubkey': pubkey,
+              'created_at': event['created_at'],
+              'skill': skill,
+              'permit_id': permitId,
+              'content': event['content'],
+            });
+          }
+        } else if (message[0] == 'EOSE') {
+          _channel?.sink.add(jsonEncode(['CLOSE', subId]));
+          _subscriptionHandlers.remove(subId);
+          if (!completer.isCompleted) completer.complete(requests);
+        }
+      };
+
+      // Requêter les Kind 30501 avec les tags 't' correspondant à mes skills
+      final skillTags = mySkills.map((s) => s.toLowerCase()).toList();
+      _channel!.sink.add(jsonEncode([
+        'REQ', subId,
+        {
+          'kinds': [NostrConstants.kindSkillRequest],
+          '#t': skillTags,
+          'limit': 50,
+        }
+      ]));
+      
+      Timer(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) completer.complete(requests);
+      });
+      
+      return await completer.future;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur fetchPendingSkillRequests', e);
+      return [];
+    }
+  }
+
+  /// Publie une attestation (Kind 30502) pour valider un pair
+  /// Utilisé dans le Mode Expert pour certifier les compétences d'autres utilisateurs
+  Future<bool> publishSkillAttestation({
+    required String myNpub,
+    required String myNsec,
+    required String requestId,      // ID de l'event 30501 ciblé
+    required String requesterNpub,  // Clé publique du demandeur
+    required String permitId,       // Ex: PERMIT_BOULANGER_X1
+    String? motivation,             // Commentaire optionnel
+  }) async {
+    if (!_isConnected) return false;
+    
+    try {
+      final event = {
+        'kind': NostrConstants.kindSkillAttest,
+        'pubkey': myNpub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['e', requestId],           // Référence à la demande
+          ['p', requesterNpub],       // Destinataire de l'attestation
+          ['permit_id', permitId],    // Compétence attestée
+          ['t', permitId.replaceAll('PERMIT_', '').replaceAll('_X1', '').replaceAll('_', ' ')],
+        ],
+        'content': jsonEncode({
+          'type': 'skill_attestation',
+          'motivation': motivation ?? 'Attestation de compétence',
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+      event['sig'] = _cryptoService.signMessage(eventId, myNsec);
+
+      _channel!.sink.add(jsonEncode(['EVENT', event]));
+      Logger.success('NostrService', 'Attestation (Kind 30502) publiée pour $requesterNpub');
+      return true;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur publishSkillAttestation', e);
+      return false;
+    }
+  }
+
+  /// Récupère les attestations reçues par l'utilisateur (Kind 30502)
+  Future<List<Map<String, dynamic>>> fetchMyAttestations(String myNpub) async {
+    if (!_isConnected) return [];
+    
+    try {
+      final completer = Completer<List<Map<String, dynamic>>>();
+      final List<Map<String, dynamic>> attestations = [];
+      final subId = 'my_attest_${DateTime.now().millisecondsSinceEpoch}';
+      
+      _subscriptionHandlers[subId] = (message) {
+        if (message[0] == 'EVENT') {
+          final event = message[2] as Map<String, dynamic>;
+          final tags = event['tags'] as List;
+          
+          String? permitId;
+          String? requestId;
+          
+          for (final tag in tags) {
+            if (tag is List && tag.length > 1) {
+              if (tag[0] == 'permit_id') permitId = tag[1].toString();
+              if (tag[0] == 'e') requestId = tag[1].toString();
+            }
+          }
+          
+          attestations.add({
+            'id': event['id'],
+            'attestor': event['pubkey'],
+            'permit_id': permitId,
+            'request_id': requestId,
+            'created_at': event['created_at'],
+            'content': event['content'],
+          });
+        } else if (message[0] == 'EOSE') {
+          _channel?.sink.add(jsonEncode(['CLOSE', subId]));
+          _subscriptionHandlers.remove(subId);
+          if (!completer.isCompleted) completer.complete(attestations);
+        }
+      };
+
+      _channel!.sink.add(jsonEncode([
+        'REQ', subId,
+        {
+          'kinds': [NostrConstants.kindSkillAttest],
+          '#p': [myNpub],
+          'limit': 100,
+        }
+      ]));
+      
+      Timer(const Duration(seconds: 4), () {
+        if (!completer.isCompleted) completer.complete(attestations);
+      });
+      
+      return await completer.future;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur fetchMyAttestations', e);
+      return [];
+    }
+  }
+
   bool get isConnected => _isConnected;
   String? get currentRelay => _currentRelayUrl;
 }
