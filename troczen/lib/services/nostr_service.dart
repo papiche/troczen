@@ -5,6 +5,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../models/market.dart';
 import '../models/nostr_profile.dart';
 import 'crypto_service.dart';
@@ -107,6 +108,11 @@ class NostrService {
   // ✅ NOUVEAU: Reconnexion automatique
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
+  
+  // ✅ NOUVEAU: Enregistrement automatique des pubkeys sur le relai (policy amisOfAmis)
+  bool _pubkeyRegistered = false;
+  String? _registeredPubkey;
+  String? _apiUrl;
   static const int _maxReconnectAttempts = 5;
   static const Duration _baseReconnectDelay = Duration(seconds: 2);
   static const Duration _maxReconnectDelay = Duration(seconds: 30);
@@ -360,6 +366,74 @@ class NostrService {
     return await syncMarketP3s(market);
   }
 
+  /// ✅ Enregistre la pubkey sur le relai Nostr (policy amisOfAmis)
+  /// Cette méthode DOIT être appelée AVANT toute publication d'événement
+  /// Retourne true si enregistrement réussi, false sinon
+  Future<bool> _ensurePubkeyRegistered(String pubkeyHex) async {
+    // Vérifier si déjà enregistrée
+    if (_pubkeyRegistered && _registeredPubkey == pubkeyHex) {
+      return true;
+    }
+    
+    // Si pas d'URL API, essayer de récupérer depuis les paramètres
+    _apiUrl ??= await _getApiUrl();
+    
+    if (_apiUrl == null) {
+      Logger.warn('NostrService', 'API URL non configurée - skip pubkey registration');
+      return true; // Continuer quand même (fallback)
+    }
+    
+    try {
+      final url = Uri.parse('$_apiUrl/api/nostr/register');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'pubkey': pubkeyHex}),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        _pubkeyRegistered = true;
+        _registeredPubkey = pubkeyHex;
+        
+        if (data['already_registered'] == true) {
+          Logger.log('NostrService', 'Pubkey déjà enregistrée sur le relai');
+        } else {
+          Logger.success('NostrService', 'Pubkey enregistrée avec succès sur le relai');
+        }
+        
+        return true;
+      } else {
+        Logger.error('NostrService', 'Erreur enregistrement pubkey: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur appel /api/nostr/register', e);
+      return false; // Retourner false pour bloquer la publication si échec
+    }
+  }
+
+  /// Récupère l'URL de l'API depuis la configuration
+  /// Priorité: Dérivée du relayUrl > Localhost par défaut
+  Future<String?> _getApiUrl() async {
+    try {
+      // 1. Essayer de récupérer depuis le marché actif et dériver l'URL API
+      final market = await _storageService.getMarket();
+      if (market?.relayUrl != null && market!.relayUrl!.isNotEmpty) {
+        // Convertir ws://host:port en http://host:5000
+        final relayUri = Uri.parse(market.relayUrl!);
+        final apiUrl = 'http://${relayUri.host}:5000';
+        return apiUrl;
+      }
+      
+      // 2. Fallback: URL par défaut (localhost pour dev, à configurer en prod)
+      return 'http://127.0.0.1:5000';
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération API URL', e);
+      return null;
+    }
+  }
+
   /// ✅ Publie une P3 chiffrée sur Nostr (kind 30303)
   /// SIGNÉ PAR LE BON LUI-MÊME pour analytics économiques
   Future<bool> publishP3({
@@ -389,6 +463,17 @@ class NostrService {
       final p2Bytes = Uint8List.fromList(HEX.decode(p2Hex));
       final p3Bytes = Uint8List.fromList(HEX.decode(p3Hex));
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+      
+      // ✅ NOUVEAU: Enregistrer la pubkey du bon avant publication
+      final registered = await _ensurePubkeyRegistered(bonId);
+      if (!registered) {
+        Logger.error('NostrService', 'Publication P3 annulée: pubkey du bon non enregistrée');
+        // ✅ SÉCURITÉ: Nettoyage explicite RAM même en cas d'échec
+        _cryptoService.secureZeroiseBytes(nsecBonBytes);
+        _cryptoService.secureZeroiseBytes(p2Bytes);
+        _cryptoService.secureZeroiseBytes(p3Bytes);
+        return false;
+      }
 
       // 3. Créer l'event Nostr avec tags optimisés pour dashboard
       final expiry = now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
@@ -466,6 +551,13 @@ class NostrService {
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    // ✅ NOUVEAU: Enregistrer la pubkey utilisateur avant publication
+    final registered = await _ensurePubkeyRegistered(npub);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication profil annulée: pubkey utilisateur non enregistrée');
       return false;
     }
 
@@ -610,6 +702,13 @@ class NostrService {
       return false;
     }
 
+    // ✅ NOUVEAU: Enregistrer la pubkey du bon avant publication
+    final registered = await _ensurePubkeyRegistered(bonId);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication transfert annulée: pubkey du bon non enregistrée');
+      return false;
+    }
+
     try {
       // ✅ SÉCURITÉ: Reconstruire sk_B ÉPHÉMÈRE directement en Uint8List
       // Convertir les String en Uint8List pour éviter les String en RAM
@@ -679,6 +778,13 @@ class NostrService {
       return false;
     }
 
+    // ✅ NOUVEAU: Enregistrer la pubkey du bon avant publication
+    final registered = await _ensurePubkeyRegistered(bonId);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication burn annulée: pubkey du bon non enregistrée');
+      return false;
+    }
+
     try {
       final event = {
         'kind': 5,
@@ -721,6 +827,13 @@ class NostrService {
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    // ✅ NOUVEAU: Enregistrer la pubkey du bon avant publication
+    final registered = await _ensurePubkeyRegistered(bonId);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication burn annulée: pubkey du bon non enregistrée');
       return false;
     }
 
@@ -779,6 +892,13 @@ class NostrService {
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    // ✅ NOUVEAU: Enregistrer la pubkey du bon avant publication
+    final registered = await _ensurePubkeyRegistered(bonId);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication circuit annulée: pubkey du bon non enregistrée');
       return false;
     }
 
@@ -1428,6 +1548,13 @@ class NostrService {
       return false;
     }
 
+    // ✅ NOUVEAU: Enregistrer la pubkey utilisateur avant publication
+    final registered = await _ensurePubkeyRegistered(npub);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication contacts annulée: pubkey utilisateur non enregistrée');
+      return false;
+    }
+
     try {
       final tags = contactsNpubs.map((contact) => ['p', contact]).toList();
 
@@ -1533,6 +1660,13 @@ class NostrService {
       return false;
     }
 
+    // ✅ NOUVEAU: Enregistrer la pubkey utilisateur avant publication
+    final registered = await _ensurePubkeyRegistered(npub);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication relay list annulée: pubkey utilisateur non enregistrée');
+      return false;
+    }
+
     try {
       // Créer le relay list
       final relayList = <String, dynamic>{};
@@ -1587,6 +1721,13 @@ class NostrService {
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    // ✅ NOUVEAU: Enregistrer la pubkey utilisateur avant publication
+    final registered = await _ensurePubkeyRegistered(npub);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication skill permit annulée: pubkey utilisateur non enregistrée');
       return false;
     }
 
@@ -1811,6 +1952,14 @@ class NostrService {
     String motivation = "Déclaration initiale lors de l'inscription",
   }) async {
     if (!_isConnected) return false;
+    
+    // ✅ NOUVEAU: Enregistrer la pubkey utilisateur avant publication
+    final registered = await _ensurePubkeyRegistered(npub);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication skill request annulée: pubkey utilisateur non enregistrée');
+      return false;
+    }
+    
     try {
       final normalizedSkill = skill.toLowerCase().trim().replaceAll(' ', '_');
       final permitId = 'PERMIT_${normalizedSkill.toUpperCase()}_X1';
@@ -1950,6 +2099,13 @@ class NostrService {
     String? motivation,             // Commentaire optionnel
   }) async {
     if (!_isConnected) return false;
+    
+    // ✅ NOUVEAU: Enregistrer la pubkey utilisateur avant publication
+    final registered = await _ensurePubkeyRegistered(myNpub);
+    if (!registered) {
+      Logger.error('NostrService', 'Publication skill attestation annulée: pubkey utilisateur non enregistrée');
+      return false;
+    }
     
     try {
       // Contenu JSON avec motivation

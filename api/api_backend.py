@@ -1038,6 +1038,96 @@ def get_nostr_profiles():
         })
 
 
+@app.route('/api/nostr/register', methods=['POST'])
+def register_nostr_pubkey():
+    """
+    Enregistre une clé publique Nostr dans le whitelist du relai Strfry.
+    
+    Cette route DOIT être appelée par l'app avant d'envoyer des événements
+    au relai Nostr, sinon ils seront rejetés par la policy amisOfAmis.
+    
+    Body JSON attendu:
+    {
+        "pubkey": "hex_pubkey"  // Clé publique Nostr en hex (64 chars)
+    }
+    
+    Retourne:
+    {
+        "success": true,
+        "message": "Pubkey registered successfully",
+        "pubkey": "abc123...",
+        "already_registered": false
+    }
+    """
+    # Chemin du fichier whitelist Strfry
+    AMIS_FILE = Path.home() / '.zen' / 'strfry' / 'amisOfAmis.txt'
+    
+    # Récupérer la pubkey
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+    
+    pubkey = data.get('pubkey', '').strip()
+    
+    if not pubkey:
+        return jsonify({'success': False, 'error': 'Pubkey is required'}), 400
+    
+    # Valider le format (64 caractères hex)
+    if len(pubkey) != 64:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid pubkey format (must be 64 hex characters)'
+        }), 400
+    
+    try:
+        int(pubkey, 16)  # Vérifier que c'est bien de l'hexadécimal
+    except ValueError:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid pubkey format (must be hexadecimal)'
+        }), 400
+    
+    try:
+        # Créer le dossier si nécessaire
+        AMIS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Vérifier si la pubkey existe déjà
+        already_registered = False
+        if AMIS_FILE.exists():
+            with open(AMIS_FILE, 'r') as f:
+                existing_keys = set(line.strip() for line in f if line.strip())
+                if pubkey in existing_keys:
+                    already_registered = True
+                    print(f'✅ Pubkey déjà enregistrée: {pubkey[:16]}...')
+        
+        # Ajouter la pubkey si elle n'existe pas
+        if not already_registered:
+            with open(AMIS_FILE, 'a') as f:
+                f.write(f'{pubkey}\n')
+            print(f'✅ Nouvelle pubkey enregistrée: {pubkey[:16]}...')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pubkey registered successfully' if not already_registered else 'Pubkey already registered',
+            'pubkey': pubkey[:16] + '...',  # Tronqué pour sécurité
+            'already_registered': already_registered,
+            'whitelist_file': str(AMIS_FILE)
+        }), 200 if already_registered else 201
+        
+    except PermissionError:
+        print(f'❌ Permission denied: {AMIS_FILE}')
+        return jsonify({
+            'success': False,
+            'error': f'Permission denied to write to {AMIS_FILE}'
+        }), 500
+    except Exception as e:
+        print(f'❌ Erreur enregistrement pubkey: {e}')
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/nostr/profile', methods=['POST'])
 def publish_nostr_profile():
     """
