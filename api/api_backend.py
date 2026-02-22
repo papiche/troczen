@@ -1438,6 +1438,355 @@ def submit_feedback():
         }), 500
 
 
+# ==================== ORACLE & DRAGON ROUTES ====================
+# Module ORACLE (WoTx2 - Verifiable Credentials)
+# Module DRAGON (Capitaine - Calcul dynamique C², alpha, DU)
+
+import os
+
+# Configuration Oracle/Dragon
+ORACLE_NSEC_HEX = os.getenv('ORACLE_NSEC_HEX', '')
+ORACLE_PUBKEY = os.getenv('ORACLE_PUBKEY', '')
+
+# Import des services (lazy loading pour éviter les erreurs si dépendances manquantes)
+_oracle_service = None
+_dragon_service = None
+
+def get_oracle_service():
+    """Lazy loading du service Oracle."""
+    global _oracle_service
+    if _oracle_service is None:
+        try:
+            from oracle.oracle_service import OracleService
+            _oracle_service = OracleService(
+                relay_url=NOSTR_RELAY,
+                oracle_nsec_hex=ORACLE_NSEC_HEX
+            )
+        except ImportError as e:
+            print(f" Module ORACLE non disponible: {e}")
+    return _oracle_service
+
+def get_dragon_service():
+    """Lazy loading du service Dragon."""
+    global _dragon_service
+    if _dragon_service is None:
+        try:
+            from dragon.dragon_service import DragonServiceSync
+            _dragon_service = DragonServiceSync(
+                relay_url=NOSTR_RELAY,
+                oracle_pubkey=ORACLE_PUBKEY
+            )
+        except ImportError as e:
+            print(f" Module DRAGON non disponible: {e}")
+    return _dragon_service
+
+
+# ==================== ORACLE ENDPOINTS ====================
+
+@app.route('/api/permit/definitions', methods=['GET'])
+def get_permit_definitions():
+    """
+    Liste tous les permits disponibles (Kind 30500).
+    
+    Query params:
+        market: Filtrer par marché (optionnel)
+    """
+    market = request.args.get('market')
+    
+    oracle = get_oracle_service()
+    if not oracle:
+        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+    
+    try:
+        # Note: En production, utiliser asyncio.run() ou un event loop dédié
+        import asyncio
+        definitions = asyncio.run(oracle.get_permit_definitions(market))
+        return jsonify({
+            'success': True,
+            'count': len(definitions),
+            'permits': definitions
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/permit/<permit_id>', methods=['GET'])
+def get_permit(permit_id):
+    """Détails d'un permit spécifique."""
+    oracle = get_oracle_service()
+    if not oracle:
+        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+    
+    try:
+        import asyncio
+        definitions = asyncio.run(oracle.get_permit_definitions())
+        permit = next((p for p in definitions if p.get('permit_id') == permit_id), None)
+        
+        if permit:
+            return jsonify({'success': True, 'permit': permit})
+        else:
+            return jsonify({'success': False, 'error': 'Permit non trouvé'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/permit/credentials/<npub>', methods=['GET'])
+def get_credentials(npub):
+    """
+    Récupère les credentials d'un utilisateur (Kind 30503).
+    
+    Args:
+        npub: Pubkey de l'utilisateur en hex
+    """
+    oracle = get_oracle_service()
+    if not oracle:
+        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+    
+    try:
+        import asyncio
+        credentials = asyncio.run(oracle.get_credentials(npub))
+        return jsonify({
+            'success': True,
+            'npub': npub,
+            'count': len(credentials),
+            'credentials': credentials
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/permit/stats', methods=['GET'])
+def get_oracle_stats():
+    """Statistiques Oracle."""
+    oracle = get_oracle_service()
+    if not oracle:
+        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+    
+    try:
+        import asyncio
+        stats = asyncio.run(oracle.get_stats())
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== DRAGON ENDPOINTS ====================
+
+@app.route('/api/dashboard/<npub>', methods=['GET'])
+def get_dashboard(npub):
+    """
+    Tableau de navigation complet pour un utilisateur.
+    
+    C'est l'endpoint principal appelé par l'app Flutter.
+    
+    Args:
+        npub: Pubkey de l'utilisateur en hex
+        
+    Query params:
+        market: ID du marché (optionnel, sinon tous les marchés actifs)
+    """
+    market = request.args.get('market')
+    
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        dashboard = dragon.get_dashboard(npub, market)
+        return jsonify({
+            'success': True,
+            'dashboard': dashboard
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/du/<npub>/<market>', methods=['GET'])
+def get_du(npub, market):
+    """
+    Calcul DU pour un utilisateur dans un marché.
+    
+    Args:
+        npub: Pubkey de l'utilisateur
+        market: ID du marché
+    """
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        # Version simplifiée synchrone
+        dashboard = dragon.get_dashboard(npub, market)
+        du_data = dashboard.get('markets', [{}])[0].get('du', {})
+        
+        return jsonify({
+            'success': True,
+            'npub': npub,
+            'market': market,
+            'du': du_data
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/params/<npub>/<market>', methods=['GET'])
+def get_params(npub, market):
+    """
+    Paramètres dynamiques C², alpha, TTL pour un utilisateur.
+    
+    Args:
+        npub: Pubkey de l'utilisateur
+        market: ID du marché
+    """
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        dashboard = dragon.get_dashboard(npub, market)
+        params = dashboard.get('markets', [{}])[0].get('params', {})
+        
+        return jsonify({
+            'success': True,
+            'npub': npub,
+            'market': market,
+            'params': params
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/circuits/<market>', methods=['GET'])
+def get_circuits(market):
+    """
+    Circuits indexés par marché (Kind 30304).
+    
+    Args:
+        market: ID du marché
+        
+    Query params:
+        page: Numéro de page (défaut: 1)
+        limit: Résultats par page (défaut: 50)
+    """
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 50))
+    
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        # Version simplifiée
+        health = dragon.get_market_health(market)
+        
+        return jsonify({
+            'success': True,
+            'market': market,
+            'page': page,
+            'limit': limit,
+            'loops_30d': health.get('loops_30d', 0),
+            'circuits': []  # TODO: implémenter la liste complète
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/health/<market>', methods=['GET'])
+def get_market_health(market):
+    """
+    Santé du marché (ratio loops/expired, stats).
+    
+    Args:
+        market: ID du marché
+    """
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        health = dragon.get_market_health(market)
+        return jsonify({
+            'success': True,
+            'health': health
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/intermarket/rates', methods=['GET'])
+def get_intermarket_rates():
+    """Taux de change inter-marchés émergents."""
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        # Version simplifiée - retourner des taux par défaut
+        return jsonify({
+            'success': True,
+            'rates': {},
+            'note': 'Taux calculés depuis les circuits inter-marchés',
+            'computed_at': int(time.time())
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/paf/<market>', methods=['GET'])
+def calculate_paf(market):
+    """
+    Calcul de la PAF (Participation aux Frais) en Zen.
+    
+    Args:
+        market: ID du marché
+    """
+    monthly_cost = float(os.getenv('MONTHLY_SERVER_COST', '42'))
+    zen_eur_rate = float(os.getenv('ZEN_EUR_RATE', '1'))
+    
+    dragon = get_dragon_service()
+    if not dragon:
+        # Calcul de base sans le service
+        return jsonify({
+            'success': True,
+            'market': market,
+            'monthly_paf_zen': round(monthly_cost / zen_eur_rate, 2),
+            'monthly_paf_eur': monthly_cost,
+            'zen_eur_rate': zen_eur_rate,
+            'note': 'Estimation de base'
+        })
+    
+    try:
+        import asyncio
+        paf = asyncio.run(dragon.calculate_paf(market))
+        return jsonify({
+            'success': True,
+            'paf': paf
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_global_stats():
+    """Statistiques globales du système."""
+    dragon = get_dragon_service()
+    if not dragon:
+        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+    
+    try:
+        import asyncio
+        stats = asyncio.run(dragon.get_global_stats())
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     # Mode dev
     app.run(host='0.0.0.0', port=5000, debug=True)

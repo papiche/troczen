@@ -1,53 +1,80 @@
-# 🚀 API Backend TrocZen
+# API Backend TrocZen
 
-Backend Flask pour l'écosystème TrocZen : gestion des marchés, distribution d'APK, intégration Nostr Strfry et stockage IPFS.
+Backend Flask pour l'écosystème TrocZen : gestion des marchés, distribution d'APK, intégration Nostr Strfry, stockage IPFS, et modules ORACLE/DRAGON.
 
-## 📋 Résumé
+## Résumé
 
-L'API backend TrocZen est connectée au relai Nostr Strfry local (`ws://127.0.0.1:7777`) pour récupérer dynamiquement les données des marchands et des bons, et construire l'interface web en temps réel. Elle gère également l'upload d'images vers IPFS et la distribution de l'application mobile Android.
+L'API backend TrocZen est connectée au relai Nostr Strfry local (`ws://127.0.0.1:7777`) pour récupérer dynamiquement les données des marchands et des bons, et construire l'interface web en temps réel. Elle gère également:
 
-## 🎯 Fonctionnalités
+- **Module ORACLE**: Système de certification par pairs (WoTx2) avec Verifiable Credentials
+- **Module DRAGON**: Calcul dynamique des paramètres économiques (C², alpha, DU)
 
-### ✅ Récupération depuis Nostr Strfry
+## Fonctionnalités
+
+### Récupération depuis Nostr Strfry
 - **kind 0** : Profils marchands (name, about, picture, banner, website, lud16, nip05)
-- **kind 30303** : Bons (tags market, status, value, expiry, category, rarity)
-- **Association automatique** : Marchands ↔ Bons
-- **Fallback** : Fichiers JSON locaux si Nostr indisponible
+- **kind 30303** : Bons Zen (tags market, status, value, expiry, category, rarity)
+- **kind 30304** : Circuits fermés (métriques de circulation)
+- **kind 30501-30503** : WoTx2 - Demande, attestation, credentials
 
-### ✅ Distribution APK
+### Module ORACLE (WoTx2)
+- Écoute des attestations (Kind 30502) en temps réel
+- Génération automatique de Verifiable Credentials (Kind 30503)
+- Progression automatique X1 → X2 → X3...
+- Badges NIP-58 pour gamification
+
+### Module DRAGON (Capitaine)
+- Calcul dynamique de C² (vitesse de création monétaire)
+- Calcul de alpha (multiplicateur compétence)
+- Calcul du DU (Dividende Universel) avec formule TRM étendue
+- Tableau de navigation utilisateur
+- Taux de change inter-marchés émergents
+
+### Distribution APK
 - Détection automatique de la dernière version
 - Téléchargement direct
 - Génération de QR code
 - Checksum SHA256
 
-### ✅ Stockage décentralisé IPFS
+### Stockage décentralisé IPFS
 - Upload automatique des images vers IPFS
 - URLs permanentes via CID
 - Fallback local si IPFS désactivé
 
-### ✅ Interface Web
-- Pages marché dynamiques avec statistiques
-- Liste des marchands avec photos et descriptions
-- Affichage des bons associés
-
-## 📁 Structure du projet
+## Structure du projet
 
 ```
 api/
-├── api_backend.py          # Application Flask principale
-├── nostr_client.py         # Client Nostr WebSocket
-├── requirements.txt        # Dépendances Python
-├── test_nostr_api.py       # Tests automatisés
+├── api_backend.py              # Application Flask principale
+├── nostr_client.py             # Client Nostr WebSocket
+├── nostr_daemon.py             # Daemon ORACLE (écoute 30502)
+├── requirements.txt            # Dépendances Python
+├── .env.example                # Variables d'environnement
+│
+├── oracle/                     # Module ORACLE (WoTx2)
+│   ├── __init__.py
+│   ├── oracle_service.py       # Service principal stateless
+│   ├── permit_manager.py       # Gestion permits et progression
+│   └── credential_generator.py # Génération VC format W3C
+│
+├── dragon/                     # Module DRAGON (Capitaine)
+│   ├── __init__.py
+│   ├── dragon_service.py       # Service principal
+│   ├── params_engine.py        # Calcul C² et alpha
+│   ├── du_engine.py            # Calcul DU (TRM étendue)
+│   ├── circuit_indexer.py      # Indexation circuits
+│   └── dashboard_builder.py    # Tableau de navigation
+│
 ├── templates/
-│   ├── index.html         # Page d'accueil API
-│   └── market.html        # Page marché dynamique
-├── uploads/               # Fichiers uploadés (fallback)
-├── apks/                  # Fichiers APK
-├── IPFS_CONFIG.md         # Configuration IPFS
-└── README.md              # Ce fichier
+│   ├── index.html              # Page d'accueil API
+│   └── market.html             # Page marché dynamique
+│
+├── uploads/                    # Fichiers uploadés (fallback)
+├── apks/                       # Fichiers APK
+└── README.md                   # Ce fichier
 ```
 
-## 🚀 Installation rapide
+## Installation rapide
 
 ### 1. Prérequis
 - Python 3.10+
@@ -62,28 +89,119 @@ pip install -r requirements.txt
 
 ### 3. Configurer l'environnement
 ```bash
-# Activer Nostr (optionnel)
-export NOSTR_ENABLED=true
-export NOSTR_RELAY=ws://127.0.0.1:7777
+# Copier le fichier d'exemple
+cp .env.example .env
 
-# Activer IPFS (optionnel)
-export IPFS_ENABLED=true
-export IPFS_API_URL=http://127.0.0.1:5001
-export IPFS_GATEWAY=https://ipfs.copylaradio.com
+# Éditer les variables
+nano .env
+```
+
+Variables importantes:
+```bash
+# Nostr
+NOSTR_RELAY_URL=ws://127.0.0.1:7777
+
+# Oracle (générer une clé sécurisée!)
+ORACLE_NSEC_HEX=<64_chars_hex_private_key>
+ORACLE_PUBKEY=<64_chars_hex_public_key>
+
+# IPFS
+IPFS_ENABLED=true
+IPFS_API_URL=http://127.0.0.1:5001
 ```
 
 ### 4. Démarrer l'API
 ```bash
+# API Flask
 python api_backend.py
+
+# Daemon ORACLE (dans un autre terminal)
+python nostr_daemon.py
 ```
 
 L'API sera accessible sur `http://localhost:5000`
 
-## 📡 Endpoints API
+## Endpoints API
 
 ### Health Check
 ```bash
 GET /health
+```
+
+### Module ORACLE
+
+#### Liste des permits
+```bash
+GET /api/permit/definitions?market=<market_id>
+```
+
+#### Credentials d'un utilisateur
+```bash
+GET /api/permit/credentials/<npub>
+```
+
+#### Statistiques Oracle
+```bash
+GET /api/permit/stats
+```
+
+### Module DRAGON
+
+#### Tableau de navigation
+```bash
+GET /api/dashboard/<npub>?market=<market_id>
+```
+
+**Réponse:**
+```json
+{
+  "npub": "user_pubkey_hex",
+  "computed_at": "2026-02-22T00:00:00Z",
+  "network": {
+    "n1": 8,
+    "n2": 67,
+    "category": "Tisseur"
+  },
+  "markets": [{
+    "market_id": "market_hackathon",
+    "du": {
+      "daily": 18.3,
+      "monthly": 549,
+      "base": 14.2,
+      "skill_bonus": 4.1
+    },
+    "params": {
+      "c2": 0.094,
+      "alpha": 0.41,
+      "ttl_optimal_days": 21
+    },
+    "circulation": {
+      "loops_this_month": 14,
+      "median_return_age_days": 12.5
+    },
+    "signals": ["Réseau en forte accélération"]
+  }]
+}
+```
+
+#### Calcul DU
+```bash
+GET /api/du/<npub>/<market>
+```
+
+#### Paramètres dynamiques
+```bash
+GET /api/params/<npub>/<market>
+```
+
+#### Santé du marché
+```bash
+GET /api/health/<market>
+```
+
+#### Participation aux Frais (PAF)
+```bash
+GET /api/paf/<market>
 ```
 
 ### Upload d'image
@@ -93,114 +211,88 @@ Content-Type: multipart/form-data
 
 file: <image_file>
 npub: <nostr_public_key>
-type: logo|banner|avatar  # optionnel, défaut: logo
+type: logo|banner|avatar
 ```
 
-**Exemple :**
-```bash
-curl -X POST http://localhost:5000/api/upload/image \
-  -F "file=@logo.png" \
-  -F "npub=npub1abc123..."
-```
+### APK
 
-### APK Latest Info
+#### Info dernière version
 ```bash
 GET /api/apk/latest
 ```
 
-**Réponse :**
-```json
-{
-  "filename": "troczen-1.0.0.apk",
-  "version": "1.0.0",
-  "size": 15728640,
-  "checksum": "sha256...",
-  "download_url": "/api/apk/download/troczen-1.0.0.apk",
-  "updated_at": "2026-02-16T12:00:00"
-}
-```
-
-### Télécharger APK
+#### Téléchargement
 ```bash
 GET /api/apk/download/<filename>
 ```
 
-### QR Code APK
+#### QR Code
 ```bash
 GET /api/apk/qr
 ```
-Retourne une image PNG du QR code pour télécharger l'APK.
 
-### Récupérer les données d'un marché
+### Nostr
+
+#### Données d'un marché
 ```bash
 GET /api/nostr/marche/<market_name>
 ```
 
-**Paramètres :**
-- `market_name` : ID du marché (ex: `marche-toulouse`)
-
-**Réponse :**
-```json
-{
-  "success": true,
-  "data": {
-    "market_name": "marche-toulouse",
-    "merchants": [
-      {
-        "pubkey": "npub1abc123...",
-        "name": "La Miellerie",
-        "about": "Miel local bio",
-        "picture": "https://ipfs.copylaradio.com/ipfs/Qm...",
-        "banner": "https://ipfs.copylaradio.com/ipfs/Qm...",
-        "website": "https://miellerie.example.com",
-        "lud16": "lnurl1...",
-        "nip05": "miellerie@troczen.local",
-        "bons": [
-          {
-            "id": "bon_123",
-            "pubkey": "npub1abc123...",
-            "value": 10,
-            "status": "active",
-            "category": "miel",
-            "rarity": "rare"
-          }
-        ],
-        "bons_count": 5
-      }
-    ],
-    "total_bons": 10,
-    "total_merchants": 3
-  },
-  "source": "nostr_strfry"
-}
-```
-
-### Synchroniser les données Nostr
+#### Synchroniser
 ```bash
 POST /api/nostr/sync?market=<market_name>
 ```
 
-### Statistiques globales
-```bash
-GET /api/stats
+## Architecture Stateless
+
+Les modules ORACLE et DRAGON utilisent une architecture **stateless**:
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  App Flutter     │     │  Relai Strfry    │     │  Daemon ORACLE   │
+│                  │◄───►│  (Nostr Relay)   │◄───►│  (écoute 30502)  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+         │                        │                         │
+         │                        │                         │
+         ▼                        ▼                         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      API Flask (stateless)                           │
+│  - Interroge Strfry à la volée                                       │
+│  - Pas de base de données locale                                     │
+│  - Calculs en mémoire                                                │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Page marché (HTML)
-```bash
-GET /market/<market_name>
-```
-Affiche la page HTML avec :
-- QR code téléchargement APK
-- Statistiques du marché
-- Liste des marchands participants
-- Bons associés
+**Avantages:**
+- Zéro migration de base de données
+- Pas de problème de concurrence
+- Code ultra-léger et purement fonctionnel
+- Totalement aligné avec l'écosystème Nostr
 
-### Servir fichiers uploadés
-```bash
-GET /uploads/<filename>
-```
+## Formules de calcul
 
-## 🧪 Tests
+### C² (vitesse de création monétaire)
+```
+C²_i(t) = vitesse_retour_médiane / TTL_médian
+         × facteur_santé
+         × (1 + taux_croissance_N1)
+```
+Borné entre 0.02 (2%) et 0.25 (25%)
+
+### alpha (multiplicateur compétence)
+```
+alpha = corrélation_pearson(niveau_compétence, vitesse_retour)
+```
+Mesure si la compétence prédit la vitesse de retour des bons.
+
+### DU (Dividende Universel)
+```
+DU_base = DU_prev + C² × (M_N1 + M_N2/√N2) / (N1 + √N2)
+DU_final = DU_base × (1 + alpha × S_i)
+```
+Où S_i est le score de compétence moyen (niveaux X1, X2, X3...)
+
+## Tests
 
 ### Tests automatisés
 ```bash
@@ -212,41 +304,82 @@ python test_nostr_api.py
 # Health check
 curl http://localhost:5000/health
 
-# Récupérer données marché
-curl http://localhost:5000/api/nostr/marche/marche-toulouse
+# Dashboard utilisateur
+curl http://localhost:5000/api/dashboard/npub1abc123...
 
-# Voir page marché
-curl http://localhost:5000/market/marche-toulouse
+# Santé du marché
+curl http://localhost:5000/api/health/market_hackathon
+
+# Credentials
+curl http://localhost:5000/api/permit/credentials/npub1abc123...
 ```
 
-## 🔧 Configuration avancée
+## Configuration avancée
 
-### Variables d'environnement
+### Variables d'environnement ORACLE
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
-| `NOSTR_ENABLED` | `true` | Activer/désactiver la récupération Nostr |
-| `NOSTR_RELAY` | `ws://127.0.0.1:7777` | URL du relai Strfry |
-| `IPFS_ENABLED` | `true` | Activer/désactiver IPFS |
-| `IPFS_API_URL` | `http://127.0.0.1:5001` | API du nœud IPFS local |
-| `IPFS_GATEWAY` | `https://ipfs.copylaradio.com` | Passerelle IPFS publique |
+| `ORACLE_NSEC_HEX` | - | Clé privée Oracle (64 chars hex) |
+| `ORACLE_PUBKEY` | - | Pubkey Oracle (64 chars hex) |
+| `ORACLE_OFFICIAL_THRESHOLD` | 2 | Seuil attestations permits officiels |
+| `ORACLE_WOTX2_THRESHOLD` | 1 | Seuil attestations WoTx2 |
+| `CREDENTIAL_VALIDITY_SKILL` | 365 | Validité credentials compétence (jours) |
 
-### Fallback local
-Si Nostr est indisponible, l'API utilise automatiquement les fichiers JSON locaux dans `api/uploads/`. Structure attendue :
+### Variables d'environnement DRAGON
 
-```json
-{
-  "npub": "npub1...",
-  "name": "Nom du marchand",
-  "description": "Description",
-  "logo_url": "/uploads/logo.png",
-  "market": "marche-toulouse",
-  "category": "alimentation"
-}
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `C2_MIN` | 0.02 | C² minimum |
+| `C2_MAX` | 0.25 | C² maximum |
+| `C2_DEFAULT` | 0.07 | C² par défaut |
+| `ALPHA_DEFAULT` | 0.3 | alpha par défaut |
+| `DU_INITIAL` | 10.0 | DU initial (Zen/jour) |
+| `MIN_N1_FOR_DU` | 5 | N1 minimum pour DU actif |
+| `ANALYSIS_WINDOW` | 30 | Fenêtre d'analyse (jours) |
+
+### Variables d'environnement générales
+
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `NOSTR_RELAY_URL` | ws://127.0.0.1:7777 | URL du relai Strfry |
+| `IPFS_ENABLED` | true | Activer IPFS |
+| `IPFS_API_URL` | http://127.0.0.1:5001 | API du nœud IPFS |
+| `IPFS_GATEWAY` | https://ipfs.copylaradio.com | Passerelle IPFS |
+
+## Déploiement
+
+### Mode production avec Gunicorn
+```bash
+# API Flask
+gunicorn -w 4 -b 0.0.0.0:5000 api_backend:app
+
+# Daemon ORACLE (avec systemd)
+sudo systemctl enable troczen-oracle
+sudo systemctl start troczen-oracle
 ```
 
-## 🐳 Docker Compose
+### Systemd service pour le daemon
+```ini
+# /etc/systemd/system/troczen-oracle.service
+[Unit]
+Description=TrocZen ORACLE Daemon
+After=network.target
 
+[Service]
+Type=simple
+User=troczen
+WorkingDirectory=/opt/troczen/api
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 nostr_daemon.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Docker Compose
 ```yaml
 version: '3.8'
 
@@ -265,49 +398,38 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - NOSTR_ENABLED=true
-      - NOSTR_RELAY=ws://strfry:7777
-      - IPFS_ENABLED=false
+      - NOSTR_RELAY_URL=ws://strfry:7777
+      - ORACLE_NSEC_HEX=${ORACLE_NSEC_HEX}
+    depends_on:
+      - strfry
+
+  oracle-daemon:
+    build: .
+    environment:
+      - NOSTR_RELAY_URL=ws://strfry:7777
+      - ORACLE_NSEC_HEX=${ORACLE_NSEC_HEX}
+    command: python nostr_daemon.py
     depends_on:
       - strfry
 ```
 
-## 🚢 Déploiement
+## Documentation complémentaire
 
-### Mode production avec Gunicorn
-```bash
-gunicorn -w 4 -b 0.0.0.0:5000 api_backend:app
-```
-
-### Nginx reverse proxy
-```nginx
-server {
-    listen 80;
-    server_name api.troczen.local;
-
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
-    location /uploads {
-        alias /var/www/troczen-api/uploads;
-    }
-
-    client_max_body_size 10M;
-}
-```
-
-## 📚 Documentation complémentaire
-
+- [BACKLOG_SERVEUR_PYTHON.md](../docs/BACKLOG_SERVEUR_PYTHON.md) - Backlog détaillé ORACLE/DRAGON
 - [IPFS_CONFIG.md](IPFS_CONFIG.md) - Configuration détaillée IPFS
-- [DASHBOARD_MARCHAND_DOC.md](../DASHBOARD_MARCHAND_DOC.md) - Dashboard marchand
-- [ARCHITECTURE.md](../ARCHITECTURE.md) - Architecture technique du système
-- [FILE_INDEX.md](../FILE_INDEX.md) - Index complet de la documentation
+- [troczen_protocol_v6.md](../docs/troczen_protocol_v6.md) - Protocole complet v6
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - Architecture technique
 
-## 🐛 Dépannage
+## Sécurité
+
+- Validation des extensions de fichiers (png, jpg, jpeg, webp)
+- Taille maximale : 5 MB
+- Noms sécurisés avec `secure_filename()`
+- Checksum SHA256 pour tous les fichiers
+- CORS activé pour l'app mobile
+- Magic bytes validation pour les uploads
+
+## Dépannage
 
 ### Erreur "ModuleNotFoundError"
 ```bash
@@ -323,40 +445,32 @@ curl http://127.0.0.1:7777
 docker logs strfry
 ```
 
-### APK non trouvé
-Vérifier que le fichier `.apk` est bien dans le dossier `apks/`
-
-### Upload échoue
-Vérifier les permissions :
+### ORACLE ne génère pas de credentials
 ```bash
-chmod 755 uploads apks
+# Vérifier la clé Oracle
+echo $ORACLE_NSEC_HEX | wc -c  # Doit être 65 (64 chars + newline)
+
+# Vérifier les logs du daemon
+journalctl -u troczen-oracle -f
 ```
 
-## 🔒 Sécurité
+### DU toujours à 0
+- Vérifier que N1 >= 5 (seuil minimum)
+- Vérifier les contacts Kind 3
+- Vérifier que les bons ont des circuits fermés (Kind 30304)
 
-- Validation des extensions de fichiers (png, jpg, jpeg, webp)
-- Taille maximale : 5 MB
-- Noms sécurisés avec `secure_filename()`
-- Checksum SHA256 pour tous les fichiers uploadés
-- CORS activé pour l'app mobile
-
-## 📞 Support
-
-Pour toute question :
-1. Vérifier les logs de l'API
-2. Consulter la documentation
-3. Ouvrir une issue sur [GitHub](https://github.com/papiche/troczen)
-
-## ✅ Checklist de déploiement
+## Checklist de déploiement
 
 - [ ] Dépendances Python installées
 - [ ] Variables d'environnement configurées
+- [ ] Clé Oracle générée et configurée
 - [ ] API démarrée (port 5000)
-- [ ] Strfry démarré (port 7777) - optionnel
+- [ ] Strfry démarré (port 7777)
+- [ ] Daemon ORACLE démarré
 - [ ] Tests passés
 - [ ] Page web accessible
-- [ ] Fallback testé
 
 ---
 
-**TrocZen API Backend** - Version 1.0.0 - 2026
+**TrocZen API Backend** - Version 1.1.0 - 2026
+**Modules**: ORACLE (WoTx2) + DRAGON (Capitaine)

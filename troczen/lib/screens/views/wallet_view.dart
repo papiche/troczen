@@ -8,6 +8,7 @@ import '../../services/burn_service.dart';
 import '../../services/crypto_service.dart';
 import '../../widgets/panini_card.dart';
 import '../../widgets/qr_explosion_widget.dart';
+import '../../widgets/circuit_revelation_widget.dart';
 import '../mirror_offer_screen.dart';
 import '../bon_journey_screen.dart';
 
@@ -1048,23 +1049,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     setState(() => _isUpdating = true);
     
     try {
-      // Afficher l'animation de feu pendant le burn
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: QrExplosionWidget(
-            size: 300,
-            type: QrExplosionType.bonBurned,
-            bonId: bon.bonId,
-            bonValue: bon.value,
-            onRetry: () => Navigator.pop(context),
-          ),
-        ),
-      );
-      
-      // Exécuter le burn via BurnService
+      // Exécuter le burn/révélation via BurnService
       final burnService = BurnService(
         cryptoService: CryptoService(),
         storageService: StorageService(),
@@ -1077,12 +1062,31 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       );
       
       if (success) {
+        // Afficher l'animation de Révélation du Circuit après succès
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: CircuitRevelationWidget(
+              size: 300,
+              bonId: bon.bonId,
+              valueZen: bon.value,
+              hopCount: bon.transferCount ?? 0,
+              ageDays: DateTime.now().difference(bon.createdAt).inDays,
+              skillAnnotation: bon.specialAbility,
+              rarity: bon.rarity,
+              onClose: () => Navigator.pop(context),
+            ),
+          ),
+        );
+        
         await _loadBons();
         
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🔥 Bon de ${bon.value.toStringAsFixed(2)} ẐEN encaissé avec succès !'),
+            content: Text('🔄 Circuit révélé: ${bon.value.toStringAsFixed(2)} ẐEN | ${bon.transferCount ?? 0} hops'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
@@ -1091,7 +1095,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('❌ Erreur lors de l\'encaissement'),
+            content: Text('❌ Erreur lors de la révélation du circuit'),
             backgroundColor: Colors.red,
           ),
         );

@@ -6,6 +6,7 @@ enum BonStatus {
   issued,    // Créé
   pending,   // En attente de confirmation
   active,    // Actif dans le wallet
+  lockedForTransfer, // ✅ WAL: Verrouillé pour transfert en cours
   spent,     // Dépensé
   expired,   // Expiré
   burned     // Détruit
@@ -37,6 +38,11 @@ class Bon {
   final Map<String, dynamic>? stats; // Statistiques (ex: {"power": 5, "defense": 3})
   final double? duAtCreation;   // Valeur du DU le jour de la création (pour calcul relativiste)
   final String? wish;           // Vœu attaché au bon (ex: "De la graine à l'assiette")
+  
+  // ✅ WAL (Write-Ahead Log) pour protection contre double-dépense
+  final DateTime? transferLockTimestamp; // Quand le bon a été verrouillé
+  final String? transferLockChallenge;   // Challenge du transfert en cours
+  final int? transferLockTtlSeconds;     // TTL du verrou (défaut: 300s = 5min)
 
   Bon({
     required this.bonId,
@@ -63,11 +69,33 @@ class Bon {
     this.stats,
     this.duAtCreation,
     this.wish,
+    // ✅ WAL (Write-Ahead Log)
+    this.transferLockTimestamp,
+    this.transferLockChallenge,
+    this.transferLockTtlSeconds,
   });
 
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
   bool get isValid => status == BonStatus.active && !isExpired;
   bool get isRare => rarity != null && rarity != 'common';
+  
+  /// ✅ WAL: Vérifie si le bon est verrouillé pour un transfert en cours
+  /// Un verrou expiré est considéré comme non actif
+  bool get isTransferLocked {
+    if (status != BonStatus.lockedForTransfer) return false;
+    if (transferLockTimestamp == null) return false;
+    final ttl = transferLockTtlSeconds ?? 300; // 5 minutes par défaut
+    final lockExpiry = transferLockTimestamp!.add(Duration(seconds: ttl));
+    return DateTime.now().isBefore(lockExpiry);
+  }
+  
+  /// ✅ WAL: Vérifie si le verrou a expiré (pour crash recovery)
+  bool get isTransferLockExpired {
+    if (transferLockTimestamp == null) return true;
+    final ttl = transferLockTtlSeconds ?? 300;
+    final lockExpiry = transferLockTimestamp!.add(Duration(seconds: ttl));
+    return DateTime.now().isAfter(lockExpiry);
+  }
   
   // Probabilités de rareté (à utiliser lors de la création)
   static String generateRarity() {
@@ -280,6 +308,10 @@ class Bon {
     Map<String, dynamic>? stats,
     double? duAtCreation,
     String? wish,
+    // ✅ WAL (Write-Ahead Log)
+    DateTime? transferLockTimestamp,
+    String? transferLockChallenge,
+    int? transferLockTtlSeconds,
   }) {
     return Bon(
       bonId: bonId ?? this.bonId,
@@ -306,6 +338,10 @@ class Bon {
       stats: stats ?? this.stats,
       duAtCreation: duAtCreation ?? this.duAtCreation,
       wish: wish ?? this.wish,
+      // ✅ WAL
+      transferLockTimestamp: transferLockTimestamp ?? this.transferLockTimestamp,
+      transferLockChallenge: transferLockChallenge ?? this.transferLockChallenge,
+      transferLockTtlSeconds: transferLockTtlSeconds ?? this.transferLockTtlSeconds,
     );
   }
 
@@ -331,6 +367,16 @@ class Bon {
       'issuerNostrProfile': issuerNostrProfile,
       'duAtCreation': duAtCreation,
       'wish': wish,
+      // uniqueId, cardType, specialAbility, stats exclus du JSON (générés à la volée)
+      // mais on les garde pour compatibilité si présents
+      'uniqueId': uniqueId,
+      'cardType': cardType,
+      'specialAbility': specialAbility,
+      'stats': stats,
+      // WAL (Write-Ahead Log)
+      'transferLockTimestamp': transferLockTimestamp?.toIso8601String(),
+      'transferLockChallenge': transferLockChallenge,
+      'transferLockTtlSeconds': transferLockTtlSeconds,
     };
   }
 
@@ -338,12 +384,15 @@ class Bon {
     return Bon(
       bonId: json['bonId'],
       // bonNsec retiré
-      value: json['value'].toDouble(),
+      value: (json['value'] as num).toDouble(),
       issuerName: json['issuerName'],
       issuerNpub: json['issuerNpub'],
       createdAt: DateTime.parse(json['createdAt']),
       expiresAt: json['expiresAt'] != null ? DateTime.parse(json['expiresAt']) : null,
-      status: BonStatus.values.firstWhere((e) => e.name == json['status']),
+      status: BonStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => BonStatus.active, // Fallback pour anciens bons
+      ),
       p1: json['p1'],
       p2: json['p2'],
       p3: json['p3'],
@@ -356,6 +405,18 @@ class Bon {
       issuerNostrProfile: json['issuerNostrProfile'],
       duAtCreation: json['duAtCreation']?.toDouble(),
       wish: json['wish'],
+      uniqueId: json['uniqueId'],
+      cardType: json['cardType'],
+      specialAbility: json['specialAbility'],
+      stats: json['stats'] != null
+          ? Map<String, dynamic>.from(json['stats'])
+          : null,
+      // WAL (Write-Ahead Log)
+      transferLockTimestamp: json['transferLockTimestamp'] != null
+          ? DateTime.parse(json['transferLockTimestamp'])
+          : null,
+      transferLockChallenge: json['transferLockChallenge'],
+      transferLockTtlSeconds: json['transferLockTtlSeconds'],
     );
   }
 

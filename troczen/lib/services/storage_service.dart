@@ -139,6 +139,197 @@ class StorageService {
     }
   }
 
+  // ============================================================
+  // ✅ WAL (Write-Ahead Log) - Protection contre double-dépense
+  // Implémente un verrouillage atomique pour les transferts
+  // ============================================================
+
+  /// ✅ WAL: Verrouille un bon pour un transfert en cours
+  /// Cette opération DOIT être effectuée AVANT de générer l'offre
+  /// Retourne le bon verrouillé ou null si le bon n'existe pas/déjà verrouillé
+  Future<Bon?> lockBonForTransfer(
+    String bonId, {
+    String? challenge,
+    int ttlSeconds = 300, // 5 minutes par défaut
+  }) async {
+    await _acquireBonsLock();
+    try {
+      final bons = await _getBonsInternal();
+      final index = bons.indexWhere((b) => b.bonId == bonId);
+      
+      if (index == -1) {
+        Logger.warn('StorageService', 'Bon $bonId non trouvé pour verrouillage');
+        return null;
+      }
+      
+      final bon = bons[index];
+      
+      // Vérifier si le bon est déjà verrouillé
+      if (bon.isTransferLocked) {
+        Logger.warn('StorageService', 'Bon $bonId déjà verrouillé pour transfert');
+        return null;
+      }
+      
+      // Vérifier que le bon est actif
+      if (bon.status != BonStatus.active) {
+        Logger.warn('StorageService', 'Bon $bonId non actif (status: ${bon.status})');
+        return null;
+      }
+      
+      // Créer le bon verrouillé
+      final lockedBon = bon.copyWith(
+        status: BonStatus.lockedForTransfer,
+        transferLockTimestamp: DateTime.now(),
+        transferLockChallenge: challenge ?? DateTime.now().millisecondsSinceEpoch.toRadixString(16),
+        transferLockTtlSeconds: ttlSeconds,
+      );
+      
+      bons[index] = lockedBon;
+      await _saveBons(bons);
+      
+      Logger.success('StorageService', 'Bon $bonId verrouillé pour transfert (TTL: ${ttlSeconds}s)');
+      return lockedBon;
+    } finally {
+      _releaseBonsLock();
+    }
+  }
+
+  /// ✅ WAL: Confirme le transfert et supprime définitivement P2
+  /// Cette opération DOIT être appelée APRÈS réception de l'ACK validé
+  /// Retourne true si succès, false si le bon n'était pas verrouillé
+  Future<bool> confirmTransferAndRemoveP2(String bonId, String challenge) async {
+    await _acquireBonsLock();
+    try {
+      final bons = await _getBonsInternal();
+      final index = bons.indexWhere((b) => b.bonId == bonId);
+      
+      if (index == -1) {
+        Logger.error('StorageService', 'Bon $bonId non trouvé pour confirmation');
+        return false;
+      }
+      
+      final bon = bons[index];
+      
+      // Vérifier que le bon était verrouillé
+      if (bon.status != BonStatus.lockedForTransfer) {
+        Logger.error('StorageService', 'Bon $bonId n\'était pas verrouillé (status: ${bon.status})');
+        return false;
+      }
+      
+      // Vérifier le challenge (protection contre replay)
+      if (bon.transferLockChallenge != challenge) {
+        Logger.error('StorageService', 'Challenge mismatch pour bon $bonId');
+        return false;
+      }
+      
+      // Marquer comme dépensé et supprimer P2
+      final spentBon = bon.copyWith(
+        status: BonStatus.spent,
+        p2: null, // CRITIQUE: Suppression de P2
+        transferLockTimestamp: null,
+        transferLockChallenge: null,
+        transferLockTtlSeconds: null,
+        transferCount: (bon.transferCount ?? 0) + 1,
+      );
+      
+      bons[index] = spentBon;
+      await _saveBons(bons);
+      
+      Logger.success('StorageService', 'Transfert confirmé pour bon $bonId - P2 supprimé');
+      return true;
+    } finally {
+      _releaseBonsLock();
+    }
+  }
+
+  /// ✅ WAL: Annule un verrou de transfert (timeout, erreur, annulation utilisateur)
+  /// Remet le bon en état actif
+  Future<bool> cancelTransferLock(String bonId) async {
+    await _acquireBonsLock();
+    try {
+      final bons = await _getBonsInternal();
+      final index = bons.indexWhere((b) => b.bonId == bonId);
+      
+      if (index == -1) {
+        Logger.warn('StorageService', 'Bon $bonId non trouvé pour annulation verrou');
+        return false;
+      }
+      
+      final bon = bons[index];
+      
+      if (bon.status != BonStatus.lockedForTransfer) {
+        // Ce n'est pas une erreur si le bon n'est pas verrouillé
+        return true;
+      }
+      
+      // Remettre le bon en état actif
+      final activeBon = bon.copyWith(
+        status: BonStatus.active,
+        transferLockTimestamp: null,
+        transferLockChallenge: null,
+        transferLockTtlSeconds: null,
+      );
+      
+      bons[index] = activeBon;
+      await _saveBons(bons);
+      
+      Logger.success('StorageService', 'Verrou annulé pour bon $bonId');
+      return true;
+    } finally {
+      _releaseBonsLock();
+    }
+  }
+
+  /// ✅ WAL: Récupération après crash
+  /// À appeler au démarrage de l'application
+  /// Annule tous les verrous expirés (transferts interrompus par crash)
+  /// Retourne le nombre de verrous annulés
+  Future<int> recoverFromCrash() async {
+    await _acquireBonsLock();
+    try {
+      final bons = await _getBonsInternal();
+      int recoveredCount = 0;
+      
+      for (int i = 0; i < bons.length; i++) {
+        final bon = bons[i];
+        
+        // Chercher les bons verrouillés avec verrou expiré
+        if (bon.status == BonStatus.lockedForTransfer && bon.isTransferLockExpired) {
+          // Remettre le bon en état actif
+          bons[i] = bon.copyWith(
+            status: BonStatus.active,
+            transferLockTimestamp: null,
+            transferLockChallenge: null,
+            transferLockTtlSeconds: null,
+          );
+          recoveredCount++;
+          Logger.info('StorageService', 'Récupération crash: bon ${bon.bonId} remis en état actif');
+        }
+      }
+      
+      if (recoveredCount > 0) {
+        await _saveBons(bons);
+        Logger.success('StorageService', 'Récupération crash: $recoveredCount bon(s) récupéré(s)');
+      }
+      
+      return recoveredCount;
+    } finally {
+      _releaseBonsLock();
+    }
+  }
+
+  /// ✅ WAL: Récupère les bons verrouillés (pour affichage UI)
+  Future<List<Bon>> getLockedBons() async {
+    final bons = await getBons();
+    return bons.where((b) => b.isTransferLocked).toList();
+  }
+
+  /// ✅ WAL: Vérifie si un bon est verrouillé pour transfert
+  Future<bool> isBonLocked(String bonId) async {
+    final bon = await getBonById(bonId);
+    return bon?.isTransferLocked ?? false;
+  }
+
   /// Récupère tous les bons (version interne sans verrou)
   Future<List<Bon>> _getBonsInternal() async {
     final data = await _secureStorage.read(key: _bonsKey);

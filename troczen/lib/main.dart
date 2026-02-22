@@ -63,6 +63,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkExistingUser() async {
+    // ✅ WAL: Récupération après crash - annuler les verrous expirés
+    // Cette opération doit être faite au démarrage avant toute autre chose
+    final recoveredCount = await _storageService.recoverFromCrash();
+    if (recoveredCount > 0) {
+      Logger.info('Main', 'Récupération crash: $recoveredCount bon(s) récupéré(s)');
+    }
+    
     // Vérifier d'abord si c'est un premier lancement
     final isFirstLaunch = await _storageService.isFirstLaunch();
     

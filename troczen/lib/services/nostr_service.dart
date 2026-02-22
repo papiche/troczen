@@ -752,6 +752,83 @@ class NostrService {
     }
   }
 
+  /// ✅ PUBLIER EVENT CIRCUIT/RÉVÉLATION (kind 30304)
+  /// Quand un bon termine son parcours, il ne se "burn" pas mais se "révèle"
+  /// Le Carnet de Voyage devient une preuve économique
+  ///
+  /// Tags: ['d', 'circuit_$bonId'], ['market', marketName], ['issuer', issuerNpub]
+  /// Content: JSON avec stats du parcours (value_zen, hop_count, age_days, skill_annotation)
+  Future<bool> publishBonCircuit({
+    required String bonId,
+    required double valueZen,
+    required int hopCount,
+    required int ageDays,
+    required String marketName,
+    required String issuerNpub,
+    required Uint8List nsecBonBytes,  // sk_B reconstruit pour signature
+    String? skillAnnotation,  // Compétence associée au parcours
+    String? rarity,
+    String? cardType,
+  }) async {
+    if (!_isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      // Créer le contenu JSON avec les stats du parcours
+      final circuitContent = {
+        'type': 'circuit_revelation',
+        'bon_id': bonId,
+        'value_zen': valueZen,
+        'hop_count': hopCount,
+        'age_days': ageDays,
+        'market': marketName,
+        'timestamp': DateTime.now().toIso8601String(),
+        if (skillAnnotation != null && skillAnnotation.isNotEmpty)
+          'skill_annotation': skillAnnotation,
+        if (rarity != null) 'rarity': rarity,
+        if (cardType != null) 'card_type': cardType,
+      };
+
+      final event = {
+        'kind': 30304,  // Kind spécifique pour la Révélation de Circuit
+        'pubkey': bonId,  // ✅ Le BON signe sa propre révélation
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['d', 'circuit_$bonId'],  // Identifiant unique du circuit
+          ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
+          ['market', marketName],  // Gardé pour affichage UI (joli nom)
+          ['issuer', issuerNpub],
+          ['value', valueZen.toString()],
+          ['hops', hopCount.toString()],
+          ['age_days', ageDays.toString()],
+          if (skillAnnotation != null && skillAnnotation.isNotEmpty)
+            ['skill', skillAnnotation],
+        ],
+        'content': jsonEncode(circuitContent),
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+
+      // ✅ SÉCURITÉ: Signer avec Uint8List
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
+      event['sig'] = signature;
+
+      final message = jsonEncode(['EVENT', event]);
+      _channel!.sink.add(message);
+      
+      Logger.log('NostrService',
+          'Circuit révélé: $bonId | ${valueZen}ẐEN | $hopCount hops | $ageDays jours');
+
+      return true;
+    } catch (e) {
+      onError?.call('Erreur publication circuit: $e');
+      return false;
+    }
+  }
+
   /// S'abonne aux events kind 30303 d'un marché unique
   Future<void> subscribeToMarket(String marketName, {int? since}) async {
     await subscribeToMarkets([marketName], since: since);
@@ -1436,6 +1513,66 @@ class NostrService {
       return true;
     } catch (e) {
       onError?.call('Erreur publication relay list: $e');
+      return false;
+    }
+  }
+
+  /// ✅ PUBLIER SKILL PERMIT (kind 30500)
+  /// Publie une déclaration de compétence/permis pour un tag d'activité donné.
+  /// Kind 30500 = Parameterized Replaceable Event (NIP-33)
+  ///
+  /// Cette méthode permet à un utilisateur de déclarer ses compétences/activités
+  /// de manière publique et vérifiable sur Nostr.
+  Future<bool> publishSkillPermit({
+    required String npub,
+    required String nsec,
+    required String skillTag,
+  }) async {
+    if (!_isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      // Normaliser le tag en minuscules pour la cohérence
+      final normalizedTag = skillTag.toLowerCase().trim();
+      
+      // Créer l'identifiant unique pour le permit (d tag)
+      // Format: PERMIT_{TAG}_X1 où X1 indique le niveau 1
+      final dTag = 'PERMIT_${normalizedTag.toUpperCase()}_X1';
+      
+      // Contenu JSON décrivant la déclaration initiale
+      final content = jsonEncode({
+        'level': 1,
+        'type': 'self_declaration',
+        'skill': normalizedTag,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+      final event = {
+        'kind': 30500,  // Parameterized Replaceable Event (NIP-33)
+        'pubkey': npub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['d', dTag],
+          ['t', normalizedTag],
+        ],
+        'content': content,
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+
+      final signature = _cryptoService.signMessage(eventId, nsec);
+      event['sig'] = signature;
+
+      final message = jsonEncode(['EVENT', event]);
+      _channel!.sink.add(message);
+
+      Logger.log('NostrService', 'Skill Permit publié pour: $normalizedTag');
+      return true;
+    } catch (e) {
+      onError?.call('Erreur publication Skill Permit: $e');
       return false;
     }
   }

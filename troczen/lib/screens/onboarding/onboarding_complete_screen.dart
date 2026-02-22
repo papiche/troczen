@@ -412,6 +412,36 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     return isValid;
   }
   
+  /// ✅ NOUVEAU: Publie les Skill Permits en arrière-plan sans bloquer l'UI
+  /// Utilise un fire-and-forget pour ne pas ralentir l'onboarding
+  void _publishSkillPermitsInBackground({
+    required NostrService nostrService,
+    required String npub,
+    required String nsec,
+    required List<String> skillTags,
+  }) {
+    // Lancer la publication en arrière-plan sans attendre
+    Future(() async {
+      try {
+        for (final tag in skillTags) {
+          try {
+            await nostrService.publishSkillPermit(
+              npub: npub,
+              nsec: nsec,
+              skillTag: tag,
+            );
+            debugPrint('✅ Skill Permit publié pour: $tag');
+          } catch (e) {
+            debugPrint('⚠️ Erreur publication Skill Permit pour $tag: $e');
+            // Continuer avec les autres tags même si un échoue
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur générale publication Skill Permits: $e');
+      }
+    });
+  }
+  
   Future<void> _completeOnboarding() async {
     // Valider les identifiants avant de continuer
     if (!_validateCredentials()) {
@@ -481,6 +511,17 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           g1pub: user.g1pub,
           tags: state.activityTags,  // ✅ Tags d'activité/centres d'intérêt
         );
+        
+        // ✅ NOUVEAU: Publier les Skill Permits en arrière-plan (ne pas attendre)
+        // Cela permet de ne pas ralentir la finalisation de l'onboarding
+        if (state.activityTags != null && state.activityTags!.isNotEmpty) {
+          _publishSkillPermitsInBackground(
+            nostrService: nostrService,
+            npub: user.npub,
+            nsec: user.nsec,
+            skillTags: state.activityTags!,
+          );
+        }
         
         await nostrService.disconnect();
       } catch (e) {

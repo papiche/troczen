@@ -164,6 +164,10 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       _nfcService.stopSession();
       _playSound('error');
       _vibrateError();
+      // ✅ WAL: Annuler le verrou en cas de timeout
+      if (widget.isDonor) {
+        _storageService.cancelTransferLock(widget.bon.bonId);
+      }
     }
   }
 
@@ -185,15 +189,29 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
 
   Future<void> _startNfcDonor() async {
     try {
+      // ✅ WAL: Verrouiller le bon AVANT toute opération
+      _challenge = DateTime.now().millisecondsSinceEpoch.toRadixString(16);
+      final lockedBon = await _storageService.lockBonForTransfer(
+        widget.bon.bonId,
+        challenge: _challenge,
+        ttlSeconds: 180, // 3 minutes pour NFC
+      );
+      
+      if (lockedBon == null) {
+        throw Exception('Impossible de verrouiller le bon. Il est peut-être déjà en cours de transfert.');
+      }
+
       final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
-      if (p3 == null) throw Exception('P3 non disponible');
+      if (p3 == null) {
+        // ✅ WAL: Annuler le verrou en cas d'erreur
+        await _storageService.cancelTransferLock(widget.bon.bonId);
+        throw Exception('P3 non disponible');
+      }
 
       final p2Encrypted = await _cryptoService.encryptP2(
-        widget.bon.p2!,
+        lockedBon.p2!, // Utiliser le bon verrouillé
         p3,
       );
-
-      _challenge = DateTime.now().millisecondsSinceEpoch.toString();
 
       _nfcService.onStatusChange = (message) {
         if (mounted) setState(() => _statusMessage = message);
@@ -205,11 +223,13 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
 
       _nfcService.onError = (error) {
         _handleError(error);
+        // ✅ WAL: Annuler le verrou en cas d'erreur
+        _storageService.cancelTransferLock(widget.bon.bonId);
         _switchToQrMode();
       };
 
       await _nfcService.startOfferSession(
-        bonId: widget.bon.bonId,
+        bonId: lockedBon.bonId,
         p2Encrypted: p2Encrypted['ciphertext']!,
         nonce: p2Encrypted['nonce']!,
         challenge: _challenge!,
@@ -217,6 +237,8 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       );
     } catch (e) {
       _handleError('Erreur préparation NFC: $e');
+      // ✅ WAL: Annuler le verrou en cas d'erreur
+      await _storageService.cancelTransferLock(widget.bon.bonId);
       _switchToQrMode();
     }
   }
@@ -318,13 +340,16 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       final isValid = ackData['signature'].length == 128;
       if (!isValid) throw Exception('Signature ACK invalide');
 
-      // Marquer bon comme dépensé et supprimer P2
-      final updatedBon = widget.bon.copyWith(
-        status: BonStatus.spent,
-        p2: null, // CRITIQUE: Supprimer P2 pour éviter double-spend
-        transferCount: (widget.bon.transferCount ?? 0) + 1,
+      // ✅ WAL: Utiliser la méthode atomique pour confirmer le transfert
+      // Cette méthode vérifie le challenge et supprime P2 de manière atomique
+      final success = await _storageService.confirmTransferAndRemoveP2(
+        widget.bon.bonId,
+        _challenge!,
       );
-      await _storageService.saveBon(updatedBon);
+      
+      if (!success) {
+        throw Exception('Échec de la confirmation du transfert. Le bon n\'était peut-être pas verrouillé.');
+      }
 
       // Succès
       _playSound('success');
@@ -341,6 +366,8 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       });
     } catch (e) {
       _handleError('Vérification ACK échouée: $e');
+      // ✅ WAL: Annuler le verrou en cas d'erreur
+      await _storageService.cancelTransferLock(widget.bon.bonId);
     }
   }
 
@@ -348,17 +375,32 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
 
   Future<void> _generateQrOffer() async {
     try {
-      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
-      if (p3 == null) throw Exception('P3 non disponible');
+      // ✅ WAL: Verrouiller le bon AVANT de générer le QR
+      _challenge = DateTime.now().millisecondsSinceEpoch.toRadixString(16);
+      final lockedBon = await _storageService.lockBonForTransfer(
+        widget.bon.bonId,
+        challenge: _challenge,
+        ttlSeconds: 150, // 2.5 minutes pour QR (TTL QR = 120s)
+      );
+      
+      if (lockedBon == null) {
+        throw Exception('Impossible de verrouiller le bon. Il est peut-être déjà en cours de transfert.');
+      }
 
-      final p2Encrypted = await _cryptoService.encryptP2(widget.bon.p2!, p3);
-      _challenge = DateTime.now().millisecondsSinceEpoch.toString();
+      final p3 = await _storageService.getP3FromCache(lockedBon.bonId);
+      if (p3 == null) {
+        await _storageService.cancelTransferLock(lockedBon.bonId);
+        throw Exception('P3 non disponible');
+      }
+
+      final p2Encrypted = await _cryptoService.encryptP2(lockedBon.p2!, p3);
 
       // Signer le QR avec la clé du bon
-      final p2Bytes = widget.bon.p2Bytes;
-      final p3Bytes = await _storageService.getP3FromCacheBytes(widget.bon.bonId);
+      final p2Bytes = lockedBon.p2Bytes;
+      final p3Bytes = await _storageService.getP3FromCacheBytes(lockedBon.bonId);
       
       if (p2Bytes == null || p3Bytes == null) {
+        await _storageService.cancelTransferLock(lockedBon.bonId);
         throw Exception('Parts P2 ou P3 non disponibles');
       }
       
@@ -369,7 +411,7 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       );
       
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final messageToSign = widget.bon.bonId +
+      final messageToSign = lockedBon.bonId +
           p2Encrypted['ciphertext']! +
           p2Encrypted['nonce']! +
           _challenge! +
@@ -382,7 +424,7 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
       final qrBytes = _qrService.encodeOffer(
-        bonIdHex: widget.bon.bonId,
+        bonIdHex: lockedBon.bonId,
         p2CipherHex: p2Encrypted['ciphertext']!,
         nonceHex: p2Encrypted['nonce']!,
         challengeHex: _challenge!,

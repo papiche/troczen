@@ -7,8 +7,15 @@ import 'logger_service.dart';
 import '../models/bon.dart';
 import '../models/nostr_profile.dart';
 
-/// ✅ Service de révocation/burn de bons (kind 5)
-/// Permet à l'émetteur de détruire un bon avec P1+P3
+/// ✅ Service de Révélation/Circuit de bons
+///
+/// Le terme "Burn" (brûler/détruire) vient de la crypto classique.
+/// Dans TrocZen, fermer une boucle ne détruit pas la valeur, cela crée de l'information.
+/// Le Carnet de Voyage devient une preuve économique (Kind 30304).
+///
+/// Ce service combine:
+/// - Kind 5: Burn classique (révocation technique)
+/// - Kind 30304: Révélation du Circuit (preuve économique)
 class BurnService {
   final CryptoService _cryptoService;
   final StorageService _storageService;
@@ -19,12 +26,16 @@ class BurnService {
   })  : _cryptoService = cryptoService,
         _storageService = storageService;
 
-  /// Brûler/révoquer un bon (émetteur uniquement)
+  /// Révéler/Clore le circuit d'un bon (émetteur uniquement)
   /// Nécessite P1 (ancre) + P3 (témoin)
+  ///
+  /// En plus du Kind 5 (Burn), publie un Kind 30304 (Circuit/Révélation)
+  /// qui transforme le parcours du bon en preuve économique.
   Future<bool> burnBon({
     required Bon bon,
     required String p1,
     required String reason,
+    String? skillAnnotation,  // ✅ Bonus: Compétence associée au parcours
   }) async {
     try {
       // 1. ✅ SÉCURITÉ: Récupérer P3 du cache en Uint8List directement
@@ -39,7 +50,14 @@ class BurnService {
       // 3. ✅ SÉCURITÉ: Reconstruire sk_B temporairement en Uint8List (P1 + P3)
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes);
 
-      // 3. Publier event kind 5 sur Nostr
+      // 4. Extraire les données du parcours pour la Révélation
+      final hopCount = bon.transferCount ?? 0;
+      final ageDays = DateTime.now().difference(bon.createdAt).inDays;
+      
+      Logger.log('BurnService',
+          'Révélation circuit: ${bon.bonId} | ${bon.value}ẐEN | $hopCount hops | $ageDays jours');
+
+      // 5. Publier les events sur Nostr
       final nostrService = NostrService(
         cryptoService: _cryptoService,
         storageService: _storageService,
@@ -57,7 +75,28 @@ class BurnService {
         throw Exception('Impossible de se connecter au relais');
       }
 
-      // ✅ SÉCURITÉ: Utiliser la version Uint8List de publishBurn
+      // 6. ✅ NOUVEAU: Publier la Révélation du Circuit (Kind 30304)
+      // Le Carnet de Voyage devient une preuve économique
+      final circuitPublished = await nostrService.publishBonCircuit(
+        bonId: bon.bonId,
+        valueZen: bon.value,
+        hopCount: hopCount,
+        ageDays: ageDays,
+        marketName: market?.name ?? NostrConstants.globalMarketName,
+        issuerNpub: bon.issuerNpub,
+        nsecBonBytes: nsecBonBytes,
+        skillAnnotation: skillAnnotation ?? bon.specialAbility,  // Bonus: compétence associée
+        rarity: bon.rarity,
+        cardType: bon.cardType,
+      );
+      
+      if (circuitPublished) {
+        Logger.log('BurnService', '✅ Circuit révélé (Kind 30304)');
+      } else {
+        Logger.warn('BurnService', '⚠️ Échec publication Circuit (Kind 30304)');
+      }
+
+      // 7. ✅ SÉCURITÉ: Utiliser la version Uint8List de publishBurn
       final burned = await nostrService.publishBurnBytes(
         bonId: bon.bonId,
         nsecBonBytes: nsecBonBytes,
@@ -80,25 +119,47 @@ class BurnService {
       _cryptoService.secureZeroiseBytes(p1Bytes);
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
-      // 4. Marquer le bon comme brûlé localement
+      // 8. Marquer le bon comme révélé/clos localement
       final burnedBon = bon.copyWith(
         status: BonStatus.burned,
         p1: null,  // Supprime P1 après burn
       );
       await _storageService.saveBon(burnedBon);
 
+      Logger.log('BurnService',
+          '🎉 Bon révélé: ${bon.bonId} | Circuit: $hopCount hops, $ageDays jours');
+      
       return true;
     } catch (e) {
-      Logger.error('BurnService', 'Erreur burn', e);
+      Logger.error('BurnService', 'Erreur burn/révélation', e);
       return false;
     }
   }
 
-  /// Vérifier si un bon a été brûlé via Nostr
+  /// Vérifier si un bon a été brûlé/révélé via Nostr
   Future<bool> isBonBurned(String bonId) async {
     // TODO: Vérifier via Nostr si event kind 5 existe pour ce bon
     // Pour l'instant, vérifier localement
     final bon = await _storageService.getBonById(bonId);
     return bon?.status == BonStatus.burned;
+  }
+  
+  /// ✅ NOUVEAU: Récupérer les statistiques de circuit d'un bon
+  /// Utile pour afficher le résumé avant révélation
+  Map<String, dynamic> getCircuitStats(Bon bon) {
+    final hopCount = bon.transferCount ?? 0;
+    final ageDays = DateTime.now().difference(bon.createdAt).inDays;
+    
+    return {
+      'bon_id': bon.bonId,
+      'value_zen': bon.value,
+      'hop_count': hopCount,
+      'age_days': ageDays,
+      'market': bon.marketName,
+      'rarity': bon.rarity ?? 'common',
+      'card_type': bon.cardType ?? 'commerce',
+      'skill': bon.specialAbility,
+      'created_at': bon.createdAt.toIso8601String(),
+    };
   }
 }
