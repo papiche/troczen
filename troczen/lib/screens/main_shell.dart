@@ -12,6 +12,7 @@ import 'create_bon_screen.dart';
 import 'settings_screen.dart';
 import 'logs_screen.dart';
 import 'feedback_screen.dart';
+import 'apk_share_screen.dart';
 import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
@@ -325,6 +326,34 @@ class _MainShellState extends State<MainShell> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
+                  // ✅ PARTAGE APK : Accessible à TOUS les modes (propagation virale)
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFB347).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.share, color: Color(0xFFFFB347)),
+                    ),
+                    title: const Text(
+                      '📤 Partager TrocZen',
+                      style: TextStyle(
+                        color: Color(0xFFFFB347),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Diffuser l\'app à un smartphone proche (QR Code)',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFB347), size: 16),
+                    onTap: () => _navigateToApkShare(),
+                  ),
+                  
+                  const Divider(color: Colors.white24),
+                  
                   // ✅ FEEDBACK : Accessible à TOUS les modes (priorité utilisateur)
                   ListTile(
                     leading: const Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
@@ -487,6 +516,16 @@ class _MainShellState extends State<MainShell> {
       context,
       MaterialPageRoute(
         builder: (context) => FeedbackScreen(user: widget.user),
+      ),
+    );
+  }
+  
+  void _navigateToApkShare() {
+    Navigator.pop(context); // Fermer le drawer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ApkShareScreen(),
       ),
     );
   }
