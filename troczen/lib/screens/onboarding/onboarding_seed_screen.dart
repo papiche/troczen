@@ -69,8 +69,8 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
           // Option 1: Scanner
           _buildOptionCard(
             icon: Icons.qr_code_scanner,
-            title: 'Scanner une Seed',
-            description: 'Rejoindre un marché existant en scannant un QR code',
+            title: 'Scanner un QR Code',
+            description: 'Rejoindre un marché existant (idéal pour débuter)',
             mode: 'scan',
             onTap: () => _showScannerDialog(),
           ),
@@ -80,8 +80,8 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
           // Option 2: Générer
           _buildOptionCard(
             icon: Icons.auto_awesome,
-            title: 'Générer une Seed',
-            description: 'Créer un nouveau marché avec une seed sécurisée',
+            title: 'Créer un nouveau marché',
+            description: 'Générer une clé sécurisée pour lancer votre marché',
             mode: 'generate',
             onTap: () => _generateSecureSeed(),
           ),
@@ -91,8 +91,8 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
           // Option 3: Mode 000 (Hackathon)
           _buildOptionCard(
             icon: Icons.warning_amber,
-            title: 'Mode 000 (Hackathon)',
-            description: 'Seed faible pour tests et défis de sécurité',
+            title: 'Mode Test (000)',
+            description: 'Mode développeur - Sécurité faible pour démonstration',
             mode: 'mode000',
             iconColor: Colors.orange,
             onTap: () => _showMode000Confirmation(),
@@ -189,7 +189,7 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
         ),
         const SizedBox(height: 16),
         const Text(
-          'Seed générée avec succès !',
+          'Clé de votre marché créée !',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -197,53 +197,105 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 32),
-        
-        // QR Code
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: QrImageView(
-            data: _generatedSeed!,
-            version: QrVersions.auto,
-            size: 200,
-            backgroundColor: Colors.white,
-          ),
-        ),
-        
-        const SizedBox(height: 24),
-        
+        const SizedBox(height: 8),
         Text(
-          'Partagez ce QR code pour inviter d\'autres participants',
+          'Voici le QR code à partager avec vos commerçants',
           style: TextStyle(
             fontSize: 14,
             color: Colors.grey[400],
           ),
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: 32),
+        
+        // QR Code avec message pédagogique
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFB347).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              QrImageView(
+                data: _generatedSeed!,
+                version: QrVersions.auto,
+                size: 200,
+                backgroundColor: Colors.white,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB347).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '📱 Scanner = Rejoindre',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFFB347),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Instruction pédagogique
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A2A2A),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Color(0xFFFFB347), size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Imprimez ou partagez ce QR pour inviter d\'autres participants à votre marché local',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[300],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         
         const SizedBox(height: 16),
         
-        // Bouton copier
+        // Bouton copier (optionnel pour utilisateurs avancés)
         OutlinedButton.icon(
           onPressed: () {
             Clipboard.setData(ClipboardData(text: _generatedSeed!));
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Seed copiée dans le presse-papiers'),
+                content: Text('✅ Clé copiée (pour utilisateurs avancés)'),
                 backgroundColor: Colors.green,
               ),
             );
           },
-          icon: const Icon(Icons.copy),
-          label: const Text('Copier la seed'),
+          icon: const Icon(Icons.copy, size: 18),
+          label: const Text('Copier la clé (avancé)', style: TextStyle(fontSize: 12)),
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFFFFB347),
-            side: const BorderSide(color: Color(0xFFFFB347)),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            foregroundColor: Colors.grey[400],
+            side: BorderSide(color: Colors.grey[700]!),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
         ),
         

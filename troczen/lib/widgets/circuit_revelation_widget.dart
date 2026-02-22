@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../services/logger_service.dart';
 
 /// Widget animé pour la Révélation du Circuit d'un bon.
@@ -52,9 +53,12 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
   late AnimationController _pulseController;
   late AnimationController _particleController;
   late AnimationController _ringController;
+  late AnimationController _confettiController;
   late Animation<double> _pulseAnimation;
   late List<CircuitParticle> _particles;
+  late List<Confetti> _confettiList;
   final Random _random = Random();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -78,13 +82,23 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
       vsync: this,
     );
     
+    // Contrôleur pour les confettis (3 secondes de chute)
+    _confettiController = AnimationController(
+      duration: const Duration(milliseconds: 3500),
+      vsync: this,
+    );
+    
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
       curve: Curves.elasticOut,
     );
     
-    // Générer les particules
+    // Générer les particules et confettis
     _particles = _generateParticles(25);
+    _confettiList = _generateConfetti(40);
+    
+    // 🎵 JOUER LE SON DE CÉLÉBRATION
+    _playCelebrationSound();
     
     // Démarrer les animations en séquence
     _pulseController.forward();
@@ -92,6 +106,7 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
       if (mounted) {
         _particleController.forward();
         _ringController.forward();
+        _confettiController.forward(); // Démarrer les confettis
       }
     });
     
@@ -101,6 +116,16 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
       '🎉 Circuit révélé: ${widget.bonId?.substring(0, 8) ?? "N/A"}... | '
       '${widget.valueZen ?? 0}ẐEN | ${widget.hopCount ?? 0} hops | ${widget.ageDays ?? 0} jours',
     );
+  }
+  
+  /// Joue le son de célébration (bol tibétain)
+  Future<void> _playCelebrationSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/bowl.mp3'));
+      Logger.log('CircuitRevelation', '🔊 Son de célébration joué');
+    } catch (e) {
+      Logger.warn('CircuitRevelation', 'Impossible de jouer le son: $e');
+    }
   }
 
   List<CircuitParticle> _generateParticles(int count) {
@@ -130,12 +155,48 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
     
     return particles;
   }
+  
+  /// Génère les confettis qui tombent
+  List<Confetti> _generateConfetti(int count) {
+    final confettiList = <Confetti>[];
+    
+    // Couleurs festives : vert, violet, doré, bleu
+    final colors = [
+      Colors.green.shade400,
+      Colors.purple.shade400,
+      Colors.amber.shade400,
+      Colors.blue.shade400,
+      Colors.pink.shade300,
+      Colors.teal.shade300,
+    ];
+    
+    // Formes de confettis
+    final shapes = [ConfettiShape.rectangle, ConfettiShape.circle, ConfettiShape.star];
+    
+    for (int i = 0; i < count; i++) {
+      confettiList.add(Confetti(
+        x: _random.nextDouble(),  // Position X relative (0-1)
+        y: -_random.nextDouble() * 0.3,  // Commence au-dessus de l'écran
+        velocityY: 0.3 + _random.nextDouble() * 0.4,  // Vitesse de chute
+        velocityX: (_random.nextDouble() - 0.5) * 0.1,  // Dérive horizontale
+        rotation: _random.nextDouble() * 2 * pi,
+        rotationSpeed: (_random.nextDouble() - 0.5) * 4,
+        size: 6 + _random.nextDouble() * 8,
+        color: colors[_random.nextInt(colors.length)],
+        shape: shapes[_random.nextInt(shapes.length)],
+      ));
+    }
+    
+    return confettiList;
+  }
 
   @override
   void dispose() {
     _pulseController.dispose();
     _particleController.dispose();
     _ringController.dispose();
+    _confettiController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -171,13 +232,30 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Animation centrale
+            // Animation centrale avec confettis
             SizedBox(
               width: widget.size,
               height: widget.size,
               child: Stack(
                 alignment: Alignment.center,
+                clipBehavior: Clip.none,
                 children: [
+                  // ✨ CONFETTIS qui tombent (en arrière-plan)
+                  Positioned.fill(
+                    child: AnimatedBuilder(
+                      animation: _confettiController,
+                      builder: (context, child) {
+                        return CustomPaint(
+                          size: Size(widget.size, widget.size),
+                          painter: ConfettiPainter(
+                            confettiList: _confettiList,
+                            progress: _confettiController.value,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  
                   // Anneaux concentriques animés
                   AnimatedBuilder(
                     animation: _ringController,
@@ -235,7 +313,7 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
                               ],
                             ),
                             child: const Icon(
-                              Icons.all_inclusive,  // Symbole infini - boucle
+                              Icons.celebration,  // Icône de célébration
                               size: 50,
                               color: Colors.white,
                             ),
@@ -250,11 +328,11 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
             
             const SizedBox(height: 16),
             
-            // Titre
+            // Titre avec émoji de fête
             Text(
-              '🔄 Circuit Révélé',
+              '🎉 Circuit Révélé !',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 foreground: Paint()
                   ..shader = LinearGradient(
@@ -357,24 +435,32 @@ class _CircuitRevelationWidgetState extends State<CircuitRevelationWidget>
             
             const SizedBox(height: 20),
             
-            // Bouton de fermeture
-            ElevatedButton.icon(
-              onPressed: widget.onClose,
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Excellent !'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                elevation: 4,
-                shadowColor: Colors.green.withValues(alpha: 0.4),
-              ),
+            // Bouton de fermeture avec animation
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: 0.95 + (_pulseController.value * 0.05),
+                  child: ElevatedButton.icon(
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.celebration_outlined),
+                    label: const Text('Magnifique ! 🎊'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      elevation: 4,
+                      shadowColor: Colors.green.withValues(alpha: 0.4),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -529,6 +615,123 @@ class RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant RingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+/// Modèle de confetti
+class Confetti {
+  final double x;  // Position X relative (0-1)
+  final double y;  // Position Y relative (0-1)
+  final double velocityY;  // Vitesse verticale
+  final double velocityX;  // Vitesse horizontale (dérive)
+  final double rotation;  // Rotation initiale
+  final double rotationSpeed;  // Vitesse de rotation
+  final double size;
+  final Color color;
+  final ConfettiShape shape;
+
+  Confetti({
+    required this.x,
+    required this.y,
+    required this.velocityY,
+    required this.velocityX,
+    required this.rotation,
+    required this.rotationSpeed,
+    required this.size,
+    required this.color,
+    required this.shape,
+  });
+}
+
+/// Formes de confettis
+enum ConfettiShape { rectangle, circle, star }
+
+/// Peintre pour les confettis qui tombent
+class ConfettiPainter extends CustomPainter {
+  final List<Confetti> confettiList;
+  final double progress;
+
+  ConfettiPainter({
+    required this.confettiList,
+    required this.progress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final confetti in confettiList) {
+      // Calculer la position actuelle (chute avec dérive)
+      final currentY = confetti.y + progress * confetti.velocityY;
+      final currentX = confetti.x + progress * confetti.velocityX;
+      
+      // Ne dessiner que si visible
+      if (currentY > 1.2) continue;
+      
+      // Position absolue
+      final x = currentX * size.width;
+      final y = currentY * size.height;
+      
+      // Rotation actuelle
+      final rotation = confetti.rotation + progress * confetti.rotationSpeed;
+      
+      // Opacité (fade out vers la fin)
+      final opacity = currentY < 1.0 ? 1.0 : (1.2 - currentY) / 0.2;
+      
+      final paint = Paint()
+        ..color = confetti.color.withValues(alpha: opacity.clamp(0.0, 1.0))
+        ..style = PaintingStyle.fill;
+      
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(rotation);
+      
+      switch (confetti.shape) {
+        case ConfettiShape.rectangle:
+          canvas.drawRect(
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: confetti.size,
+              height: confetti.size * 1.5,
+            ),
+            paint,
+          );
+          break;
+        case ConfettiShape.circle:
+          canvas.drawCircle(Offset.zero, confetti.size / 2, paint);
+          break;
+        case ConfettiShape.star:
+          _drawStar(canvas, Offset.zero, confetti.size, paint);
+          break;
+      }
+      
+      canvas.restore();
+    }
+  }
+  
+  void _drawStar(Canvas canvas, Offset center, double size, Paint paint) {
+    final path = Path();
+    const points = 5;
+    const innerRadius = 0.4;
+    
+    for (int i = 0; i < points * 2; i++) {
+      final radius = i.isEven ? size / 2 : size / 2 * innerRadius;
+      final angle = (i * pi / points) - pi / 2;
+      final x = center.dx + cos(angle) * radius;
+      final y = center.dy + sin(angle) * radius;
+      
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant ConfettiPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
 }

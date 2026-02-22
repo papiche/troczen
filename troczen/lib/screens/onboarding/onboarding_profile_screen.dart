@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/app_config.dart';
+import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/nostr_service.dart';
@@ -38,11 +39,14 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   
   File? _selectedProfileImage;
-  bool _uploadingImage = false;
   bool _loadingDynamicTags = false;
   
   /// ✅ v2.0.2: Miniature base64 pour l'événement Nostr (offline-first)
+  /// Cette miniature est affichée instantanément, l'upload IPFS se fait en arrière-plan
   String? _base64Avatar;
+  
+  /// URL IPFS une fois l'upload terminé (optionnel, en arrière-plan)
+  String? _ipfsAvatarUrl;
   
   // Les skills prédéfinis sont maintenant centralisés dans AppConfig.defaultSkills
   
@@ -407,7 +411,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
               Expanded(
                 flex: widget.onBack != null ? 2 : 1,
                 child: ElevatedButton(
-                  onPressed: _uploadingImage ? null : _saveAndContinue,
+                  onPressed: _saveAndContinue,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFB347),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -415,23 +419,14 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _uploadingImage
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.black,
-                          ),
-                        )
-                      : const Text(
-                          'Continuer',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
+                  child: const Text(
+                    'Continuer',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -662,50 +657,11 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     final notifier = context.read<OnboardingNotifier>();
     final state = notifier.state;
     
-    String? pictureUrl;
+    // ✅ UX OFFLINE-FIRST: Toujours utiliser la miniature base64 instantanée
+    // L'utilisateur peut continuer immédiatement, l'upload IPFS se fait en arrière-plan
+    String? pictureUrl = _base64Avatar;
     
-    // ✅ v2.0.2: Toujours utiliser la miniature base64 comme fallback
-    // Elle sera incluse dans l'événement Nostr et fonctionnera offline
-    pictureUrl = _base64Avatar;
-    
-    // Upload de l'avatar vers IPFS si une image a été sélectionnée
-    // (optionnel, pour avoir une URL permanente décentralisée)
-    if (_selectedProfileImage != null) {
-      setState(() => _uploadingImage = true);
-      
-      try {
-        // Récupérer le npub de l'utilisateur (généré lors de l'étape seed)
-        final storageService = StorageService();
-        final user = await storageService.getUser();
-        
-        if (user != null) {
-          final apiService = ApiService();
-          // Configurer l'URL de l'API selon l'état de l'onboarding
-          apiService.setCustomApi(state.apiUrl, state.relayUrl);
-          final result = await apiService.uploadImage(
-            npub: user.npub,
-            imageFile: _selectedProfileImage!,
-            type: 'avatar',
-            waitForIpfs: false, // Ne pas bloquer, on a déjà le base64
-          );
-          
-          if (result != null) {
-            // Utiliser ipfs_url en priorité, sinon garder le base64
-            final ipfsUrl = result['ipfs_url'] ?? result['url'];
-            if (ipfsUrl != null && ipfsUrl.isNotEmpty) {
-              pictureUrl = ipfsUrl;
-              Logger.success('OnboardingProfile', 'Avatar uploadé: $ipfsUrl');
-            }
-          }
-        }
-      } catch (e) {
-        Logger.warn('OnboardingProfile', 'Upload avatar échoué, utilisation base64: $e');
-        // Continuer avec le base64 - c'est le fallback offline-first
-      } finally {
-        setState(() => _uploadingImage = false);
-      }
-    }
-    
+    // Sauvegarder le profil immédiatement avec le base64
     notifier.setProfile(
       displayName: _displayNameController.text.trim(),
       about: _aboutController.text.trim().isEmpty
@@ -717,8 +673,64 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
       pictureUrl: pictureUrl,
     );
     
-    Logger.log('OnboardingProfile', 'Profil configuré avec pictureUrl: ${pictureUrl != null ? "${pictureUrl.length} chars" : "null"}');
+    Logger.log('OnboardingProfile', 'Profil configuré avec base64: ${pictureUrl != null ? "${pictureUrl.length} chars" : "null"}');
     
+    // ✅ UX: Upload IPFS en arrière-plan silencieux (non bloquant)
+    // L'utilisateur a déjà continué, cet upload est optionnel et améliore la performance
+    if (_selectedProfileImage != null && _ipfsAvatarUrl == null) {
+      _uploadAvatarToIPFSInBackground(state);
+    }
+    
+    // Continuer immédiatement
     widget.onNext();
+  }
+  
+  /// Upload IPFS en arrière-plan (fire-and-forget)
+  /// Amélioration progressive : si l'upload réussit, l'URL IPFS sera disponible plus tard
+  void _uploadAvatarToIPFSInBackground(state) async {
+    try {
+      Logger.info('OnboardingProfile', 'Démarrage upload IPFS en arrière-plan...');
+      
+      final storageService = StorageService();
+      final user = await storageService.getUser();
+      
+      if (user != null && _selectedProfileImage != null) {
+        final apiService = ApiService();
+        apiService.setCustomApi(state.apiUrl, state.relayUrl);
+        
+        final result = await apiService.uploadImage(
+          npub: user.npub,
+          imageFile: _selectedProfileImage!,
+          type: 'avatar',
+          waitForIpfs: false,
+        );
+        
+        if (result != null) {
+          final ipfsUrl = result['ipfs_url'] ?? result['url'];
+          if (ipfsUrl != null && ipfsUrl.isNotEmpty) {
+            _ipfsAvatarUrl = ipfsUrl;
+            Logger.success('OnboardingProfile', '✅ Upload IPFS terminé en arrière-plan: $ipfsUrl');
+            
+            // Optionnel: Mettre à jour le profil stocké avec l'URL IPFS
+            // (l'utilisateur a déjà continué, c'est juste pour la prochaine fois)
+            final updatedUser = User(
+              npub: user.npub,
+              nsec: user.nsec,
+              displayName: user.displayName,
+              createdAt: user.createdAt,
+              website: user.website,
+              g1pub: user.g1pub,
+              picture: ipfsUrl,  // Mise à jour avec l'URL IPFS
+              relayUrl: user.relayUrl,
+              activityTags: user.activityTags,
+            );
+            await storageService.saveUser(updatedUser);
+          }
+        }
+      }
+    } catch (e) {
+      Logger.warn('OnboardingProfile', 'Upload IPFS arrière-plan échoué (non bloquant): $e');
+      // Pas grave, le base64 fonctionne déjà
+    }
   }
 }

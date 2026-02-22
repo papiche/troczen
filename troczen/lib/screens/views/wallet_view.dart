@@ -860,7 +860,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Encaissez ce bon pour fermer la boucle et récupérer la valeur.',
+                        'Bouclez le circuit pour révéler le parcours accompli et célébrer la valeur créée.',
                         style: TextStyle(
                           color: Colors.grey.shade400,
                           fontSize: 12,
@@ -874,9 +874,9 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () => _confirmBurnBon(bon),
-                    icon: const Icon(Icons.local_fire_department, color: Colors.white),
+                    icon: const Icon(Icons.celebration, color: Colors.white),
                     label: const Text(
-                      '🔥 ENCAISSER / DÉTRUIRE',
+                      '🎉 BOUCLER LE CIRCUIT',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -976,10 +976,10 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         backgroundColor: const Color(0xFF1E1E1E),
         title: Row(
           children: [
-            Icon(Icons.local_fire_department, color: Colors.orange.shade400),
+            Icon(Icons.celebration, color: Colors.orange.shade400),
             const SizedBox(width: 8),
             const Text(
-              'Encaisser ce bon ?',
+              'Boucler le circuit ?',
               style: TextStyle(color: Colors.white),
             ),
           ],
@@ -989,26 +989,26 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Vous êtes sur le point d\'encaisser ce bon de ${bon.value.toStringAsFixed(2)} ẐEN.',
+              'Vous êtes sur le point de révéler le parcours de ce bon de ${bon.value.toStringAsFixed(2)} ẐEN.',
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.2),
+                color: Colors.green.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  const Icon(Icons.celebration, color: Colors.green, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'La boucle est bouclée ! Ce bon sera définitivement détruit.',
+                      'Le circuit est complet ! Le bon sera révélé comme preuve économique (Kind 30304).',
                       style: TextStyle(
-                        color: Colors.orange.shade300,
+                        color: Colors.green.shade300,
                         fontSize: 12,
                       ),
                     ),
@@ -1028,13 +1028,13 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               Navigator.pop(context);
               await _burnBon(bon);
             },
-            icon: const Icon(Icons.local_fire_department, color: Colors.white),
+            icon: const Icon(Icons.celebration, color: Colors.white),
             label: const Text(
-              'ENCAISSER',
+              'BOUCLER',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: Colors.green,
             ),
           ),
         ],
