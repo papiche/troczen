@@ -816,6 +816,9 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   }
 
   Widget _buildProfileCard(NostrProfile profile) {
+    // ✅ WOTX2: Récupérer les badges de compétences
+    final skillBadges = profile.getSkillBadges();
+    
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
@@ -832,24 +835,35 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar
+                // Avatar avec badge de niveau si credential
                 Center(
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundColor: const Color(0xFFFFB347),
-                    backgroundImage: profile.picture != null && profile.picture!.isNotEmpty
-                        ? NetworkImage(profile.picture!)
-                        : null,
-                    child: profile.picture == null || profile.picture!.isEmpty
-                        ? Text(
-                            profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: const Color(0xFFFFB347),
+                        backgroundImage: profile.picture != null && profile.picture!.isNotEmpty
+                            ? NetworkImage(profile.picture!)
+                            : null,
+                        child: profile.picture == null || profile.picture!.isEmpty
+                            ? Text(
+                                profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
+                      // ✅ WOTX2: Badge de niveau max sur l'avatar
+                      if (profile.skillCredentials != null && profile.skillCredentials!.isNotEmpty)
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: _buildMaxLevelBadge(profile.skillCredentials!),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -866,6 +880,18 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                 ),
+                
+                // ✅ WOTX2: Afficher les badges de compétences
+                if (skillBadges.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.center,
+                    children: skillBadges.take(3).map((badge) => _buildSkillBadge(badge)).toList(),
+                  ),
+                ],
+                
                 const Spacer(),
                 
                 // Bouton créer bon
@@ -896,6 +922,71 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         ),
       ),
     );
+  }
+  
+  /// ✅ WOTX2: Construit le badge de niveau max pour l'avatar
+  Widget _buildMaxLevelBadge(List<SkillCredential> credentials) {
+    final maxLevel = credentials.map((c) => c.level).reduce((a, b) => a > b ? a : b);
+    final color = _getLevelColor(maxLevel);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.5),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        'X$maxLevel',
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+  
+  /// ✅ WOTX2: Construit un badge de compétence individuel
+  Widget _buildSkillBadge(String badgeText) {
+    // Extraire le niveau du texte (ex: "maraîchage X2" → niveau 2)
+    final levelMatch = RegExp(r'X(\d+)$').firstMatch(badgeText);
+    final level = levelMatch != null ? int.parse(levelMatch.group(1)!) : 1;
+    final color = _getLevelColor(level);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.5), width: 1),
+      ),
+      child: Text(
+        badgeText,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+  
+  /// ✅ WOTX2: Couleur selon le niveau de credential
+  Color _getLevelColor(int level) {
+    switch (level) {
+      case 1: return const Color(0xFF4CAF50); // Vert
+      case 2: return const Color(0xFF2196F3); // Bleu
+      case 3: return const Color(0xFF9C27B0); // Violet
+      default: return const Color(0xFF9E9E9E); // Gris
+    }
   }
 
   void _showProfileDetails(NostrProfile profile) {
@@ -1031,6 +1122,168 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   // ============================================================
   // SOUS-ONGLET 3 : SAVOIR-FAIRE (WOTX - Mode Expert)
   // ============================================================
+  
+  /// ✅ WOTX2: Construit la section affichant les credentials de l'utilisateur
+  Widget _buildMyCredentialsSection() {
+    // Récupérer les credentials depuis le profil utilisateur
+    // Pour l'instant, on simule avec les activityTags
+    final activityTags = widget.user.activityTags ?? <String>[];
+    
+    // TODO: Charger les vrais credentials depuis Nostr (Kind 30503)
+    // Pour la démo, on affiche les compétences déclarées
+    final hasCredentials = activityTags.isNotEmpty;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: hasCredentials
+              ? [const Color(0xFF4CAF50).withOpacity(0.2), const Color(0xFF2196F3).withOpacity(0.2)]
+              : [const Color(0xFF2A2A2A), const Color(0xFF2A2A2A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasCredentials
+              ? const Color(0xFF4CAF50).withOpacity(0.5)
+              : Colors.white24,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasCredentials ? Icons.verified : Icons.verified_outlined,
+                color: hasCredentials ? const Color(0xFF4CAF50) : Colors.grey,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Mes certifications',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: hasCredentials ? const Color(0xFF4CAF50) : Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          if (hasCredentials) ...[
+            // Afficher les badges de compétences
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: activityTags.map((skill) {
+                // Pour l'instant, on affiche X1 par défaut
+                // TODO: Récupérer le vrai niveau depuis les credentials Kind 30503
+                return _buildMySkillBadge(skill, level: 1);
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Les badges X1, X2, X3 sont délivrés par l\'Oracle TrocZen Box '
+              'après vérification de vos compétences par vos pairs.',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[400],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Aucune certification pour le moment.\n'
+              'Déclarez vos compétences dans votre profil pour recevoir des attestations.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[400],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  /// ✅ WOTX2: Construit un badge de compétence pour l'utilisateur courant
+  Widget _buildMySkillBadge(String skill, {required int level}) {
+    final color = _getLevelColor(level);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _getSkillIcon(skill),
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            skill,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'X$level',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// ✅ WOTX2: Retourne l'icône associée à une compétence
+  IconData _getSkillIcon(String skill) {
+    final skillLower = skill.toLowerCase();
+    if (skillLower.contains('maraîch') || skillLower.contains('jardin') || skillLower.contains('agricult')) {
+      return Icons.grass;
+    } else if (skillLower.contains('boulanger') || skillLower.contains('pain')) {
+      return Icons.bakery_dining;
+    } else if (skillLower.contains('boucher') || skillLower.contains('viande')) {
+      return Icons.set_meal;
+    } else if (skillLower.contains('informatique') || skillLower.contains('dev') || skillLower.contains('tech')) {
+      return Icons.computer;
+    } else if (skillLower.contains('artisan') || skillLower.contains('bois') || skillLower.contains('métal')) {
+      return Icons.handyman;
+    } else if (skillLower.contains('santé') || skillLower.contains('médecin') || skillLower.contains('soin')) {
+      return Icons.health_and_safety;
+    } else if (skillLower.contains('éducat') || skillLower.contains('formateur') || skillLower.contains('prof')) {
+      return Icons.school;
+    } else if (skillLower.contains('art') || skillLower.contains('musique') || skillLower.contains('peint')) {
+      return Icons.palette;
+    } else if (skillLower.contains('transport') || skillLower.contains('livraison')) {
+      return Icons.local_shipping;
+    } else if (skillLower.contains('restaur') || skillLower.contains('cuisine') || skillLower.contains('chef')) {
+      return Icons.restaurant;
+    }
+    return Icons.verified;
+  }
 
   /// Charge les demandes de certification en attente
   Future<void> _loadPendingRequests() async {
@@ -1150,6 +1403,11 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                     ),
                   ),
                   const SizedBox(height: 8),
+                  
+                  // ✅ WOTX2: Mes badges de compétences
+                  _buildMyCredentialsSection(),
+                  
+                  const SizedBox(height: 16),
                   
                   // Explication pédagogique
                   Container(

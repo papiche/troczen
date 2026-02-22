@@ -35,6 +35,75 @@ class NostrConstants {
 ///
 /// Les tags sont sérialisés dans le contenu JSON ET comme tags 't' de l'event
 /// pour une interopérabilité maximale avec les clients Nostr.
+/// ✅ WOTX2: Credential de compétence vérifié par l'Oracle (Kind 30503)
+/// Ces credentials sont générés par le moteur Python de la TrocZen Box
+class SkillCredential {
+  final String permitId;     // ex: "PERMIT_MARAICHAGE_X2"
+  final String skillTag;     // ex: "maraîchage"
+  final int level;           // 1, 2, ou 3 (X1, X2, X3)
+  final String? issuerNpub;  // Oracle qui a signé
+  final DateTime? issuedAt;
+  final DateTime? expiresAt;
+  final bool verified;
+
+  SkillCredential({
+    required this.permitId,
+    required this.skillTag,
+    required this.level,
+    this.issuerNpub,
+    this.issuedAt,
+    this.expiresAt,
+    this.verified = true,
+  });
+
+  /// Extrait le niveau depuis le permitId (ex: "PERMIT_MARAICHAGE_X2" → 2)
+  static int extractLevel(String permitId) {
+    final match = RegExp(r'_X(\d+)$').firstMatch(permitId);
+    return match != null ? int.parse(match.group(1)!) : 1;
+  }
+
+  /// Extrait le tag de compétence depuis le permitId
+  static String extractSkillTag(String permitId) {
+    // "PERMIT_MARAICHAGE_X2" → "maraîchage"
+    final parts = permitId.split('_');
+    if (parts.length >= 2) {
+      return parts[1].toLowerCase();
+    }
+    return permitId.toLowerCase();
+  }
+
+  factory SkillCredential.fromKind30503(Map<String, dynamic> event) {
+    final permitId = event['tags']?.firstWhere(
+      (t) => t[0] == 'permit_id',
+      orElse: () => ['', ''],
+    )?[1] ?? '';
+    
+    return SkillCredential(
+      permitId: permitId,
+      skillTag: extractSkillTag(permitId),
+      level: extractLevel(permitId),
+      issuerNpub: event['pubkey'],
+      issuedAt: event['created_at'] != null
+          ? DateTime.fromMillisecondsSinceEpoch((event['created_at'] as int) * 1000)
+          : null,
+      verified: true,
+    );
+  }
+
+  /// Badge d'affichage (X1, X2, X3)
+  String get badgeLabel => 'X$level';
+  
+  /// Couleur du badge selon le niveau
+  String get badgeColor {
+    switch (level) {
+      case 1: return '#4CAF50'; // Vert
+      case 2: return '#2196F3'; // Bleu
+      case 3: return '#9C27B0'; // Violet
+      default: return '#9E9E9E'; // Gris
+    }
+  }
+}
+
 class NostrProfile {
   final String npub;
   final String name;
@@ -53,6 +122,9 @@ class NostrProfile {
   // ✅ NIP-24 extended: Champs additionnels
   final String? activity;      // Activité professionnelle
   final String? profession;    // Métier
+  
+  // ✅ WOTX2: Credentials de compétences vérifiés (Kind 30503)
+  final List<SkillCredential>? skillCredentials;
 
   NostrProfile({
     required this.npub,
@@ -68,6 +140,7 @@ class NostrProfile {
     this.tags,
     this.activity,
     this.profession,
+    this.skillCredentials,
   });
 
   /// Sérialisation JSON conforme NIP-24
@@ -88,10 +161,30 @@ class NostrProfile {
       // ✅ NIP-24 extended: Champs additionnels
       if (activity != null) 'activity': activity,
       if (profession != null) 'profession': profession,
+      // ✅ WOTX2: Credentials de compétences
+      if (skillCredentials != null && skillCredentials!.isNotEmpty)
+        'skill_credentials': skillCredentials!.map((c) => {
+          'permit_id': c.permitId,
+          'skill_tag': c.skillTag,
+          'level': c.level,
+          'badge': c.badgeLabel,
+        }).toList(),
     };
   }
 
   factory NostrProfile.fromJson(Map<String, dynamic> json, String npub) {
+    // ✅ WOTX2: Parsing des credentials
+    List<SkillCredential>? credentials;
+    if (json['skill_credentials'] != null) {
+      credentials = (json['skill_credentials'] as List<dynamic>)
+          .map((c) => SkillCredential(
+            permitId: c['permit_id'] ?? '',
+            skillTag: c['skill_tag'] ?? '',
+            level: c['level'] ?? 1,
+          ))
+          .toList();
+    }
+    
     return NostrProfile(
       npub: npub,
       name: json['name'] ?? '',
@@ -107,6 +200,8 @@ class NostrProfile {
       tags: (json['tags'] as List<dynamic>?)?.cast<String>(),
       activity: json['activity'],
       profession: json['profession'],
+      // ✅ WOTX2: Credentials
+      skillCredentials: credentials,
     );
   }
   
@@ -125,6 +220,7 @@ class NostrProfile {
     List<String>? tags,
     String? activity,
     String? profession,
+    List<SkillCredential>? skillCredentials,
   }) {
     return NostrProfile(
       npub: npub ?? this.npub,
@@ -140,6 +236,24 @@ class NostrProfile {
       tags: tags ?? this.tags,
       activity: activity ?? this.activity,
       profession: profession ?? this.profession,
+      skillCredentials: skillCredentials ?? this.skillCredentials,
     );
+  }
+  
+  /// ✅ WOTX2: Récupère le niveau max d'un credential pour une compétence donnée
+  int? getMaxLevelForSkill(String skillTag) {
+    if (skillCredentials == null || skillCredentials!.isEmpty) return null;
+    
+    final matching = skillCredentials!
+        .where((c) => c.skillTag.toLowerCase() == skillTag.toLowerCase());
+    if (matching.isEmpty) return null;
+    
+    return matching.map((c) => c.level).reduce((a, b) => a > b ? a : b);
+  }
+  
+  /// ✅ WOTX2: Récupère tous les badges à afficher
+  List<String> getSkillBadges() {
+    if (skillCredentials == null || skillCredentials!.isEmpty) return [];
+    return skillCredentials!.map((c) => '${c.skillTag} ${c.badgeLabel}').toList();
   }
 }

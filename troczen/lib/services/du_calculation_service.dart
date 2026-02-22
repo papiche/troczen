@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:hex/hex.dart';
+import 'package:http/http.dart' as http;
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/market.dart';
@@ -9,18 +11,86 @@ import 'nostr_service.dart';
 import 'crypto_service.dart';
 import 'logger_service.dart';
 
+/// Modèle pour les paramètres DU reçus de la TrocZen Box
+class DuParams {
+  final double cSquared;
+  final double alpha;
+  final double duBase;
+  final double duSkill;
+  final double duTotal;
+  final int n1;
+  final int n2;
+  final DateTime computedAt;
+  final bool fromBox;
+
+  DuParams({
+    required this.cSquared,
+    required this.alpha,
+    required this.duBase,
+    required this.duSkill,
+    required this.duTotal,
+    required this.n1,
+    required this.n2,
+    required this.computedAt,
+    required this.fromBox,
+  });
+
+  factory DuParams.fromJson(Map<String, dynamic> json, {bool fromBox = true}) {
+    return DuParams(
+      cSquared: (json['c2'] ?? json['cSquared'] ?? 0.01).toDouble(),
+      alpha: (json['alpha'] ?? 0.0).toDouble(),
+      duBase: (json['du_base'] ?? json['duBase'] ?? 100.0).toDouble(),
+      duSkill: (json['du_skill'] ?? json['duSkill'] ?? 0.0).toDouble(),
+      duTotal: (json['du'] ?? json['duTotal'] ?? 100.0).toDouble(),
+      n1: json['n1'] ?? 0,
+      n2: json['n2'] ?? 0,
+      computedAt: json['computedAt'] != null
+          ? DateTime.parse(json['computedAt'])
+          : DateTime.now(),
+      fromBox: fromBox,
+    );
+  }
+
+  /// Crée des paramètres de fallback (mode hors-ligne)
+  factory DuParams.fallback({double cSquared = 0.01, double duBase = 100.0}) {
+    return DuParams(
+      cSquared: cSquared,
+      alpha: 0.0,
+      duBase: duBase,
+      duSkill: 0.0,
+      duTotal: duBase,
+      n1: 0,
+      n2: 0,
+      computedAt: DateTime.now(),
+      fromBox: false,
+    );
+  }
+}
+
 /// Service expérimental pour le calcul du Dividende Universel (DU)
 /// basé sur le graphe social Nostr (P2P)
+///
+/// ✅ PROTOCOLE V6 - HYPERRELATIVISTE:
+/// L'app DOIT faire une requête HTTP GET /api/dashboard/<npub>?market=<market_id>
+/// à la TrocZen Box (si connectée) pour récupérer les paramètres C², α, et DUbase
+/// calculés par le moteur Python.
+/// Le calcul local statique (avec _cSquared = 0.01) est utilisé uniquement comme
+/// FALLBACK si la box est injoignable (vrai mode hors-ligne).
 class DuCalculationService {
   final StorageService _storageService;
   final NostrService _nostrService;
   final CryptoService _cryptoService;
+  
+  /// URL de la TrocZen Box (mise à jour dynamiquement)
+  String _boxApiUrl = '';
+  // ignore: unused_field
+  bool _boxConnected = false;
 
   // Constantes de la TRM (Théorie Relative de la Monnaie)
   // C = ln(ev/2)/(ev/2) où ev = espérance de vie (ex: 80 ans)
   // Pour simplifier, on utilise une constante C d'environ 10% par an
-  // C_SQUARED est utilisé dans la formule simplifiée
-  static const double _cSquared = 0.01; // 10% au carré
+  // C_SQUARED est utilisé dans la formule simplifiée (FALLBACK uniquement)
+  static const double _cSquaredFallback = 0.01; // 10% au carré - FALLBACK
   
   // Seuil minimum de liens réciproques pour déclencher le DU
   static const int _minMutualFollows = 5;
@@ -30,16 +100,119 @@ class DuCalculationService {
   
   // DU initial au lancement du marché (100 ẐEN/jour)
   static const double _initialDuValue = 100.0;
+  
+  // Timeout pour les requêtes à la Box
+  static const Duration _boxTimeout = Duration(seconds: 5);
 
   DuCalculationService({
     required StorageService storageService,
     required NostrService nostrService,
     required CryptoService cryptoService,
+    String? boxApiUrl,
   })  : _storageService = storageService,
         _nostrService = nostrService,
-        _cryptoService = cryptoService;
+        _cryptoService = cryptoService,
+        _boxApiUrl = boxApiUrl ?? '';
 
-  /// Vérifie si le DU peut être généré aujourd'hui et le génère si oui
+  /// Configure l'URL de la TrocZen Box
+  void setBoxApiUrl(String url) {
+    _boxApiUrl = url;
+    _boxConnected = false;
+    Logger.log('DuCalculationService', 'URL Box configurée: $url');
+  }
+
+  /// Marque la Box comme connectée/déconnectée
+  void setBoxConnected(bool connected) {
+    _boxConnected = connected;
+    Logger.log('DuCalculationService', 'Box connectée: $connected');
+  }
+
+  /// ✅ PROTOCOLE V6: Récupère les paramètres DU depuis la TrocZen Box
+  /// Fait une requête HTTP GET /api/dashboard/<npub>?market=<market_id>
+  /// Retourne null si la Box est injoignable (mode hors-ligne)
+  Future<DuParams?> _fetchDuParamsFromBox(String npub, String marketId) async {
+    if (_boxApiUrl.isEmpty) {
+      Logger.log('DuCalculationService', 'Pas d\'URL Box configurée - mode hors-ligne');
+      return null;
+    }
+
+    try {
+      final uri = Uri.parse('$_boxApiUrl/api/dashboard/$npub?market=$marketId');
+      Logger.log('DuCalculationService', 'Requête Box: $uri');
+
+      final response = await http.get(uri).timeout(_boxTimeout);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        
+        // Extraire les paramètres DU depuis la réponse du dashboard
+        // Structure attendue: { markets: [{ du: {...}, params: {...} }] }
+        final markets = data['markets'] as List<dynamic>?;
+        if (markets != null && markets.isNotEmpty) {
+          final marketData = markets[0] as Map<String, dynamic>;
+          final duData = marketData['du'] as Map<String, dynamic>? ?? {};
+          final paramsData = marketData['params'] as Map<String, dynamic>? ?? {};
+          
+          // Fusionner du et params pour DuParams
+          final mergedData = {
+            ...duData,
+            ...paramsData,
+            'n1': data['network']?['n1'] ?? 0,
+            'n2': data['network']?['n2'] ?? 0,
+          };
+          
+          final duParams = DuParams.fromJson(mergedData, fromBox: true);
+          Logger.success('DuCalculationService',
+            'Paramètres DU reçus de la Box: C²=${duParams.cSquared.toStringAsFixed(4)}, '
+            'α=${duParams.alpha.toStringAsFixed(2)}, DU=${duParams.duTotal.toStringAsFixed(2)} ẐEN');
+          
+          return duParams;
+        }
+      } else {
+        Logger.warn('DuCalculationService', 'Box répond ${response.statusCode}');
+      }
+    } catch (e) {
+      Logger.warn('DuCalculationService', 'Box injoignable: $e');
+    }
+
+    return null;
+  }
+
+  /// ✅ PROTOCOLE V6: Calcul local de fallback (mode hors-ligne)
+  /// Utilisé uniquement si la TrocZen Box est injoignable
+  Future<DuParams> _calculateLocalFallback({
+    required int n1Count,
+    required double currentDu,
+    required double mn1,
+    required double mn2,
+  }) async {
+    final n2 = max(1, n1Count * 3);
+    final sqrtN2 = sqrt(n2);
+    final effectiveMass = mn1 + (mn2 / sqrtN2);
+    final effectivePopulation = n1Count + sqrtN2;
+    
+    // Utiliser le C² de fallback (0.01)
+    final duIncrement = _cSquaredFallback * effectiveMass / effectivePopulation;
+    final newDu = currentDu + duIncrement;
+    
+    // Plafond de sécurité (+5% max)
+    final cappedDu = min(newDu, currentDu * 1.05);
+
+    Logger.log('DuCalculationService',
+      'Calcul local fallback: DU=${cappedDu.toStringAsFixed(2)} ẐEN (C²=$_cSquaredFallback)');
+
+    return DuParams.fallback(
+      cSquared: _cSquaredFallback,
+      duBase: cappedDu,
+    );
+  }
+
+  /// ✅ PROTOCOLE V6: Vérifie si le DU peut être généré aujourd'hui et le génère si oui
+  ///
+  /// ALGORITHME:
+  /// 1. Tenter de récupérer les paramètres depuis la TrocZen Box (HTTP GET)
+  /// 2. Si Box joignable → utiliser C², α, DUbase calculés par le moteur Python
+  /// 3. Si Box injoignable → fallback au calcul local statique (C² = 0.01)
   Future<bool> checkAndGenerateDU() async {
     try {
       final user = await _storageService.getUser();
@@ -51,8 +224,8 @@ class DuCalculationService {
       }
 
       // 1. Vérifier si le DU a déjà été généré aujourd'hui
-      final lastDuDateStr = await _storageService.getLastP3Sync(); // On pourrait utiliser une clé dédiée
-      // Pour l'instant, on simule la vérification
+      final lastDuDateStr = await _storageService.getLastP3Sync();
+      // TODO: Implémenter la vérification quotidienne
       // if (hasGeneratedToday) return false;
 
       // 2. Récupérer les contacts locaux (N1)
@@ -63,45 +236,53 @@ class DuCalculationService {
       }
 
       // 3. Récupérer les follows réciproques via Nostr
-      // Dans une vraie implémentation, on vérifierait que chaque contact nous suit en retour
-      // Pour cette démo, on suppose que les contacts locaux sont réciproques
       final mutuals = myContacts;
-
       if (mutuals.length < _minMutualFollows) {
         Logger.log('DuCalculationService', 'Pas assez de liens réciproques (${mutuals.length}/$_minMutualFollows)');
         return false;
       }
 
-      // 4. Calculer la masse monétaire (M_n1 et M_n2)
-      // Pour l'instant, on utilise des valeurs simulées basées sur les données du marché
-      final marketData = await _storageService.getMarketEconomicData();
-      final totalVolume = marketData['totalVolume'] as double? ?? 1000.0;
+      // 4. ✅ PROTOCOLE V6: Tenter de récupérer les paramètres depuis la Box
+      DuParams duParams;
+      final boxParams = await _fetchDuParamsFromBox(user.npub, market.name);
       
-      // Simulation: M_n1 = part proportionnelle du volume total
-      final mn1 = totalVolume * (mutuals.length / max(1, marketData['uniqueIssuers'] as int? ?? 10));
-      // Simulation: M_n2 = masse étendue
-      final mn2 = totalVolume * 0.5;
+      if (boxParams != null) {
+        // Box joignable → utiliser les paramètres calculés par le moteur Python
+        duParams = boxParams;
+        Logger.success('DuCalculationService',
+          '🟢 Mode connecté - Paramètres Box: C²=${duParams.cSquared.toStringAsFixed(4)}, '
+          'α=${duParams.alpha.toStringAsFixed(2)}, DU=${duParams.duTotal.toStringAsFixed(2)} ẐEN');
+      } else {
+        // Box injoignable → fallback calcul local
+        Logger.warn('DuCalculationService', '🟠 Mode hors-ligne - Utilisation du calcul local fallback');
+        
+        final currentDu = await getCurrentGlobalDu();
+        final marketData = await _storageService.getMarketEconomicData();
+        final totalVolume = marketData['totalVolume'] as double? ?? 1000.0;
+        
+        final mn1 = totalVolume * (mutuals.length / max(1, marketData['uniqueIssuers'] as int? ?? 10));
+        final mn2 = totalVolume * 0.5;
+        
+        duParams = await _calculateLocalFallback(
+          n1Count: mutuals.length,
+          currentDu: currentDu,
+          mn1: mn1,
+          mn2: mn2,
+        );
+      }
 
-      // 5. Calculer le nouveau DU
-      // Formule corrigée pour l'invariance d'échelle :
-      // DU_new = DU_current + C² * (M_n1 + M_n2 / sqrt(N2)) / (N1 + sqrt(N2))
-      final currentDu = await getCurrentGlobalDu();
-      final n1 = mutuals.length;
-      final n2 = max(1, n1 * 3); // Estimation des amis d'amis (évite div par 0)
-      
-      final sqrtN2 = sqrt(n2);
-      final effectiveMass = mn1 + (mn2 / sqrtN2);
-      final effectivePopulation = n1 + sqrtN2;
-      
-      final newDuValue = currentDu + (_cSquared * effectiveMass / effectivePopulation);
-      
-      // Plafond de sécurité (ex: max +5% par jour)
-      final cappedDuValue = min(newDuValue, currentDu * 1.05);
+      // 5. Vérifier que le DU est positif
+      if (duParams.duTotal <= 0) {
+        Logger.warn('DuCalculationService', 'DU nul ou négatif - pas de génération');
+        return false;
+      }
 
-      Logger.success('DuCalculationService', 'Nouveau DU calculé: $cappedDuValue ẐEN');
+      Logger.success('DuCalculationService',
+        'Nouveau DU: ${duParams.duTotal.toStringAsFixed(2)} ẐEN '
+        '(base: ${duParams.duBase.toStringAsFixed(2)} + skill: ${duParams.duSkill.toStringAsFixed(2)})');
 
       // 6. Générer les bons quantitatifs
-      await _generateQuantitativeBons(user, market, cappedDuValue);
+      await _generateQuantitativeBons(user, market, duParams.duTotal);
 
       return true;
     } catch (e) {
