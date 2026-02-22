@@ -38,8 +38,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   Market? _selectedMarket;     // ✅ NOUVEAU: Marché sélectionné pour l'émission
   bool _isLocalNetwork = false;
   Color _selectedColor = Colors.blue; // Couleur par défaut
-  String _selectedRarity = 'common'; // Rareté sélectionnée
-  bool _useAutoRarity = true; // Utiliser la génération automatique
   File? _selectedImage;
   bool _isUploading = false;
   final _websiteController = TextEditingController();
@@ -188,21 +186,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     return null;
   }
 
-  Color _getRarityColor(String rarity) {
-    switch (rarity) {
-      case 'legendary':
-        return Colors.orangeAccent;
-      case 'rare':
-        return Colors.blueAccent;
-      case 'uncommon':
-        return Colors.greenAccent;
-      case 'common':
-        return Colors.grey;
-      default:
-        return Colors.purple;
-    }
-  }
-
   @override
   void dispose() {
     _valueController.dispose();
@@ -266,11 +249,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         p3: null, // P3 est dans le cache
         marketName: _selectedMarket!.name,
         color: _selectedColor.value,
-        rarity: _useAutoRarity ? Bon.generateRarity() : _selectedRarity,
-        uniqueId: Bon.generateUniqueId(bonNpub),
-        cardType: Bon.generateCardType(),
-        specialAbility: Bon.generateSpecialAbility(_useAutoRarity ? Bon.generateRarity() : _selectedRarity),
-        stats: Bon.generateStats(_useAutoRarity ? Bon.generateRarity() : _selectedRarity),
         duAtCreation: currentDu,
       );
 
@@ -330,7 +308,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             marketName: _selectedMarket!.name,
             value: double.parse(_valueController.text),
             category: 'generic',  // TODO: Sélection UI
-            rarity: Bon.generateRarity(),  // ✅ Génération aléatoire
             wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
           );
 
@@ -573,82 +550,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
               const SizedBox(height: 24),
 
-              // Section Rareté
-              Text(
-                'Rareté de la carte',
-                style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        RadioListTile<String>(
-                          title: const Text('Auto', style: TextStyle(color: Colors.white)),
-                          value: 'auto',
-                          groupValue: _useAutoRarity ? 'auto' : _selectedRarity,
-                          onChanged: (value) {
-                            setState(() {
-                              _useAutoRarity = true;
-                            });
-                          },
-                          activeColor: const Color(0xFFFFB347),
-                        ),
-                        ...['common', 'uncommon', 'rare', 'legendary'].map((rarity) => RadioListTile<String>(
-                          title: Text(
-                            rarity[0].toUpperCase() + rarity.substring(1),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          value: rarity,
-                          groupValue: _useAutoRarity ? 'auto' : _selectedRarity,
-                          onChanged: (value) {
-                            setState(() {
-                              _useAutoRarity = false;
-                              _selectedRarity = value!;
-                            });
-                          },
-                          activeColor: const Color(0xFFFFB347),
-                        )),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Aperçu de la rareté
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2A2A2A),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _getRarityColor(_useAutoRarity ? 'auto' : _selectedRarity),
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _useAutoRarity ? '?' : _selectedRarity[0].toUpperCase() + _selectedRarity.substring(1),
-                        style: TextStyle(
-                          color: _getRarityColor(_useAutoRarity ? 'auto' : _selectedRarity),
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Section Couleur
+              // ✅ Section Couleur (pour personnalisation visuelle UI uniquement)
               Text(
                 'Couleur de la carte',
                 style: TextStyle(
@@ -876,6 +778,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   final days = int.tryParse(value);
                   if (days == null || days <= 0) {
                     return 'Durée invalide';
+                  }
+                  // ✅ R1 Protocole v6: TTL min 7j, max 365j
+                  if (days < 7) {
+                    return 'Minimum 7 jours (Règle R1 protocole v6)';
+                  }
+                  if (days > 365) {
+                    return 'Maximum 365 jours (Règle R1 protocole v6)';
                   }
                   return null;
                 },

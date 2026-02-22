@@ -61,12 +61,49 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.dispose();
   }
 
-  void _loadProfile() {
+  void _loadProfile() async {
     // Charger le profil depuis le stockage local
     _nameController.text = widget.user.displayName;
     _displayNameController.text = widget.user.displayName;
+    _websiteController.text = widget.user.website ?? '';
+    _g1pubController.text = widget.user.g1pub ?? '';
+    
     // Relais par défaut
     _relaysController.text = AppConfig.defaultRelayUrl;
+    
+    // ✅ CORRECTION: Charger le profil Nostr existant pour récupérer les images
+    try {
+      final market = await _storageService.getMarket();
+      if (market?.relayUrl != null) {
+        final nostrService = NostrService(
+          cryptoService: _cryptoService,
+          storageService: _storageService,
+        );
+        
+        final connected = await nostrService.connect(market!.relayUrl!);
+        if (connected) {
+          // Récupérer le profil kind 0
+          final profile = await nostrService.fetchUserProfile(widget.user.npub);
+          
+          if (profile != null) {
+            if (mounted) {
+              setState(() {
+                if (profile.about != null && profile.about!.isNotEmpty) {
+                  _aboutController.text = profile.about!;
+                }
+                // Les images seront affichées via les URL Nostr
+                // On ne peut pas les charger comme File localement
+              });
+            }
+          }
+          
+          await nostrService.disconnect();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Impossible de charger le profil Nostr: $e');
+      // Continuer quand même avec les données locales
+    }
   }
 
   Future<void> _selectImage(String type) async {
@@ -233,7 +270,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         await nostrService.disconnect();
       }
 
-      // 4. Mettre à jour l'utilisateur local
+      // 4. Mettre à jour l'utilisateur local avec les URLs des images
       final updatedUser = User(
         npub: widget.user.npub,
         nsec: widget.user.nsec,
@@ -247,6 +284,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         g1pub: _g1pubController.text.trim().isNotEmpty
             ? _g1pubController.text.trim()
             : widget.user.g1pub,
+        // ✅ NOUVEAU: Sauvegarder les URLs des images
+        picture: pictureUrl ?? widget.user.picture,
+        banner: bannerUrl ?? widget.user.banner,
       );
       await _storageService.saveUser(updatedUser);
 

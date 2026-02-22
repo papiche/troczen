@@ -85,34 +85,6 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Icône de succès
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFFFB347).withOpacity(0.2),
-                      ),
-                      child: const Icon(
-                        Icons.celebration,
-                        size: 64,
-                        color: Color(0xFFFFB347),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Titre
-                    const Text(
-                      'Bienvenue dans TrocZen !',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFFB347),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    
                     const SizedBox(height: 16),
                     
                     Text(

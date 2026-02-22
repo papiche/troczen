@@ -4,6 +4,43 @@
 
 Le Dashboard Marchand est un outil d'analytics économique **100% offline** basé uniquement sur les métadonnées P3 (kind 30303 Nostr). Il ne nécessite **aucune donnée client** et respecte totalement la vie privée.
 
+### ✨ Deux dashboards selon le profil utilisateur
+
+L'application propose **deux interfaces de dashboard** adaptées aux différents profils :
+
+#### 📊 Dashboard Commerçant (`dashboard_view.dart`)
+- **Public cible** : Commerçants, Ambassadeurs, Organisateurs
+- **Niveau** : Analytics avancées avec graphiques et statistiques détaillées
+- **Fonctionnalités** :
+  - 3 onglets (TabController) : Vue globale, Circulation, Réseau
+  - Support multi-marchés avec filtres
+  - Graphiques fl_chart (LineChart, BarChart)
+  - Métriques économiques avancées
+  - Analyse temporelle et géographique
+
+#### 📋 Dashboard Artisan (`dashboard_simple_view.dart`)
+- **Public cible** : Artisans, nouveaux utilisateurs
+- **Niveau** : Vision comptable simple et claire
+- **Fonctionnalités** :
+  - Solde total en ẐEN
+  - Entrées/sorties hebdomadaires
+  - Compteurs simples (actifs, expirés, utilisés)
+  - Liste des dernières transactions
+  - Interface épurée sans complexité
+
+> 💡 **Sélection automatique** : Le dashboard affiché dépend du `AppMode` de l'utilisateur défini lors de l'onboarding.
+
+### 🌍 Support Multi-Marchés
+
+Les dashboards supportent désormais **plusieurs marchés simultanés** :
+
+- **Filtre global** : Voir tous les marchés combinés (`_filterMode = 'all'`)
+- **Filtre par marché** : Isoler les métriques d'un marché spécifique
+- **Méthodes de filtrage** :
+  - `_getFilteredMarketBons()` : Filtre les événements kind 30303
+  - `_getFilteredLocalBons()` : Filtre les bons du wallet local
+- **Chargement parallèle** : Markets chargés via `Future.wait()`
+
 ---
 
 ## 🎯 Principes Fondamentaux

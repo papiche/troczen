@@ -26,16 +26,23 @@ class Bon {
   final String marketName;
   final String? logoUrl;        // URL du logo du commerçant
   final String? picture;        // URL de l'avatar de l'émetteur
-  final int? color;             // Couleur dominante (ARGB)
-  final String? rarity;         // 'common', 'uncommon', 'rare', 'legendary'
+  final int? color;             // Couleur dominante (ARGB) - Pour UI uniquement
   final int? transferCount;     // Nombre de transferts effectués
   final String? issuerNostrProfile; // URL profil Nostr du commerçant
-  final String? uniqueId;       // Identifiant unique pour la carte (comme Pokémon)
-  final String? cardType;       // Type de carte (ex: "commerce", "service", "artisan")
-  final String? specialAbility; // Capacité spéciale (ex: "double valeur", "résistant")
-  final Map<String, dynamic>? stats; // Statistiques (ex: {"power": 5, "defense": 3})
   final double? duAtCreation;   // Valeur du DU le jour de la création (pour calcul relativiste)
   final String? wish;           // Vœu attaché au bon (ex: "De la graine à l'assiette")
+  
+  // ⚠️ DÉPRÉCIÉ v6: Champs Pokemon - gardés pour rétrocompatibilité uniquement
+  @Deprecated('Non conforme protocole v6 - Ne plus utiliser pour nouveaux bons')
+  final String? rarity;         // Ex: 'common', 'rare' - Plus généré depuis v6
+  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
+  final String? uniqueId;       // Ex: 'ZEN-ABC123'
+  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
+  final String? cardType;       // Ex: 'commerce', 'artisan'
+  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
+  final String? specialAbility; // Ex: 'Double valeur'
+  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
+  final Map<String, dynamic>? stats; // Ex: {"power": 5}
   
   // ✅ WAL (Write-Ahead Log) pour protection contre double-dépense
   final DateTime? transferLockTimestamp; // Quand le bon a été verrouillé
@@ -57,15 +64,16 @@ class Bon {
     this.logoUrl,
     this.picture,
     this.color,
-    this.rarity = 'common',
     this.transferCount = 0,
     this.issuerNostrProfile,
-    this.uniqueId,
-    this.cardType = 'commerce',
-    this.specialAbility,
-    this.stats,
     this.duAtCreation,
     this.wish,
+    // ⚠️ DÉPRÉCIÉ: Paramètres Pokemon (rétrocompatibilité anciens bons)
+    this.rarity,
+    this.uniqueId,
+    this.cardType,
+    this.specialAbility,
+    this.stats,
     // ✅ WAL (Write-Ahead Log)
     this.transferLockTimestamp,
     this.transferLockChallenge,

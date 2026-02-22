@@ -227,21 +227,30 @@ class _MainShellState extends State<MainShell> {
     
     // Mode Artisan et Alchimiste
     switch (_currentTab) {
-      case 0: // Wallet
-        return FloatingActionButton.extended(
-          onPressed: () => _navigateToScan(),
-          icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('Recevoir'),
-          backgroundColor: const Color(0xFFFFB347),
+      case 0: // Wallet - ✅ Déplacé: Créer un bon + Recevoir
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.extended(
+              onPressed: () => _navigateToCreateBon(),
+              heroTag: 'create_bon',
+              icon: const Icon(Icons.add),
+              label: const Text('Créer'),
+              backgroundColor: const Color(0xFFFFB347),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.extended(
+              onPressed: () => _navigateToScan(),
+              heroTag: 'receive_bon',
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Recevoir'),
+              backgroundColor: const Color(0xFF0A7EA4),
+            ),
+          ],
         );
       
-      case 1: // Explorer
-        return FloatingActionButton.extended(
-          onPressed: () => _navigateToCreateBon(),
-          icon: const Icon(Icons.add),
-          label: const Text('Créer un bon'),
-          backgroundColor: const Color(0xFFFFB347),
-        );
+      case 1: // Explorer - Plus de bouton ici
+        return null;
       
       case 2: // Dashboard (Simple ou Avancé)
         return FloatingActionButton.extended(
@@ -354,12 +363,35 @@ class _MainShellState extends State<MainShell> {
                   
                   const Divider(color: Colors.white24),
                   
+                  // ✅ CHANGER DE MODE : Accessible à TOUS
+                  ListTile(
+                    leading: const Icon(Icons.swap_horiz, color: Color(0xFF9C27B0)),
+                    title: const Text('🔄 Changer de mode', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                    subtitle: Text('Mode actuel: ${_appMode.label}', style: const TextStyle(color: Colors.white70)),
+                    onTap: () => _showChangeModeDialog(),
+                  ),
+                  
+                  const Divider(color: Colors.white24),
+                  
                   // ✅ FEEDBACK : Accessible à TOUS les modes (priorité utilisateur)
                   ListTile(
                     leading: const Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
                     title: const Text('💬 Envoyer un feedback', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
                     subtitle: const Text('Signaler un bug ou suggérer une amélioration', style: TextStyle(color: Colors.white70)),
                     onTap: () => _navigateToFeedback(),
+                  ),
+                  
+                  const Divider(color: Colors.white24),
+                  
+                  // ✅ LOGS : Accessible à TOUS les modes (debugging)
+                  ListTile(
+                    leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
+                    title: const Text('📋 Logs de l\'application', style: TextStyle(color: Colors.white)),
+                    subtitle: Text(
+                      'Voir les événements techniques (${Logger.logCount} entrées)',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    onTap: () => _navigateToLogs(),
                   ),
                   
                   const Divider(color: Colors.white24),
@@ -608,12 +640,8 @@ class _MainShellState extends State<MainShell> {
         return;
       }
       
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
-      
-      final connected = await nostrService.connect(
+      // ✅ CORRECTION: Réutiliser l'instance existante au lieu d'en créer une nouvelle
+      final connected = await _nostrService.connect(
         market.relayUrl ?? AppConfig.defaultRelayUrl,
       );
       
@@ -628,7 +656,7 @@ class _MainShellState extends State<MainShell> {
         return;
       }
       
-      final syncedCount = await nostrService.syncMarketP3s(market);
+      final syncedCount = await _nostrService.syncMarketP3s(market);
       
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -638,7 +666,8 @@ class _MainShellState extends State<MainShell> {
         ),
       );
       
-      await nostrService.disconnect();
+      // ✅ Pas besoin de déconnecter - on garde la connexion pour l'auto-sync
+      // await _nostrService.disconnect();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -692,6 +721,140 @@ class _MainShellState extends State<MainShell> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Affiche un dialog pour changer de mode utilisateur
+  void _showChangeModeDialog() {
+    Navigator.pop(context); // Fermer le drawer
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text(
+          '🔄 Changer de mode',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Choisissez votre niveau d\'expérience :',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            
+            // Mode Flâneur
+            RadioListTile<AppMode>(
+              value: AppMode.flaneur,
+              groupValue: _appMode,
+              activeColor: const Color(0xFFFFB347),
+              title: Text(
+                AppMode.flaneur.label,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                AppMode.flaneur.description,
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onChanged: (value) {
+                if (value != null) {
+                  Navigator.pop(context);
+                  _changeAppMode(value);
+                }
+              },
+            ),
+            
+            const Divider(color: Colors.white24),
+            
+            // Mode Artisan
+            RadioListTile<AppMode>(
+              value: AppMode.artisan,
+              groupValue: _appMode,
+              activeColor: const Color(0xFFFFB347),
+              title: Text(
+                AppMode.artisan.label,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                AppMode.artisan.description,
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onChanged: (value) {
+                if (value != null) {
+                  Navigator.pop(context);
+                  _changeAppMode(value);
+                }
+              },
+            ),
+            
+            const Divider(color: Colors.white24),
+            
+            // Mode Alchimiste
+            RadioListTile<AppMode>(
+              value: AppMode.alchimiste,
+              groupValue: _appMode,
+              activeColor: const Color(0xFFFFB347),
+              title: Text(
+                AppMode.alchimiste.label,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                AppMode.alchimiste.description,
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onChanged: (value) {
+                if (value != null) {
+                  Navigator.pop(context);
+                  _changeAppMode(value);
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Change le mode de l'application et sauvegarde
+  Future<void> _changeAppMode(AppMode newMode) async {
+    try {
+      // Sauvegarder le nouveau mode
+      await _storageService.setAppMode(newMode.index);
+      
+      // Mettre à jour l'interface
+      setState(() {
+        _appMode = newMode;
+        _currentTab = 0; // Revenir au premier onglet
+      });
+      
+      Logger.log('MainShell', 'Mode changé vers: ${newMode.label}');
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Mode changé vers: ${newMode.label}'),
+          backgroundColor: const Color(0xFF4CAF50),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      Logger.error('MainShell', 'Erreur changement de mode', e);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

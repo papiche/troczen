@@ -8,7 +8,7 @@ Application Flutter pour la création, le transfert et l'encaissement de bons de
 - **Cryptographie de pointe** : SSSS polynomial (2-sur-3), AES-GCM, Schnorr secp256k1 (via `bip340`), Scrypt, Nettoyage RAM (`secureZeroiseBytes`).
 - **Handshake atomique** : Double scan (QR Offre → QR ACK) avec challenge aléatoire et signature empêchant la double dépense.
 - **QR codes binaires optimisés** : Format compact v1 (177 octets) et **v2 offline-complet (240 octets)**.
-- **Interface Panini** : Cartes à collectionner avec système de rareté généré aléatoirement.
+- **Cartes visuelles** : Design type cartes à collectionner pour l'affichage des bons.
 - **Révélation de Circuit** : Les bons retournés à l'émetteur publient une preuve économique chiffrée (Kind 30304) au lieu d'une simple destruction.
 - **Décentralisé** : Synchronisation via protocole Nostr (kinds 0, 1, 3, 5, 30303, 30304, 30500+).
 - **NFC** : Transfert de bons par approche des appareils (⚠️ à développer...)
