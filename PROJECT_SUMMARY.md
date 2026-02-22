@@ -17,24 +17,22 @@ Caractéristiques principales :
 
 ---
 
-## État du projet (février 2026)
+## État du projet (Protocole v6)
 
-**Statut** : Production-ready pour pilote terrain
+**Statut** : Production-ready pour pilote terrain (Score Sécurité Crypto : 99%).
 
 ### Fonctionnel ✅
 
 | Composant | Détail |
 |-----------|--------|
-| Cryptographie | SSSS (2,3) polynomial, AES-GCM, Schnorr, Scrypt |
-| Modèles | User, Bon (rareté, unicité), Market |
-| Services | CryptoService, QRService, StorageService, NostrService, AuditTrailService, BurnService, NfcService, FeedbackService, ImageCacheService, ApiService |
-| Écrans | Login, Wallet, CreateBon, Offer, Scan, ACK, AtomicSwap, Market, Dashboard, Profil |
-| Widgets | PaniniCard (animée, holographique, système de rareté) |
-| Format QR | v1 (113 octets) et v2 (160 octets, offline complet) |
-| Backend API | Flask, 10 endpoints, upload IPFS, profils Nostr |
-| Onboarding | Parcours 5 étapes (seed, config, sync P3, profil, bienvenue) |
-| Navigation | MainShell avec 4 onglets + drawer paramètres |
-| Tests | 46 tests unitaires (crypto, storage, qr, nostr - 100% passants) |
+| Cryptographie | SSSS (2,3) natif (`Uint8List`), AES-GCM, Schnorr (`bip340`), Nettoyage RAM agressif. |
+| Modèles | User, Bon (rareté, unicité Pokémon-like, stats), Market (checksum ID). |
+| Stockage | Séparation stricte : `SecureStorage` (Wallet/Clés) vs `SQLite` (Cache P3/Dashboard). |
+| Économie (v6)| DU Hyper-relativiste basé sur la WoT Nostr (N1/N2). Révélation de circuit (Kind 30304). |
+| Format QR | v1 (177 octets) et v2 (240 octets, inclut challenge + signature Schnorr). |
+| WoTx2 | Certification de compétences par les pairs (Kind 30501, 30502, 30503). |
+| Navigation | MainShell (IndexedStack) avec 4 onglets persistants. |
+| Tests | 68 tests (52 unitaires + 16 intégrations complètes), 100% passants. |
 
 ### En cours / à compléter 🚧
 

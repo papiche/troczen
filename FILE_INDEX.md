@@ -40,7 +40,6 @@
 |---------|---------|
 | [troczen/ONBOARDING_GUIDE.md](troczen/ONBOARDING_GUIDE.md) | Parcours d'onboarding 5 étapes |
 | [NAVIGATION_V4.md](NAVIGATION_V4.md) | Refonte navigation : MainShell, 4 vues, migration |
-| [CHANGELOG_V1008.md](CHANGELOG_V1008.md) | v1.008 : avatars, upload IPFS, sync P3 réelle |
 
 ---
 

@@ -4,13 +4,14 @@ Application Flutter pour la création, le transfert et l'encaissement de bons de
 
 ## Caractéristiques
 
-- **Offline-first** : Fonctionne sans Internet après synchronisation initiale
-- **Cryptographie** : SSSS polynomial (2,3), AES-GCM, Schnorr secp256k1, Scrypt
-- **Handshake atomique** : Double scan (QR offer → QR ACK) empêche la double dépense
-- **QR codes binaires** : Format compact v1 (177 octets) et v2 offline-complet (240 octets)
-- **Interface Panini** : Cartes à collectionner avec système de rareté
-- **Décentralisé** : Synchronisation via protocole Nostr (kind 30303)
-- **NFC** : Transfert de bons par approche des appareils (⚠️ expérimental)
+- **Offline-first** : Fonctionne sans Internet après la synchronisation matinale.
+- **Cryptographie de pointe** : SSSS polynomial (2-sur-3), AES-GCM, Schnorr secp256k1 (via `bip340`), Scrypt, Nettoyage RAM (`secureZeroiseBytes`).
+- **Handshake atomique** : Double scan (QR Offre → QR ACK) avec challenge aléatoire et signature empêchant la double dépense.
+- **QR codes binaires optimisés** : Format compact v1 (177 octets) et **v2 offline-complet (240 octets)**.
+- **Interface Panini** : Cartes à collectionner avec système de rareté généré aléatoirement.
+- **Révélation de Circuit** : Les bons retournés à l'émetteur publient une preuve économique chiffrée (Kind 30304) au lieu d'une simple destruction.
+- **Décentralisé** : Synchronisation via protocole Nostr (kinds 0, 1, 3, 5, 30303, 30304, 30500+).
+- **NFC** : Transfert de bons par approche des appareils (⚠️ à développer...)
 
 ## Prérequis
 
