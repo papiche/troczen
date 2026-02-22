@@ -77,6 +77,7 @@ class BurnService {
 
       // 6. ✅ NOUVEAU: Publier la Révélation du Circuit (Kind 30304)
       // Le Carnet de Voyage devient une preuve économique
+      // ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché
       final circuitPublished = await nostrService.publishBonCircuit(
         bonId: bon.bonId,
         valueZen: bon.value,
@@ -85,6 +86,7 @@ class BurnService {
         marketName: market?.name ?? NostrConstants.globalMarketName,
         issuerNpub: bon.issuerNpub,
         nsecBonBytes: nsecBonBytes,
+        seedMarket: market?.seedMarket ?? '',  // ✅ SÉCURITÉ: Seed pour chiffrement
         skillAnnotation: skillAnnotation ?? bon.specialAbility,  // Bonus: compétence associée
         rarity: bon.rarity,
         cardType: bon.cardType,

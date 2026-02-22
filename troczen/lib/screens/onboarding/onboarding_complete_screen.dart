@@ -414,11 +414,14 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
   
   /// ✅ WOTX: Publie les demandes d'attestation (Kind 30501) en arrière-plan sans bloquer l'UI
   /// Utilise un fire-and-forget pour ne pas ralentir l'onboarding
+  ///
+  /// ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché.
   void _publishSkillPermitsInBackground({
     required NostrService nostrService,
     required String npub,
     required String nsec,
     required List<String> skillTags,
+    required String seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
   }) {
     // Lancer la publication en arrière-plan sans attendre
     Future(() async {
@@ -427,7 +430,12 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         for (final tag in skillTags) {
           try {
             // ✅ WOTX: Émettre les requêtes d'attestation (Kind 30501) pour chaque savoir-faire
-            final success = await nostrService.publishSkillRequest(npub, nsec, tag);
+            final success = await nostrService.publishSkillRequest(
+              npub: npub,
+              nsec: nsec,
+              skill: tag,
+              seedMarket: seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+            );
             if (success) {
               successCount++;
               debugPrint('✅ Skill Request (Kind 30501) publiée pour: $tag');
@@ -524,6 +532,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
             npub: user.npub,
             nsec: user.nsec,
             skillTags: state.activityTags!,
+            seedMarket: market.seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
           );
         }
         

@@ -84,10 +84,17 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
           
           // Récupérer les clés générées à l'étape 1
           final user = await storageService.getUser();
-          if (user != null) {
+          // ✅ SÉCURITÉ: Récupérer la seed du marché pour le chiffrement
+          final seedMarket = state.seedMarket;
+          if (user != null && seedMarket != null) {
             final defaultSkills = AppConfig.allDefaultSkills;
             for (final skill in defaultSkills) {
-               await nostrService.publishSkillPermit(npub: user.npub, nsec: user.nsec, skillTag: skill);
+               await nostrService.publishSkillPermit(
+                 npub: user.npub,
+                 nsec: user.nsec,
+                 skillTag: skill,
+                 seedMarket: seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+               );
             }
             skills = defaultSkills; // On les utilise immédiatement
           }
@@ -125,10 +132,17 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     final user = await storageService.getUser();
     final state = context.read<OnboardingNotifier>().state;
     
-    if (user != null && state.relayUrl.isNotEmpty) {
+    // ✅ SÉCURITÉ: Récupérer la seed du marché pour le chiffrement
+    final seedMarket = state.seedMarket;
+    if (user != null && state.relayUrl.isNotEmpty && seedMarket != null) {
       final nostrService = NostrService(cryptoService: CryptoService(), storageService: storageService);
       if (await nostrService.connect(state.relayUrl)) {
-        await nostrService.publishSkillPermit(npub: user.npub, nsec: user.nsec, skillTag: tag);
+        await nostrService.publishSkillPermit(
+          npub: user.npub,
+          nsec: user.nsec,
+          skillTag: tag,
+          seedMarket: seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+        );
         await nostrService.disconnect();
       }
     }

@@ -1022,4 +1022,183 @@ class CryptoService {
     return decryptP3(ciphertextHex, nonceHex, kDay);
   }
 
+  // ============================================================================
+  // ✅ SÉCURITÉ WOTX - Chiffrement du contenu des événements (30500-30502, 30304)
+  // ============================================================================
+  //
+  // PROBLÈME (Syndrome du Panopticon):
+  // Si on publie les attestations (qui connaît qui, qui valide qui) en clair sur
+  // le relai local, n'importe qui s'y connectant peut aspirer l'intégralité du
+  // graphe social et économique du village.
+  //
+  // SOLUTION:
+  // Tout comme pour les bons (Kind 30303), le champ content des événements WoTx
+  // est chiffré en AES-GCM avec la Seed du Marché. Les tags publics (p, e, t)
+  // servent au routage par Strfry, mais la "chair" du message (motivation,
+  // commentaires) n'est lisible que par ceux qui ont été invités sur le marché.
+  // ============================================================================
+
+  /// ✅ SÉCURITÉ WOTX: Chiffre le contenu d'un événement avec la Seed du Marché
+  ///
+  /// Utilise AES-GCM avec la seed du marché comme clé de chiffrement.
+  /// En mode HACKATHON (seed à zéro), le contenu reste en clair pour la transparence.
+  ///
+  /// [content] - Le contenu JSON à chiffrer
+  /// [seedHex] - La seed du marché en hexadécimal (64 caractères)
+  ///
+  /// Retourne un Map avec:
+  /// - 'ciphertext': contenu chiffré en hexadécimal
+  /// - 'nonce': nonce AES-GCM en hexadécimal (24 caractères)
+  Map<String, String> encryptWoTxContent(String content, String seedHex) {
+    // Mode HACKATHON: transparence totale, contenu en clair
+    if (_isHackathonSeed(seedHex)) {
+      return {
+        'ciphertext': content, // Contenu non chiffré
+        'nonce': '', // Pas de nonce en mode clair
+      };
+    }
+    
+    try {
+      // Convertir la seed en clé de 32 octets
+      final keyBytes = Uint8List.fromList(HEX.decode(seedHex));
+      
+      // Générer un nonce sécurisé de 12 octets (96 bits) pour AES-GCM
+      final nonce = Uint8List.fromList(
+        List.generate(12, (_) => _secureRandom.nextInt(256))
+      );
+      
+      // Convertir le contenu en bytes
+      final contentBytes = Uint8List.fromList(utf8.encode(content));
+      
+      // Chiffrer avec AES-GCM
+      final cipher = GCMBlockCipher(AESEngine());
+      final params = AEADParameters(
+        KeyParameter(keyBytes),
+        128, // tag length en bits
+        nonce,
+        Uint8List(0), // additional data
+      );
+      
+      cipher.init(true, params);
+      final ciphertext = cipher.process(contentBytes);
+      
+      return {
+        'ciphertext': HEX.encode(ciphertext),
+        'nonce': HEX.encode(nonce),
+      };
+    } catch (e) {
+      throw ArgumentError('Erreur lors du chiffrement WoTx: $e');
+    }
+  }
+
+  /// ✅ SÉCURITÉ WOTX: Déchiffre le contenu d'un événement avec la Seed du Marché
+  ///
+  /// [ciphertextHex] - Le contenu chiffré en hexadécimal
+  /// [nonceHex] - Le nonce AES-GCM en hexadécimal (peut être vide en mode HACKATHON)
+  /// [seedHex] - La seed du marché en hexadécimal (64 caractères)
+  ///
+  /// Retourne le contenu déchiffré en texte (JSON)
+  String decryptWoTxContent(String ciphertextHex, String nonceHex, String seedHex) {
+    // Mode HACKATHON: le contenu était en clair
+    if (_isHackathonSeed(seedHex) || nonceHex.isEmpty) {
+      return ciphertextHex; // C'est déjà le contenu en clair
+    }
+    
+    try {
+      // Convertir la seed en clé de 32 octets
+      final keyBytes = Uint8List.fromList(HEX.decode(seedHex));
+      
+      // Décoder le nonce et le ciphertext
+      final nonce = Uint8List.fromList(HEX.decode(nonceHex));
+      final ciphertext = Uint8List.fromList(HEX.decode(ciphertextHex));
+      
+      // Déchiffrer avec AES-GCM
+      final cipher = GCMBlockCipher(AESEngine());
+      final params = AEADParameters(
+        KeyParameter(keyBytes),
+        128,
+        nonce,
+        Uint8List(0),
+      );
+      
+      cipher.init(false, params);
+      final plaintext = cipher.process(ciphertext);
+      
+      return utf8.decode(plaintext);
+    } catch (e) {
+      throw ArgumentError('Erreur lors du déchiffrement WoTx: $e');
+    }
+  }
+
+  /// ✅ SÉCURITÉ WOTX: Vérifie si un contenu est chiffré ou en clair
+  ///
+  /// Retourne true si le contenu est chiffré (nonce présent), false sinon
+  bool isWoTxContentEncrypted(String nonceHex) {
+    return nonceHex.isNotEmpty;
+  }
+
+  /// ✅ SÉCURITÉ WOTX: Crée un événement WoTx avec contenu chiffré
+  ///
+  /// Cette méthode encapsule la logique de création d'un événement WoTx sécurisé:
+  /// 1. Chiffre le contenu avec la seed du marché
+  /// 2. Ajoute le nonce dans un tag 'encryption' pour le déchiffrement ultérieur
+  ///
+  /// [kind] - Le kind de l'événement (30500, 30501, 30502, 30304)
+  /// [pubkey] - La clé publique de l'émetteur
+  /// [content] - Le contenu JSON à chiffrer
+  /// [tags] - Les tags publics pour le routage (p, e, t, etc.)
+  /// [seedHex] - La seed du marché pour le chiffrement
+  ///
+  /// Retourne l'événement prêt à être signé et publié
+  Map<String, dynamic> createEncryptedWoTxEvent({
+    required int kind,
+    required String pubkey,
+    required String content,
+    required List<List<String>> tags,
+    required String seedHex,
+  }) {
+    // Chiffrer le contenu
+    final encrypted = encryptWoTxContent(content, seedHex);
+    
+    // Créer les tags avec le nonce d'encryption si présent
+    final encryptedTags = List<List<String>>.from(tags);
+    if (encrypted['nonce']!.isNotEmpty) {
+      encryptedTags.add(['encryption', 'aes-gcm', encrypted['nonce']!]);
+    }
+    
+    return {
+      'kind': kind,
+      'pubkey': pubkey,
+      'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'tags': encryptedTags,
+      'content': encrypted['ciphertext']!,
+    };
+  }
+
+  /// ✅ SÉCURITÉ WOTX: Déchiffre le contenu d'un événement reçu
+  ///
+  /// Extrait le nonce du tag 'encryption' et déchiffre le contenu
+  ///
+  /// [event] - L'événement Nostr reçu
+  /// [seedHex] - La seed du marché pour le déchiffrement
+  ///
+  /// Retourne le contenu déchiffré
+  String decryptWoTxEvent(Map<String, dynamic> event, String seedHex) {
+    final content = event['content'] as String;
+    
+    // Chercher le tag d'encryption
+    final tags = event['tags'] as List? ?? [];
+    String? nonceHex;
+    
+    for (final tag in tags) {
+      if (tag is List && tag.length >= 3 && tag[0] == 'encryption' && tag[1] == 'aes-gcm') {
+        nonceHex = tag[2] as String;
+        break;
+      }
+    }
+    
+    // Déchiffrer ou retourner tel quel
+    return decryptWoTxContent(content, nonceHex ?? '', seedHex);
+  }
+
 }

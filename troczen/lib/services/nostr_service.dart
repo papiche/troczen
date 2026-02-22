@@ -758,6 +758,9 @@ class NostrService {
   ///
   /// Tags: ['d', 'circuit_$bonId'], ['market', marketName], ['issuer', issuerNpub]
   /// Content: JSON avec stats du parcours (value_zen, hop_count, age_days, skill_annotation)
+  ///
+  /// ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché pour éviter
+  /// que le graphe économique ne soit lisible par des tiers non invités.
   Future<bool> publishBonCircuit({
     required String bonId,
     required double valueZen,
@@ -766,6 +769,7 @@ class NostrService {
     required String marketName,
     required String issuerNpub,
     required Uint8List nsecBonBytes,  // sk_B reconstruit pour signature
+    required String seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
     String? skillAnnotation,  // Compétence associée au parcours
     String? rarity,
     String? cardType,
@@ -790,23 +794,35 @@ class NostrService {
         if (rarity != null) 'rarity': rarity,
         if (cardType != null) 'card_type': cardType,
       };
+      
+      // ✅ SÉCURITÉ: Chiffrer le contenu avec la seed du marché
+      final plaintextContent = jsonEncode(circuitContent);
+      final encrypted = _cryptoService.encryptWoTxContent(plaintextContent, seedMarket);
+      
+      // Tags publics pour le routage Strfry
+      final tags = <List<String>>[
+        ['d', 'circuit_$bonId'],  // Identifiant unique du circuit
+        ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
+        ['market', marketName],  // Gardé pour affichage UI (joli nom)
+        ['issuer', issuerNpub],
+        ['value', valueZen.toString()],
+        ['hops', hopCount.toString()],
+        ['age_days', ageDays.toString()],
+        if (skillAnnotation != null && skillAnnotation.isNotEmpty)
+          ['skill', skillAnnotation],
+      ];
+      
+      // Ajouter le tag d'encryption si le contenu est chiffré
+      if (encrypted['nonce']!.isNotEmpty) {
+        tags.add(['encryption', 'aes-gcm', encrypted['nonce']!]);
+      }
 
       final event = {
         'kind': 30304,  // Kind spécifique pour la Révélation de Circuit
         'pubkey': bonId,  // ✅ Le BON signe sa propre révélation
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [
-          ['d', 'circuit_$bonId'],  // Identifiant unique du circuit
-          ['t', normalizeMarketTag(marketName)],  // ✅ NIP-12: Tag 't' normalisé pour indexation
-          ['market', marketName],  // Gardé pour affichage UI (joli nom)
-          ['issuer', issuerNpub],
-          ['value', valueZen.toString()],
-          ['hops', hopCount.toString()],
-          ['age_days', ageDays.toString()],
-          if (skillAnnotation != null && skillAnnotation.isNotEmpty)
-            ['skill', skillAnnotation],
-        ],
-        'content': jsonEncode(circuitContent),
+        'tags': tags,
+        'content': encrypted['ciphertext']!,
       };
 
       final eventId = _calculateEventId(event);
@@ -1522,11 +1538,15 @@ class NostrService {
   /// Kind 30500 = Parameterized Replaceable Event (NIP-33)
   ///
   /// Cette méthode permet à un utilisateur de déclarer ses compétences/activités
-  /// de manière publique et vérifiable sur Nostr.
+  /// de manière vérifiable sur Nostr.
+  ///
+  /// ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché pour éviter
+  /// que le graphe social ne soit lisible par des tiers non invités.
   Future<bool> publishSkillPermit({
     required String npub,
     required String nsec,
     required String skillTag,
+    required String seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
   }) async {
     if (!_isConnected) {
       onError?.call('Non connecté au relais');
@@ -1542,22 +1562,33 @@ class NostrService {
       final dTag = 'PERMIT_${normalizedTag.toUpperCase()}_X1';
       
       // Contenu JSON décrivant la déclaration initiale
-      final content = jsonEncode({
+      final plaintextContent = jsonEncode({
         'level': 1,
         'type': 'self_declaration',
         'skill': normalizedTag,
         'timestamp': DateTime.now().toIso8601String(),
       });
 
+      // ✅ SÉCURITÉ: Chiffrer le contenu avec la seed du marché
+      final encrypted = _cryptoService.encryptWoTxContent(plaintextContent, seedMarket);
+      
+      // Tags publics pour le routage Strfry
+      final tags = <List<String>>[
+        ['d', dTag],
+        ['t', normalizedTag],
+      ];
+      
+      // Ajouter le tag d'encryption si le contenu est chiffré
+      if (encrypted['nonce']!.isNotEmpty) {
+        tags.add(['encryption', 'aes-gcm', encrypted['nonce']!]);
+      }
+
       final event = {
         'kind': 30500,  // Parameterized Replaceable Event (NIP-33)
         'pubkey': npub,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [
-          ['d', dTag],
-          ['t', normalizedTag],
-        ],
-        'content': content,
+        'tags': tags,
+        'content': encrypted['ciphertext']!,
       };
 
       final eventId = _calculateEventId(event);
@@ -1732,21 +1763,47 @@ class NostrService {
   }
 
   /// 2. Publie une demande d'attestation pour un savoir-faire (Kind 30501)
-  Future<bool> publishSkillRequest(String npub, String nsec, String skill) async {
+  ///
+  /// ✅ SÉCURITÉ: Le contenu (motivation) est chiffré avec la Seed du Marché.
+  /// Les tags publics (permit_id, t) servent au routage par Strfry.
+  Future<bool> publishSkillRequest({
+    required String npub,
+    required String nsec,
+    required String skill,
+    required String seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+    String motivation = "Déclaration initiale lors de l'inscription",
+  }) async {
     if (!_isConnected) return false;
     try {
       final normalizedSkill = skill.toLowerCase().trim().replaceAll(' ', '_');
       final permitId = 'PERMIT_${normalizedSkill.toUpperCase()}_X1';
       
+      // Contenu JSON avec motivation
+      final plaintextContent = jsonEncode({
+        'motivation': motivation,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+      
+      // ✅ SÉCURITÉ: Chiffrer le contenu avec la seed du marché
+      final encrypted = _cryptoService.encryptWoTxContent(plaintextContent, seedMarket);
+      
+      // Tags publics pour le routage Strfry
+      final tags = <List<String>>[
+        ['permit_id', permitId],
+        ['t', skill],
+      ];
+      
+      // Ajouter le tag d'encryption si le contenu est chiffré
+      if (encrypted['nonce']!.isNotEmpty) {
+        tags.add(['encryption', 'aes-gcm', encrypted['nonce']!]);
+      }
+      
       final event = {
         'kind': NostrConstants.kindSkillRequest,
         'pubkey': npub,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [
-          ['permit_id', permitId],
-          ['t', skill]
-        ],
-        'content': '{"motivation": "Déclaration initiale lors de l\'inscription"}',
+        'tags': tags,
+        'content': encrypted['ciphertext']!,
       };
 
       final eventId = _calculateEventId(event);
@@ -1843,32 +1900,50 @@ class NostrService {
 
   /// Publie une attestation (Kind 30502) pour valider un pair
   /// Utilisé dans le Mode Expert pour certifier les compétences d'autres utilisateurs
+  ///
+  /// ✅ SÉCURITÉ: Le contenu (motivation, commentaires) est chiffré avec la Seed du Marché.
+  /// Les tags publics (e, p, permit_id, t) servent au routage par Strfry.
   Future<bool> publishSkillAttestation({
     required String myNpub,
     required String myNsec,
     required String requestId,      // ID de l'event 30501 ciblé
     required String requesterNpub,  // Clé publique du demandeur
     required String permitId,       // Ex: PERMIT_BOULANGER_X1
+    required String seedMarket,     // ✅ SÉCURITÉ: Seed pour chiffrement
     String? motivation,             // Commentaire optionnel
   }) async {
     if (!_isConnected) return false;
     
     try {
+      // Contenu JSON avec motivation
+      final plaintextContent = jsonEncode({
+        'type': 'skill_attestation',
+        'motivation': motivation ?? 'Attestation de compétence',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+      
+      // ✅ SÉCURITÉ: Chiffrer le contenu avec la seed du marché
+      final encrypted = _cryptoService.encryptWoTxContent(plaintextContent, seedMarket);
+      
+      // Tags publics pour le routage Strfry
+      final tags = <List<String>>[
+        ['e', requestId],           // Référence à la demande
+        ['p', requesterNpub],       // Destinataire de l'attestation
+        ['permit_id', permitId],    // Compétence attestée
+        ['t', permitId.replaceAll('PERMIT_', '').replaceAll('_X1', '').replaceAll('_', ' ')],
+      ];
+      
+      // Ajouter le tag d'encryption si le contenu est chiffré
+      if (encrypted['nonce']!.isNotEmpty) {
+        tags.add(['encryption', 'aes-gcm', encrypted['nonce']!]);
+      }
+      
       final event = {
         'kind': NostrConstants.kindSkillAttest,
         'pubkey': myNpub,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [
-          ['e', requestId],           // Référence à la demande
-          ['p', requesterNpub],       // Destinataire de l'attestation
-          ['permit_id', permitId],    // Compétence attestée
-          ['t', permitId.replaceAll('PERMIT_', '').replaceAll('_X1', '').replaceAll('_', ' ')],
-        ],
-        'content': jsonEncode({
-          'type': 'skill_attestation',
-          'motivation': motivation ?? 'Attestation de compétence',
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
+        'tags': tags,
+        'content': encrypted['ciphertext']!,
       };
 
       final eventId = _calculateEventId(event);

@@ -1068,6 +1068,8 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   }
 
   /// Publie une attestation pour un demandeur
+  ///
+  /// ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché.
   Future<void> _attestUser(Map<String, dynamic> request) async {
     setState(() => _isAttesting = true);
     
@@ -1075,6 +1077,10 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     Logger.info('ExploreView', 'Attestation pour ${request['pubkey']} - skill: ${request['skill']}');
     
     try {
+      // ✅ SÉCURITÉ: Récupérer la seed du marché pour le chiffrement
+      final market = await _storageService.getMarket();
+      final seedMarket = market?.seedMarket ?? '';
+      
       final nostrService = NostrService(
         cryptoService: CryptoService(),
         storageService: _storageService,
@@ -1087,6 +1093,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
           requestId: request['id'],
           requesterNpub: request['pubkey'],
           permitId: request['permit_id'] ?? 'PERMIT_${request['skill']?.toUpperCase()}_X1',
+          seedMarket: seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
           motivation: 'Certification par pair',
         );
         
