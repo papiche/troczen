@@ -18,11 +18,11 @@ Cette approche est cohérente avec la Théorie de la Relativité Monétaire (TRM
 
 ### Le marché HACKATHON — seed `000...0`
 
-La seed `000...0` (32 octets nuls) est la **seed publique universelle**. Elle ne protège rien — elle ouvre tout.
+La seed `000...0` (32 octets nuls) est la **seed publique universelle**.
 
 ```
 HACKATHON = seedMarket(000...0)
-  → P3 lisible par tous (clé de chiffrement = zéro = pas de chiffrement effectif)
+  → P3 lisible par tous (clé de chiffrement simple)
   → Traçabilité complète du parcours des bons
   → Connaissance totale : tout le monde voit tout
   → DU[0] = 10 ẐEN/jour (paramètre initial universel)

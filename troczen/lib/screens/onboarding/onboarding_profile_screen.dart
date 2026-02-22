@@ -78,7 +78,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDynamicTags();
+    _loadSkillsFromNostr();
   }
   
   @override
@@ -90,63 +90,77 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     super.dispose();
   }
   
-  /// Charge les tags dynamiques depuis les profils existants sur le relais
-  Future<void> _loadDynamicTags() async {
+  /// Charge les savoir-faire depuis le relai Nostr (Kind 30500)
+  /// Si le relai est vierge, l'ensemence avec les tags prédéfinis
+  Future<void> _loadSkillsFromNostr() async {
     final state = context.read<OnboardingNotifier>().state;
-    final relayUrl = state.relayUrl;
-    
-    if (relayUrl.isEmpty) {
-      return;
-    }
+    if (state.relayUrl.isEmpty) return;
     
     setState(() => _loadingDynamicTags = true);
     
     try {
       final storageService = StorageService();
       final cryptoService = CryptoService();
-      final nostrService = NostrService(
-        cryptoService: cryptoService,
-        storageService: storageService,
-      );
+      final nostrService = NostrService(cryptoService: cryptoService, storageService: storageService);
       
-      final connected = await nostrService.connect(relayUrl);
-      if (connected) {
-        final tags = await nostrService.fetchActivityTagsFromProfiles();
+      if (await nostrService.connect(state.relayUrl)) {
+        // 1. Lire les Kind 30500
+        var skills = await nostrService.fetchSkillDefinitions();
+        
+        // 2. Si le relai est vierge (ensemencement initial)
+        if (skills.isEmpty) {
+          Logger.info('Onboarding', 'Relai vierge. Ensemencement des savoir-faire (Kind 30500)...');
+          
+          // Récupérer les clés générées à l'étape 1
+          final user = await storageService.getUser();
+          if (user != null) {
+            final defaultSkills = _predefinedTags.values.expand((e) => e).toList();
+            for (final skill in defaultSkills) {
+               await nostrService.publishSkillDefinition(user.npub, user.nsec, skill);
+            }
+            skills = defaultSkills; // On les utilise immédiatement
+          }
+        }
+        
         setState(() {
           _dynamicTags.clear();
-          _dynamicTags.addAll(tags);
+          _dynamicTags.addAll(skills);
         });
+        await nostrService.disconnect();
       }
-      
-      await nostrService.disconnect();
     } catch (e) {
-      debugPrint('❌ Erreur chargement tags dynamiques: $e');
+      Logger.error('Onboarding', 'Erreur chargement skills', e);
     } finally {
-      setState(() => _loadingDynamicTags = false);
+      if (mounted) setState(() => _loadingDynamicTags = false);
     }
   }
   
   /// Ajoute un tag personnalisé à la liste des tags sélectionnés
-  void _addCustomTag() {
+  /// Publie la définition (Kind 30500) sur le relai pour les autres utilisateurs
+  void _addCustomTag() async {
     final tag = _customTagController.text.trim();
-    if (tag.isEmpty) return;
-    
-    // Vérifier que le tag n'est pas déjà sélectionné
-    if (_selectedTags.contains(tag)) {
-      _customTagController.clear();
-      return;
-    }
+    if (tag.isEmpty || _selectedTags.contains(tag)) return;
     
     setState(() {
       _selectedTags.add(tag);
-      // Ajouter aussi aux tags dynamiques pour affichage
-      if (!_dynamicTags.contains(tag)) {
-        _dynamicTags.add(tag);
-      }
+      if (!_dynamicTags.contains(tag)) _dynamicTags.add(tag);
     });
     
     _customTagController.clear();
     _focusNode.requestFocus();
+
+    // Publier la définition sur le relai pour les autres
+    final storageService = StorageService();
+    final user = await storageService.getUser();
+    final state = context.read<OnboardingNotifier>().state;
+    
+    if (user != null && state.relayUrl.isNotEmpty) {
+      final nostrService = NostrService(cryptoService: CryptoService(), storageService: storageService);
+      if (await nostrService.connect(state.relayUrl)) {
+        await nostrService.publishSkillDefinition(user.npub, user.nsec, tag);
+        await nostrService.disconnect();
+      }
+    }
   }
   
   @override

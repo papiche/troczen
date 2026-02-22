@@ -412,7 +412,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     return isValid;
   }
   
-  /// ✅ NOUVEAU: Publie les Skill Permits en arrière-plan sans bloquer l'UI
+  /// ✅ WOTX: Publie les demandes d'attestation (Kind 30501) en arrière-plan sans bloquer l'UI
   /// Utilise un fire-and-forget pour ne pas ralentir l'onboarding
   void _publishSkillPermitsInBackground({
     required NostrService nostrService,
@@ -423,21 +423,25 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     // Lancer la publication en arrière-plan sans attendre
     Future(() async {
       try {
+        int successCount = 0;
         for (final tag in skillTags) {
           try {
-            await nostrService.publishSkillPermit(
-              npub: npub,
-              nsec: nsec,
-              skillTag: tag,
-            );
-            debugPrint('✅ Skill Permit publié pour: $tag');
+            // ✅ WOTX: Émettre les requêtes d'attestation (Kind 30501) pour chaque savoir-faire
+            final success = await nostrService.publishSkillRequest(npub, nsec, tag);
+            if (success) {
+              successCount++;
+              debugPrint('✅ Skill Request (Kind 30501) publiée pour: $tag');
+            } else {
+              debugPrint('⚠️ Échec publication Skill Request pour: $tag');
+            }
           } catch (e) {
-            debugPrint('⚠️ Erreur publication Skill Permit pour $tag: $e');
+            debugPrint('⚠️ Erreur publication Skill Request pour $tag: $e');
             // Continuer avec les autres tags même si un échoue
           }
         }
+        debugPrint('✅ WOTX: $successCount/${skillTags.length} demandes de savoir-faire (Kind 30501) publiées');
       } catch (e) {
-        debugPrint('⚠️ Erreur générale publication Skill Permits: $e');
+        debugPrint('⚠️ Erreur générale publication Skill Requests: $e');
       }
     });
   }

@@ -1690,6 +1690,108 @@ class NostrService {
     }
   }
 
+  // ============================================================================
+  // WoTx - Savoir-faire (Kind 30500-30503)
+  // ============================================================================
+
+  /// 1. Récupère toutes les définitions de savoir-faire (Kind 30500)
+  Future<List<String>> fetchSkillDefinitions() async {
+    if (!_isConnected) return [];
+    try {
+      final completer = Completer<List<String>>();
+      final Set<String> skills = {};
+      final subId = 'skills_${DateTime.now().millisecondsSinceEpoch}';
+      
+      _subscriptionHandlers[subId] = (message) {
+        if (message[0] == 'EVENT') {
+          final event = message[2] as Map<String, dynamic>;
+          final tags = event['tags'] as List;
+          for (final tag in tags) {
+            // On cherche le tag 't' (nom de la compétence)
+            if (tag is List && tag.isNotEmpty && tag[0] == 't' && tag.length > 1) {
+              skills.add(tag[1].toString());
+            }
+          }
+        } else if (message[0] == 'EOSE') {
+          _channel?.sink.add(jsonEncode(['CLOSE', subId]));
+          _subscriptionHandlers.remove(subId);
+          if (!completer.isCompleted) completer.complete(skills.toList()..sort());
+        }
+      };
+
+      _channel!.sink.add(jsonEncode(['REQ', subId, {'kinds': [NostrConstants.kindSkillPermit]}]));
+      
+      Timer(const Duration(seconds: 4), () {
+        if (!completer.isCompleted) completer.complete(skills.toList()..sort());
+      });
+      return await completer.future;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur fetchSkillDefinitions', e);
+      return [];
+    }
+  }
+
+  /// 2. Publie la définition d'un nouveau savoir-faire (Kind 30500)
+  Future<bool> publishSkillDefinition(String npub, String nsec, String skill) async {
+    if (!_isConnected) return false;
+    try {
+      final normalizedSkill = skill.toLowerCase().trim().replaceAll(' ', '_');
+      final event = {
+        'kind': NostrConstants.kindSkillPermit,
+        'pubkey': npub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['d', 'PERMIT_${normalizedSkill.toUpperCase()}_X1'], // Niveau 1 par défaut
+          ['t', skill],
+          ['level', '1']
+        ],
+        'content': '{"description": "Savoir-faire: $skill (Niveau 1)"}',
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+      event['sig'] = _cryptoService.signMessage(eventId, nsec);
+
+      _channel!.sink.add(jsonEncode(['EVENT', event]));
+      Logger.success('NostrService', 'Skill definition publiée: $skill (Kind 30500)');
+      return true;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur publishSkillDefinition', e);
+      return false;
+    }
+  }
+
+  /// 3. Publie une demande d'attestation pour un savoir-faire (Kind 30501)
+  Future<bool> publishSkillRequest(String npub, String nsec, String skill) async {
+    if (!_isConnected) return false;
+    try {
+      final normalizedSkill = skill.toLowerCase().trim().replaceAll(' ', '_');
+      final permitId = 'PERMIT_${normalizedSkill.toUpperCase()}_X1';
+      
+      final event = {
+        'kind': NostrConstants.kindSkillRequest,
+        'pubkey': npub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['permit_id', permitId],
+          ['t', skill]
+        ],
+        'content': '{"motivation": "Déclaration initiale lors de l\'inscription"}',
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+      event['sig'] = _cryptoService.signMessage(eventId, nsec);
+
+      _channel!.sink.add(jsonEncode(['EVENT', event]));
+      Logger.success('NostrService', 'Skill request publiée: $skill (Kind 30501)');
+      return true;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur publishSkillRequest', e);
+      return false;
+    }
+  }
+
   bool get isConnected => _isConnected;
   String? get currentRelay => _currentRelayUrl;
 }

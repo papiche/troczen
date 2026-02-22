@@ -19,6 +19,12 @@ class NostrConstants {
   static const int kindText = 1;            // Transfert/transaction
   static const int kindBurn = 5;            // Destruction bon
   static const int kindP3Publication = 30303; // Publication P3 (NIP-33)
+  
+  // WoTx - Savoir-faire (Kind 30xxx)
+  static const int kindSkillPermit = 30500;  // Définition d'un savoir-faire
+  static const int kindSkillRequest = 30501; // Demande d'attestation
+  static const int kindSkillAttest = 30502;  // Attestation par un pair
+  static const int kindSkillCredential = 30503; // Verifiable Credential (Oracle)
 }
 
 /// Profil utilisateur Nostr (kind 0 metadata)
