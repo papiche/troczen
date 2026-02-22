@@ -59,6 +59,44 @@ class AppConfig {
   /// Empreinte du keystore de signature APK
   static const String apkSignatureFingerprint = '';
   
+  // ==================== WOTX - SAVOIR-FAIRE PAR DÉFAUT ====================
+  /// Skills prédéfinis par catégorie pour l'ensemencement du relai (Kind 30500)
+  /// Utilisés quand le relai est vierge pour initialiser la folksonomie P2P
+  static const Map<String, List<String>> defaultSkills = {
+    'Alimentation': [
+      'Boulanger',
+      'Maraîcher',
+      'Fromager',
+      'Traiteur',
+      'Épicerie',
+    ],
+    'Services': [
+      'Artisan',
+      'Plombier',
+      'Électricien',
+      'Coiffeur',
+      'Réparateur',
+    ],
+    'Culture & Bien-être': [
+      'Musicien',
+      'Thérapeute',
+      'Yoga',
+      'Librairie',
+      'Café',
+    ],
+    'Artisanat': [
+      'Potier',
+      'Tisserand',
+      'Bijoutier',
+      'Menuisier',
+      'Couturier',
+    ],
+  };
+  
+  /// Liste plate de tous les skills pour l'ensemencement
+  static List<String> get allDefaultSkills =>
+      defaultSkills.values.expand((e) => e).toList();
+  
   // Constructeur privé pour empêcher l'instanciation
   AppConfig._();
 }

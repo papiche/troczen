@@ -1731,37 +1731,7 @@ class NostrService {
     }
   }
 
-  /// 2. Publie la définition d'un nouveau savoir-faire (Kind 30500)
-  Future<bool> publishSkillDefinition(String npub, String nsec, String skill) async {
-    if (!_isConnected) return false;
-    try {
-      final normalizedSkill = skill.toLowerCase().trim().replaceAll(' ', '_');
-      final event = {
-        'kind': NostrConstants.kindSkillPermit,
-        'pubkey': npub,
-        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': [
-          ['d', 'PERMIT_${normalizedSkill.toUpperCase()}_X1'], // Niveau 1 par défaut
-          ['t', skill],
-          ['level', '1']
-        ],
-        'content': '{"description": "Savoir-faire: $skill (Niveau 1)"}',
-      };
-
-      final eventId = _calculateEventId(event);
-      event['id'] = eventId;
-      event['sig'] = _cryptoService.signMessage(eventId, nsec);
-
-      _channel!.sink.add(jsonEncode(['EVENT', event]));
-      Logger.success('NostrService', 'Skill definition publiée: $skill (Kind 30500)');
-      return true;
-    } catch (e) {
-      Logger.error('NostrService', 'Erreur publishSkillDefinition', e);
-      return false;
-    }
-  }
-
-  /// 3. Publie une demande d'attestation pour un savoir-faire (Kind 30501)
+  /// 2. Publie une demande d'attestation pour un savoir-faire (Kind 30501)
   Future<bool> publishSkillRequest(String npub, String nsec, String skill) async {
     if (!_isConnected) return false;
     try {

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../config/app_config.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/nostr_service.dart';
@@ -43,37 +44,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   /// ✅ v2.0.2: Miniature base64 pour l'événement Nostr (offline-first)
   String? _base64Avatar;
   
-  // Tags prédéfinis par catégorie
-  final Map<String, List<String>> _predefinedTags = {
-    'Alimentation': [
-      'Boulanger',
-      'Maraîcher',
-      'Fromager',
-      'Traiteur',
-      'Épicerie',
-    ],
-    'Services': [
-      'Artisan',
-      'Plombier',
-      'Électricien',
-      'Coiffeur',
-      'Réparateur',
-    ],
-    'Culture & Bien-être': [
-      'Musicien',
-      'Thérapeute',
-      'Yoga',
-      'Librairie',
-      'Café',
-    ],
-    'Artisanat': [
-      'Potier',
-      'Tisserand',
-      'Bijoutier',
-      'Menuisier',
-      'Couturier',
-    ],
-  };
+  // Les skills prédéfinis sont maintenant centralisés dans AppConfig.defaultSkills
   
   @override
   void initState() {
@@ -114,9 +85,9 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
           // Récupérer les clés générées à l'étape 1
           final user = await storageService.getUser();
           if (user != null) {
-            final defaultSkills = _predefinedTags.values.expand((e) => e).toList();
+            final defaultSkills = AppConfig.allDefaultSkills;
             for (final skill in defaultSkills) {
-               await nostrService.publishSkillDefinition(user.npub, user.nsec, skill);
+               await nostrService.publishSkillPermit(npub: user.npub, nsec: user.nsec, skillTag: skill);
             }
             skills = defaultSkills; // On les utilise immédiatement
           }
@@ -157,7 +128,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     if (user != null && state.relayUrl.isNotEmpty) {
       final nostrService = NostrService(cryptoService: CryptoService(), storageService: storageService);
       if (await nostrService.connect(state.relayUrl)) {
-        await nostrService.publishSkillDefinition(user.npub, user.nsec, tag);
+        await nostrService.publishSkillPermit(npub: user.npub, nsec: user.nsec, skillTag: tag);
         await nostrService.disconnect();
       }
     }
@@ -317,7 +288,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                     const SizedBox(height: 16),
                     
                     // Tags par catégorie
-                    ..._predefinedTags.entries.map((entry) =>
+                    ...AppConfig.defaultSkills.entries.map((entry) =>
                       _buildCategoryTags(entry.key, entry.value)
                     ),
                     
@@ -514,7 +485,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   /// Construit la section des tags dynamiques récupérés depuis le relais
   Widget _buildDynamicTagsSection() {
     // Filtrer les tags dynamiques pour exclure ceux déjà dans les tags prédéfinis
-    final allPredefinedTags = _predefinedTags.values.expand((tags) => tags).toSet();
+    final allPredefinedTags = AppConfig.allDefaultSkills.toSet();
     final uniqueDynamicTags = _dynamicTags
         .where((tag) => !allPredefinedTags.contains(tag))
         .toList();
