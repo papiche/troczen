@@ -483,10 +483,12 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       final salt = _saltController.text.trim();
       final pepper = _pepperController.text;
       
-      final privateKeyBytes = await cryptoService.derivePrivateKey(
+      final seedBytes = await cryptoService.deriveSeed(
         salt,
         pepper,
       );
+      final privateKeyBytes = await cryptoService.deriveNostrPrivateKey(seedBytes);
+      cryptoService.secureZeroiseBytes(seedBytes);
       
       final privateKeyHex = privateKeyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
       final publicKeyHex = cryptoService.derivePublicKey(privateKeyBytes);

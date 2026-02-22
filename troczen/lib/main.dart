@@ -105,10 +105,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // ✅ CORRECTION: Dériver réellement la clé privée depuis login/password
-      final privateKeyBytes = await _cryptoService.derivePrivateKey(
+      final seedBytes = await _cryptoService.deriveSeed(
         _loginController.text.trim(),
         _passwordController.text,
       );
+      final privateKeyBytes = await _cryptoService.deriveNostrPrivateKey(seedBytes);
+      _cryptoService.secureZeroiseBytes(seedBytes);
 
       // Convertir en hex
       final privateKeyHex = privateKeyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();

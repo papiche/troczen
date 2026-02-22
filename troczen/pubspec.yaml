@@ -63,6 +63,7 @@ dependencies:
   path: ^1.9.1
   image: ^4.8.0  # ✅ v2.0.1: Compression WebP pour images Base64 dans Nostr
   url_launcher: ^6.3.2
+  synchronized: ^3.4.0
   
 dev_dependencies:
   flutter_test:

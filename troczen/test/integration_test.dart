@@ -13,6 +13,7 @@ import 'package:troczen/services/crypto_service.dart';
 import 'package:troczen/services/qr_service.dart';
 import 'package:troczen/models/bon.dart';
 import 'package:hex/hex.dart';
+import 'package:crypto/crypto.dart';
 
 void main() {
   group('========================================', () {
@@ -41,7 +42,10 @@ void main() {
         expect(bonKeys['nsec']!.startsWith('nsec1'), isTrue, reason: 'Clé privée doit commencer par nsec1');
 
         // 2. Découpage Shamir (2-sur-3)
-        final parts = cryptoService.shamirSplit(bonNsecHex);
+        final bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
+        final partsBytes = cryptoService.shamirSplitBytes(bonNsecBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(bonNsecBytes);
         final p1 = parts[0]; // Ancre (gardée par l'émetteur)
         final p2 = parts[1]; // Voyageur (dans le QR/transfert)
         final p3 = parts[2]; // Témoin (publié sur Nostr)
@@ -76,7 +80,10 @@ void main() {
 
         // 1. Générer les clés du bon
         final bonKeys = cryptoService.generateNostrKeyPair();
-        final parts = cryptoService.shamirSplit(bonKeys['privateKeyHex']!);
+        final bonNsecBytes = Uint8List.fromList(HEX.decode(bonKeys['privateKeyHex']!));
+        final partsBytes = cryptoService.shamirSplitBytes(bonNsecBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(bonNsecBytes);
 
         // 2. Créer le bon
         final bon = Bon(
@@ -148,7 +155,10 @@ void main() {
         // 1. Générer les clés et parts
         final bonKeys = cryptoService.generateNostrKeyPair();
         final originalNsec = bonKeys['privateKeyHex']!;
-        final parts = cryptoService.shamirSplit(originalNsec);
+        final originalNsecBytes = Uint8List.fromList(HEX.decode(originalNsec));
+        final partsBytes = cryptoService.shamirSplitBytes(originalNsecBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(originalNsecBytes);
         final p2 = parts[1];
         final p3 = parts[2];
 
@@ -260,25 +270,19 @@ void main() {
         });
 
         test('Étape A : Génération de l\'offre (QR1)', () async {
-          // PHASE 4, étapes 62-64 du diagramme Mermaid:
-          // - Récupère P3 du Bon
-          // - Chiffre P2 (Clé AES = SHA256(P3))
-          // - Génère Challenge aléatoire
-          // - Affiche QR1
-
           // 1. Préparer les données du bon
           final bonKeys = cryptoService.generateNostrKeyPair();
           final bonId = bonKeys['publicKeyHex']!;
-          final parts = cryptoService.shamirSplit(bonKeys['privateKeyHex']!);
-          final p2 = parts[1];
-          final p3 = parts[2];
+          final bonNsecBytes = Uint8List.fromList(HEX.decode(bonKeys['privateKeyHex']!));
+          final partsBytes = cryptoService.shamirSplitBytes(bonNsecBytes);
+          cryptoService.secureZeroiseBytes(bonNsecBytes);
 
           // 2. Chiffrer P2 avec P3 comme clé
-          final encryptedP2Result = await cryptoService.encryptP2(p2, p3);
-          final encryptedP2 = encryptedP2Result['ciphertext']!;
-          final nonce = encryptedP2Result['nonce']!;
+          final encryptedP2Result = await cryptoService.encryptP2Bytes(partsBytes[1], partsBytes[2]);
+          final nonce = HEX.encode(encryptedP2Result.nonce);
 
-          expect(encryptedP2, isNotEmpty, reason: 'P2 chiffré ne doit pas être vide');
+          // Le ciphertext contient maintenant le tag GCM (48 octets = 32 + 16)
+          expect(encryptedP2Result.ciphertext.length, equals(48), reason: 'P2 chiffré doit faire 48 octets (32 + tag 16)');
           expect(nonce.length, equals(24), reason: 'Nonce doit faire 24 chars hex (12 octets)');
 
           // 3. Générer un challenge aléatoire (16 octets)
@@ -286,87 +290,70 @@ void main() {
             List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
           );
           final challenge = HEX.encode(challengeBytes);
-          expect(challenge.length, equals(32), reason: 'Challenge doit faire 32 chars hex (16 octets)');
-
+          
           // 4. Encoder l'offre en QR
-          final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-          final ttl = 300; // 5 minutes
-
-          final qrData = qrService.encodeOffer(
-            bonIdHex: bonId,
-            p2CipherHex: encryptedP2,
-            nonceHex: nonce,
-            challengeHex: challenge,
-            timestamp: timestamp,
-            ttl: ttl,
-            signatureHex: '0' * 128, // Dummy signature
+          // Séparer le ciphertext et le tag pour le QR
+          final ciphertextOnly = Uint8List.fromList(encryptedP2Result.ciphertext.sublist(0, 32));
+          final tagOnly = encryptedP2Result.tag;
+          
+          final qrData = qrService.encodeQrV2Bytes(
+            bonId: Uint8List.fromList(HEX.decode(bonId)),
+            valueInCentimes: 1000,
+            issuerNpub: Uint8List(32),
+            issuerName: "Test Issuer",
+            encryptedP2: ciphertextOnly,
+            p2Nonce: encryptedP2Result.nonce,
+            p2Tag: tagOnly,
+            challenge: challengeBytes,
+            signature: Uint8List(64), // Dummy signature
           );
 
-          expect(qrData.length, equals(177), reason: 'QR offre doit faire 177 octets');
+          expect(qrData.length, equals(240), reason: 'QR offre V2 doit faire 240 octets');
 
           // 5. Décoder et vérifier
-          final decoded = qrService.decodeOffer(qrData);
-          expect(decoded['bonId'], equals(bonId));
-          expect(decoded['p2Cipher'], equals(encryptedP2));
-          expect(decoded['challenge'], equals(challenge));
+          final decoded = qrService.decodeQr(qrData);
+          expect(decoded, isNotNull);
+          expect(decoded!.bonId, equals(bonId));
+          expect(HEX.encode(decoded.encryptedP2), equals(HEX.encode(ciphertextOnly)));
+          expect(HEX.encode(decoded.challenge), equals(challenge));
         });
 
         test('Étape B : Réception et vérification par le receveur', () async {
-          // PHASE 4, étapes 67-70 du diagramme Mermaid:
-          // - Récupère P3 local via npub_B
-          // - Déchiffre P2_chiffré grâce à P3
-          // - Reconstruit nsec_B = P2 + P3 (en RAM)
-          // - Signe le Challenge d'Alice avec nsec_B
-
-          // 1. Préparer les données (simulation de l'offre d'Alice)
           final bonKeys = cryptoService.generateNostrKeyPair();
           final bonId = bonKeys['publicKeyHex']!;
           final originalNsec = bonKeys['privateKeyHex']!;
-          final parts = cryptoService.shamirSplit(originalNsec);
-          final p2 = parts[1];
-          final p3 = parts[2];
+          final originalNsecBytes = Uint8List.fromList(HEX.decode(originalNsec));
+          final partsBytes = cryptoService.shamirSplitBytes(originalNsecBytes);
+          cryptoService.secureZeroiseBytes(originalNsecBytes);
+          
+          // Alice chiffre P2
+          final encryptedP2Result = await cryptoService.encryptP2Bytes(partsBytes[1], partsBytes[2]);
 
-          // 2. Alice chiffre P2
-          final encryptedP2Result = await cryptoService.encryptP2(p2, p3);
-          final encryptedP2 = encryptedP2Result['ciphertext']!;
-          final nonce = encryptedP2Result['nonce']!;
-
-          // 3. Bob reçoit et déchiffre P2
-          final decryptedP2 = await cryptoService.decryptP2(
-            encryptedP2,
-            nonce,
-            p3,
+          // Bob reçoit et déchiffre P2
+          final decryptedP2Bytes = await cryptoService.decryptP2Bytes(
+            encryptedP2Result.ciphertext,
+            encryptedP2Result.nonce,
+            partsBytes[2],
           );
+          final decryptedP2 = HEX.encode(decryptedP2Bytes);
 
-          expect(decryptedP2, equals(p2), reason: 'P2 déchiffré doit correspondre');
+          expect(decryptedP2, equals(HEX.encode(partsBytes[1])), reason: 'P2 déchiffré doit correspondre');
 
-          // 4. Bob reconstruit nsec_B en RAM
-          final decryptedP2Bytes = Uint8List.fromList(HEX.decode(decryptedP2));
-          final p3Bytes = Uint8List.fromList(HEX.decode(p3));
-          final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, decryptedP2Bytes, p3Bytes);
+          // Bob reconstruit nsec_B en RAM
+          final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, decryptedP2Bytes, partsBytes[2]);
           final reconstructedNsec = HEX.encode(reconstructedNsecBytes);
-          expect(reconstructedNsec, equals(originalNsec),
-            reason: 'nsec_B reconstruit doit correspondre à l\'original');
+          expect(reconstructedNsec, equals(originalNsec));
 
-          // 5. Bob signe le challenge
-          final challengeBytes = Uint8List.fromList(
-            List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
-          );
-          final challenge = HEX.encode(challengeBytes);
-          final signature = cryptoService.signMessage(challenge, reconstructedNsec);
+          // Signature du challenge (doit être 32 octets - hash SHA256)
+          final challengeBytes = Uint8List.fromList(List.generate(32, (i) => i + 1));
+          final signatureBytes = cryptoService.signMessageBytesDirect(challengeBytes, reconstructedNsecBytes);
+          final signatureHex = HEX.encode(signatureBytes);
 
-          expect(signature, isNotEmpty, reason: 'La signature ne doit pas être vide');
-          expect(signature.length, equals(128), reason: 'Signature Schnorr fait 128 chars hex');
-
-          // 6. Vérifier la signature avec la clé publique du bon
-          final isValid = cryptoService.verifySignature(challenge, signature, bonId);
-          expect(isValid, isTrue, reason: 'La signature doit être valide');
+          expect(signatureHex.length, equals(128));
+          expect(cryptoService.verifySignature(HEX.encode(challengeBytes), signatureHex, bonId), isTrue);
         });
 
         test('Étape C : Accusé de réception (QR2 - ACK)', () {
-          // PHASE 4, étapes 77-78 du diagramme Mermaid:
-          // - Affiche QR2 (ACK)
-
           final bonId = 'a' * 64;
           final signature = 'b' * 128; // Signature fictive
 
@@ -387,27 +374,19 @@ void main() {
         });
 
         test('Étape D : Finalisation par l\'émetteur', () async {
-          // PHASE 4, étapes 80-82 du diagramme Mermaid:
-          // - Vérifie la Signature(Challenge) avec npub_B
-          // - Supprime/Invalide P2 du Wallet (Bon = dépensé)
-
-          // 1. Préparer les données
           final bonKeys = cryptoService.generateNostrKeyPair();
           final bonId = bonKeys['publicKeyHex']!;
           final nsec = bonKeys['privateKeyHex']!;
 
-          // 2. Générer et signer un challenge
           final challengeBytes = Uint8List.fromList(
             List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
           );
           final challenge = HEX.encode(challengeBytes);
           final signature = cryptoService.signMessage(challenge, nsec);
 
-          // 3. Alice vérifie la signature
           final isValid = cryptoService.verifySignature(challenge, signature, bonId);
           expect(isValid, isTrue, reason: 'La signature doit être valide');
 
-          // 4. Alice marque le bon comme dépensé
           final bon = Bon(
             bonId: bonId,
             value: 25.0,
@@ -423,79 +402,81 @@ void main() {
         });
 
         test('Transfert complet atomique (flux end-to-end)', () async {
-          // Test complet du flux de transfert atomique
-          // Simule les 4 étapes du diagramme Mermaid
-
           // === ALICE (Émetteur) ===
-          // 1. Création du bon
           final aliceKeys = cryptoService.generateNostrKeyPair();
           final bonId = aliceKeys['publicKeyHex']!;
-          final bonNsec = aliceKeys['privateKeyHex']!;
-          final parts = cryptoService.shamirSplit(bonNsec);
-          final p1 = parts[0], p2 = parts[1], p3 = parts[2];
+          final bonNsecBytes = Uint8List.fromList(HEX.decode(aliceKeys['privateKeyHex']!));
+          final partsBytes = cryptoService.shamirSplitBytes(bonNsecBytes);
+          cryptoService.secureZeroiseBytes(bonNsecBytes);
 
-          // 2. Préparation de l'offre
-          final encryptedP2Result = await cryptoService.encryptP2(p2, p3);
-          final encryptedP2 = encryptedP2Result['ciphertext']!;
-          final nonce = encryptedP2Result['nonce']!;
+          // Préparation de l'offre
+          final encryptedP2Result = await cryptoService.encryptP2Bytes(partsBytes[1], partsBytes[2]);
           
+          // Séparer le ciphertext et le tag pour le QR (48 octets total = 32 + 16)
+          final ciphertextOnly = Uint8List.fromList(encryptedP2Result.ciphertext.sublist(0, 32));
+          final tagOnly = encryptedP2Result.tag;
+          
+          // Challenge de 16 octets (stocké dans le QR)
           final challengeBytes = Uint8List.fromList(
-            List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
+            List.generate(16, (i) => (DateTime.now().millisecondsSinceEpoch + i) % 256)
           );
-          final challenge = HEX.encode(challengeBytes);
-
-          final qrOffer = qrService.encodeOffer(
-            bonIdHex: bonId,
-            p2CipherHex: encryptedP2,
-            nonceHex: nonce,
-            challengeHex: challenge,
-            timestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            ttl: 300,
-            signatureHex: '0' * 128, // Dummy signature
+          
+          final qrOffer = qrService.encodeQrV2Bytes(
+            bonId: Uint8List.fromList(HEX.decode(bonId)),
+            valueInCentimes: 1000,
+            issuerNpub: Uint8List(32),
+            issuerName: "Test Issuer",
+            encryptedP2: ciphertextOnly,
+            p2Nonce: encryptedP2Result.nonce,
+            p2Tag: tagOnly,
+            challenge: challengeBytes,
+            signature: Uint8List(64), // Dummy signature
           );
 
           // === BOB (Receveur) ===
-          // 3. Réception et déchiffrement
-          final decodedOffer = qrService.decodeOffer(qrOffer);
-          expect(decodedOffer['bonId'], equals(bonId));
+          final decodedOffer = qrService.decodeQr(qrOffer);
+          expect(decodedOffer, isNotNull);
+          expect(decodedOffer!.bonId, equals(bonId));
 
-          // Bob a P3 en cache (simulé)
-          final decryptedP2 = await cryptoService.decryptP2(
-            decodedOffer['p2Cipher'],
-            decodedOffer['nonce'],
-            p3,
+          // Recombiner ciphertext + tag pour le déchiffrement
+          final ciphertextWithTag = Uint8List.fromList([
+            ...decodedOffer.encryptedP2,
+            ...decodedOffer.p2Tag,
+          ]);
+
+          final decryptedP2Bytes = await cryptoService.decryptP2Bytes(
+            ciphertextWithTag,
+            decodedOffer.p2Nonce,
+            partsBytes[2],
           );
 
-          // 4. Reconstruction et signature
-          final decryptedP2Bytes = Uint8List.fromList(HEX.decode(decryptedP2));
-          final p3Bytes = Uint8List.fromList(HEX.decode(p3));
-          final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, decryptedP2Bytes, p3Bytes);
-          final reconstructedNsec = HEX.encode(reconstructedNsecBytes);
-          final signature = cryptoService.signMessage(decodedOffer['challenge'], reconstructedNsec);
+          final reconstructedNsecBytes = cryptoService.shamirCombineBytesDirect(null, decryptedP2Bytes, partsBytes[2]);
+          
+          // Hasher le challenge (16 octets) en SHA256 (32 octets) avant de signer
+          final challengeHash = Uint8List.fromList(sha256.convert(decodedOffer.challenge).bytes);
+          final signatureBytes = cryptoService.signMessageBytesDirect(challengeHash, reconstructedNsecBytes);
 
-          // 5. Génération de l'ACK
-          final qrAck = qrService.encodeAck(
-            bonIdHex: bonId,
-            signatureHex: signature,
+          // Génération de l'ACK
+          final qrAck = qrService.encodeAckBytes(
+            bonId: Uint8List.fromList(HEX.decode(bonId)),
+            signature: signatureBytes,
           );
 
           // === ALICE (Finalisation) ===
-          // 6. Vérification de l'ACK
-          final decodedAck = qrService.decodeAck(qrAck);
-          expect(decodedAck['bonId'], equals(bonId));
+          final decodedAck = qrService.decodeAckBytes(qrAck);
+          expect(HEX.encode(decodedAck.bonId), equals(bonId));
 
-          final isSignatureValid = cryptoService.verifySignature(
-            challenge,
-            decodedAck['signature'],
-            bonId,
+          // Hasher le challenge avant de vérifier (comme Bob l'a hashé avant de signer)
+          final challengeHashForVerify = Uint8List.fromList(sha256.convert(challengeBytes).bytes);
+          final isSignatureValid = cryptoService.verifySignatureBytesDirect(
+            challengeHashForVerify,
+            decodedAck.signature,
+            Uint8List.fromList(HEX.decode(bonId)),
           );
           expect(isSignatureValid, isTrue, reason: 'La signature de Bob doit être valide');
-
-          // ✅ TRANSFERT TERMINÉ ET SÉCURISÉ
         });
       });
     });
-
     group('========================================', () {
       group('TESTS DE SÉCURITÉ ADDITIONNELS', () {
         late CryptoService cryptoService;
@@ -549,7 +530,10 @@ void main() {
         test('Shamir - Parts corrompues donnent un résultat différent', () {
           final keys = cryptoService.generateNostrKeyPair();
           final originalNsec = keys['privateKeyHex']!;
-          final parts = cryptoService.shamirSplit(originalNsec);
+          final originalNsecBytes = Uint8List.fromList(HEX.decode(originalNsec));
+        final partsBytes = cryptoService.shamirSplitBytes(originalNsecBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(originalNsecBytes);
 
           // Parts valides - reconstruction correcte
           final p0Bytes = Uint8List.fromList(HEX.decode(parts[0]));

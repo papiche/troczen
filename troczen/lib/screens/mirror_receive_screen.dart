@@ -125,15 +125,20 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
 
   Future<void> _processOffer(QrPayloadV2 payload) async {
     try {
-      final p3 = await _storageService.getP3FromCache(payload.bonId);
-      if (p3 == null) throw Exception('Part P3 non trouvée. Synchronisez le marché.');
+      // ✅ OPTIMISATION: Récupérer directement les bytes P3
+      final p3Bytes = await _storageService.getP3FromCacheBytes(payload.bonId);
+      if (p3Bytes == null) throw Exception('Part P3 non trouvée. Synchronisez le marché.');
 
+      // ✅ OPTIMISATION: Utiliser decryptP2Bytes pour éviter les conversions hex
       final encryptedP2WithTag = Uint8List.fromList([...payload.encryptedP2, ...payload.p2Tag]);
-      final p2 = await _cryptoService.decryptP2(
-        HEX.encode(encryptedP2WithTag),
-        HEX.encode(payload.p2Nonce),
-        p3,
+      final p2Bytes = await _cryptoService.decryptP2Bytes(
+        encryptedP2WithTag,
+        payload.p2Nonce,
+        p3Bytes,
       );
+      
+      // Convertir en hex uniquement pour le stockage (nécessaire pour le modèle Bon)
+      final p2 = HEX.encode(p2Bytes);
 
       final market = await _storageService.getMarket();
       final marketName = market?.name ?? 'Marché Local';
@@ -165,22 +170,30 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
         status: 'received',
       );
 
-      // Générer l'ACK
-      final p2Bytes = updatedBon.p2Bytes;
-      final p3Bytes = await _storageService.getP3FromCacheBytes(updatedBon.bonId);
+      // ✅ OPTIMISATION: Générer l'ACK avec les méthodes binaires
+      final bonP2Bytes = updatedBon.p2Bytes;
+      final bonP3Bytes = await _storageService.getP3FromCacheBytes(updatedBon.bonId);
       
-      if (p2Bytes == null || p3Bytes == null) throw Exception('Erreur parts P2/P3');
+      if (bonP2Bytes == null || bonP3Bytes == null) throw Exception('Erreur parts P2/P3');
       
-      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-      final signatureHex = _cryptoService.signMessageBytes(payload.challengeHex, nsecBonBytes);
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, bonP2Bytes, bonP3Bytes);
+      
+      // ✅ OPTIMISATION: Signer directement en bytes
+      final signatureBytes = _cryptoService.signMessageBytesDirect(payload.challenge, nsecBonBytes);
       
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      _cryptoService.secureZeroiseBytes(bonP2Bytes);
+      _cryptoService.secureZeroiseBytes(bonP3Bytes);
+      
+      // Nettoyer aussi les bytes intermédiaires
       _cryptoService.secureZeroiseBytes(p2Bytes);
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
-      final ackBytes = _qrService.encodeAck(
-        bonIdHex: updatedBon.bonId,
-        signatureHex: signatureHex,
+      // ✅ OPTIMISATION: Utiliser encodeAckBytes
+      final bonIdBytes = Uint8List.fromList(HEX.decode(updatedBon.bonId));
+      final ackBytes = _qrService.encodeAckBytes(
+        bonId: bonIdBytes,
+        signature: signatureBytes,
       );
 
       // ✅ VIBRATION ET SON MAGIQUES (1ère étape: offre reçue)

@@ -231,11 +231,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final bonNsec = bonKeys['nsec']!;              // Format Bech32 pour affichage
       final bonNpub = bonKeys['npub']!;              // Format Bech32 pour affichage
 
-      // 2. Découper en 3 parts avec SSSS (utilise le format hex)
-      final parts = _cryptoService.shamirSplit(bonNsecHex);
-      final p1 = parts[0]; // Ancre (reste chez l'émetteur)
-      final p2 = parts[1]; // Voyageur (part active)
-      final p3 = parts[2]; // Témoin (à publier)
+      // 2. Découper en 3 parts avec SSSS (utilise le format bytes)
+      final bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
+      final partsBytes = _cryptoService.shamirSplitBytes(bonNsecBytes);
+      final p1 = HEX.encode(partsBytes[0]); // Ancre (reste chez l'émetteur)
+      final p2 = HEX.encode(partsBytes[1]); // Voyageur (part active)
+      final p3 = HEX.encode(partsBytes[2]); // Témoin (à publier)
+      _cryptoService.secureZeroiseBytes(bonNsecBytes);
 
       // 3. Chiffrer P3 avec K_day (clé du jour dérivée de la graine)
       final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3, _selectedMarket!.seedMarket, DateTime.now());

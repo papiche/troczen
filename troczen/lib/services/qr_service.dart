@@ -11,137 +11,12 @@ class QRService {
   // Magic number pour format QR v2: "ZEN" + version 0x02
   static const int _magicV2 = 0x5A454E02;
   
-  /// ✅ CORRECTION P0-C: Taille du QR Offre avec signature (177 octets)
-  /// Ancien format sans signature: 113 octets
-  /// Nouveau format avec signature: 113 + 64 = 177 octets
-  ///
-  /// Whitepaper (007.md §3.2 Étape 1 — Offre):
-  /// "QR1: {B_id, P2, c, ts}_sig_E"
-  /// Le QR doit être signé par le donneur pour prouver la propriété du bon.
-  
-  /// Encode une offre en format binaire compact avec signature (177 octets)
-  /// Structure:
-  /// - bon_id: 32 octets
-  /// - p2_cipher: 48 octets
-  /// - nonce: 12 octets
-  /// - challenge: 16 octets
-  /// - timestamp: 4 octets (uint32)
-  /// - ttl: 1 octet (uint8)
-  /// - signature: 64 octets (Schnorr)
-  Uint8List encodeOffer({
-    required String bonIdHex,
-    required String p2CipherHex,
-    required String nonceHex,
-    required String challengeHex,
-    required int timestamp,
-    required int ttl,
-    required String signatureHex,
-  }) {
-    final bonId = HEX.decode(bonIdHex);
-    final p2Cipher = HEX.decode(p2CipherHex);
-    final nonce = HEX.decode(nonceHex);
-    final challenge = HEX.decode(challengeHex);
-    final signature = HEX.decode(signatureHex);
-    
-    final buffer = ByteData(177);
-    int offset = 0;
-    
-    // bon_id (32 octets)
-    for (int i = 0; i < 32; i++) {
-      buffer.setUint8(offset++, bonId[i]);
-    }
-    
-    // p2_cipher (48 octets)
-    for (int i = 0; i < 48; i++) {
-      buffer.setUint8(offset++, p2Cipher[i]);
-    }
-    
-    // nonce (12 octets)
-    for (int i = 0; i < 12; i++) {
-      buffer.setUint8(offset++, nonce[i]);
-    }
-    
-    // challenge (16 octets)
-    for (int i = 0; i < 16; i++) {
-      buffer.setUint8(offset++, challenge[i]);
-    }
-    
-    // timestamp (4 octets, big-endian)
-    buffer.setUint32(offset, timestamp, Endian.big);
-    offset += 4;
-    
-    // ttl (1 octet)
-    buffer.setUint8(offset++, ttl);
-    
-    // signature (64 octets)
-    for (int i = 0; i < 64; i++) {
-      buffer.setUint8(offset++, signature[i]);
-    }
-    
-    return buffer.buffer.asUint8List();
-  }
-
-  /// Décode une offre depuis le format binaire (177 octets)
-  Map<String, dynamic> decodeOffer(Uint8List data) {
-    if (data.length != 177) {
-      throw Exception('Format invalide: taille attendue 177 octets, reçu ${data.length}');
-    }
-    
-    final buffer = ByteData.sublistView(data);
-    int offset = 0;
-    
-    // bon_id
-    final bonId = data.sublist(offset, offset + 32);
-    offset += 32;
-    
-    // p2_cipher
-    final p2Cipher = data.sublist(offset, offset + 48);
-    offset += 48;
-    
-    // nonce
-    final nonce = data.sublist(offset, offset + 12);
-    offset += 12;
-    
-    // challenge
-    final challenge = data.sublist(offset, offset + 16);
-    offset += 16;
-    
-    // timestamp
-    final timestamp = buffer.getUint32(offset, Endian.big);
-    offset += 4;
-    
-    // ttl
-    final ttl = buffer.getUint8(offset);
-    offset += 1;
-    
-    // signature
-    final sigBytes = data.sublist(offset, offset + 64);
-    final signature = HEX.encode(sigBytes);
-    
-    return {
-      'bonId': HEX.encode(bonId),
-      'p2Cipher': HEX.encode(p2Cipher),
-      'nonce': HEX.encode(nonce),
-      'challenge': HEX.encode(challenge),
-      'timestamp': timestamp,
-      'ttl': ttl,
-      'signature': signature,
-    };
-  }
-
-  /// Encode un ACK en format binaire (97 octets)
-  /// Structure:
-  /// - bon_id: 32 octets
-  /// - signature: 64 octets
-  /// - status: 1 octet
-  Uint8List encodeAck({
-    required String bonIdHex,
-    required String signatureHex,
+  /// ✅ OPTIMISATION: Version binaire de encodeAck - accepte directement des Uint8List
+  Uint8List encodeAckBytes({
+    required Uint8List bonId,
+    required Uint8List signature,
     int status = 0x01, // 0x01 = RECEIVED
   }) {
-    final bonId = HEX.decode(bonIdHex);
-    final signature = HEX.decode(signatureHex);
-    
     final buffer = ByteData(97);
     int offset = 0;
     
@@ -161,13 +36,26 @@ class QRService {
     return buffer.buffer.asUint8List();
   }
 
-  /// Décode un ACK depuis le format binaire
-  Map<String, dynamic> decodeAck(Uint8List data) {
+  /// Version legacy acceptant des hex strings (appelle la version bytes)
+  Uint8List encodeAck({
+    required String bonIdHex,
+    required String signatureHex,
+    int status = 0x01, // 0x01 = RECEIVED
+  }) {
+    return encodeAckBytes(
+      bonId: Uint8List.fromList(HEX.decode(bonIdHex)),
+      signature: Uint8List.fromList(HEX.decode(signatureHex)),
+      status: status,
+    );
+  }
+
+  /// ✅ OPTIMISATION: Version binaire de decodeAck - retourne des Uint8List
+  /// Retourne un record (bonId, signature, status) pour éviter les conversions hex
+  ({Uint8List bonId, Uint8List signature, int status}) decodeAckBytes(Uint8List data) {
     if (data.length != 97) {
       throw Exception('Format ACK invalide: taille attendue 97 octets, reçu ${data.length}');
     }
     
-    final buffer = ByteData.sublistView(data);
     int offset = 0;
     
     // bon_id
@@ -179,12 +67,18 @@ class QRService {
     offset += 64;
     
     // status
-    final status = buffer.getUint8(offset);
+    final status = data[offset];
     
+    return (bonId: bonId, signature: signature, status: status);
+  }
+
+  /// Version legacy retournant des hex strings (pour compatibilité)
+  Map<String, dynamic> decodeAck(Uint8List data) {
+    final result = decodeAckBytes(data);
     return {
-      'bonId': HEX.encode(bonId),
-      'signature': HEX.encode(signature),
-      'status': status,
+      'bonId': HEX.encode(result.bonId),
+      'signature': HEX.encode(result.signature),
+      'status': result.status,
     };
   }
 
@@ -217,13 +111,18 @@ class QRService {
   /// ✅ CORRECTION HANDSHAKE: Ajout des paramètres challenge et signature
   /// Le challenge est généré par le Donneur et doit être signé par le Receveur.
   /// La signature prouve que le Donneur possède le bon (clé privée reconstituée).
-  Uint8List encodeQrV2({
-    required Bon bon,
-    required String encryptedP2Hex,
+  /// ✅ OPTIMISATION: Version binaire de encodeQrV2 - accepte directement des Uint8List
+  /// Évite les conversions HEX inutiles en gardant les données binaires jusqu'au QR code.
+  Uint8List encodeQrV2Bytes({
+    required Uint8List bonId,
+    required int valueInCentimes,
+    required Uint8List issuerNpub,
+    required String issuerName,
+    required Uint8List encryptedP2,
     required Uint8List p2Nonce,
     required Uint8List p2Tag,
-    required Uint8List challenge,   // ✅ NOUVEAU: challenge du Donneur (16 octets)
-    required Uint8List signature,   // ✅ NOUVEAU: signature Schnorr du Donneur (64 octets)
+    required Uint8List challenge,
+    required Uint8List signature,
   }) {
     final buffer = ByteData(_qrV2Size);
     int offset = 0;
@@ -233,26 +132,22 @@ class QRService {
     offset += 4;
     
     // 4-35: bonId (32 octets)
-    final bonIdBytes = HEX.decode(bon.bonId);
     for (int i = 0; i < 32; i++) {
-      buffer.setUint8(offset++, bonIdBytes[i]);
+      buffer.setUint8(offset++, bonId[i]);
     }
     
     // 36-39: value (uint32 big-endian, centimes)
-    final valueInCentimes = (bon.value * 100).round();
     buffer.setUint32(offset, valueInCentimes, Endian.big);
     offset += 4;
     
     // 40-71: issuerNpub (32 octets)
-    final issuerNpubBytes = HEX.decode(bon.issuerNpub);
     for (int i = 0; i < 32; i++) {
-      buffer.setUint8(offset++, issuerNpubBytes[i]);
+      buffer.setUint8(offset++, issuerNpub[i]);
     }
     
     // 72-103: p2_encrypted (32 octets)
-    final p2EncryptedBytes = HEX.decode(encryptedP2Hex);
     for (int i = 0; i < 32; i++) {
-      buffer.setUint8(offset++, p2EncryptedBytes[i]);
+      buffer.setUint8(offset++, encryptedP2[i]);
     }
     
     // 104-115: p2_nonce (12 octets)
@@ -265,13 +160,13 @@ class QRService {
       buffer.setUint8(offset++, p2Tag[i]);
     }
     
-    // 132-147: challenge (16 octets) ✅ NOUVEAU
+    // 132-147: challenge (16 octets)
     for (int i = 0; i < 16; i++) {
       buffer.setUint8(offset++, challenge[i]);
     }
     
     // 148-167: issuerName (20 octets UTF-8, tronqué/paddé)
-    final nameBytes = _encodeNameFixed(bon.issuerName, 20);
+    final nameBytes = _encodeNameFixed(issuerName, 20);
     for (int i = 0; i < 20; i++) {
       buffer.setUint8(offset++, nameBytes[i]);
     }
@@ -281,7 +176,7 @@ class QRService {
     buffer.setUint32(offset, timestamp, Endian.big);
     offset += 4;
     
-    // 172-235: signature (64 octets) ✅ NOUVEAU
+    // 172-235: signature (64 octets)
     for (int i = 0; i < 64; i++) {
       buffer.setUint8(offset++, signature[i]);
     }
@@ -292,6 +187,28 @@ class QRService {
     buffer.setUint32(offset, checksum, Endian.big);
     
     return buffer.buffer.asUint8List();
+  }
+
+  /// Version legacy acceptant un Bon et des hex strings (appelle la version bytes)
+  Uint8List encodeQrV2({
+    required Bon bon,
+    required String encryptedP2Hex,
+    required Uint8List p2Nonce,
+    required Uint8List p2Tag,
+    required Uint8List challenge,
+    required Uint8List signature,
+  }) {
+    return encodeQrV2Bytes(
+      bonId: Uint8List.fromList(HEX.decode(bon.bonId)),
+      valueInCentimes: (bon.value * 100).round(),
+      issuerNpub: Uint8List.fromList(HEX.decode(bon.issuerNpub)),
+      issuerName: bon.issuerName,
+      encryptedP2: Uint8List.fromList(HEX.decode(encryptedP2Hex)),
+      p2Nonce: p2Nonce,
+      p2Tag: p2Tag,
+      challenge: challenge,
+      signature: signature,
+    );
   }
   
   /// Décode un payload QR (détecte automatiquement v1 ou v2)

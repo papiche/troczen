@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hex/hex.dart';
+import 'package:synchronized/synchronized.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
@@ -43,22 +44,7 @@ class StorageService {
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
   // Ce verrou garantit qu'une seule opération d'écriture à la fois
-  Completer<void>? _bonsLock;
-  
-  /// Acquiert le verrou sur les bons
-  Future<void> _acquireBonsLock() async {
-    while (_bonsLock != null) {
-      await _bonsLock!.future;
-    }
-    _bonsLock = Completer<void>();
-  }
-  
-  /// Libère le verrou sur les bons
-  void _releaseBonsLock() {
-    final lock = _bonsLock;
-    _bonsLock = null;
-    lock?.complete();
-  }
+  final Lock _bonsLock = Lock();
 
   /// Sauvegarde l'utilisateur
   Future<void> saveUser(User user) async {
@@ -83,9 +69,8 @@ class StorageService {
   /// Sauvegarde un bon
   /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions
   Future<void> saveBon(Bon bon) async {
-    await _acquireBonsLock();
-    try {
-      final bons = await getBons();
+    await _bonsLock.synchronized(() async {
+      final bons = await _getBonsInternal();
       
       // Remplacer ou ajouter le bon
       final index = bons.indexWhere((b) => b.bonId == bon.bonId);
@@ -96,24 +81,15 @@ class StorageService {
       }
       
       await _saveBons(bons);
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   /// Récupère tous les bons
   /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions lors de la lecture
   Future<List<Bon>> getBons() async {
-    await _acquireBonsLock();
-    try {
-      final data = await _secureStorage.read(key: _bonsKey);
-      if (data == null) return [];
-      
-      final List<dynamic> jsonList = jsonDecode(data);
-      return jsonList.map((json) => Bon.fromJson(json)).toList();
-    } finally {
-      _releaseBonsLock();
-    }
+    return await _bonsLock.synchronized(() async {
+      return await _getBonsInternal();
+    });
   }
 
   /// Récupère un bon par son ID
@@ -129,14 +105,11 @@ class StorageService {
   /// Supprime un bon
   /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions
   Future<void> deleteBon(String bonId) async {
-    await _acquireBonsLock();
-    try {
+    await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       bons.removeWhere((b) => b.bonId == bonId);
       await _saveBons(bons);
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   // ============================================================
@@ -152,8 +125,7 @@ class StorageService {
     String? challenge,
     int ttlSeconds = 300, // 5 minutes par défaut
   }) async {
-    await _acquireBonsLock();
-    try {
+    return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       final index = bons.indexWhere((b) => b.bonId == bonId);
       
@@ -189,17 +161,14 @@ class StorageService {
       
       Logger.success('StorageService', 'Bon $bonId verrouillé pour transfert (TTL: ${ttlSeconds}s)');
       return lockedBon;
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   /// ✅ WAL: Confirme le transfert et supprime définitivement P2
   /// Cette opération DOIT être appelée APRÈS réception de l'ACK validé
   /// Retourne true si succès, false si le bon n'était pas verrouillé
   Future<bool> confirmTransferAndRemoveP2(String bonId, String challenge) async {
-    await _acquireBonsLock();
-    try {
+    return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       final index = bons.indexWhere((b) => b.bonId == bonId);
       
@@ -237,16 +206,13 @@ class StorageService {
       
       Logger.success('StorageService', 'Transfert confirmé pour bon $bonId - P2 supprimé');
       return true;
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   /// ✅ WAL: Annule un verrou de transfert (timeout, erreur, annulation utilisateur)
   /// Remet le bon en état actif
   Future<bool> cancelTransferLock(String bonId) async {
-    await _acquireBonsLock();
-    try {
+    return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       final index = bons.indexWhere((b) => b.bonId == bonId);
       
@@ -275,9 +241,7 @@ class StorageService {
       
       Logger.success('StorageService', 'Verrou annulé pour bon $bonId');
       return true;
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   /// ✅ WAL: Récupération après crash
@@ -285,8 +249,7 @@ class StorageService {
   /// Annule tous les verrous expirés (transferts interrompus par crash)
   /// Retourne le nombre de verrous annulés
   Future<int> recoverFromCrash() async {
-    await _acquireBonsLock();
-    try {
+    return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       int recoveredCount = 0;
       
@@ -313,9 +276,7 @@ class StorageService {
       }
       
       return recoveredCount;
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   /// ✅ WAL: Récupère les bons verrouillés (pour affichage UI)
@@ -544,16 +505,6 @@ class StorageService {
     }
   }
   
-  /// Récupère un marché par son nom (peut retourner plusieurs)
-  /// ⚠️ DEPRECATED: Préférer getMarketById() pour l'unicité
-  Future<Market?> getMarketByName(String marketName) async {
-    final markets = await getMarkets();
-    try {
-      return markets.firstWhere((m) => m.name == marketName);
-    } catch (e) {
-      return null;
-    }
-  }
 
   /// Vérifie si un marché existe par son marketId
   /// ✅ AMÉLIORÉ: Utilise marketId au lieu du nom
@@ -773,8 +724,7 @@ class StorageService {
   /// Nettoie les bons expirés du wallet local
   /// Supprime définitivement les bons dont la date d'expiration est dépassée
   Future<int> cleanupExpiredBons() async {
-    await _acquireBonsLock();
-    try {
+    return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       final initialCount = bons.length;
       
@@ -788,9 +738,7 @@ class StorageService {
       }
       
       return removedCount;
-    } finally {
-      _releaseBonsLock();
-    }
+    });
   }
 
   /// Récupère les bons actifs (non dépensés, non expirés)

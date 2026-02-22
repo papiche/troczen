@@ -35,6 +35,19 @@ class ShamirReconstructionException implements Exception {
   String toString() => 'ShamirReconstructionException: $message';
 }
 
+/// Résultat du chiffrement P2 avec données binaires
+class EncryptP2Result {
+  final Uint8List ciphertext;
+  final Uint8List nonce;
+  final Uint8List tag;
+  
+  EncryptP2Result({
+    required this.ciphertext,
+    required this.nonce,
+    required this.tag,
+  });
+}
+
 class CryptoService {
   final Random _secureRandom = Random.secure();
   
@@ -188,7 +201,9 @@ class CryptoService {
     return _pointToHex(publicKeyPoint!);
   }
 
-  /// Génère une paire de clés Nostr (secp256k1)
+
+/// Génère une paire de clés Nostr (secp256k1)
+/// Génère une paire de clés Nostr (secp256k1)
   /// Retourne les clés au format Bech32 NIP-19 (nsec1... et npub1...)
   Map<String, String> generateNostrKeyPair() {
     final keyPair = _generateSecp256k1KeyPair();
@@ -219,16 +234,6 @@ class CryptoService {
     };
   }
 
-  // ==================== WI-FI PASSWORD DERIVATION ====================
-
-  /// Génère un mot de passe Wi-Fi WPA2 déterministe à partir de la graine du marché
-  String deriveWifiPassword(String seedMarketHex) {
-    final bytes = utf8.encode("${seedMarketHex}wifi_password");
-    final digest = sha256.convert(bytes);
-    // Retourne les 12 premiers caractères encodés en Base58 (plus lisible que l'hex)
-    return base58.encode(Uint8List.fromList(digest.bytes)).substring(0, 12);
-  }
-
   // ==================== MARKET IDENTITY DERIVATION ====================
   
   /// ✅ v2.0.1: Dérive l'identité Nostr du marché de manière déterministe et sécurisée
@@ -251,8 +256,7 @@ class CryptoService {
       throw ArgumentError('seedMarketHex doit faire 32 octets (64 caractères hex)');
     }
     
-    // 2. Créer le payload de dérivation pour séparer les usages cryptographiques
-    // nsec_market = SHA256(seed_market || "troczen_market_identity")
+    // 2. Créer le payload de dérivation
     final derivationPayload = utf8.encode("troczen_market_identity");
     final combinedBytes = Uint8List.fromList([...seedBytes, ...derivationPayload]);
     
@@ -396,14 +400,12 @@ class CryptoService {
   /// ```
   ///
   /// Lève [ArgumentError] si le secret n'a pas 32 octets.
+  /// ✅ SÉCURITÉ MAXIMALE: Découpe une clé en 3 parts avec Shamir Secret Sharing (2-sur-3)
+  /// Retourne directement des Uint8List pour éviter les String en RAM.
   List<Uint8List> shamirSplitBytes(Uint8List secretBytes) {
     if (secretBytes.length != 32) {
       throw ArgumentError('Secret doit faire 32 octets');
     }
-    
-    // Shamir (2,3) sur GF(2^8) avec polynôme irréductible x^8 + x^4 + x^3 + x + 1
-    // f(x) = a0 + a1*x où a0 = secret byte, a1 = random
-    // P1 = f(1), P2 = f(2), P3 = f(3)
     
     final p1Bytes = Uint8List(32);
     final p2Bytes = Uint8List(32);
@@ -413,7 +415,6 @@ class CryptoService {
       final a0 = secretBytes[i]; // secret
       final a1 = _secureRandom.nextInt(256); // coefficient aléatoire dans GF(256)
       
-      // Calculer f(1), f(2), f(3) dans GF(256)
       p1Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 1));
       p2Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 2));
       p3Bytes[i] = _gf256Add(a0, _gf256Mul(a1, 3));
@@ -422,16 +423,6 @@ class CryptoService {
     return [p1Bytes, p2Bytes, p3Bytes];
   }
 
-  /// Découpe une clé en 3 parts avec Shamir Secret Sharing (2-sur-3)
-  /// ⚠️ DÉPRÉCIÉ: Utilisez shamirSplitBytes() pour une meilleure sécurité mémoire.
-  /// Cette méthode conserve les String en RAM - à éviter pour les nouvelles implémentations.
-  ///
-  /// ✅ IMPLÉMENTATION: Shamir polynomial sur GF(2^8) avec tables logarithmiques
-  /// ⚠️ NOTE: Cette implémentation utilise GF(256) pour garantir que toutes les valeurs
-  ///    restent dans [0, 255], évitant ainsi les erreurs de reconstruction.
-  /// Retourne [P1, P2, P3]
-  ///
-  /// Lève [ShamirReconstructionException] si la seed contient des valeurs incompatibles.
   @Deprecated('Utilisez shamirSplitBytes() pour éviter les String en RAM')
   List<String> shamirSplit(String secretHex) {
     final secretBytes = Uint8List.fromList(HEX.decode(secretHex));
@@ -1199,6 +1190,146 @@ class CryptoService {
     
     // Déchiffrer ou retourner tel quel
     return decryptWoTxContent(content, nonceHex ?? '', seedHex);
+  }
+
+  /// Dérive un mot de passe WiFi depuis la seed du marché
+  /// Utilise SHA256 et encode en Base64 pour un mot de passe sécurisé
+  String deriveWifiPassword(String seedMarketHex) {
+    final seedBytes = HEX.decode(seedMarketHex);
+    final hash = sha256.convert(seedBytes);
+    // Prendre les 16 premiers octets et encoder en base64 pour un mot de passe lisible
+    final passwordBytes = hash.bytes.sublist(0, 16);
+    return base64Url.encode(passwordBytes).substring(0, 22); // 22 caractères alphanumériques
+  }
+
+  // ==================== MÉTHODES BYTES (POUR TESTS) ====================
+  
+  /// ✅ SÉCURITÉ: Chiffre P2 avec K_P2 = SHA256(P3) - Version Uint8List
+  /// Utilisée dans les tests pour éviter les conversions hex
+  /// Le ciphertext retourné contient déjà le tag GCM (16 derniers octets)
+  Future<EncryptP2Result> encryptP2Bytes(Uint8List p2Bytes, Uint8List p3Bytes) async {
+    // K_P2 = SHA256(P3)
+    final kP2 = sha256.convert(p3Bytes).bytes;
+    
+    // ✅ CORRECTION: Nonce sécurisé
+    final nonce = Uint8List.fromList(
+      List.generate(12, (_) => _secureRandom.nextInt(256))
+    );
+    
+    // Chiffrer avec AES-GCM
+    final cipher = GCMBlockCipher(AESEngine());
+    final params = AEADParameters(
+      KeyParameter(Uint8List.fromList(kP2)),
+      128, // tag length
+      nonce,
+      Uint8List(0), // additional data
+    );
+    
+    cipher.init(true, params);
+    final ciphertextWithTag = cipher.process(p2Bytes);
+    
+    // AES-GCM retourne ciphertext + tag (16 bytes) - on garde tout ensemble
+    // Le tag est dans les 16 derniers octets
+    final tag = Uint8List.fromList(ciphertextWithTag.sublist(ciphertextWithTag.length - 16));
+    
+    return EncryptP2Result(
+      ciphertext: ciphertextWithTag, // Contient déjà le tag
+      nonce: nonce,
+      tag: tag, // Pour compatibilité si on veut l'extraire
+    );
+  }
+  
+  /// ✅ SÉCURITÉ: Déchiffre P2 avec K_P2 = SHA256(P3) - Version Uint8List
+  /// Utilisée dans les tests pour éviter les conversions hex
+  /// Le ciphertext doit contenir le tag GCM (16 derniers octets)
+  Future<Uint8List> decryptP2Bytes(
+    Uint8List ciphertext,
+    Uint8List nonce,
+    Uint8List p3Bytes,
+  ) async {
+    // K_P2 = SHA256(P3)
+    final kP2 = sha256.convert(p3Bytes).bytes;
+    
+    // Déchiffrer avec AES-GCM
+    final cipher = GCMBlockCipher(AESEngine());
+    final params = AEADParameters(
+      KeyParameter(Uint8List.fromList(kP2)),
+      128,
+      nonce,
+      Uint8List(0),
+    );
+    
+    cipher.init(false, params);
+    
+    // Le ciphertext contient déjà le tag (16 derniers octets)
+    final plaintext = cipher.process(ciphertext);
+    
+    return plaintext;
+  }
+  
+  /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) - Version bytes direct
+  /// Prend des messageBytes au lieu de messageHex
+  /// Retourne la signature en Uint8List (64 bytes) au lieu de hex
+  Uint8List signMessageBytesDirect(Uint8List messageBytes, Uint8List privateKeyBytes) {
+    // ✅ SÉCURITÉ: Validation de la clé privée
+    if (privateKeyBytes.length != 32) {
+      throw ArgumentError('Clé privée invalide: doit faire 32 octets');
+    }
+    
+    if (messageBytes.length != 32) {
+      throw ArgumentError('Message invalide: doit faire 32 octets');
+    }
+    
+    try {
+      // Convertir en hex pour bip340 (la bibliothèque nécessite du hex)
+      final privateKeyHex = HEX.encode(privateKeyBytes);
+      final messageHex = HEX.encode(messageBytes);
+      
+      // Générer auxRand sécurisé (32 octets aléatoires)
+      final auxRandBytes = Uint8List.fromList(
+        List.generate(32, (_) => _secureRandom.nextInt(256))
+      );
+      final auxRandHex = HEX.encode(auxRandBytes);
+      
+      final signatureHex = bip340.sign(privateKeyHex, messageHex, auxRandHex);
+      
+      // Nettoyer l'auxRand
+      secureZeroiseBytes(auxRandBytes);
+      
+      // Retourner en bytes
+      return Uint8List.fromList(HEX.decode(signatureHex));
+    } catch (e) {
+      throw ArgumentError('Erreur lors de la signature: $e');
+    }
+  }
+  
+  /// ✅ SÉCURITÉ: Vérifie une signature Schnorr (BIP-340) - Version bytes direct
+  /// Prend des données bytes au lieu de hex
+  bool verifySignatureBytesDirect(
+    Uint8List messageBytes,
+    Uint8List signatureBytes,
+    Uint8List publicKeyBytes,
+  ) {
+    if (signatureBytes.length != 64) return false;
+    if (publicKeyBytes.length != 32) return false;
+    if (messageBytes.length != 32) return false;
+    
+    try {
+      // Convertir en hex pour bip340
+      final messageHex = HEX.encode(messageBytes);
+      final signatureHex = HEX.encode(signatureBytes);
+      final publicKeyHex = HEX.encode(publicKeyBytes);
+      
+      // ✅ SÉCURITÉ: Vérifier que la clé publique est sur la courbe
+      if (!isValidPublicKey(publicKeyHex)) {
+        return false;
+      }
+      
+      // ✅ SÉCURITÉ: Utilisation de bip340 (bibliothèque éprouvée)
+      return bip340.verify(publicKeyHex, messageHex, signatureHex);
+    } catch (e) {
+      return false;
+    }
   }
 
 }

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:hex/hex.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
@@ -201,17 +203,23 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
         throw Exception('Impossible de verrouiller le bon. Il est peut-être déjà en cours de transfert.');
       }
 
-      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
-      if (p3 == null) {
+      // ✅ OPTIMISATION: Récupérer directement les bytes P3
+      final p3Bytes = await _storageService.getP3FromCacheBytes(widget.bon.bonId);
+      if (p3Bytes == null) {
         // ✅ WAL: Annuler le verrou en cas d'erreur
         await _storageService.cancelTransferLock(widget.bon.bonId);
         throw Exception('P3 non disponible');
       }
+      
+      // ✅ OPTIMISATION: Récupérer directement les bytes P2
+      final p2Bytes = lockedBon.p2Bytes;
+      if (p2Bytes == null) {
+        await _storageService.cancelTransferLock(widget.bon.bonId);
+        throw Exception('P2 non disponible');
+      }
 
-      final p2Encrypted = await _cryptoService.encryptP2(
-        lockedBon.p2!, // Utiliser le bon verrouillé
-        p3,
-      );
+      // ✅ OPTIMISATION: Utiliser encryptP2Bytes pour éviter les conversions hex
+      final p2Encrypted = await _cryptoService.encryptP2Bytes(p2Bytes, p3Bytes);
 
       _nfcService.onStatusChange = (message) {
         if (mounted) setState(() => _statusMessage = message);
@@ -230,8 +238,8 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
 
       await _nfcService.startOfferSession(
         bonId: lockedBon.bonId,
-        p2Encrypted: p2Encrypted['ciphertext']!,
-        nonce: p2Encrypted['nonce']!,
+        p2Encrypted: HEX.encode(p2Encrypted.ciphertext),
+        nonce: HEX.encode(p2Encrypted.nonce),
         challenge: _challenge!,
         timestamp: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       );
@@ -270,17 +278,17 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
         throw Exception('Offre expirée');
       }
 
-      // Récupérer P3
-      final p3 = await _storageService.getP3FromCache(offerData['bonId']);
-      if (p3 == null) {
+      // ✅ OPTIMISATION: Récupérer directement les bytes P3
+      final p3Bytes = await _storageService.getP3FromCacheBytes(offerData['bonId']);
+      if (p3Bytes == null) {
         throw Exception('Part P3 non trouvée.\nSynchronisez avec le marché.');
       }
 
-      // Déchiffrer P2
-      final p2 = await _cryptoService.decryptP2(
-        offerData['p2Cipher'],
-        offerData['nonce'],
-        p3,
+      // ✅ OPTIMISATION: Déchiffrer P2 avec les méthodes binaires
+      final p2Bytes = await _cryptoService.decryptP2Bytes(
+        Uint8List.fromList(HEX.decode(offerData['p2Cipher'])),
+        Uint8List.fromList(HEX.decode(offerData['nonce'])),
+        p3Bytes,
       );
 
       // TODO: Vérifier signature avec P2+P3 reconstruit
@@ -301,7 +309,8 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
         signature: signature,
       );
 
-      // Sauvegarder bon
+      // Sauvegarder bon (convertir en hex pour le modèle)
+      final p2 = HEX.encode(p2Bytes);
       final receivedBon = widget.bon.copyWith(
         status: BonStatus.active,
         p2: p2,
@@ -387,22 +396,23 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
         throw Exception('Impossible de verrouiller le bon. Il est peut-être déjà en cours de transfert.');
       }
 
-      final p3 = await _storageService.getP3FromCache(lockedBon.bonId);
-      if (p3 == null) {
+      // ✅ OPTIMISATION: Récupérer directement les bytes P3
+      final p3Bytes = await _storageService.getP3FromCacheBytes(lockedBon.bonId);
+      if (p3Bytes == null) {
         await _storageService.cancelTransferLock(lockedBon.bonId);
         throw Exception('P3 non disponible');
       }
 
-      final p2Encrypted = await _cryptoService.encryptP2(lockedBon.p2!, p3);
-
       // Signer le QR avec la clé du bon
       final p2Bytes = lockedBon.p2Bytes;
-      final p3Bytes = await _storageService.getP3FromCacheBytes(lockedBon.bonId);
       
-      if (p2Bytes == null || p3Bytes == null) {
+      if (p2Bytes == null) {
         await _storageService.cancelTransferLock(lockedBon.bonId);
-        throw Exception('Parts P2 ou P3 non disponibles');
+        throw Exception('Part P2 non disponible');
       }
+
+      // ✅ OPTIMISATION: Utiliser encryptP2Bytes
+      final p2Encrypted = await _cryptoService.encryptP2Bytes(p2Bytes, p3Bytes);
       
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(
         null,
@@ -411,26 +421,38 @@ class _AtomicSwapScreenState extends State<AtomicSwapScreen>
       );
       
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final messageToSign = lockedBon.bonId +
-          p2Encrypted['ciphertext']! +
-          p2Encrypted['nonce']! +
-          _challenge! +
-          timestamp.toRadixString(16).padLeft(8, '0');
+      
+      // ✅ OPTIMISATION: Construire le message en bytes et signer directement
+      final bonIdBytes = Uint8List.fromList(HEX.decode(lockedBon.bonId));
+      final challengeBytes = Uint8List.fromList(HEX.decode(_challenge!));
+      final timestampBytes = ByteData(4);
+      timestampBytes.setUint32(0, timestamp, Endian.big);
+      
+      final messageBytes = Uint8List.fromList([
+        ...bonIdBytes,
+        ...p2Encrypted.ciphertext,
+        ...p2Encrypted.nonce,
+        ...challengeBytes,
+        ...timestampBytes.buffer.asUint8List(),
+      ]);
           
-      final signatureHex = _cryptoService.signMessageBytes(messageToSign, nsecBonBytes);
+      final signatureBytes = _cryptoService.signMessageBytesDirect(messageBytes, nsecBonBytes);
       
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
       _cryptoService.secureZeroiseBytes(p2Bytes);
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
-      final qrBytes = _qrService.encodeOffer(
-        bonIdHex: lockedBon.bonId,
-        p2CipherHex: p2Encrypted['ciphertext']!,
-        nonceHex: p2Encrypted['nonce']!,
-        challengeHex: _challenge!,
-        timestamp: timestamp,
-        ttl: 120,
-        signatureHex: signatureHex,
+      // ✅ CORRECTION P0-A: Utiliser encodeQrV2Bytes (240 octets)
+      final qrBytes = _qrService.encodeQrV2Bytes(
+        bonId: bonIdBytes,
+        valueInCentimes: (widget.bon.value * 100).round(),
+        issuerNpub: Uint8List.fromList(HEX.decode(widget.bon.issuerNpub)),
+        issuerName: widget.bon.issuerName,
+        encryptedP2: p2Encrypted.ciphertext,
+        p2Nonce: p2Encrypted.nonce,
+        p2Tag: p2Encrypted.tag,
+        challenge: challengeBytes,
+        signature: signatureBytes,
       );
 
       setState(() => _qrData = qrBytes);

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hex/hex.dart';
@@ -98,49 +100,67 @@ class _MirrorOfferScreenState extends State<MirrorOfferScreen> {
 
   Future<void> _generateQR() async {
     try {
-      final p3 = await _storageService.getP3FromCache(widget.bon.bonId);
-      if (p3 == null) throw Exception('Part P3 non disponible.');
-      if (widget.bon.p2 == null) throw Exception('Part P2 non disponible.');
-
-      final p2Encrypted = await _cryptoService.encryptP2(widget.bon.p2!, p3);
-      
-      final challengeHex = _uuid.v4().replaceAll('-', '').substring(0, 32);
-      _currentChallenge = challengeHex;
-      final challengeBytes = Uint8List.fromList(HEX.decode(challengeHex));
-
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
+      // ✅ OPTIMISATION: Récupérer directement les bytes, éviter les conversions hex
       final p2Bytes = widget.bon.p2Bytes;
       final p3Bytes = await _storageService.getP3FromCacheBytes(widget.bon.bonId);
       
-      if (p2Bytes == null || p3Bytes == null) throw Exception('Parts P2 ou P3 non disponibles.');
+      if (p2Bytes == null || p3Bytes == null) {
+        throw Exception('Parts P2 ou P3 non disponibles.');
+      }
+
+      // ✅ OPTIMISATION: Utiliser encryptP2Bytes pour éviter les conversions hex
+      final encrypted = await _cryptoService.encryptP2Bytes(p2Bytes, p3Bytes);
       
+      // Générer un challenge aléatoire (16 octets)
+      final challengeBytes = Uint8List.fromList(
+        List.generate(16, (_) => Random.secure().nextInt(256))
+      );
+      _currentChallenge = HEX.encode(challengeBytes);
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
+      // Reconstituer la clé privée du bon pour signer
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
       
-      final messageToSign = widget.bon.bonId +
-          p2Encrypted['ciphertext']! +
-          p2Encrypted['nonce']! +
-          challengeHex +
-          timestamp.toRadixString(16).padLeft(8, '0');
+      // ✅ OPTIMISATION: Construire le message en bytes et signer directement
+      final bonIdBytes = Uint8List.fromList(HEX.decode(widget.bon.bonId));
+      final timestampBytes = ByteData(4);
+      timestampBytes.setUint32(0, timestamp, Endian.big);
       
-      final signatureHex = _cryptoService.signMessageBytes(messageToSign, nsecBonBytes);
-      final signatureBytes = Uint8List.fromList(HEX.decode(signatureHex));
+      // Message = bonId || ciphertext || nonce || challenge || timestamp
+      final messageBytes = Uint8List.fromList([
+        ...bonIdBytes,
+        ...encrypted.ciphertext,
+        ...encrypted.nonce,
+        ...challengeBytes,
+        ...timestampBytes.buffer.asUint8List(),
+      ]);
       
+      final signatureBytes = _cryptoService.signMessageBytesDirect(messageBytes, nsecBonBytes);
+      
+      // Nettoyer les bytes sensibles immédiatement
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
       _cryptoService.secureZeroiseBytes(p2Bytes);
       _cryptoService.secureZeroiseBytes(p3Bytes);
-
-      final p2CipherBytes = Uint8List.fromList(HEX.decode(p2Encrypted['ciphertext']!));
-      final nonceBytes = Uint8List.fromList(HEX.decode(p2Encrypted['nonce']!));
       
-      final p2WithTag = p2CipherBytes;
-      final encryptedP2Only = p2WithTag.sublist(0, 32);
-      final p2Tag = p2WithTag.length >= 48 ? p2WithTag.sublist(32, 48) : Uint8List(16);
+      // Extraire P2 chiffré et le tag (AES-GCM produit ciphertext + tag)
+      final ciphertext = encrypted.ciphertext;
+      final encryptedP2Only = ciphertext.length >= 32
+          ? ciphertext.sublist(0, 32)
+          : ciphertext;
+      final p2Tag = ciphertext.length >= 48
+          ? ciphertext.sublist(32, 48)
+          : Uint8List(16);
 
-      final qrBytes = _qrService.encodeQrV2(
-        bon: widget.bon,
-        encryptedP2Hex: HEX.encode(encryptedP2Only),
-        p2Nonce: nonceBytes,
+      // ✅ OPTIMISATION: Utiliser encodeQrV2Bytes pour éviter les conversions hex
+      final issuerNpubBytes = Uint8List.fromList(HEX.decode(widget.bon.issuerNpub));
+      final qrBytes = _qrService.encodeQrV2Bytes(
+        bonId: bonIdBytes,
+        valueInCentimes: (widget.bon.value * 100).round(),
+        issuerNpub: issuerNpubBytes,
+        issuerName: widget.bon.issuerName,
+        encryptedP2: encryptedP2Only,
+        p2Nonce: encrypted.nonce,
         p2Tag: p2Tag,
         challenge: challengeBytes,
         signature: signatureBytes,

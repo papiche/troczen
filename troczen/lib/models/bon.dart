@@ -391,7 +391,7 @@ class Bon {
       expiresAt: json['expiresAt'] != null ? DateTime.parse(json['expiresAt']) : null,
       status: BonStatus.values.firstWhere(
         (e) => e.name == json['status'],
-        orElse: () => BonStatus.active, // Fallback pour anciens bons
+        orElse: () => throw Exception("Statut de bon inconnu"),
       ),
       p1: json['p1'],
       p2: json['p2'],

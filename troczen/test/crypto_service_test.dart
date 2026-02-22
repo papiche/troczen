@@ -139,7 +139,10 @@ void main() {
 
     test('Shamir split/combine (Cycle complet)', () {
       final secret = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-      final parts = cryptoService.shamirSplit(secret);
+      final secretBytes = Uint8List.fromList(HEX.decode(secret));
+        final partsBytes = cryptoService.shamirSplitBytes(secretBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(secretBytes);
       
       expect(parts.length, equals(3));
       
@@ -155,7 +158,10 @@ void main() {
 
     test('Shamir combine échoue avec 1 seule part', () {
       final secret = '01' * 32;
-      final parts = cryptoService.shamirSplit(secret);
+      final secretBytes = Uint8List.fromList(HEX.decode(secret));
+        final partsBytes = cryptoService.shamirSplitBytes(secretBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(secretBytes);
       final p1Bytes = Uint8List.fromList(HEX.decode(parts[0]));
       
       expect(
@@ -172,7 +178,10 @@ void main() {
         final secret = HEX.encode(
           Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)))
         );
-        final parts = cryptoService.shamirSplit(secret);
+        final secretBytes = Uint8List.fromList(HEX.decode(secret));
+        final partsBytes = cryptoService.shamirSplitBytes(secretBytes);
+        final parts = partsBytes.map((p) => HEX.encode(p)).toList();
+        cryptoService.secureZeroiseBytes(secretBytes);
         final p1Bytes = Uint8List.fromList(HEX.decode(parts[0]));
         final p2Bytes = Uint8List.fromList(HEX.decode(parts[1]));
         final p3Bytes = Uint8List.fromList(HEX.decode(parts[2]));
@@ -198,36 +207,51 @@ void main() {
       expect(exception.invalidValue, equals(256));
     });
 
-    // --- TEST CHIFFREMENT AES-GCM (P2/P3) ---
+// --- TEST CHIFFREMENT AES-GCM (P2/P3) ---
 
     test('encryptP2/decryptP2 (AES-GCM)', () async {
       final p2 = 'aa' * 32;
       final p3 = 'bb' * 32; // Sert de clé de chiffrement (via SHA256)
       
-      final encrypted = await cryptoService.encryptP2(p2, p3);
+      final p2Bytes = Uint8List.fromList(HEX.decode(p2));
+      final p3Bytes = Uint8List.fromList(HEX.decode(p3));
       
-      expect(encrypted['ciphertext'], isNotNull);
-      expect(encrypted['nonce'], isNotNull);
+      // Chiffrement
+      final encrypted = await cryptoService.encryptP2Bytes(p2Bytes, p3Bytes);
       
-      final decrypted = await cryptoService.decryptP2(
-        encrypted['ciphertext']!, 
-        encrypted['nonce']!, 
-        p3
+      expect(encrypted.ciphertext.isNotEmpty, isTrue);
+      expect(encrypted.nonce.length, equals(12));
+      
+      // Déchiffrement
+      final decryptedBytes = await cryptoService.decryptP2Bytes(
+        encrypted.ciphertext,
+        encrypted.nonce,
+        p3Bytes,
       );
       
+      final decrypted = HEX.encode(decryptedBytes);
       expect(decrypted, equals(p2));
+      
+      cryptoService.secureZeroiseBytes(p2Bytes);
+      cryptoService.secureZeroiseBytes(p3Bytes);
+      cryptoService.secureZeroiseBytes(decryptedBytes);
     });
 
     test('Chiffrement déterministe vs non-déterministe', () async {
       final p2 = 'aa' * 32;
       final p3 = 'bb' * 32;
       
-      // Le chiffrement utilise un nonce aléatoire, donc 2 appels = 2 résultats différents
-      final enc1 = await cryptoService.encryptP2(p2, p3);
-      final enc2 = await cryptoService.encryptP2(p2, p3);
+      final p2Bytes = Uint8List.fromList(HEX.decode(p2));
+      final p3Bytes = Uint8List.fromList(HEX.decode(p3));
       
-      expect(enc1['nonce'], isNot(equals(enc2['nonce'])));
-      expect(enc1['ciphertext'], isNot(equals(enc2['ciphertext'])));
+      final enc1 = await cryptoService.encryptP2Bytes(p2Bytes, p3Bytes);
+      final enc2 = await cryptoService.encryptP2Bytes(p2Bytes, p3Bytes);
+      
+      expect(HEX.encode(enc1.nonce), isNot(equals(HEX.encode(enc2.nonce))));
+      expect(HEX.encode(enc1.ciphertext), isNot(equals(HEX.encode(enc2.ciphertext))));
+      
+      cryptoService.secureZeroiseBytes(p2Bytes);
+      cryptoService.secureZeroiseBytes(p3Bytes);
     });
 
     // --- TEST NIP-19 BECH32 ENCODING ---

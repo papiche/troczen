@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:hex/hex.dart';
 import 'qr_service.dart';
 
 /// Service NFC pour transfert de bons par tap-to-pay
@@ -56,15 +58,17 @@ class NfcService {
     onStatusChange?.call('Approchez les téléphones...');
 
     try {
-      // Encoder l'offre en binaire (même format que QR)
-      final offerBytes = _qrService.encodeOffer(
-        bonIdHex: bonId,
-        p2CipherHex: p2Encrypted,
-        nonceHex: nonce,
-        challengeHex: challenge,
-        timestamp: timestamp,
-        ttl: ttl,
-        signatureHex: '00' * 64, // Dummy signature pour le mock NFC
+      // ✅ CORRECTION P0-A: Utiliser encodeQrV2Bytes (240 octets)
+      final offerBytes = _qrService.encodeQrV2Bytes(
+        bonId: Uint8List.fromList(HEX.decode(bonId)),
+        valueInCentimes: 0, // Dummy value pour le mock NFC
+        issuerNpub: Uint8List(32), // Dummy npub pour le mock NFC
+        issuerName: "NFC Mock", // Dummy name pour le mock NFC
+        encryptedP2: Uint8List.fromList(HEX.decode(p2Encrypted)),
+        p2Nonce: Uint8List.fromList(HEX.decode(nonce)),
+        p2Tag: Uint8List(16), // Dummy tag pour le mock NFC
+        challenge: Uint8List.fromList(HEX.decode(challenge)),
+        signature: Uint8List(64), // Dummy signature (zéros) pour le mock NFC
       );
 
       await NfcManager.instance.startSession(
@@ -148,10 +152,10 @@ class NfcService {
     onStatusChange?.call('Envoi de la confirmation...');
 
     try {
-      // Encoder l'ACK
-      final ackBytes = _qrService.encodeAck(
-        bonIdHex: bonId,
-        signatureHex: signature,
+      // ✅ OPTIMISATION: Encoder l'ACK en binaire directement avec Uint8List
+      final ackBytes = _qrService.encodeAckBytes(
+        bonId: Uint8List.fromList(HEX.decode(bonId)),
+        signature: Uint8List.fromList(HEX.decode(signature)),
         status: status,
       );
 
