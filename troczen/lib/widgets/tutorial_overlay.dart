@@ -71,10 +71,10 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
 
   Future<void> _checkFirstLaunch() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final hasSeenTutorial = prefs.getBool('hasSeenTutorial') ?? false;
+      const storage = FlutterSecureStorage();
+      final hasSeenTutorial = await storage.read(key: 'hasSeenTutorial');
       
-      if (!hasSeenTutorial) {
+      if (hasSeenTutorial == null) {
         // Attendre que l'interface soit chargée
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
@@ -168,7 +168,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
     final size = MediaQuery.of(context).size;
     
     return Material(
-      color: Colors.black.withOpacity(0.8),
+      color: Colors.black.withValues(alpha: 0.8),
       child: Stack(
         children: [
           // Zone highlight (si définie)
@@ -208,14 +208,14 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFFFFB347).withOpacity(0.95),
-            const Color(0xFFFF8C42).withOpacity(0.95),
+            const Color(0xFFFFB347).withValues(alpha: 0.95),
+            const Color(0xFFFF8C42).withValues(alpha: 0.95),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFB347).withOpacity(0.5),
+            color: const Color(0xFFFFB347).withValues(alpha: 0.5),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -237,7 +237,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                   shape: BoxShape.circle,
                   color: index == _currentStep
                       ? Colors.white
-                      : Colors.white.withOpacity(0.4),
+                      : Colors.white.withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -254,7 +254,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 8,
                 ),
               ],
@@ -416,7 +416,7 @@ class HighlightPainter extends CustomPainter {
       ..fillType = PathFillType.evenOdd;
     
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.3);
+      ..color = Colors.black.withValues(alpha: 0.3);
     
     canvas.drawPath(path, paint);
     

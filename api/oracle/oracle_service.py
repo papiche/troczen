@@ -488,3 +488,155 @@ class OracleService:
             }
         finally:
             await self.client.disconnect()
+
+
+# ==================== VERSION SYNCHRONE POUR FLASK ====================
+
+class OracleServiceSync:
+    """
+    Version synchrone du service ORACLE pour Flask.
+    
+    Utilise NostrClientSync au lieu de NostrClient.
+    """
+    
+    # Seuils d'attestation par défaut
+    DEFAULT_THRESHOLDS = {
+        'official': 2,
+        'wotx2': 1,
+    }
+    
+    CREDENTIAL_VALIDITY_DAYS = 365
+    
+    def __init__(self, relay_url: str, oracle_nsec_hex: str):
+        """
+        Initialise le service ORACLE synchrone.
+        
+        Args:
+            relay_url: URL du relai Nostr
+            oracle_nsec_hex: Clé privée de l'Oracle en hex
+        """
+        self.relay_url = relay_url
+        self.oracle_nsec_hex = oracle_nsec_hex
+        
+        # Import du client synchrone
+        from nostr_client import NostrClientSync
+        self.client = NostrClientSync(relay_url=relay_url)
+        
+        # Dérivation de la pubkey Oracle
+        self.oracle_pubkey = self._derive_pubkey(oracle_nsec_hex)
+        
+        log("INFO", f"Oracle Sync initialisé - Pubkey: {self.oracle_pubkey[:16]}...")
+    
+    def _derive_pubkey(self, nsec_hex: str) -> str:
+        """Dérive la pubkey depuis la nsec."""
+        try:
+            from nostr_protocol import PrivateKey
+            pk = PrivateKey(bytes.fromhex(nsec_hex))
+            return pk.public_key.hex()
+        except ImportError:
+            log("WARN", "nostr-protocol non disponible, utilisation d'un dérivation simplifiée")
+            return hashlib.sha256(bytes.fromhex(nsec_hex)).hexdigest()[:64]
+    
+    def _parse_tags(self, tags: List[List[str]]) -> Dict[str, str]:
+        """Parse les tags Nostr en dictionnaire."""
+        result = {}
+        for tag in tags:
+            if len(tag) >= 2:
+                result[tag[0]] = tag[1]
+        return result
+    
+    def _extract_permit_level(self, permit_id: str) -> int:
+        """Extrait le niveau d'un permit depuis son ID."""
+        match = re.search(r'_X(\d+)$', permit_id)
+        return int(match.group(1)) if match else 1
+    
+    def get_permit_definitions(self, market: str = None) -> List[Dict]:
+        """Récupère toutes les définitions de permits (Kind 30500)."""
+        if not self.client.connect():
+            return []
+        
+        try:
+            filters = {"kinds": [30500]}
+            if market:
+                filters["#market"] = [market]
+            
+            events = self.client.query_events([filters])
+            return [self._parse_permit_definition(e) for e in events]
+        finally:
+            self.client.disconnect()
+    
+    def _parse_permit_definition(self, event: Dict) -> Dict:
+        """Parse un événement de définition de permit."""
+        tags = self._parse_tags(event.get('tags', []))
+        content = json.loads(event.get('content', '{}'))
+        
+        return {
+            "permit_id": tags.get('d', ''),
+            "name": content.get('name', ''),
+            "description": content.get('description', ''),
+            "category": content.get('category', 'skill'),
+            "level": self._extract_permit_level(tags.get('d', '')),
+            "required_attestations": content.get('required_attestations', 1),
+            "skills": content.get('skills', []),
+            "created_at": event.get('created_at', 0),
+            "created_by": event.get('pubkey', '')
+        }
+    
+    def get_credentials(self, npub: str) -> List[Dict]:
+        """Récupère les credentials d'un utilisateur."""
+        if not self.client.connect():
+            return []
+        
+        try:
+            events = self.client.query_events([{
+                "kinds": [30503],
+                "authors": [self.oracle_pubkey],
+                "#p": [npub]
+            }])
+            return [self._parse_credential(e) for e in events]
+        finally:
+            self.client.disconnect()
+    
+    def _parse_credential(self, event: Dict) -> Dict:
+        """Parse un événement de credential."""
+        tags = self._parse_tags(event.get('tags', []))
+        content = json.loads(event.get('content', '{}'))
+        
+        return {
+            "credential_id": tags.get('d', ''),
+            "permit_id": tags.get('permit_id', ''),
+            "holder": tags.get('p', ''),
+            "issued_at": event.get('created_at', 0),
+            "expires_at": int(tags.get('expires', 0)),
+            "content": content
+        }
+    
+    def get_stats(self) -> Dict:
+        """Récupère les statistiques Oracle."""
+        if not self.client.connect():
+            return {}
+        
+        try:
+            # Compter les permits
+            permits = self.client.query_events([{"kinds": [30500]}])
+            
+            # Compter les demandes
+            requests = self.client.query_events([{"kinds": [30501]}])
+            
+            # Compter les attestations
+            attestations = self.client.query_events([{"kinds": [30502]}])
+            
+            # Compter les credentials
+            credentials = self.client.query_events([
+                {"kinds": [30503], "authors": [self.oracle_pubkey]}
+            ])
+            
+            return {
+                "permits_count": len(permits),
+                "requests_count": len(requests),
+                "attestations_count": len(attestations),
+                "credentials_count": len(credentials),
+                "oracle_pubkey": self.oracle_pubkey
+            }
+        finally:
+            self.client.disconnect()
