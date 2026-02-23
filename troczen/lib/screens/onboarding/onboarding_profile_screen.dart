@@ -370,7 +370,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                               _selectedTags.remove(tag);
                             });
                           },
-                          backgroundColor: const Color(0xFFFFB347).withOpacity(0.3),
+                          backgroundColor: const Color(0xFFFFB347).withValues(alpha: 0.3),
                           labelStyle: const TextStyle(color: Color(0xFFFFB347)),
                           deleteIconColor: const Color(0xFFFFB347),
                         )).toList(),
@@ -477,7 +477,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                   }
                 });
               },
-              selectedColor: const Color(0xFFFFB347).withOpacity(0.3),
+              selectedColor: const Color(0xFFFFB347).withValues(alpha: 0.3),
               checkmarkColor: const Color(0xFFFFB347),
               backgroundColor: const Color(0xFF2A2A2A),
               labelStyle: TextStyle(
@@ -536,7 +536,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                   }
                 });
               },
-              selectedColor: const Color(0xFFFFB347).withOpacity(0.3),
+              selectedColor: const Color(0xFFFFB347).withValues(alpha: 0.3),
               checkmarkColor: const Color(0xFFFFB347),
               backgroundColor: const Color(0xFF2A2A2A),
               labelStyle: TextStyle(

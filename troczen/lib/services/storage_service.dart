@@ -35,7 +35,6 @@ class StorageService {
   static const String _userKey = 'user';
   static const String _bonsKey = 'bons';
   static const String _marketsKey = 'markets';         // Liste des marchés
-  static const String _activeMarketKey = 'active_market'; // Marché actif par défaut
   static const String _onboardingCompleteKey = 'onboarding_complete';
   static const String _contactsKey = 'contacts'; // Liste des contacts (npubs)
   static const String _bootstrapReceivedKey = 'bootstrap_received'; // Bon Zéro reçu

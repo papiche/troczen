@@ -436,7 +436,7 @@ class _MirrorOfferScreenState extends State<MirrorOfferScreen> {
               
               // Overlay sombre pour ne pas polluer la détection de l'autre téléphone avec la lumière de l'écran
               Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
               ),
               
               // Cadre de visée
@@ -445,7 +445,7 @@ class _MirrorOfferScreenState extends State<MirrorOfferScreen> {
                   width: 200,
                   height: 200,
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.orange.withOpacity(0.8), width: 2),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.8), width: 2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),

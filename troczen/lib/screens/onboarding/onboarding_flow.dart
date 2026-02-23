@@ -130,7 +130,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     color: isCompleted
                         ? const Color(0xFFFFB347)
                         : isActive
-                            ? const Color(0xFFFFB347).withOpacity(0.5)
+                            ? const Color(0xFFFFB347).withValues(alpha: 0.5)
                             : Colors.grey[800],
                     borderRadius: BorderRadius.circular(2),
                   ),

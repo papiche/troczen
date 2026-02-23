@@ -241,7 +241,7 @@ class _OnboardingModeSelectionScreenState extends State<OnboardingModeSelectionS
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFFFFB347).withOpacity(0.3),
+                    color: const Color(0xFFFFB347).withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -256,7 +256,7 @@ class _OnboardingModeSelectionScreenState extends State<OnboardingModeSelectionS
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFF3A3A3A),
+                    color: isSelected ? Colors.white.withValues(alpha: 0.2) : const Color(0xFF3A3A3A),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -291,7 +291,7 @@ class _OnboardingModeSelectionScreenState extends State<OnboardingModeSelectionS
               description,
               style: TextStyle(
                 fontSize: 14,
-                color: isSelected ? Colors.white.withOpacity(0.9) : Colors.grey[400],
+                color: isSelected ? Colors.white.withValues(alpha: 0.9) : Colors.grey[400],
               ),
             ),
             
@@ -312,7 +312,7 @@ class _OnboardingModeSelectionScreenState extends State<OnboardingModeSelectionS
                       feature,
                       style: TextStyle(
                         fontSize: 13,
-                        color: isSelected ? Colors.white.withOpacity(0.85) : Colors.grey[500],
+                        color: isSelected ? Colors.white.withValues(alpha: 0.85) : Colors.grey[500],
                       ),
                     ),
                   ),

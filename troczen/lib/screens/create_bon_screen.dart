@@ -380,7 +380,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   border: Border.all(color: Colors.white, width: 8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -409,10 +409,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                       child: Container(
                         margin: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFB347).withOpacity(0.1),
+                          color: const Color(0xFFFFB347).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: const Color(0xFFFFB347).withOpacity(0.3),
+                            color: const Color(0xFFFFB347).withValues(alpha: 0.3),
                             width: 2,
                           ),
                         ),
@@ -445,7 +445,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFB347).withOpacity(0.1),
+                        color: const Color(0xFFFFB347).withValues(alpha: 0.1),
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(8),
                           bottomRight: Radius.circular(8),
@@ -787,7 +787,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E1E1E),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -847,7 +847,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.orange),
                   ),

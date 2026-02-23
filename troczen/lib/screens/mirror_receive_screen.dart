@@ -352,7 +352,7 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
               // Overlay sombre pour ne pas polluer la détection de l'autre téléphone avec la lumière de l'écran
               if (_ackQrData == null)
                 Container(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha: 0.6),
                 ),
               
               if (_ackQrData == null)
@@ -361,7 +361,7 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
                     width: 200,
                     height: 200,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.orange.withOpacity(0.8), width: 2),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.8), width: 2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),

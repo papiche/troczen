@@ -201,7 +201,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -399,22 +399,22 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     IconData icon;
 
     if (bon.isExpired) {
-      backgroundColor = Colors.red.withOpacity(0.9);
+      backgroundColor = Colors.red.withValues(alpha: 0.9);
       textColor = Colors.white;
       label = 'Expiré';
       icon = Icons.error_outline;
     } else if (bon.status == BonStatus.pending) {
-      backgroundColor = Colors.orange.withOpacity(0.9);
+      backgroundColor = Colors.orange.withValues(alpha: 0.9);
       textColor = Colors.white;
       label = 'En attente';
       icon = Icons.pending_outlined;
     } else if (bon.status == BonStatus.active) {
-      backgroundColor = Colors.green.withOpacity(0.9);
+      backgroundColor = Colors.green.withValues(alpha: 0.9);
       textColor = Colors.white;
       label = 'Actif';
       icon = Icons.check_circle_outline;
     } else {
-      backgroundColor = Colors.grey.withOpacity(0.9);
+      backgroundColor = Colors.grey.withValues(alpha: 0.9);
       textColor = Colors.white;
       label = bon.status.name;
       icon = Icons.info_outline;
@@ -427,7 +427,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

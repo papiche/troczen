@@ -241,7 +241,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFB347).withOpacity(0.3),
+            color: const Color(0xFFFFB347).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -366,7 +366,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                     dotData: FlDotData(show: true),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFFFFB347).withOpacity(0.2),
+                      color: const Color(0xFFFFB347).withValues(alpha: 0.2),
                     ),
                   ),
                 ],
@@ -430,7 +430,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(bon.status).withOpacity(0.2),
+                      color: _getStatusColor(bon.status).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -722,7 +722,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0A7EA4).withOpacity(0.3),
+            color: const Color(0xFF0A7EA4).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -947,7 +947,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         border: Border.all(color: Colors.white, width: 1),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.5),
+            color: color.withValues(alpha: 0.5),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -974,9 +974,9 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.5), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
       ),
       child: Text(
         badgeText,
@@ -1148,7 +1148,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: hasCredentials
-              ? [const Color(0xFF4CAF50).withOpacity(0.2), const Color(0xFF2196F3).withOpacity(0.2)]
+              ? [const Color(0xFF4CAF50).withValues(alpha: 0.2), const Color(0xFF2196F3).withValues(alpha: 0.2)]
               : [const Color(0xFF2A2A2A), const Color(0xFF2A2A2A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -1156,7 +1156,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: hasCredentials
-              ? const Color(0xFF4CAF50).withOpacity(0.5)
+              ? const Color(0xFF4CAF50).withValues(alpha: 0.5)
               : Colors.white24,
         ),
       ),
@@ -1226,9 +1226,9 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1425,7 +1425,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                     decoration: BoxDecoration(
                       color: const Color(0xFF2A2A2A),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFFFFB347).withValues(alpha: 0.3)),
                     ),
                     child: const Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1536,7 +1536,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       color: const Color(0xFF2A2A2A),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: const Color(0xFFFFB347).withOpacity(0.2)),
+        side: BorderSide(color: const Color(0xFFFFB347).withValues(alpha: 0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1575,7 +1575,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFB347).withOpacity(0.2),
+                    color: const Color(0xFFFFB347).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1929,9 +1929,9 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A7EA4).withOpacity(0.1),
+                  color: const Color(0xFF0A7EA4).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF0A7EA4).withOpacity(0.3)),
+                  border: Border.all(color: const Color(0xFF0A7EA4).withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: const [

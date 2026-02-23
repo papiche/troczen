@@ -400,7 +400,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.white.withOpacity(0.2) : Colors.grey[800],
+                      color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.grey[800],
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -426,7 +426,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           mode.description,
                           style: TextStyle(
                             fontSize: 12,
-                            color: isSelected ? Colors.white.withOpacity(0.8) : Colors.grey[500],
+                            color: isSelected ? Colors.white.withValues(alpha: 0.8) : Colors.grey[500],
                           ),
                         ),
                       ],

@@ -198,7 +198,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFB347).withOpacity(0.3),
+            color: const Color(0xFFFFB347).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -215,7 +215,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -275,7 +275,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
             color: const Color(0xFF1E1E1E),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isUnlocked ? Colors.green : const Color(0xFFFFB347).withOpacity(0.3),
+              color: isUnlocked ? Colors.green : const Color(0xFFFFB347).withValues(alpha: 0.3),
               width: 2,
             ),
           ),
@@ -553,9 +553,9 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: const [
@@ -591,7 +591,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8B5CF6).withOpacity(0.3),
+            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -733,7 +733,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -768,7 +768,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3), width: 2),
+        border: Border.all(color: const Color(0xFFFFB347).withValues(alpha: 0.3), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -830,9 +830,9 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: const [

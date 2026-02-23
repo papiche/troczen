@@ -389,7 +389,7 @@ class _DashboardViewState extends State<DashboardView>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFB347).withOpacity(0.3),
+            color: const Color(0xFFFFB347).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -478,7 +478,7 @@ class _DashboardViewState extends State<DashboardView>
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 2),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,7 +541,7 @@ class _DashboardViewState extends State<DashboardView>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.arrow_downward, color: Colors.green, size: 20),
@@ -574,7 +574,7 @@ class _DashboardViewState extends State<DashboardView>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.2),
+                  color: Colors.red.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.arrow_upward, color: Colors.red, size: 20),
@@ -640,8 +640,8 @@ class _DashboardViewState extends State<DashboardView>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isPositive
-            ? const Color(0xFF0A7EA4).withOpacity(0.2)
-            : Colors.red.withOpacity(0.2),
+            ? const Color(0xFF0A7EA4).withValues(alpha: 0.2)
+            : Colors.red.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isPositive ? const Color(0xFF0A7EA4) : Colors.red,
@@ -798,8 +798,8 @@ class _DashboardViewState extends State<DashboardView>
                       show: true,
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFFFFB347).withOpacity(0.3),
-                          const Color(0xFFFFB347).withOpacity(0.05),
+                          const Color(0xFFFFB347).withValues(alpha: 0.3),
+                          const Color(0xFFFFB347).withValues(alpha: 0.05),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -1183,7 +1183,7 @@ class _DashboardViewState extends State<DashboardView>
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: rank <= 3 ? medalColor.withOpacity(0.5) : Colors.white24,
+          color: rank <= 3 ? medalColor.withValues(alpha: 0.5) : Colors.white24,
           width: 2,
         ),
       ),
@@ -1194,7 +1194,7 @@ class _DashboardViewState extends State<DashboardView>
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: medalColor.withOpacity(0.2),
+              color: medalColor.withValues(alpha: 0.2),
               shape: BoxShape.circle,
               border: Border.all(color: medalColor, width: 2),
             ),

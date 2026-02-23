@@ -280,7 +280,7 @@ Internet requis seulement pour:
           Text(
             'Le troc local, simple et zen 🌻',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontSize: 16,
             ),
           ),
