@@ -228,7 +228,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
       final bon = Bon(
         bonId: bonNpubHex,
-        value: bonValue,
+        value: 0.0, // Forcé à 0
         issuerName: _issuerNameController.text,
         issuerNpub: widget.user.npub,
         createdAt: DateTime.now(),
@@ -236,12 +236,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         status: BonStatus.active,
         p1: p1,
         p2: p2,
-        p3: null, // P3 est dans le cache
+        p3: null,
         marketName: _selectedMarket!.name,
         color: _selectedColor.value,
         duAtCreation: currentDu,
-        cardType: 'bootstrap',
-        rarity: 'bootstrap',
+        rarity: 'bootstrap', // FORCE EN BOOTSTRAP
+        cardType: 'bootstrap', // FORCE EN BOOTSTRAP
+        wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
       );
 
       // 6. Sauvegarder le bon
@@ -481,50 +482,39 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Encart Pédagogique Bon Zéro
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                  color: const Color(0xFF0A7EA4).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF0A7EA4).withValues(alpha: 0.3)),
                 ),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.blue),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'La création manuelle génère un Bon Zéro (0 ẐEN) servant à tisser votre toile de confiance. Les vrais ẐEN seront générés automatiquement par le Dividende Universel (DU).',
-                        style: TextStyle(color: Colors.blue[100], height: 1.4),
-                      ),
+                    Row(
+                      children: const [
+                        Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Création de Bon Zéro',
+                          style: TextStyle(
+                            color: Color(0xFF0A7EA4),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Vous créez un "Bon Zéro" (0 ẐEN). Ce bon sert de carte de visite pour tisser votre toile de confiance.\n\nLes vrais ẐEN seront générés automatiquement par le Dividende Universel une fois que vous aurez 5 liens réciproques.',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _valueController,
-                readOnly: true,
-                style: const TextStyle(color: Colors.grey),
-                decoration: InputDecoration(
-                  labelText: 'Valeur (ẐEN)',
-                  labelStyle: TextStyle(color: Colors.grey[400]),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[700]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFFFFB347)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1E1E1E),
-                ),
-              ),
-
               const SizedBox(height: 16),
 
               TextFormField(

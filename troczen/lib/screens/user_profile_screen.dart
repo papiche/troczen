@@ -40,8 +40,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
   
-  String? _selectedPicture;
-  String? _selectedBanner;
+  String? _base64Picture;
+  String? _base64Banner;
   bool _isSaving = false;
   bool _isUploading = false;
 
@@ -109,37 +109,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _selectImage(String type) async {
     final imageService = ImageCompressionService();
+    final dataUri = type == 'picture'
+        ? await imageService.pickAndCompressAvatar()
+        : await imageService.pickAndCompressBanner();
     
-    setState(() => _isUploading = true);
-    
-    try {
-      final dataUri = type == 'picture'
-          ? await imageService.pickAndCompressAvatar()
-          : await imageService.pickAndCompressBanner();
-          
-      if (dataUri != null) {
-        setState(() {
-          if (type == 'picture') {
-            _selectedPicture = dataUri;
-          } else {
-            _selectedBanner = dataUri;
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Erreur sélection image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUploading = false);
-      }
+    if (dataUri != null) {
+      setState(() {
+        if (type == 'picture') {
+          _base64Picture = dataUri;
+        } else {
+          _base64Banner = dataUri;
+        }
+      });
     }
   }
 
@@ -149,8 +130,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
-      String? pictureUrl = _selectedPicture ?? widget.user.picture;
-      String? bannerUrl = _selectedBanner ?? widget.user.banner;
+      // Remplacer l'attente de l'API par la récupération directe des Strings
+      String? pictureUrl = _base64Picture ?? widget.user.picture;
+      String? bannerUrl = _base64Banner ?? widget.user.banner;
 
       // 3. Publier sur Nostr (kind 0)
       final market = await _storageService.getMarket();
@@ -338,26 +320,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 8),
-                      if (_selectedPicture != null || widget.user.picture != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          height: 60,
+                      GestureDetector(
+                        onTap: _isUploading ? null : () => _selectImage('picture'),
+                        child: ImageCompressionService.buildImage(
+                          uri: _base64Picture ?? widget.user.picture,
                           width: 60,
-                          child: ImageCompressionService.buildImage(
-                            uri: _selectedPicture ?? widget.user.picture,
-                            width: 60,
-                            height: 60,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                      ElevatedButton.icon(
-                        onPressed: _isUploading ? null : () => _selectImage('picture'),
-                        icon: const Icon(Icons.image),
-                        label: Text((_selectedPicture != null || widget.user.picture != null)
-                            ? 'Changer'
-                            : 'Sélectionner'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A7EA4),
+                          height: 60,
+                          borderRadius: BorderRadius.circular(8),
+                          placeholder: const Icon(Icons.add_a_photo, color: Colors.white70),
                         ),
                       ),
                     ],
@@ -373,25 +343,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 8),
-                      if (_selectedBanner != null || widget.user.banner != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          height: 60,
+                      GestureDetector(
+                        onTap: _isUploading ? null : () => _selectImage('banner'),
+                        child: ImageCompressionService.buildImage(
+                          uri: _base64Banner ?? widget.user.banner,
                           width: double.infinity,
-                          child: ImageCompressionService.buildImage(
-                            uri: _selectedBanner ?? widget.user.banner,
-                            height: 60,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ElevatedButton.icon(
-                        onPressed: _isUploading ? null : () => _selectImage('banner'),
-                        icon: const Icon(Icons.image),
-                        label: Text((_selectedBanner != null || widget.user.banner != null)
-                            ? 'Changer'
-                            : 'Sélectionner'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A7EA4),
+                          height: 60,
+                          borderRadius: BorderRadius.circular(8),
+                          placeholder: const Icon(Icons.add_a_photo, color: Colors.white70),
                         ),
                       ),
                     ],

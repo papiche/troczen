@@ -37,7 +37,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   final _storage = StorageService();
   
   String _selectedCategory = 'generic';
-  String? _selectedImage;
+  String? _base64Image;
   bool _isSaving = false;
   bool _isUploading = false;
   bool _canEdit = false;
@@ -67,7 +67,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   void _loadProfile() {
     _titleController.text = widget.bon.issuerName;
     _descriptionController.text = widget.bon.wish ?? '';
-    _selectedCategory = 'generic';  // TODO: Load from bon metadata
+    _selectedCategory = widget.bon.cardType ?? 'generic';
   }
 
   Future<void> _selectImage() async {
@@ -80,7 +80,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           
       if (dataUri != null) {
         setState(() {
-          _selectedImage = dataUri;
+          _base64Image = dataUri;
         });
       }
     } catch (e) {
@@ -102,95 +102,72 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate() || !_canEdit) return;
-
     setState(() => _isSaving = true);
 
     try {
-      // 1. Utiliser l'image Base64 si sélectionnée
-      String? imageUrl = _selectedImage ?? widget.bon.picture;
-
-      // 2. ✅ Profil mis à jour uniquement sur Nostr (kind 0 et 30303)
-      // L'API backend n'est plus utilisée pour les profils
-
-      // 3. Republier sur Nostr avec métadonnées mises à jour
       final market = await _storage.getMarket();
       if (market != null && widget.bon.p2 != null) {
-        // ✅ SÉCURITÉ: Récupérer P3 en Uint8List directement
-        final p3Bytes = await _storage.getP3FromCacheBytes(widget.bon.bonId);
         
-        if (p3Bytes != null) {
-          // ✅ SÉCURITÉ: Récupérer P2 en Uint8List directement
-          final p2Bytes = widget.bon.p2Bytes;
+        final p3Bytes = await _storage.getP3FromCacheBytes(widget.bon.bonId);
+        final p2Bytes = widget.bon.p2Bytes;
+        
+        if (p3Bytes != null && p2Bytes != null) {
+          final nostrService = NostrService(cryptoService: _crypto, storageService: _storage);
+          await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
           
-          if (p2Bytes != null) {
-            final nostrService = NostrService(
-              cryptoService: _crypto,
-              storageService: _storage,
-            );
+          final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+          final nsecHex = HEX.encode(nsecBonBytes);
+          
+          String finalPicture = _base64Image ?? widget.bon.picture ?? widget.bon.logoUrl ?? '';
 
-            await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
-            
-            // ✅ SÉCURITÉ: Reconstruire sk_B en Uint8List
-            final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-            final nsecHex = HEX.encode(nsecBonBytes);
-            
-            // Publication du profil du bon (kind 0)
-            await nostrService.publishUserProfile(
-              npub: widget.bon.bonId,
-              nsec: nsecHex,
-              name: _titleController.text,
-              displayName: _titleController.text,
-              about: _descriptionController.text.isNotEmpty ? _descriptionController.text : 'Bon ${widget.bon.value} ẐEN - ${market.name}',
-              picture: imageUrl,
-              banner: imageUrl,  // Utilise la même image pour le bandeau
-              website: widget.user.website,  // Par défaut: site du profil utilisateur
-              g1pub: widget.user.g1pub,  // Par défaut: g1pub du profil utilisateur
-            );
-            
-            // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
-            _crypto.secureZeroiseBytes(nsecBonBytes);
-            _crypto.secureZeroiseBytes(p2Bytes);
-            _crypto.secureZeroiseBytes(p3Bytes);
+          // 1. Publication Kind 0
+          await nostrService.publishUserProfile(
+            npub: widget.bon.bonId,
+            nsec: nsecHex,
+            name: _titleController.text,
+            displayName: _titleController.text,
+            about: _descriptionController.text,
+            picture: finalPicture,
+            banner: finalPicture,
+          );
+          
+          _crypto.secureZeroiseBytes(nsecBonBytes);
+          _crypto.secureZeroiseBytes(p2Bytes);
+          _crypto.secureZeroiseBytes(p3Bytes);
 
-            // Republier P3 avec nouvelles métadonnées
-            // Note: publishP3 attend des String, mais les parts sont déjà en RAM
-            // On utilise les propriétés String du bon (déjà en mémoire)
-            await nostrService.publishP3(
-              bonId: widget.bon.bonId,
-              p2Hex: widget.bon.p2!,
-              p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
-              seedMarket: market.seedMarket,
-              issuerNpub: widget.user.npub,
-              marketName: market.name,
-              value: widget.bon.value,
-              category: _selectedCategory,
-              rarity: widget.bon.rarity,
-            );
+          // 2. Republier P3
+          await nostrService.publishP3(
+            bonId: widget.bon.bonId,
+            p2Hex: widget.bon.p2!,
+            p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
+            seedMarket: market.seedMarket,
+            issuerNpub: widget.user.npub,
+            marketName: market.name,
+            value: widget.bon.value,
+            category: _selectedCategory,
+            rarity: widget.bon.rarity,
+            wish: _descriptionController.text, // Sauvegarde du vœu sur le réseau
+          );
+          await nostrService.disconnect();
 
-            await nostrService.disconnect();
-          }
+          // 🔥 3. SAUVEGARDE LOCALE (Ce qu'il manquait !)
+          final updatedBon = widget.bon.copyWith(
+            issuerName: _titleController.text,
+            wish: _descriptionController.text,
+            cardType: _selectedCategory,
+            picture: finalPicture,
+            logoUrl: finalPicture, // Pour compatibilité
+          );
+          await _storage.saveBon(updatedBon);
         }
       }
 
-      // ✅ Sauvegarder les modifications du Profil du Bon en LOCAL
-      final updatedBon = widget.bon.copyWith(
-        picture: imageUrl ?? widget.bon.picture,
-        logoUrl: imageUrl ?? widget.bon.logoUrl,
-        issuerName: _titleController.text,
-        wish: _descriptionController.text,
-      );
-      await _storage.saveBon(updatedBon);
-
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Profil mis à jour !'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('✅ Profil mis à jour !'), backgroundColor: Colors.green),
       );
-
       Navigator.pop(context);
+      
     } on ShamirReconstructionException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -207,9 +184,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -351,11 +326,11 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[700]!),
                   ),
-                  child: _selectedImage != null || widget.bon.picture != null
+                  child: _base64Image != null || widget.bon.picture != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: ImageCompressionService.buildImage(
-                            uri: _selectedImage ?? widget.bon.picture,
+                            uri: _base64Image ?? widget.bon.picture,
                             width: double.infinity,
                             height: 150,
                             fit: BoxFit.cover,

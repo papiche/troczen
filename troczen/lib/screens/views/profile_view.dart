@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/user.dart';
+import '../../services/image_compression_service.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
@@ -222,39 +223,26 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
                 ),
               ],
             ),
-            child: _currentUser!.picture != null && _currentUser!.picture!.isNotEmpty
-                ? ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: _currentUser!.picture!,
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => Center(
-                        child: Text(
-                          _currentUser!.displayName.isNotEmpty
-                              ? _currentUser!.displayName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFFB347),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                : Center(
-                    child: Text(
-                      _currentUser!.displayName.isNotEmpty
-                          ? _currentUser!.displayName[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFFB347),
-                      ),
+            child: ClipOval(
+              child: ImageCompressionService.buildImage(
+                uri: _currentUser!.picture,
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+                errorWidget: Center(
+                  child: Text(
+                    _currentUser!.displayName.isNotEmpty
+                        ? _currentUser!.displayName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFB347),
                     ),
                   ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           
