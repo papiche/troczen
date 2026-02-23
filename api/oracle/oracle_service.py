@@ -19,6 +19,8 @@ import json
 import time
 import hashlib
 import re
+import traceback
+import os
 from typing import Dict, List, Optional, Set
 from datetime import datetime
 
@@ -29,11 +31,24 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from nostr_client import NostrClient
 
-# Logging simple
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [ORACLE] [{level}] {message}")
+# Import du module de logging centralisé
+from logger import get_logger, log_exception, format_error_for_log, setup_logging
+
+# Configuration du logging
+LOG_FILE = os.getenv('LOG_FILE', None)
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+is_production = os.getenv('PRODUCTION', 'false').lower() == 'true'
+
+# Initialiser le logging
+setup_logging(
+    log_level=LOG_LEVEL,
+    log_file=LOG_FILE,
+    console_output=True,
+    production_mode=is_production
+)
+
+# Logger spécifique pour le service ORACLE
+logger = get_logger('oracle_service')
 
 
 class OracleService:
@@ -71,7 +86,7 @@ class OracleService:
         # Note: Dans une implémentation complète, utiliser nostr-protocol
         self.oracle_pubkey = self._derive_pubkey(oracle_nsec_hex)
         
-        log("INFO", f"Oracle initialisé - Pubkey: {self.oracle_pubkey[:16]}...")
+        logger.info(f"Oracle initialisé - Pubkey: {self.oracle_pubkey[:16]}...")
     
     def _derive_pubkey(self, nsec_hex: str) -> str:
         """
@@ -87,8 +102,11 @@ class OracleService:
             return pk.public_key.hex()
         except ImportError:
             # Fallback: hash de la nsec (non cryptographique, pour dev uniquement)
-            log("WARN", "nostr-protocol non disponible, utilisation d'un dérivation simplifiée")
+            logger.warning("nostr-protocol non disponible, utilisation d'un dérivation simplifiée")
             return hashlib.sha256(bytes.fromhex(nsec_hex)).hexdigest()[:64]
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la dérivation de la pubkey: {format_error_for_log(e)}")
+            raise
     
     async def process_attestation(self, attestation_event: Dict, websocket) -> bool:
         """
@@ -106,11 +124,12 @@ class OracleService:
         # Extraire l'ID de la demande (tag 'e' ou 'a')
         request_id = tags.get('e') or tags.get('a')
         if not request_id:
-            log("WARN", "Attestation sans référence à une demande")
+            logger.warning("Attestation sans référence à une demande")
+            logger.debug(f"Attestation reçue: {json.dumps(attestation_event, indent=2)}")
             return False
         
         attestor_pubkey = attestation_event['pubkey']
-        log("INFO", f"Traitement attestation pour demande {request_id[:16]}...")
+        logger.info(f"Traitement attestation pour demande {request_id[:16]}...")
         
         # Connexion au relai pour les requêtes
         await self.client.connect()
@@ -119,13 +138,13 @@ class OracleService:
             # 1. Vérifier si un VC existe déjà pour cette demande
             existing_vc = await self._check_existing_credential(request_id)
             if existing_vc:
-                log("INFO", f"VC déjà émis pour cette demande")
+                logger.info(f"VC déjà émis pour cette demande {request_id[:16]}...")
                 return False
             
             # 2. Récupérer la demande originale (Kind 30501)
             request_event = await self._get_request_event(request_id)
             if not request_event:
-                log("WARN", f"Demande {request_id[:16]} non trouvée")
+                logger.warning(f"Demande {request_id[:16]} non trouvée")
                 return False
             
             request_tags = self._parse_tags(request_event.get('tags', []))
@@ -134,13 +153,13 @@ class OracleService:
             
             # 3. Vérifier que l'attestateur n'est pas le demandeur
             if attestor_pubkey == requester_pubkey:
-                log("WARN", "Auto-attestation non autorisée")
+                logger.warning(f"Auto-attestation non autorisée pour demande {request_id[:16]}...")
                 return False
             
             # 4. Vérifier que l'attestateur possède le credential correspondant
             # (pour les permits de niveau > X1)
             if not await self._verify_attestor_qualification(attestor_pubkey, permit_id):
-                log("WARN", f"Attestateur {attestor_pubkey[:16]} non qualifié")
+                logger.warning(f"Attestateur {attestor_pubkey[:16]} non qualifié pour permit {permit_id}")
                 return False
             
             # 5. Compter toutes les attestations uniques pour cette demande
@@ -148,23 +167,26 @@ class OracleService:
             unique_attestors = set(e['pubkey'] for e in all_attestations)
             unique_attestors.add(attestor_pubkey)  # Inclure la nouvelle
             
-            log("INFO", f"Attestations uniques: {len(unique_attestors)}")
+            logger.info(f"Attestations uniques pour demande {request_id[:16]}...: {len(unique_attestors)}")
             
             # 6. Déterminer le seuil requis
             threshold = self._get_required_threshold(permit_id)
             
             # 7. Si seuil atteint, émettre le credential
             if len(unique_attestors) >= threshold:
-                log("INFO", f"Seuil atteint ({len(unique_attestors)}/{threshold}) - Émission du VC")
+                logger.info(f"Seuil atteint ({len(unique_attestors)}/{threshold}) - Émission du VC pour {requester_pubkey[:16]}...")
                 return await self._issue_credential(
-                    request_event, 
+                    request_event,
                     list(unique_attestors),
                     websocket
                 )
             else:
-                log("INFO", f"Seuil non atteint ({len(unique_attestors)}/{threshold})")
+                logger.debug(f"Seuil non atteint ({len(unique_attestors)}/{threshold}) pour demande {request_id[:16]}...")
                 return False
                 
+        except Exception as e:
+            logger.error(f"Erreur lors du traitement de l'attestation pour demande {request_id[:16]}...: {format_error_for_log(e)}")
+            raise
         finally:
             await self.client.disconnect()
     
@@ -308,10 +330,10 @@ class OracleService:
         # Publier sur le relai
         try:
             await websocket.send(json.dumps(["EVENT", signed_event]))
-            log("INFO", f" Credential {permit_id} émis pour {requester_pubkey[:16]}!")
+            logger.info(f" Credential {permit_id} émis pour {requester_pubkey[:16]}!")
             return True
         except Exception as e:
-            log("ERROR", f"Erreur publication VC: {e}")
+            logger.error(f"Erreur publication VC pour {requester_pubkey[:16]} (permit {permit_id}): {format_error_for_log(e)}")
             return False
     
     async def _sign_event(self, event: Dict) -> Dict:
@@ -352,7 +374,10 @@ class OracleService:
             
         except ImportError:
             # Fallback pour le développement (non sécurisé)
-            log("WARN", "nostr-protocol non disponible - signature factice")
+            logger.warning("nostr-protocol non disponible - signature factice pour event kind {event.get('kind', 'unknown')}")
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la signature de l'événement: {format_error_for_log(e)}")
+            raise
             
             # Calculer l'ID de l'événement
             serialized = json.dumps([
@@ -412,8 +437,13 @@ class OracleService:
             if market:
                 filters["#market"] = [market]
             
+            logger.debug(f"Récupération des permits avec filtres: {filters}")
             events = await self.client.query_events([filters])
+            logger.info(f"Récupéré {len(events)} définitions de permits")
             return [self._parse_permit_definition(e) for e in events]
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des définitions de permits: {format_error_for_log(e)}")
+            raise
         finally:
             await self.client.disconnect()
     
@@ -438,12 +468,17 @@ class OracleService:
         """Récupère les credentials d'un utilisateur."""
         await self.client.connect()
         try:
+            logger.debug(f"Récupération des credentials pour npub {npub[:16]}...")
             events = await self.client.query_events([{
                 "kinds": [30503],
                 "authors": [self.oracle_pubkey],
                 "#p": [npub]
             }])
+            logger.info(f"Récupéré {len(events)} credentials pour npub {npub[:16]}...")
             return [self._parse_credential(e) for e in events]
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des credentials pour npub {npub[:16]}...: {format_error_for_log(e)}")
+            raise
         finally:
             await self.client.disconnect()
     
@@ -465,6 +500,7 @@ class OracleService:
         """Récupère les statistiques Oracle."""
         await self.client.connect()
         try:
+            logger.debug("Récupération des statistiques Oracle")
             # Compter les permits
             permits = await self.client.query_events([{"kinds": [30500]}])
             
@@ -479,13 +515,18 @@ class OracleService:
                 {"kinds": [30503], "authors": [self.oracle_pubkey]}
             ])
             
-            return {
+            stats = {
                 "permits_count": len(permits),
                 "requests_count": len(requests),
                 "attestations_count": len(attestations),
                 "credentials_count": len(credentials),
                 "oracle_pubkey": self.oracle_pubkey
             }
+            logger.info(f"Statistiques Oracle: {stats}")
+            return stats
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des statistiques Oracle: {format_error_for_log(e)}")
+            raise
         finally:
             await self.client.disconnect()
 
@@ -525,7 +566,7 @@ class OracleServiceSync:
         # Dérivation de la pubkey Oracle
         self.oracle_pubkey = self._derive_pubkey(oracle_nsec_hex)
         
-        log("INFO", f"Oracle Sync initialisé - Pubkey: {self.oracle_pubkey[:16]}...")
+        logger.info(f"Oracle Sync initialisé - Pubkey: {self.oracle_pubkey[:16]}...")
     
     def _derive_pubkey(self, nsec_hex: str) -> str:
         """Dérive la pubkey depuis la nsec."""
@@ -534,8 +575,11 @@ class OracleServiceSync:
             pk = PrivateKey(bytes.fromhex(nsec_hex))
             return pk.public_key.hex()
         except ImportError:
-            log("WARN", "nostr-protocol non disponible, utilisation d'un dérivation simplifiée")
+            logger.warning("nostr-protocol non disponible, utilisation d'un dérivation simplifiée")
             return hashlib.sha256(bytes.fromhex(nsec_hex)).hexdigest()[:64]
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la dérivation de la pubkey: {format_error_for_log(e)}")
+            raise
     
     def _parse_tags(self, tags: List[List[str]]) -> Dict[str, str]:
         """Parse les tags Nostr en dictionnaire."""
@@ -553,6 +597,7 @@ class OracleServiceSync:
     def get_permit_definitions(self, market: str = None) -> List[Dict]:
         """Récupère toutes les définitions de permits (Kind 30500)."""
         if not self.client.connect():
+            logger.error("Impossible de se connecter au relai Nostr")
             return []
         
         try:
@@ -560,8 +605,13 @@ class OracleServiceSync:
             if market:
                 filters["#market"] = [market]
             
+            logger.debug(f"Récupération des permits avec filtres: {filters}")
             events = self.client.query_events([filters])
+            logger.info(f"Récupéré {len(events)} définitions de permits")
             return [self._parse_permit_definition(e) for e in events]
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des définitions de permits: {format_error_for_log(e)}")
+            raise
         finally:
             self.client.disconnect()
     
@@ -585,15 +635,21 @@ class OracleServiceSync:
     def get_credentials(self, npub: str) -> List[Dict]:
         """Récupère les credentials d'un utilisateur."""
         if not self.client.connect():
+            logger.error("Impossible de se connecter au relai Nostr")
             return []
         
         try:
+            logger.debug(f"Récupération des credentials pour npub {npub[:16]}...")
             events = self.client.query_events([{
                 "kinds": [30503],
                 "authors": [self.oracle_pubkey],
                 "#p": [npub]
             }])
+            logger.info(f"Récupéré {len(events)} credentials pour npub {npub[:16]}...")
             return [self._parse_credential(e) for e in events]
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des credentials pour npub {npub[:16]}...: {format_error_for_log(e)}")
+            raise
         finally:
             self.client.disconnect()
     
@@ -614,9 +670,11 @@ class OracleServiceSync:
     def get_stats(self) -> Dict:
         """Récupère les statistiques Oracle."""
         if not self.client.connect():
+            logger.error("Impossible de se connecter au relai Nostr")
             return {}
         
         try:
+            logger.debug("Récupération des statistiques Oracle")
             # Compter les permits
             permits = self.client.query_events([{"kinds": [30500]}])
             
@@ -631,12 +689,18 @@ class OracleServiceSync:
                 {"kinds": [30503], "authors": [self.oracle_pubkey]}
             ])
             
-            return {
+            stats = {
                 "permits_count": len(permits),
                 "requests_count": len(requests),
                 "attestations_count": len(attestations),
                 "credentials_count": len(credentials),
                 "oracle_pubkey": self.oracle_pubkey
             }
+            logger.info(f"Statistiques Oracle: {stats}")
+            return stats
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des statistiques Oracle: {format_error_for_log(e)}")
+            raise
         finally:
             self.client.disconnect()
+            logger.info("Déconnexion du relai Nostr")

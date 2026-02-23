@@ -18,12 +18,17 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict
 import re
+import sys
+from pathlib import Path
 
+# Ajouter le répertoire parent au path pour les imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [PARAMS] [{level}] {message}")
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le module Params
+logger = get_logger('params_engine')
 
 
 class ParamsEngine:
@@ -78,7 +83,7 @@ class ParamsEngine:
         Returns:
             Dictionnaire avec C² et les métriques associées
         """
-        log("INFO", f"Calcul C² pour {user_pubkey[:16]}... dans {market_id}")
+        logger.info(f"Calcul C² pour {user_pubkey[:16]}... dans {market_id}")
         
         # 1. Récupérer les boucles fermées des 30 derniers jours
         loops = await self._get_loops_30d(user_pubkey, market_id)
@@ -108,7 +113,7 @@ class ParamsEngine:
         else:
             c2 = self.C2_DEFAULT
         
-        log("INFO", f"C² calculé: {c2:.4f} (retour: {median_return}j, santé: {health_ratio:.2f})")
+        logger.info(f"C² calculé: {c2:.4f} (retour: {median_return}j, santé: {health_ratio:.2f})")
         
         return {
             'c2': round(c2, 4),
@@ -140,13 +145,13 @@ class ParamsEngine:
         Returns:
             Dictionnaire avec alpha et les métriques associées
         """
-        log("INFO", f"Calcul alpha pour {user_pubkey[:16]}... dans {market_id}")
+        logger.info(f"Calcul alpha pour {user_pubkey[:16]}... dans {market_id}")
         
         # Récupérer les boucles avec certification de compétence
         skill_loops = await self._get_skill_loops_30d(user_pubkey, market_id)
         
         if len(skill_loops) < 5:
-            log("INFO", f"Pas assez de données ({len(skill_loops)} < 5), alpha par défaut")
+            logger.info(f"Pas assez de données ({len(skill_loops)} < 5), alpha par défaut")
             return {
                 'alpha': self.ALPHA_DEFAULT,
                 'skill_loops_count': len(skill_loops),
@@ -173,7 +178,7 @@ class ParamsEngine:
             alpha = self.ALPHA_DEFAULT
             corr = 0
         
-        log("INFO", f"Alpha calculé: {alpha:.3f} (corrélation: {corr:.3f})")
+        logger.info(f"Alpha calculé: {alpha:.3f} (corrélation: {corr:.3f})")
         
         return {
             'alpha': round(alpha, 3),

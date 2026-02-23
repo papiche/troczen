@@ -17,12 +17,17 @@ import math
 import time
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
+import sys
+from pathlib import Path
 
+# Ajouter le répertoire parent au path pour les imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [DU] [{level}] {message}")
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le module DU
+logger = get_logger('du_engine')
 
 
 class DUEngine:
@@ -69,7 +74,7 @@ class DUEngine:
         Returns:
             Dictionnaire avec DU et toutes les métriques
         """
-        log("INFO", f"Calcul DU pour {user_pubkey[:16]}... dans {market_id}")
+        logger.info(f"Calcul DU pour {user_pubkey[:16]}... dans {market_id}")
         
         # 1. Récupérer le graphe social (N1, N2)
         n1_list = await self._get_n1_list(user_pubkey)
@@ -80,7 +85,7 @@ class DUEngine:
         
         # Vérifier le seuil minimum
         if n1_count < self.MIN_N1_FOR_DU:
-            log("INFO", f"N1={n1_count} < {self.MIN_N1_FOR_DU}, DU inactif")
+            logger.info(f"N1={n1_count} < {self.MIN_N1_FOR_DU}, DU inactif")
             return {
                 'du': 0,
                 'du_base': 0,
@@ -96,7 +101,7 @@ class DUEngine:
         m_n1 = await self._calculate_active_mass(n1_list, market_id, now)
         m_n2 = await self._calculate_active_mass(n2_list, market_id, now)
         
-        log("DEBUG", f"M_N1={m_n1:.1f}, M_N2={m_n2:.1f}")
+        logger.debug(f"M_N1={m_n1:.1f}, M_N2={m_n2:.1f}")
         
         # 3. Récupérer les paramètres dynamiques
         params = await self.params_engine.get_all_params(user_pubkey, market_id)
@@ -122,7 +127,7 @@ class DUEngine:
         # Stocker pour le prochain calcul
         await self._save_du(user_pubkey, market_id, du_final)
         
-        log("INFO", f"DU calculé: {du_final:.2f} Zen/jour (base: {du_base:.2f}, bonus: {du_skill:.2f})")
+        logger.info(f"DU calculé: {du_final:.2f} Zen/jour (base: {du_base:.2f}, bonus: {du_skill:.2f})")
         
         return {
             'du': round(du_final, 2),

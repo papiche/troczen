@@ -14,12 +14,17 @@ import time
 import re
 from typing import Dict, List, Optional
 from datetime import datetime
+import sys
+from pathlib import Path
 
-# Logging simple
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [PERMIT] [{level}] {message}")
+# Ajouter le répertoire parent au path pour les imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le module Permit
+logger = get_logger('permit_manager')
 
 
 class PermitManager:

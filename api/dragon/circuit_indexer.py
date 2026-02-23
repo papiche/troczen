@@ -19,12 +19,17 @@ import re
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import defaultdict
+import sys
+from pathlib import Path
 
+# Ajouter le répertoire parent au path pour les imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [CIRCUIT] [{level}] {message}")
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le module Circuit
+logger = get_logger('circuit_indexer')
 
 
 class CircuitIndexer:

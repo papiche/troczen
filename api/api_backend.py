@@ -23,8 +23,32 @@ import threading
 import concurrent.futures
 from nostr_client import NostrClientSync  # Utiliser le client synchrone pour Flask
 
+# Import du module de logging centralisé
+from logger import setup_logging, get_logger, log_exception, create_api_error_response, format_error_for_log
+
 app = Flask(__name__)
 CORS(app)
+
+# ==================== CONFIGURATION LOGGING ====================
+
+# Configuration du logging
+# En production, on peut utiliser un fichier de log
+LOG_FILE = os.getenv('LOG_FILE', None)
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+
+# Déterminer si on est en mode production
+is_production = os.getenv('PRODUCTION', 'false').lower() == 'true'
+
+# Configuration du logging
+logger = setup_logging(
+    log_level=LOG_LEVEL,
+    log_file=LOG_FILE,
+    console_output=True,
+    production_mode=is_production
+)
+
+# Logger spécifique pour l'application
+app_logger = get_logger('api_backend')
 
 # Configuration - chemins relatifs au script, pas au CWD
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -163,7 +187,7 @@ def load_apk_ipfs_metadata():
             with open(APK_IPFS_META_FILE, 'r') as f:
                 return json.load(f)
     except Exception as e:
-        print(f'⚠️ Erreur lecture métadonnées IPFS: {e}')
+        app_logger.error(f'Erreur lecture métadonnées IPFS: {format_error_for_log(e)}')
     return {}
 
 
@@ -174,9 +198,9 @@ def save_apk_ipfs_metadata(metadata):
     try:
         with open(APK_IPFS_META_FILE, 'w') as f:
             json.dump(metadata, f, indent=2)
-        print(f'✅ Métadonnées IPFS sauvegardées: {APK_IPFS_META_FILE}')
+        app_logger.info(f'Métadonnées IPFS sauvegardées: {APK_IPFS_META_FILE}')
     except Exception as e:
-        print(f'❌ Erreur sauvegarde métadonnées IPFS: {e}')
+        app_logger.error(f'Erreur sauvegarde métadonnées IPFS: {format_error_for_log(e)}')
 
 
 def get_apk_ipfs_url(apk_name):
@@ -238,21 +262,21 @@ async def upload_to_ipfs_async(filepath) -> tuple:
                     cid = result['Hash']
                     ipfs_url = f'{IPFS_GATEWAY}/ipfs/{cid}'
                     
-                    print(f'✅ Fichier uploadé sur IPFS (async): {IPFS_GATEWAY}/ipfs/{cid}')
+                    app_logger.info(f'Fichier uploadé sur IPFS (async): {IPFS_GATEWAY}/ipfs/{cid}')
                     return cid, ipfs_url
                 else:
                     error_text = await response.text()
-                    print(f'❌ Erreur IPFS API: {response.status} - {error_text}')
+                    app_logger.error(f'Erreur IPFS API: {response.status} - {error_text}')
                     return None, None
                     
     except asyncio.TimeoutError:
-        print(f'❌ Timeout IPFS après {IPFS_TIMEOUT}s')
+        app_logger.error(f'Timeout IPFS après {IPFS_TIMEOUT}s')
         return None, None
     except aiohttp.ClientError as e:
-        print(f'❌ Erreur connexion IPFS: {e}')
+        app_logger.error(f'Erreur connexion IPFS: {format_error_for_log(e)}')
         return None, None
     except Exception as e:
-        print(f'❌ Erreur upload IPFS: {e}')
+        app_logger.error(f'Erreur upload IPFS: {format_error_for_log(e)}')
         return None, None
 
 
@@ -285,17 +309,17 @@ def upload_to_ipfs_sync(filepath) -> tuple:
                 cid = result['Hash']
                 ipfs_url = f'{IPFS_GATEWAY}/ipfs/{cid}'
                 
-                print(f'✅ Fichier uploadé sur IPFS (sync): {IPFS_GATEWAY}/ipfs/{cid}')
+                app_logger.info(f'Fichier uploadé sur IPFS (sync): {IPFS_GATEWAY}/ipfs/{cid}')
                 return cid, ipfs_url
             else:
-                print(f'❌ Erreur IPFS API: {response.status_code}')
+                app_logger.error(f'Erreur IPFS API: {response.status_code}')
                 return None, None
                 
     except requests.exceptions.RequestException as e:
-        print(f'❌ Erreur connexion IPFS: {e}')
+        app_logger.error(f'Erreur connexion IPFS: {format_error_for_log(e)}')
         return None, None
     except Exception as e:
-        print(f'❌ Erreur upload IPFS: {e}')
+        app_logger.error(f'Erreur upload IPFS: {format_error_for_log(e)}')
         return None, None
 
 
@@ -535,12 +559,18 @@ def upload_image():
     
     # Vérifier présence fichier
     if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+        return jsonify(create_api_error_response(
+            error_message="No file provided",
+            error_code=400
+        )), 400
     
     file = request.files['file']
     
     if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+        return jsonify(create_api_error_response(
+            error_message="No file selected",
+            error_code=400
+        )), 400
     
     # Lire le contenu du fichier pour validation magic bytes
     file_content = file.read()
@@ -549,17 +579,26 @@ def upload_image():
     # Validation extension ET magic bytes
     is_valid, error_msg = allowed_file(file.filename, file_content)
     if not is_valid:
-        return jsonify({'error': error_msg}), 400
+        return jsonify(create_api_error_response(
+            error_message=error_msg,
+            error_code=400
+        )), 400
     
     # Récupérer npub du commerçant/utilisateur
     npub = request.form.get('npub')
     if not npub:
-        return jsonify({'error': 'Missing npub'}), 400
+        return jsonify(create_api_error_response(
+            error_message="Missing npub",
+            error_code=400
+        )), 400
     
     # Récupérer le type d'image (logo, banner, avatar)
     image_type = request.form.get('type', 'logo')
     if image_type not in ['logo', 'banner', 'avatar']:
-        return jsonify({'error': 'Invalid image type (must be logo, banner, or avatar)'}), 400
+        return jsonify(create_api_error_response(
+            error_message="Invalid image type (must be logo, banner, or avatar)",
+            error_code=400
+        )), 400
     
     # Nom sécurisé
     filename = secure_filename(file.filename)
@@ -613,7 +652,10 @@ def upload_status(filename):
     filepath = UPLOAD_FOLDER / secure_filename(filename)
     
     if not filepath.exists():
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify(create_api_error_response(
+            error_message="File not found",
+            error_code=404
+        )), 404
     
     # Vérifier si un fichier .ipfs_meta existe (créé après upload réussi)
     meta_file = filepath.with_suffix(filepath.suffix + '.ipfs_meta')
@@ -657,7 +699,7 @@ def save_ipfs_metadata(filepath, cid, ipfs_url):
                 'uploaded_at': datetime.now().isoformat()
             }, f)
     except Exception as e:
-        print(f'❌ Erreur sauvegarde métadonnées IPFS: {e}')
+        app_logger.error(f'Erreur sauvegarde métadonnées IPFS: {format_error_for_log(e)}')
 
 
 @app.route('/uploads/<filename>')
@@ -665,7 +707,10 @@ def serve_upload(filename):
     """Servir fichier uploadé"""
     filepath = UPLOAD_FOLDER / filename
     if not filepath.exists():
-        return jsonify({'error': 'File not found'}), 404
+        return jsonify(create_api_error_response(
+            error_message="File not found",
+            error_code=404
+        )), 404
     return send_file(filepath)
 
 
@@ -701,7 +746,10 @@ def get_latest_apk():
                     'updated_at': latest_info.get('uploaded_at', '')
                 })
         
-        return jsonify({'error': 'No APK available'}), 404
+        return jsonify(create_api_error_response(
+            error_message="No APK available",
+            error_code=404
+        )), 404
     
     # Trier par date de modification
     latest_apk = max(apk_files, key=lambda p: p.stat().st_mtime)
@@ -750,7 +798,10 @@ def download_apk(filename):
         from flask import redirect
         return redirect(ipfs_url)
     
-    return jsonify({'error': 'APK not found'}), 404
+    return jsonify(create_api_error_response(
+        error_message="APK not found",
+        error_code=404
+    )), 404
 
 
 @app.route('/api/apk/qr')
@@ -848,7 +899,7 @@ def fetch_marche_data(market_name):
         
         # Connexion synchrone
         if not client.connect():
-            print(f"❌ Impossible de se connecter au relai Nostr")
+            app_logger.error(f"Impossible de se connecter au relai Nostr")
             return fetch_local_marche_data(market_name)
         
         # Récupération synchrone des données
@@ -858,7 +909,7 @@ def fetch_marche_data(market_name):
         return data
         
     except Exception as e:
-        print(f"❌ Erreur récupération Nostr: {e}")
+        app_logger.error(f"Erreur récupération Nostr: {format_error_for_log(e)}")
         # Fallback: lire depuis les fichiers JSON locaux
         return fetch_local_marche_data(market_name)
 
@@ -878,7 +929,7 @@ def fetch_local_marche_data(market_name):
                 if profile.get('market') == market_name:
                     profiles.append(profile)
         except Exception as e:
-            print(f"Erreur lecture profil {profile_file}: {e}")
+            app_logger.error(f"Erreur lecture profil {profile_file}: {format_error_for_log(e)}")
             continue
     
     # Lire les bons (simulés)
@@ -943,19 +994,19 @@ def fetch_local_marche_data(market_name):
 @app.route('/market/<market_name>')
 def market_page(market_name):
     """Page de présentation du marché"""
-    print(f'🌻 [market_page] Rendu de la page pour: {market_name}')
+    app_logger.info(f'[market_page] Rendu de la page pour: {market_name}')
     
     # Récupérer les données du marché depuis Nostr
-    print(f'🌻 [market_page] Récupération des données Nostr...')
+    app_logger.info(f'[market_page] Récupération des données Nostr...')
     marche_data = fetch_marche_data(market_name)
     
     merchants_count = len(marche_data.get('merchants', []))
     total_bons = marche_data.get('total_bons', 0)
-    print(f'🌻 [market_page] Données reçues: {merchants_count} marchands, {total_bons} bons')
+    app_logger.info(f'[market_page] Données reçues: {merchants_count} marchands, {total_bons} bons')
     
     # Log détaillé des marchands
     for i, m in enumerate(marche_data.get('merchants', [])[:5]):
-        print(f'  └─ Marchand {i+1}: {m.get("name", "N/A")} ({m.get("bons_count", 0)} bons, issuer: {m.get("pubkey", "N/A")[:16]}...)')
+        app_logger.info(f'  └─ Marchand {i+1}: {m.get("name", "N/A")} ({m.get("bons_count", 0)} bons, issuer: {m.get("pubkey", "N/A")[:16]}...)')
     
     # Récupérer les infos APK de manière sécurisée
     apk_result = get_latest_apk()
@@ -979,11 +1030,11 @@ def get_marche_data(market_name):
     """
     API pour récupérer les données d'un marché depuis Nostr
     """
-    print(f'🌻 [API] GET /api/nostr/marche/{market_name}')
+    app_logger.info(f'[API] GET /api/nostr/marche/{market_name}')
     
     marche_data = fetch_marche_data(market_name)
     
-    print(f'🌻 [API] Réponse: {marche_data.get("total_merchants", 0)} marchands, {marche_data.get("total_bons", 0)} bons')
+    app_logger.info(f'[API] Réponse: {marche_data.get("total_merchants", 0)} marchands, {marche_data.get("total_bons", 0)} bons')
     
     return jsonify({
         'success': True,
@@ -1030,12 +1081,12 @@ def get_nostr_profiles():
         })
         
     except Exception as e:
-        print(f"❌ Erreur récupération profils Nostr: {e}")
+        app_logger.error(f"Erreur récupération profils Nostr: {format_error_for_log(e)}")
         return jsonify({
             'success': False,
-            'error': str(e),
+            'error': 'Erreur interne du serveur',
             'profiles': []
-        })
+        }), 500
 
 
 @app.route('/api/nostr/register', methods=['POST'])
@@ -1098,13 +1149,13 @@ def register_nostr_pubkey():
                 existing_keys = set(line.strip() for line in f if line.strip())
                 if pubkey in existing_keys:
                     already_registered = True
-                    print(f'✅ Pubkey déjà enregistrée: {pubkey[:16]}...')
+                    app_logger.info(f'Pubkey déjà enregistrée: {pubkey[:16]}...')
         
         # Ajouter la pubkey si elle n'existe pas
         if not already_registered:
             with open(AMIS_FILE, 'a') as f:
                 f.write(f'{pubkey}\n')
-            print(f'✅ Nouvelle pubkey enregistrée: {pubkey[:16]}...')
+            app_logger.info(f'Nouvelle pubkey enregistrée: {pubkey[:16]}...')
         
         return jsonify({
             'success': True,
@@ -1115,16 +1166,16 @@ def register_nostr_pubkey():
         }), 200 if already_registered else 201
         
     except PermissionError:
-        print(f'❌ Permission denied: {AMIS_FILE}')
+        app_logger.error(f'Permission denied: {AMIS_FILE}')
         return jsonify({
             'success': False,
-            'error': f'Permission denied to write to {AMIS_FILE}'
+            'error': 'Permission denied to write to whitelist file'
         }), 500
     except Exception as e:
-        print(f'❌ Erreur enregistrement pubkey: {e}')
+        app_logger.error(f'Erreur enregistrement pubkey: {format_error_for_log(e)}')
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erreur interne du serveur'
         }), 500
 
 
@@ -1220,10 +1271,10 @@ def publish_nostr_profile():
             })
         
     except Exception as e:
-        print(f"❌ Erreur publication profil Nostr: {e}")
+        app_logger.error(f"Erreur publication profil Nostr: {format_error_for_log(e)}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erreur interne du serveur'
         }), 500
 
 
@@ -1240,7 +1291,7 @@ def get_all_bons_no_filter():
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 50))
     
-    print(f'🌻 [API] GET /api/nostr/bons/all (sans filtre marché, page={page}, limit={limit})')
+    app_logger.info(f'[API] GET /api/nostr/bons/all (sans filtre marché, page={page}, limit={limit})')
     
     NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
     NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
@@ -1286,7 +1337,7 @@ def get_all_bons_no_filter():
             m = bon.get('market', 'unknown')
             markets[m] = markets.get(m, 0) + 1
         
-        print(f'🌻 [API] {len(all_bons)} bons trouvés au total sur {len(markets)} marchés: {markets}')
+        app_logger.info(f'[API] {len(all_bons)} bons trouvés au total sur {len(markets)} marchés: {markets}')
         
         return jsonify({
             'success': True,
@@ -1300,16 +1351,16 @@ def get_all_bons_no_filter():
         })
         
     except Exception as e:
-        print(f"❌ Erreur récupération bons Nostr: {e}")
+        app_logger.error(f"Erreur récupération bons Nostr: {format_error_for_log(e)}")
         return jsonify({
             'success': False,
-            'error': str(e),
+            'error': 'Erreur interne du serveur',
             'bons': [],
             'page': page,
             'limit': limit,
             'total': 0,
             'count': 0
-        })
+        }), 500
 
 
 @app.route('/api/nostr/bons', methods=['GET'])
@@ -1329,7 +1380,7 @@ def get_all_bons():
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 50))
     
-    print(f'🌻 [API] GET /api/nostr/bons (market={market_name}, page={page}, limit={limit})')
+    app_logger.info(f'[API] GET /api/nostr/bons (market={market_name}, page={page}, limit={limit})')
     
     if not NOSTR_ENABLED:
         return jsonify({
@@ -1366,7 +1417,7 @@ def get_all_bons():
         
         client.disconnect()
         
-        print(f'🌻 [API] {len(all_bons)} bons trouvés au total, page {page} avec {len(bons)} bons')
+        app_logger.info(f'[API] {len(all_bons)} bons trouvés au total, page {page} avec {len(bons)} bons')
         
         return jsonify({
             'success': True,
@@ -1380,16 +1431,16 @@ def get_all_bons():
         })
         
     except Exception as e:
-        print(f"❌ Erreur récupération bons Nostr: {e}")
+        app_logger.error(f"Erreur récupération bons Nostr: {format_error_for_log(e)}")
         return jsonify({
             'success': False,
-            'error': str(e),
+            'error': 'Erreur interne du serveur',
             'bons': [],
             'page': page,
             'limit': limit,
             'total': 0,
             'count': 0
-        })
+        }), 500
 
 
 @app.route('/api/nostr/sync', methods=['POST'])
@@ -1554,7 +1605,7 @@ def submit_feedback():
         
         if response.status_code == 201:
             issue_data = response.json()
-            print(f"✅ Issue GitHub créée: #{issue_data['number']}")
+            app_logger.info(f"Issue GitHub créée: #{issue_data['number']}")
             
             return jsonify({
                 'success': True,
@@ -1563,23 +1614,23 @@ def submit_feedback():
                 'issue_url': issue_data['html_url']
             }), 201
         else:
-            print(f"❌ Erreur GitHub API: {response.status_code} - {response.text}")
+            app_logger.error(f"Erreur GitHub API: {response.status_code} - {response.text}")
             return jsonify({
                 'success': False,
-                'error': f'GitHub API error: {response.status_code}'
+                'error': 'GitHub API error'
             }), 500
             
     except requests.exceptions.RequestException as e:
-        print(f"❌ Erreur connexion GitHub: {e}")
+        app_logger.error(f"Erreur connexion GitHub: {format_error_for_log(e)}")
         return jsonify({
             'success': False,
             'error': 'Failed to connect to GitHub'
         }), 500
     except Exception as e:
-        print(f"❌ Erreur feedback: {e}")
+        app_logger.error(f"Erreur feedback: {format_error_for_log(e)}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Erreur interne du serveur'
         }), 500
 
 
@@ -1608,7 +1659,7 @@ def get_oracle_service():
                 oracle_nsec_hex=ORACLE_NSEC_HEX
             )
         except ImportError as e:
-            print(f"⚠️ Module ORACLE non disponible: {e}")
+            app_logger.warning(f"Module ORACLE non disponible: {e}")
     return _oracle_service
 
 def get_dragon_service():
@@ -1622,7 +1673,7 @@ def get_dragon_service():
                 oracle_pubkey=ORACLE_PUBKEY
             )
         except ImportError as e:
-            print(f"⚠️ Module DRAGON non disponible: {e}")
+            app_logger.warning(f"Module DRAGON non disponible: {e}")
     return _dragon_service
 
 
@@ -1640,7 +1691,10 @@ def get_permit_definitions():
     
     oracle = get_oracle_service()
     if not oracle:
-        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service ORACLE non disponible",
+            error_code=503
+        )), 503
     
     try:
         # ✅ Version synchrone - pas besoin d'asyncio.run()
@@ -1651,7 +1705,11 @@ def get_permit_definitions():
             'permits': definitions
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_permit_definitions: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/permit/<permit_id>', methods=['GET'])
@@ -1659,7 +1717,10 @@ def get_permit(permit_id):
     """Détails d'un permit spécifique."""
     oracle = get_oracle_service()
     if not oracle:
-        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service ORACLE non disponible",
+            error_code=503
+        )), 503
     
     try:
         # ✅ Version synchrone - pas besoin d'asyncio.run()
@@ -1669,9 +1730,16 @@ def get_permit(permit_id):
         if permit:
             return jsonify({'success': True, 'permit': permit})
         else:
-            return jsonify({'success': False, 'error': 'Permit non trouvé'}), 404
+            return jsonify(create_api_error_response(
+                error_message="Permit non trouvé",
+                error_code=404
+            )), 404
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_permit: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/permit/credentials/<npub>', methods=['GET'])
@@ -1684,7 +1752,10 @@ def get_credentials(npub):
     """
     oracle = get_oracle_service()
     if not oracle:
-        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service ORACLE non disponible",
+            error_code=503
+        )), 503
     
     try:
         # ✅ Version synchrone - pas besoin d'asyncio.run()
@@ -1696,7 +1767,11 @@ def get_credentials(npub):
             'credentials': credentials
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_credentials: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/permit/stats', methods=['GET'])
@@ -1704,7 +1779,10 @@ def get_oracle_stats():
     """Statistiques Oracle."""
     oracle = get_oracle_service()
     if not oracle:
-        return jsonify({'error': 'Service ORACLE non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service ORACLE non disponible",
+            error_code=503
+        )), 503
     
     try:
         # ✅ Version synchrone - pas besoin d'asyncio.run()
@@ -1714,7 +1792,11 @@ def get_oracle_stats():
             'stats': stats
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_oracle_stats: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 # ==================== DRAGON ENDPOINTS ====================
@@ -1736,7 +1818,10 @@ def get_dashboard(npub):
     
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         dashboard = dragon.get_dashboard(npub, market)
@@ -1745,7 +1830,11 @@ def get_dashboard(npub):
             'dashboard': dashboard
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_dashboard: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/du/<npub>/<market>', methods=['GET'])
@@ -1759,7 +1848,10 @@ def get_du(npub, market):
     """
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         # Version simplifiée synchrone
@@ -1773,7 +1865,11 @@ def get_du(npub, market):
             'du': du_data
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_du: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/params/<npub>/<market>', methods=['GET'])
@@ -1787,7 +1883,10 @@ def get_params(npub, market):
     """
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         dashboard = dragon.get_dashboard(npub, market)
@@ -1800,7 +1899,11 @@ def get_params(npub, market):
             'params': params
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_params: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/circuits/<market>', methods=['GET'])
@@ -1820,7 +1923,10 @@ def get_circuits(market):
     
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         # Récupérer les circuits avec pagination
@@ -1836,7 +1942,11 @@ def get_circuits(market):
             'circuits': circuits_data.get('circuits', [])
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_circuits: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/health/<market>', methods=['GET'])
@@ -1849,7 +1959,10 @@ def get_market_health(market):
     """
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         health = dragon.get_market_health(market)
@@ -1858,7 +1971,11 @@ def get_market_health(market):
             'health': health
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_market_health: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/intermarket/rates', methods=['GET'])
@@ -1866,7 +1983,10 @@ def get_intermarket_rates():
     """Taux de change inter-marchés émergents."""
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         # Version simplifiée - retourner des taux par défaut
@@ -1877,7 +1997,11 @@ def get_intermarket_rates():
             'computed_at': int(time.time())
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_intermarket_rates: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/paf/<market>', methods=['GET'])
@@ -1915,7 +2039,11 @@ def calculate_paf(market):
             'zen_eur_rate': zen_eur_rate
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_global_stats: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 @app.route('/api/stats', methods=['GET'])
@@ -1923,7 +2051,10 @@ def get_global_stats():
     """Statistiques globales du système."""
     dragon = get_dragon_service()
     if not dragon:
-        return jsonify({'error': 'Service DRAGON non disponible'}), 503
+        return jsonify(create_api_error_response(
+            error_message="Service DRAGON non disponible",
+            error_code=503
+        )), 503
     
     try:
         # ✅ Version synchrone - méthode simplifiée pour Dragon Sync
@@ -1938,7 +2069,11 @@ def get_global_stats():
             }
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        app_logger.error(f"Erreur dans get_global_stats: {format_error_for_log(e)}")
+        return jsonify(create_api_error_response(
+            error_message="Erreur interne du serveur",
+            error_code=500
+        )), 500
 
 
 if __name__ == '__main__':

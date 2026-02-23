@@ -19,6 +19,12 @@ import unicodedata
 from datetime import datetime
 from typing import List, Dict, Optional
 
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le client Nostr
+logger = get_logger('nostr_client')
+
 
 def normalize_market_tag(market_name: str) -> str:
     """
@@ -64,7 +70,7 @@ try:
     WEBSOCKET_CLIENT_AVAILABLE = True
 except ImportError:
     WEBSOCKET_CLIENT_AVAILABLE = False
-    print("⚠️ websocket-client non installé. Utilisez 'pip install websocket-client' pour le mode synchrone.")
+    logger.warning("⚠️ websocket-client non installé. Utilisez 'pip install websocket-client' pour le mode synchrone.")
 
 # Configuration de pagination (peut être surchargée par variables d'environnement)
 DEFAULT_PAGE_SIZE = int(os.getenv('NOSTR_PAGE_SIZE', '500'))  # Taille de page par défaut
@@ -86,12 +92,12 @@ class NostrClient:
     async def connect(self):
         """Se connecter au relai Nostr"""
         try:
-            print(f'🌻 [NostrClient] Connexion au relai: {self.relay_url}')
+            logger.info(f'🌻 [NostrClient] Connexion au relai: {self.relay_url}')
             self.websocket = await websockets.connect(self.relay_url)
-            print(f"✅ [NostrClient] Connecté au relai Nostr: {self.relay_url}")
+            logger.info(f"✅ [NostrClient] Connecté au relai Nostr: {self.relay_url}")
             return True
         except Exception as e:
-            print(f"❌ [NostrClient] Erreur de connexion au relai {self.relay_url}: {e}")
+            logger.error(f"❌ [NostrClient] Erreur de connexion au relai {self.relay_url}: {e}")
             return False
     
     async def disconnect(self):
@@ -99,7 +105,7 @@ class NostrClient:
         if self.websocket:
             await self.websocket.close()
             self.websocket = None
-            print("✅ [NostrClient] Déconnecté du relai Nostr")
+            logger.info("✅ [NostrClient] Déconnecté du relai Nostr")
     
     async def query_events(self, filters: List[Dict]) -> List[Dict]:
         """
@@ -146,7 +152,7 @@ class NostrClient:
             return events
             
         except Exception as e:
-            print(f"❌ Erreur lors de la requête: {e}")
+            logger.error(f"❌ Erreur lors de la requête: {e}")
             return []
     
     async def query_events_paginated(
@@ -211,9 +217,9 @@ class NostrClient:
                 if len(events) < page_size:
                     break
             
-            print(f'📄 [NostrClient] Page {page_count}: {len(events)} events (total: {len(all_events)})')
+            logger.debug(f'📄 [NostrClient] Page {page_count}: {len(events)} events (total: {len(all_events)})')
         
-        print(f'✅ [NostrClient] Pagination terminée: {len(all_events)} events en {page_count} pages')
+        logger.info(f'✅ [NostrClient] Pagination terminée: {len(all_events)} events en {page_count} pages')
         return all_events[:max_results]
     
     async def get_merchant_profiles(self, max_results: int = MAX_TOTAL_RESULTS) -> List[Dict]:
@@ -347,7 +353,7 @@ class NostrClient:
                 }
                 bons.append(bon)
             except Exception as e:
-                print(f"Erreur traitement bon: {e}")
+                logger.error(f"Erreur traitement bon: {e}")
                 continue
         
         return bons
@@ -362,20 +368,20 @@ class NostrClient:
         Returns:
             Dictionnaire avec marchands et bons
         """
-        print(f'🌻 [NostrClient] get_merchants_with_bons("{market_name}")')
+        logger.info(f'🌻 [NostrClient] get_merchants_with_bons("{market_name}")')
         
         # Récupérer tous les marchands (kind 0)
-        print(f'  └─ Récupération des profils (kind 0)...')
+        logger.debug(f'  └─ Récupération des profils (kind 0)...')
         merchants = await self.get_merchant_profiles()
-        print(f'  └─ {len(merchants)} profils récupérés')
+        logger.debug(f'  └─ {len(merchants)} profils récupérés')
         
         # Créer un index des marchands par pubkey pour accès rapide
         merchants_by_pubkey = {m["pubkey"]: m for m in merchants}
         
         # Récupérer les bons du marché (kind 30303)
-        print(f'  └─ Récupération des bons (kind 30303) pour {market_name}...')
+        logger.debug(f'  └─ Récupération des bons (kind 30303) pour {market_name}...')
         bons = await self.get_bons(market_name)
-        print(f'  └─ {len(bons)} bons récupérés')
+        logger.debug(f'  └─ {len(bons)} bons récupérés')
         
         # Associer les bons aux marchands via le tag 'issuer'
         # IMPORTANT: Le tag 'issuer' contient le npub du marchand émetteur
@@ -398,8 +404,8 @@ class NostrClient:
                     merchant_bons[issuer_pubkey] = []
                 merchant_bons[issuer_pubkey].append(bon)
         
-        print(f'  └─ Bons avec issuer: {bons_with_issuer}, sans issuer (fallback): {bons_without_issuer}')
-        print(f'  └─ {len(merchant_bons)} émetteurs uniques détectés')
+        logger.debug(f'  └─ Bons avec issuer: {bons_with_issuer}, sans issuer (fallback): {bons_without_issuer}')
+        logger.debug(f'  └─ {len(merchant_bons)} émetteurs uniques détectés')
         
         # Construire la réponse
         result = {
@@ -420,7 +426,7 @@ class NostrClient:
                 matched_merchants += 1
             else:
                 unmatched_merchants += 1
-                print(f'  ⚠️ Émetteur sans profil kind 0: {issuer_pubkey[:16]}... ({len(bons_list)} bons)')
+                logger.warning(f'  ⚠️ Émetteur sans profil kind 0: {issuer_pubkey[:16]}... ({len(bons_list)} bons)')
             
             merchant_data = {
                 "pubkey": issuer_pubkey,
@@ -438,8 +444,8 @@ class NostrClient:
         
         result["total_merchants"] = len(result["merchants"])
         
-        print(f'  └─ Résultat: {matched_merchants} marchands avec profil, {unmatched_merchants} sans profil')
-        print(f'  └─ Total: {result["total_merchants"]} marchands, {result["total_bons"]} bons')
+        logger.info(f'  └─ Résultat: {matched_merchants} marchands avec profil, {unmatched_merchants} sans profil')
+        logger.info(f'  └─ Total: {result["total_merchants"]} marchands, {result["total_bons"]} bons')
         
         return result
 
@@ -468,12 +474,12 @@ class NostrClientSync:
     def connect(self) -> bool:
         """Se connecter au relai Nostr"""
         try:
-            print(f'🌻 [NostrClientSync] Connexion au relai: {self.relay_url}')
+            logger.info(f'🌻 [NostrClientSync] Connexion au relai: {self.relay_url}')
             self.ws = websocket.create_connection(self.relay_url, timeout=30)
-            print(f"✅ [NostrClientSync] Connecté au relai Nostr: {self.relay_url}")
+            logger.info(f"✅ [NostrClientSync] Connecté au relai Nostr: {self.relay_url}")
             return True
         except Exception as e:
-            print(f"❌ [NostrClientSync] Erreur de connexion au relai {self.relay_url}: {e}")
+            logger.error(f"❌ [NostrClientSync] Erreur de connexion au relai {self.relay_url}: {e}")
             return False
     
     def disconnect(self):
@@ -481,7 +487,7 @@ class NostrClientSync:
         if self.ws:
             self.ws.close()
             self.ws = None
-            print("✅ [NostrClientSync] Déconnecté du relai Nostr")
+            logger.info("✅ [NostrClientSync] Déconnecté du relai Nostr")
     
     def query_events(self, filters: List[Dict]) -> List[Dict]:
         """
@@ -525,7 +531,7 @@ class NostrClientSync:
                 except websocket.WebSocketTimeoutException:
                     break
                 except Exception as e:
-                    print(f"❌ Erreur réception message: {e}")
+                    logger.error(f"❌ Erreur réception message: {e}")
                     break
             
             # Fermer la subscription
@@ -535,7 +541,7 @@ class NostrClientSync:
             return events
             
         except Exception as e:
-            print(f"❌ Erreur lors de la requête: {e}")
+            logger.error(f"❌ Erreur lors de la requête: {e}")
             return []
     
     def query_events_paginated(
@@ -597,9 +603,9 @@ class NostrClientSync:
                 if len(events) < page_size:
                     break
             
-            print(f'📄 [NostrClientSync] Page {page_count}: {len(events)} events (total: {len(all_events)})')
+            logger.debug(f'📄 [NostrClientSync] Page {page_count}: {len(events)} events (total: {len(all_events)})')
         
-        print(f'✅ [NostrClientSync] Pagination terminée: {len(all_events)} events en {page_count} pages')
+        logger.info(f'✅ [NostrClientSync] Pagination terminée: {len(all_events)} events en {page_count} pages')
         return all_events[:max_results]
     
     def get_merchant_profiles(self, max_results: int = MAX_TOTAL_RESULTS) -> List[Dict]:
@@ -733,7 +739,7 @@ class NostrClientSync:
                 }
                 bons.append(bon)
             except Exception as e:
-                print(f"Erreur traitement bon: {e}")
+                logger.error(f"Erreur traitement bon: {e}")
                 continue
         
         return bons
@@ -748,20 +754,20 @@ class NostrClientSync:
         Returns:
             Dictionnaire avec marchands et bons
         """
-        print(f'🌻 [NostrClientSync] get_merchants_with_bons("{market_name}")')
+        logger.info(f'🌻 [NostrClientSync] get_merchants_with_bons("{market_name}")')
         
         # Récupérer tous les marchands (kind 0)
-        print(f'  └─ Récupération des profils (kind 0)...')
+        logger.debug(f'  └─ Récupération des profils (kind 0)...')
         merchants = self.get_merchant_profiles()
-        print(f'  └─ {len(merchants)} profils récupérés')
+        logger.debug(f'  └─ {len(merchants)} profils récupérés')
         
         # Créer un index des marchands par pubkey pour accès rapide
         merchants_by_pubkey = {m["pubkey"]: m for m in merchants}
         
         # Récupérer les bons du marché (kind 30303)
-        print(f'  └─ Récupération des bons (kind 30303) pour {market_name}...')
+        logger.debug(f'  └─ Récupération des bons (kind 30303) pour {market_name}...')
         bons = self.get_bons(market_name)
-        print(f'  └─ {len(bons)} bons récupérés')
+        logger.debug(f'  └─ {len(bons)} bons récupérés')
         
         # Associer les bons aux marchands via le tag 'issuer'
         merchant_bons = {}
@@ -781,8 +787,8 @@ class NostrClientSync:
                     merchant_bons[issuer_pubkey] = []
                 merchant_bons[issuer_pubkey].append(bon)
         
-        print(f'  └─ Bons avec issuer: {bons_with_issuer}, sans issuer (fallback): {bons_without_issuer}')
-        print(f'  └─ {len(merchant_bons)} émetteurs uniques détectés')
+        logger.debug(f'  └─ Bons avec issuer: {bons_with_issuer}, sans issuer (fallback): {bons_without_issuer}')
+        logger.debug(f'  └─ {len(merchant_bons)} émetteurs uniques détectés')
         
         # Construire la réponse
         result = {
@@ -802,7 +808,7 @@ class NostrClientSync:
                 matched_merchants += 1
             else:
                 unmatched_merchants += 1
-                print(f'  ⚠️ Émetteur sans profil kind 0: {issuer_pubkey[:16]}... ({len(bons_list)} bons)')
+                logger.warning(f'  ⚠️ Émetteur sans profil kind 0: {issuer_pubkey[:16]}... ({len(bons_list)} bons)')
             
             merchant_data = {
                 "pubkey": issuer_pubkey,
@@ -820,8 +826,8 @@ class NostrClientSync:
         
         result["total_merchants"] = len(result["merchants"])
         
-        print(f'  └─ Résultat: {matched_merchants} marchands avec profil, {unmatched_merchants} sans profil')
-        print(f'  └─ Total: {result["total_merchants"]} marchands, {result["total_bons"]} bons')
+        logger.info(f'  └─ Résultat: {matched_merchants} marchands avec profil, {unmatched_merchants} sans profil')
+        logger.info(f'  └─ Total: {result["total_merchants"]} marchands, {result["total_bons"]} bons')
         
         return result
 
@@ -851,14 +857,14 @@ async def test_connection():
     try:
         success = await client.connect()
         if success:
-            print("✅ Connexion au relai Strfry OK")
+            logger.info("✅ Connexion au relai Strfry OK")
             await client.disconnect()
             return True
         else:
-            print("❌ Impossible de se connecter au relai")
+            logger.error("❌ Impossible de se connecter au relai")
             return False
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        logger.error(f"❌ Erreur: {e}")
         return False
 
 
@@ -871,7 +877,7 @@ async def fetch_marche_toulouse():
         await client.disconnect()
         return data
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        logger.error(f"❌ Erreur: {e}")
         return None
 
 

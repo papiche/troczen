@@ -20,12 +20,17 @@ import time
 import math
 from typing import Dict, List, Optional
 from datetime import datetime
+import sys
+from pathlib import Path
 
+# Ajouter le répertoire parent au path pour les imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [DASHBOARD] [{level}] {message}")
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le module Dashboard
+logger = get_logger('dashboard_builder')
 
 
 class DashboardBuilder:
@@ -75,7 +80,7 @@ class DashboardBuilder:
         Returns:
             Dashboard complet
         """
-        log("INFO", f"Construction dashboard pour {user_pubkey[:16]}...")
+        logger.info(f"Construction dashboard pour {user_pubkey[:16]}...")
         
         now = int(time.time())
         
@@ -102,7 +107,7 @@ class DashboardBuilder:
             'summary': self._build_summary(network, market_data)
         }
         
-        log("INFO", f"Dashboard construit: {len(markets)} marchés")
+        logger.info(f"Dashboard construit: {len(markets)} marchés")
         
         return dashboard
     

@@ -20,12 +20,17 @@ import hashlib
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 import re
+import sys
+from pathlib import Path
 
+# Ajouter le répertoire parent au path pour les imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [CREDENTIAL] [{level}] {message}")
+# Import du module de logging centralisé
+from logger import get_logger
+
+# Logger spécifique pour le module Credential
+logger = get_logger('credential_generator')
 
 
 class CredentialGenerator:

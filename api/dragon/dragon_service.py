@@ -24,11 +24,11 @@ from .du_engine import DUEngine
 from .circuit_indexer import CircuitIndexer
 from .dashboard_builder import DashboardBuilder
 
+# Import du module de logging centralisé
+from logger import get_logger
 
-def log(level: str, message: str):
-    """Log avec timestamp et niveau."""
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] [DRAGON] [{level}] {message}")
+# Logger spécifique pour le module DRAGON
+logger = get_logger('dragon_service')
 
 
 class DragonService:
@@ -73,7 +73,7 @@ class DragonService:
             self.oracle_pubkey
         )
         
-        log("INFO", f"Service DRAGON initialisé - Relai: {self.relay_url}")
+        logger.info(f"Service DRAGON initialisé - Relai: {self.relay_url}")
     
     async def connect(self):
         """Connecte le client Nostr."""
@@ -434,7 +434,7 @@ class DragonServiceSync:
         self.du_engine = DUEngine(self.client, self.params_engine, self.oracle_pubkey)
         self.circuit_indexer = CircuitIndexer(self.client)
         
-        log("INFO", f"Service DRAGON Sync initialisé - Relai: {self.relay_url}")
+        logger.info(f"Service DRAGON Sync initialisé - Relai: {self.relay_url}")
     
     def get_dashboard(self, user_pubkey: str, market_id: str = None) -> Dict:
         """
