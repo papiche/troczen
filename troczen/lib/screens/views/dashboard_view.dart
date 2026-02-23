@@ -1045,23 +1045,6 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
 
-  Color _getStatusColor(BonStatus status) {
-    switch (status) {
-      case BonStatus.active:
-        return Colors.green;
-      case BonStatus.pending:
-        return Colors.orange;
-      case BonStatus.expired:
-        return Colors.red;
-      case BonStatus.spent:
-        return Colors.blue;
-      case BonStatus.burned:
-        return Colors.grey;
-      default:
-        return Colors.white70;
-    }
-  }
-
   /// ✅ NOUVEAU: Couleur du statut depuis une String (pour les données du marché)
   Color _getStatusColorFromString(String status) {
     switch (status) {

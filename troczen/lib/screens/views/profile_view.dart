@@ -44,7 +44,6 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
     
     try {
       final user = await _storageService.getUser();
-      final market = await _storageService.getMarket();
       final bons = await _storageService.getBons();
       
       // Calculer les statistiques

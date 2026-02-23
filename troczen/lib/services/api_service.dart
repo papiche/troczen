@@ -28,7 +28,6 @@ class ApiService {
           
           // Extraire l'IP/host pour le relay WebSocket
           final host = Uri.parse(url).host;
-          final port = Uri.parse(url).port;
           _currentRelayUrl = 'ws://$host:7777';  // Port relay local
 
           Logger.success('ApiService', 'Borne locale détectée: $_currentApiUrl');

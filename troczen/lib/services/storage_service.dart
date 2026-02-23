@@ -41,6 +41,7 @@ class StorageService {
   static const String _bootstrapReceivedKey = 'bootstrap_received'; // Bon Zéro reçu
   static const String _bootstrapExpirationKey = 'bootstrap_expiration'; // Date expiration Bon Zéro initial
   static const String _appModeKey = 'app_mode'; // Mode d'utilisation (0=Flâneur, 1=Artisan, 2=Alchimiste)
+  static const String _lastDuGenerationKey = 'last_du_generation'; // Date de dernière génération du DU
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
@@ -1012,6 +1013,34 @@ class StorageService {
     } catch (e) {
       Logger.error('StorageService', 'Erreur getAppMode', e);
       return 0; // Défaut : Flâneur en cas d'erreur
+    }
+  }
+
+  // ============================================================
+  // ✅ GESTION DU DIVIDENDE UNIVERSEL (DU)
+  // ============================================================
+
+  /// Sauvegarde la date de la dernière génération de DU
+  Future<void> setLastDuGenerationDate(DateTime date) async {
+    try {
+      await _secureStorage.write(
+        key: _lastDuGenerationKey,
+        value: date.toIso8601String(),
+      );
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur setLastDuGenerationDate', e);
+    }
+  }
+
+  /// Récupère la date de la dernière génération de DU
+  Future<DateTime?> getLastDuGenerationDate() async {
+    try {
+      final value = await _secureStorage.read(key: _lastDuGenerationKey);
+      if (value == null) return null;
+      return DateTime.parse(value);
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getLastDuGenerationDate', e);
+      return null;
     }
   }
 }

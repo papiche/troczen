@@ -39,9 +39,9 @@ class DuParams {
     return DuParams(
       cSquared: (json['c2'] ?? json['cSquared'] ?? 0.01).toDouble(),
       alpha: (json['alpha'] ?? 0.0).toDouble(),
-      duBase: (json['du_base'] ?? json['duBase'] ?? 100.0).toDouble(),
+      duBase: (json['du_base'] ?? json['duBase'] ?? 10.0).toDouble(),
       duSkill: (json['du_skill'] ?? json['duSkill'] ?? 0.0).toDouble(),
-      duTotal: (json['du'] ?? json['duTotal'] ?? 100.0).toDouble(),
+      duTotal: (json['du'] ?? json['duTotal'] ?? 10.0).toDouble(),
       n1: json['n1'] ?? 0,
       n2: json['n2'] ?? 0,
       computedAt: json['computedAt'] != null
@@ -52,7 +52,7 @@ class DuParams {
   }
 
   /// Crée des paramètres de fallback (mode hors-ligne)
-  factory DuParams.fallback({double cSquared = 0.01, double duBase = 100.0}) {
+  factory DuParams.fallback({double cSquared = 0.01, double duBase = 10.0}) {
     return DuParams(
       cSquared: cSquared,
       alpha: 0.0,
@@ -224,9 +224,18 @@ class DuCalculationService {
       }
 
       // 1. Vérifier si le DU a déjà été généré aujourd'hui
-      final lastDuDateStr = await _storageService.getLastP3Sync();
-      // TODO: Implémenter la vérification quotidienne
-      // if (hasGeneratedToday) return false;
+      final lastDuDate = await _storageService.getLastDuGenerationDate();
+      if (lastDuDate != null) {
+        final now = DateTime.now();
+        final hasGeneratedToday = lastDuDate.year == now.year &&
+            lastDuDate.month == now.month &&
+            lastDuDate.day == now.day;
+        
+        if (hasGeneratedToday) {
+          Logger.log('DuCalculationService', 'DU déjà généré aujourd\'hui');
+          return false;
+        }
+      }
 
       // 2. Récupérer les contacts locaux (N1)
       final myContacts = await _storageService.getContacts();
@@ -283,6 +292,9 @@ class DuCalculationService {
 
       // 6. Générer les bons quantitatifs
       await _generateQuantitativeBons(user, market, duParams.duTotal);
+
+      // 7. Enregistrer la date de génération
+      await _storageService.setLastDuGenerationDate(DateTime.now());
 
       return true;
     } catch (e) {

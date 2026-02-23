@@ -574,15 +574,6 @@ class CryptoService {
     return _gf256Exp[logResult];
   }
   
-  /// Inverse multiplicatif dans GF(256)
-  int _gf256Inv(int a) {
-    if (a == 0) {
-      throw ArgumentError('Inverse de zéro n\'existe pas dans GF(256)');
-    }
-    // a^(-1) = a^(254) dans GF(256)
-    // Ou plus simplement: a^(-1) = exp(255 - log(a))
-    return _gf256Exp[255 - _gf256Log[a]];
-  }
 
   /// Chiffre P2 avec K_P2 = SHA256(P3)
   Future<Map<String, String>> encryptP2(String p2Hex, String p3Hex) async {

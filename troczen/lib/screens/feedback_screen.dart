@@ -263,7 +263,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 title: const Text('Joindre les logs de diagnostic', style: TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: Text('Aide les développeurs à comprendre le problème. Ne contient pas vos clés privées.', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
                 value: _includeLogs,
-                activeColor: const Color(0xFFFFB347),
+                activeThumbColor: const Color(0xFFFFB347),
                 contentPadding: EdgeInsets.zero,
                 onChanged: (bool value) {
                   setState(() {

@@ -115,8 +115,11 @@ class DUEngine:
         prev_du = await self._get_prev_du(user_pubkey, market_id)
         
         # 5. Calcul DU de base (formule TRM)
-        sq_n2 = math.sqrt(max(n2_count, 1))
-        du_increment = c2 * (m_n1 + m_n2 / sq_n2) / (n1_count + sq_n2)
+        sq_n2 = math.sqrt(n2_count)
+        if n2_count > 0:
+            du_increment = c2 * (m_n1 + m_n2 / sq_n2) / (n1_count + sq_n2)
+        else:
+            du_increment = c2 * m_n1 / n1_count
         du_base = prev_du + du_increment
         
         # 6. Calculer le score de compétence S_i
@@ -175,8 +178,11 @@ class DUEngine:
         if prev_du is None:
             prev_du = self.DU_INITIAL
         
-        sq_n2 = math.sqrt(max(n2_count, 1))
-        du_increment = c2 * (m_n1 + m_n2 / sq_n2) / (n1_count + sq_n2)
+        sq_n2 = math.sqrt(n2_count)
+        if n2_count > 0:
+            du_increment = c2 * (m_n1 + m_n2 / sq_n2) / (n1_count + sq_n2)
+        else:
+            du_increment = c2 * m_n1 / n1_count
         du_base = prev_du + du_increment
         
         multiplier = 1 + alpha * s_i

@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:hex/hex.dart';
@@ -31,12 +30,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
   final _apiService = ApiService();
-  final _uuid = const Uuid();
   
   bool _isCreating = false;
   List<Market> _markets = [];  // ✅ NOUVEAU: Liste des marchés disponibles
   Market? _selectedMarket;     // ✅ NOUVEAU: Marché sélectionné pour l'émission
-  bool _isLocalNetwork = false;
   Color _selectedColor = Colors.blue; // Couleur par défaut
   File? _selectedImage;
   bool _isUploading = false;
@@ -51,7 +48,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     // Valeur par défaut: website du profil utilisateur
     _websiteController.text = widget.user.website ?? '';
     _loadMarkets();
-    _detectNetwork();
     _loadSuggestedTags();
   }
 
@@ -87,13 +83,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       _markets = markets;
       _selectedMarket = activeMarket ?? (markets.isNotEmpty ? markets.first : null);
     });
-  }
-
-  /// ✅ Détection automatique réseau local (borne wifi)
-  Future<void> _detectNetwork() async {
-    // La détection réseau n'est plus nécessaire pour l'API
-    // Tout passe par Nostr maintenant
-    setState(() => _isLocalNetwork = false);
   }
 
   /// Sélectionner une image pour le bon
@@ -211,7 +200,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final bonKeys = _cryptoService.generateNostrKeyPair();
       final bonNsecHex = bonKeys['privateKeyHex']!;  // Format hex pour shamirSplit
       final bonNpubHex = bonKeys['publicKeyHex']!;   // Format hex pour les identifiants
-      final bonNpub = bonKeys['npub']!;              // Format Bech32 pour affichage
 
       // 2. Découper en 3 parts avec SSSS (utilise le format bytes)
       final bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));

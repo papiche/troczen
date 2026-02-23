@@ -5,7 +5,6 @@ import '../models/user.dart';
 import '../models/market.dart';
 import '../models/app_mode.dart';
 import '../services/storage_service.dart';
-import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
 import 'logs_screen.dart';
 import 'apk_share_screen.dart';
@@ -28,7 +27,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _validUntilController = TextEditingController();
 
   final _storageService = StorageService();
-  final _cryptoService = CryptoService();
 
   Market? _currentMarket;
   AppMode _currentMode = AppMode.flaneur;

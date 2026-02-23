@@ -418,7 +418,6 @@ class QRService {
   /// - validUntil: 4 octets (uint32 timestamp)
   /// - CRC32: 4 octets
   /// Total max: 4 + 2 + 1 + 32 + 32 + 1 + 64 + 4 + 4 = 144 octets
-  static const int _qrMarketMaxSize = 144;
   
   /// Calcule le marketId (checksum 4 chars) depuis la seed
   /// Utilise SHA256 pour générer un identifiant unique

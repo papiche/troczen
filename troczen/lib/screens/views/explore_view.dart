@@ -86,14 +86,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       setState(() => _isLoading = false);
     }
   }
-  
-  /// ✅ NOUVEAU: Filtre les bons selon le marché sélectionné
-  List<Bon> _getFilteredBons() {
-    if (_filterMode == 'all') {
-      return _myIssuedBons;
-    }
-    return _myIssuedBons.where((bon) => bon.marketName == _filterMode).toList();
-  }
+
 
   @override
   Widget build(BuildContext context) {
