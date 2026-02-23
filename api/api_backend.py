@@ -1175,8 +1175,7 @@ def register_nostr_pubkey():
             'success': True,
             'message': 'Pubkey registered successfully' if not already_registered else 'Pubkey already registered',
             'pubkey': pubkey[:16] + '...',  # Tronqué pour sécurité
-            'already_registered': already_registered,
-            'whitelist_file': str(AMIS_FILE)
+            'already_registered': already_registered
         }), 200 if already_registered else 201
         
     except PermissionError:

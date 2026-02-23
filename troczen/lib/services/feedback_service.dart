@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
+import '../config/app_config.dart';
 
 /// Service d'envoi de feedback utilisateur
 /// 🔒 Sécurisé: Passe par le backend qui gère le token GitHub
@@ -10,7 +11,7 @@ class FeedbackService {
   final StorageService _storage = StorageService();
 
   FeedbackService({String? baseUrl})
-      : _baseUrl = baseUrl ?? 'https://api.troczen.local';
+      : _baseUrl = baseUrl ?? AppConfig.defaultApiUrl;
 
   /// Récupère les identifiants utilisateur (G1PUB et npub Nostr)
   Future<Map<String, String>> _getUserIdentifiers() async {

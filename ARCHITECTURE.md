@@ -239,6 +239,57 @@ DONNEUR
   NostrService.publish(kind 1, TRANSFER)
 ```
 
+### Calcul du Dividende Universel (Architecture Hybride)
+
+TrocZen implémente un système hybride pour le calcul du DU, combinant le backend (TrocZen Box) et le calcul local (offline) :
+
+**1. Priorité au Backend (TrocZen Box)**
+```
+DashboardView
+  → ApiService.checkLatestVersion()
+  → HTTP GET /api/dashboard/<npub>?market=<market_id>
+  ← Backend (DRAGON) retourne:
+     {
+       "du": { "daily": 18.3, "monthly": 549, "base": 14.2, "skill_bonus": 4.1 },
+       "params": { "c2": 0.094, "alpha": 0.41, "ttl_optimal_days": 21 },
+       "network": { "n1": 8, "n2": 67, "category": "Tisseur" },
+       "circulation": { "loops_this_month": 14, "median_return_age_days": 12.5 }
+     }
+  → Affichage direct dans l'UI
+```
+
+L'API calcule le DU via le moteur Python (DRAGON) basé sur :
+- **C²** : Vitesse de création monétaire dérivée de l'analyse des circuits fermés
+- **alpha** : Multiplicateur de compétence basé sur le WoTx (réseau de confiance)
+- **Formule TRM étendue** : `DU = DU_base × (1 + alpha × c²)`
+
+**2. Fallback Local (Offline)**
+```
+Si l'API est injoignable:
+  DuCalculationService
+    → Lecture cache SQLite des P3
+    → Approximation avec constantes de secours:
+       - C² = 0.01 (valeur par défaut conservatrice)
+       - alpha = 0 (pas de bonus compétence)
+    → DU_local = DU_base × 1.01
+    → Affichage avec indicateur "Mode hors-ligne"
+```
+
+**3. Synchronisation et Génération Automatique**
+```
+NostrService.syncMarketP3s()
+  → Après sync complète:
+  → DuCalculationService.checkAndGenerateDU()
+  → Si eligible (wallet actif + participation):
+     → Création automatique de bons DU
+     → Publication sur le relais Nostr
+```
+
+Cette architecture assure que :
+- **En ligne** : Les utilisateurs bénéficient des calculs optimisés du backend
+- **Hors-ligne** : L'application continue de fonctionner avec des estimations conservatrices
+- **Transparence** : L'UI indique toujours la source du calcul (backend ou local)
+
 ---
 
 ## Format QR Code (binaire)

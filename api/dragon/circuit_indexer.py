@@ -28,6 +28,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import du module de logging centralisé
 from logger import get_logger
 
+# Import de la fonction de normalisation des tags marché
+from nostr_client import normalize_market_tag
+
 # Logger spécifique pour le module Circuit
 logger = get_logger('circuit_indexer')
 
@@ -64,7 +67,7 @@ class CircuitIndexer:
             Liste des bons actifs
         """
         now = int(time.time())
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         filters = {
             "kinds": [30303],
@@ -117,7 +120,7 @@ class CircuitIndexer:
         Returns:
             Liste des circuits fermés
         """
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         filters = {
             "kinds": [30304],
@@ -371,7 +374,7 @@ class CircuitIndexer:
         Utilisé par DragonServiceSync.
         """
         now = int(time.time())
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         filters = {
             "kinds": [30303],
@@ -407,7 +410,7 @@ class CircuitIndexer:
         Récupère les circuits fermés d'un marché.
         Utilisé par DragonServiceSync.
         """
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         filters = {
             "kinds": [30304],
@@ -428,17 +431,8 @@ class CircuitIndexer:
     
     # ==================== Utilitaires ====================
     
-    def _normalize_market_tag(self, market_id: str) -> str:
-        """Normalise un ID de marché en tag Nostr."""
-        import unicodedata
-        
-        nfkd = unicodedata.normalize('NFKD', market_id)
-        without_diacritics = ''.join(c for c in nfkd if not unicodedata.combining(c))
-        lower = without_diacritics.lower()
-        sanitized = re.sub(r'[^a-z0-9]', '_', lower)
-        cleaned = re.sub(r'_+', '_', sanitized).strip('_')
-        
-        return f"market_{cleaned}"
+    # Note: _normalize_market_tag est maintenant importé depuis nostr_client
+    # La fonction normalize_market_tag est utilisée directement
     
     def _median(self, values: List[float]) -> float:
         """Calcule la médiane d'une liste."""

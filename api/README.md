@@ -121,6 +121,21 @@ python nostr_daemon.py
 
 L'API sera accessible sur `http://localhost:5000`
 
+## Rôles des Endpoints
+
+L'API sert deux clients différents :
+
+### 1. L'application Flutter (Mobile)
+- **`/api/upload/*`** : Stockage IPFS asynchrone des avatars/bannières.
+- **`/api/feedback`** : Création de tickets GitHub sans exposer le token client.
+- **`/api/nostr/register`** : Ajoute l'utilisateur à la whitelist `amisOfAmis` de Strfry.
+- **`/api/dashboard/<npub>`** : Récupère les calculs économiques lourds du moteur DRAGON (DU, C²).
+
+### 2. L'interface Web (Navigateur)
+- **`/market/<market_name>`** : Pages HTML vitrines.
+- **`/api/nostr/marche/*`** : Pont HTTP/Nostr pour le web qui ne gère pas les WebSockets.
+- **`/api/apk/*`** : Distribution du fichier d'installation Android.
+
 ## Endpoints API
 
 ### Health Check

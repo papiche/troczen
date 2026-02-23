@@ -288,8 +288,9 @@ class NostrClient:
         additional_filters = {}
         if market_name:
             # Utiliser le tag normalisé pour le filtrage côté relai
+            # NIP-12: #market pour le routage par marché (indexable par les relais)
             market_tag = normalize_market_tag(market_name)
-            additional_filters["#t"] = [market_tag]
+            additional_filters["#market"] = [market_tag]
         
         # Calculer l'offset pour la pagination
         offset = (page - 1) * limit
@@ -674,8 +675,9 @@ class NostrClientSync:
         additional_filters = {}
         if market_name:
             # Utiliser le tag normalisé pour le filtrage côté relai
+            # NIP-12: #market pour le routage par marché (indexable par les relais)
             market_tag = normalize_market_tag(market_name)
-            additional_filters["#t"] = [market_tag]
+            additional_filters["#market"] = [market_tag]
         
         # Calculer l'offset pour la pagination
         offset = (page - 1) * limit

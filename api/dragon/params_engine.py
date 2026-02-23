@@ -27,6 +27,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import du module de logging centralisé
 from logger import get_logger
 
+# Import de la fonction de normalisation des tags marché
+from nostr_client import normalize_market_tag
+
 # Logger spécifique pour le module Params
 logger = get_logger('params_engine')
 
@@ -255,7 +258,7 @@ class ParamsEngine:
         since = now - (self.ANALYSIS_WINDOW * 86400)
         
         # Normaliser le tag market
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         events = await self.client.query_events([{
             "kinds": [30304],
@@ -283,7 +286,7 @@ class ParamsEngine:
         since = now - (2 * self.ANALYSIS_WINDOW * 86400)
         until = now - (self.ANALYSIS_WINDOW * 86400)
         
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         events = await self.client.query_events([{
             "kinds": [30304],
@@ -300,7 +303,7 @@ class ParamsEngine:
         now = int(time.time())
         since = now - (self.ANALYSIS_WINDOW * 86400)
         
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         events = await self.client.query_events([{
             "kinds": [30303],
@@ -330,7 +333,7 @@ class ParamsEngine:
         now = int(time.time())
         since = now - (self.ANALYSIS_WINDOW * 86400)
         
-        market_tag = self._normalize_market_tag(market_id)
+        market_tag = normalize_market_tag(market_id)
         
         # Récupérer les bons émis avec expiration dans la fenêtre
         events = await self.client.query_events([{
@@ -413,24 +416,8 @@ class ParamsEngine:
             return int(match.group(1))
         return 1
     
-    def _normalize_market_tag(self, market_id: str) -> str:
-        """
-        Normalise un ID de marché en tag Nostr.
-        
-        Ex: "Marché de Paris" -> "market_marche_de_paris"
-        """
-        import unicodedata
-        
-        # Normalisation NFKD
-        nfkd = unicodedata.normalize('NFKD', market_id)
-        # Retirer les diacritiques
-        without_diacritics = ''.join(c for c in nfkd if not unicodedata.combining(c))
-        # Minuscules et remplacement
-        lower = without_diacritics.lower()
-        sanitized = re.sub(r'[^a-z0-9]', '_', lower)
-        cleaned = re.sub(r'_+', '_', sanitized).strip('_')
-        
-        return f"market_{cleaned}"
+    # Note: _normalize_market_tag est maintenant importé depuis nostr_client
+    # La fonction normalize_market_tag est utilisée directement
 
 
 # ==================== Fonctions utilitaires standalone ====================

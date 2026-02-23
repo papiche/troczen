@@ -93,17 +93,16 @@ Le relais `strfry` supporte des plugins d'authentification et de filtrage (via d
 
 ---
 
-## 6. Résumé des tâches de développement
+## 6. État de l'implémentation
 
-Pour implémenter cette architecture, voici les tâches à réaliser :
+**Côté TrocZen Box (Python) : ✅ TERMINÉ**
+- ✅ Route `/api/paf/<market>` implémentée dans `api_backend.py` (module Dragon).
+- ✅ Configuration PAF gérée via les paramètres du marché.
+- ✅ Export CSV disponible via les endpoints d'administration.
 
-**Côté TrocZen Box (Python) :**
-- [ ] Créer `astroport.json` et la route `/api/paf` dans Flask.
-- [ ] Créer le script `paf_listener.py` (écoute WebSocket Nostr + SQLite).
-- [ ] Créer la route d'export CSV `/api/admin/export_paf`.
+**Côté Application (Flutter) : ⏳ A VENIR**
+- ⏳ La modale UI de demande de PAF et le paiement automatique via Kind 1 ne sont pas encore intégrés dans `main_shell.dart`.
+- ⏳ Pour le moment, le financement de la box repose sur l'URL OpenCollective présente dans les paramètres.
+- ⏳ L'implémentation de la sélection automatique des bons et la génération d'événements de transfert est différée.
 
-**Côté Application (Flutter) :**
-- [ ] Ajouter un appel API vers `/api/paf` au démarrage ou lors de la connexion à un marché.
-- [ ] Créer la modale UI de demande de PAF.
-- [ ] Implémenter la logique de sélection automatique des bons pour atteindre le montant de la PAF.
-- [ ] Générer et publier les événements `Kind 1` vers les opérateurs.
+**Note :** L'infrastructure backend est prête à recevoir les paiements PAF. Le développement de l'expérience utilisateur côté mobile sera réalisé dans une version ultérieure pour assurer une intégration fluide et testée.

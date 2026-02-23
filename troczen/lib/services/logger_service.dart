@@ -12,9 +12,7 @@ import 'feedback_service.dart';
 /// - Les logs peuvent être transmis via /api/feedback pour soumission d'issues
 class Logger {
   static final StorageService _storage = StorageService();
-  static final FeedbackService _feedbackService = FeedbackService(
-    baseUrl: 'https://zen.copylaradio.com',
-  );
+  static final FeedbackService _feedbackService = FeedbackService();
   
   static bool _isDebugMode = false;
   static bool _initialized = false;

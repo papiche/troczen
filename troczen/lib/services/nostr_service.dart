@@ -13,6 +13,7 @@ import 'storage_service.dart';
 import 'image_cache_service.dart';
 import 'logger_service.dart';
 import 'du_calculation_service.dart';
+import 'api_service.dart';
 
 /// ✅ NIP-12: Normalise un nom de marché en tag de routage standardisé
 /// Cette fonction garantit que tous les marchés sont indexables de la même façon
@@ -413,21 +414,14 @@ class NostrService {
     }
   }
 
-  /// Récupère l'URL de l'API depuis la configuration
-  /// Priorité: Dérivée du relayUrl > Localhost par défaut
+  /// Récupère l'URL de l'API depuis ApiService
+  /// Utilise la détection automatique local/production de ApiService
   Future<String?> _getApiUrl() async {
     try {
-      // 1. Essayer de récupérer depuis le marché actif et dériver l'URL API
-      final market = await _storageService.getMarket();
-      if (market?.relayUrl != null && market!.relayUrl!.isNotEmpty) {
-        // Convertir ws://host:port en http://host:5000
-        final relayUri = Uri.parse(market.relayUrl!);
-        final apiUrl = 'http://${relayUri.host}:5000';
-        return apiUrl;
-      }
-      
-      // 2. Fallback: URL par défaut (localhost pour dev, à configurer en prod)
-      return 'http://127.0.0.1:5000';
+      // Utiliser l'ApiService qui gère déjà la détection locale vs production
+      final apiService = ApiService();
+      // Si on est en local, l'ApiService aura déjà détecté l'URL locale, sinon l'URL de prod
+      return apiService.apiUrl;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération API URL', e);
       return null;

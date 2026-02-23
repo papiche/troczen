@@ -201,4 +201,23 @@ class ApiService {
     _currentRelayUrl = relayUrl;
     _isLocal = false;
   }
+
+  /// Vérifie la dernière version APK disponible
+  /// Retourne les informations de version ou null en cas d'erreur
+  Future<Map<String, dynamic>?> checkLatestVersion() async {
+    try {
+      final baseUrl = _currentApiUrl.endsWith('/')
+          ? _currentApiUrl.substring(0, _currentApiUrl.length - 1)
+          : _currentApiUrl;
+      final response = await http.get(Uri.parse('$baseUrl/api/apk/latest'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return null;
+    } catch (e) {
+      Logger.error('ApiService', 'Erreur vérification maj APK', e);
+      return null;
+    }
+  }
 }

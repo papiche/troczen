@@ -26,6 +26,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Import du module de logging centralisé
 from logger import get_logger
 
+# Import de la fonction de normalisation des tags marché
+from nostr_client import normalize_market_tag
+
 # Logger spécifique pour le module DU
 logger = get_logger('du_engine')
 
@@ -305,13 +308,17 @@ class DUEngine:
         
         # Batch par groupes de 50 pour éviter les requêtes trop grosses
         batch_size = 50
+        
+        # Normaliser le tag market pour la requête Nostr
+        normalized_market = normalize_market_tag(market_id)
+        
         for i in range(0, len(pubkeys), batch_size):
             batch = pubkeys[i:i + batch_size]
             
             events = await self.client.query_events([{
                 "kinds": [30303],
                 "authors": batch,
-                "#market": [market_id]
+                "#market": [normalized_market]
             }])
             
             for event in events:
