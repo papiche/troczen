@@ -571,7 +571,8 @@ class DragonServiceSync:
         
         try:
             # Récupérer tous les circuits (sans limite) pour compter
-            all_circuits = self.circuit_indexer.get_circuits(
+            # Utiliser la version synchrone
+            all_circuits = self.circuit_indexer.get_circuits_sync(
                 market_id,
                 limit=10000  # Limite élevée pour compter tous les circuits
             )
@@ -615,7 +616,8 @@ class DragonServiceSync:
         
         try:
             # Récupérer tous les bons (sans limite) pour compter
-            all_bonds = self.circuit_indexer.get_active_bonds(market_id)
+            # Utiliser la version synchrone
+            all_bonds = self.circuit_indexer.get_active_bonds_sync(market_id)
             
             # Calculer l'offset pour la pagination
             offset = (page - 1) * limit

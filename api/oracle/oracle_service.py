@@ -374,10 +374,7 @@ class OracleService:
             
         except ImportError:
             # Fallback pour le développement (non sécurisé)
-            logger.warning("nostr-protocol non disponible - signature factice pour event kind {event.get('kind', 'unknown')}")
-        except Exception as e:
-            logger.error(f"Erreur inattendue lors de la signature de l'événement: {format_error_for_log(e)}")
-            raise
+            logger.warning(f"nostr-protocol non disponible - signature factice pour event kind {event.get('kind', 'unknown')}")
             
             # Calculer l'ID de l'événement
             serialized = json.dumps([
@@ -396,6 +393,10 @@ class OracleService:
             ).hexdigest()
             
             return event
+            
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la signature de l'événement: {format_error_for_log(e)}")
+            raise
     
     def _parse_tags(self, tags: List) -> Dict[str, str]:
         """Parse les tags Nostr en dictionnaire."""

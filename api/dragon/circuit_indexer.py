@@ -357,6 +357,75 @@ class CircuitIndexer:
             'closed_by': event.get('pubkey', '')
         }
     
+    # ==================== Versions synchrones pour DragonServiceSync ====================
+    
+    def get_active_bonds_sync(
+        self,
+        market_id: str,
+        owner_pubkey: str = None
+    ) -> List[Dict]:
+        """
+        Version synchrone de get_active_bonds.
+        
+        Récupère les bons actifs (non expirés) d'un marché.
+        Utilisé par DragonServiceSync.
+        """
+        now = int(time.time())
+        market_tag = self._normalize_market_tag(market_id)
+        
+        filters = {
+            "kinds": [30303],
+            "#market": [market_tag]
+        }
+        
+        if owner_pubkey:
+            filters["authors"] = [owner_pubkey]
+        
+        # Appel synchrone - le client doit être NostrClientSync
+        events = self.client.query_events([filters])
+        
+        active_bonds = []
+        for event in events:
+            bond = self._parse_bond_event(event)
+            
+            # Vérifier que le bon n'est pas expiré
+            if bond.get('expires_at', 0) > now:
+                active_bonds.append(bond)
+        
+        return active_bonds
+    
+    def get_circuits_sync(
+        self,
+        market_id: str,
+        issuer_pubkey: str = None,
+        since: int = None,
+        limit: int = 100
+    ) -> List[Dict]:
+        """
+        Version synchrone de get_circuits.
+        
+        Récupère les circuits fermés d'un marché.
+        Utilisé par DragonServiceSync.
+        """
+        market_tag = self._normalize_market_tag(market_id)
+        
+        filters = {
+            "kinds": [30304],
+            "#market": [market_tag],
+            "limit": limit
+        }
+        
+        if issuer_pubkey:
+            filters["#issued_by"] = [issuer_pubkey]
+        
+        if since:
+            filters["since"] = since
+        
+        # Appel synchrone - le client doit être NostrClientSync
+        events = self.client.query_events([filters])
+        
+        return [self._parse_circuit_event(e) for e in events]
+    
     # ==================== Utilitaires ====================
     
     def _normalize_market_tag(self, market_id: str) -> str:

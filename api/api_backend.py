@@ -1142,20 +1142,34 @@ def register_nostr_pubkey():
         # Créer le dossier si nécessaire
         AMIS_FILE.parent.mkdir(parents=True, exist_ok=True)
         
-        # Vérifier si la pubkey existe déjà
+        # Utiliser un verrou de fichier pour éviter les race conditions
+        import fcntl
+        
+        # Ouvrir le fichier en mode lecture/écriture avec verrouillage
+        # 'a+' permet de lire et écrire, en créant le fichier si nécessaire
         already_registered = False
-        if AMIS_FILE.exists():
-            with open(AMIS_FILE, 'r') as f:
+        
+        with open(AMIS_FILE, 'a+') as f:
+            # Verrouiller le fichier (verrou exclusif)
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            
+            try:
+                # Se positionner au début pour lire
+                f.seek(0)
                 existing_keys = set(line.strip() for line in f if line.strip())
+                
                 if pubkey in existing_keys:
                     already_registered = True
                     app_logger.info(f'Pubkey déjà enregistrée: {pubkey[:16]}...')
-        
-        # Ajouter la pubkey si elle n'existe pas
-        if not already_registered:
-            with open(AMIS_FILE, 'a') as f:
-                f.write(f'{pubkey}\n')
-            app_logger.info(f'Nouvelle pubkey enregistrée: {pubkey[:16]}...')
+                else:
+                    # Ajouter la pubkey à la fin
+                    f.seek(0, 2)  # Se positionner à la fin
+                    f.write(f'{pubkey}\n')
+                    f.flush()  # Forcer l'écriture immédiate
+                    app_logger.info(f'Nouvelle pubkey enregistrée: {pubkey[:16]}...')
+            finally:
+                # Déverrouiller le fichier
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         
         return jsonify({
             'success': True,
@@ -2046,7 +2060,7 @@ def calculate_paf(market):
         )), 500
 
 
-@app.route('/api/stats', methods=['GET'])
+@app.route('/api/stats/global', methods=['GET'])
 def get_global_stats():
     """Statistiques globales du système."""
     dragon = get_dragon_service()
