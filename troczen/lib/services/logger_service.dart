@@ -17,11 +17,14 @@ class Logger {
   static bool _isDebugMode = false;
   static bool _initialized = false;
   
-  /// Buffer circulaire pour stocker les logs en mode HACKATHON
+  /// Buffer circulaire pour stocker les logs (actif en permanence pour le support utilisateur)
   static final List<LogEntry> _logBuffer = [];
   
-  /// Taille maximale du buffer de logs (en nombre d'entrées)
-  static const int _maxBufferSize = 1000;
+  /// Taille maximale du buffer de logs en mode debug (en nombre d'entrées)
+  static const int _maxBufferSizeDebug = 1000;
+  
+  /// Taille maximale du buffer de logs en production (en nombre d'entrées)
+  static const int _maxBufferSizeProd = 200;
 
   /// Vérifie si le mode HACKATHON est actif
   /// Doit être appelé au démarrage de l'application ou dans les vues principales
@@ -163,10 +166,8 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
     log('Logger', 'Buffer de logs effacé');
   }
 
-  /// Ajoute un log au buffer (mode HACKATHON uniquement)
+  /// Ajoute un log au buffer (Actif en permanence pour le support utilisateur)
   static void _addLog(String tag, String message, String level) {
-    if (!_isDebugMode) return;
-    
     final entry = LogEntry(
       timestamp: DateTime.now(),
       tag: tag,
@@ -174,8 +175,9 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
       level: level,
     );
     
-    // Gestion du buffer circulaire
-    if (_logBuffer.length >= _maxBufferSize) {
+    // Buffer circulaire strict (ex: 200 logs max en prod, 1000 en mode Debug)
+    final limit = isDebugMode ? _maxBufferSizeDebug : _maxBufferSizeProd;
+    if (_logBuffer.length >= limit) {
       _logBuffer.removeAt(0);
     }
     
@@ -187,8 +189,8 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
     if (_isDebugMode || kDebugMode) {
       final time = DateTime.now().toIso8601String().split('T').last;
       debugPrint('[$time][$tag] $message');
-      _addLog(tag, message, 'log');
     }
+    _addLog(tag, message, 'log');
   }
 
   /// Log d'erreur - toujours affiché
@@ -211,8 +213,8 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
     if (_isDebugMode || kDebugMode) {
       final time = DateTime.now().toIso8601String().split('T').last;
       debugPrint('✅ [$time][$tag] $message');
-      _addLog(tag, message, 'success');
     }
+    _addLog(tag, message, 'success');
   }
 
   /// Log d'information - affiché uniquement en mode debug
@@ -220,8 +222,8 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
     if (_isDebugMode || kDebugMode) {
       final time = DateTime.now().toIso8601String().split('T').last;
       debugPrint('ℹ️ [$time][$tag] $message');
-      _addLog(tag, message, 'info');
     }
+    _addLog(tag, message, 'info');
   }
 
   /// Log de debug détaillé - affiché uniquement en mode debug
@@ -229,8 +231,8 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
     if (_isDebugMode || kDebugMode) {
       final time = DateTime.now().toIso8601String().split('T').last;
       debugPrint('🔍 [$time][$tag] $message');
-      _addLog(tag, message, 'debug');
     }
+    _addLog(tag, message, 'debug');
   }
 }
 

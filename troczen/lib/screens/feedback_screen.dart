@@ -3,6 +3,7 @@ import 'dart:io';
 import '../models/user.dart';
 import '../config/app_config.dart';
 import '../services/feedback_service.dart';
+import '../services/logger_service.dart';
 
 /// Écran d'envoi de feedback/bug report
 class FeedbackScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   
   String _selectedType = 'bug';
   bool _isSending = false;
+  bool _includeLogs = true; // Activé par défaut pour aider les devs
 
   final _feedbackService = FeedbackService();
 
@@ -53,6 +55,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         description: _descriptionController.text.trim(),
         appVersion: AppConfig.appVersion,
         platform: platform,
+        logs: _includeLogs ? Logger.exportLogsText() : null,
       );
 
       if (!mounted) return;
@@ -253,7 +256,23 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 },
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+
+              // Option d'envoi des logs
+              SwitchListTile(
+                title: const Text('Joindre les logs de diagnostic', style: TextStyle(color: Colors.white, fontSize: 14)),
+                subtitle: Text('Aide les développeurs à comprendre le problème. Ne contient pas vos clés privées.', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                value: _includeLogs,
+                activeColor: const Color(0xFFFFB347),
+                contentPadding: EdgeInsets.zero,
+                onChanged: (bool value) {
+                  setState(() {
+                    _includeLogs = value;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 24),
 
               // Bouton envoyer
               SizedBox(

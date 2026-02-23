@@ -37,8 +37,17 @@ class FeedbackService {
   }
 
   /// Construit la description complète avec les identifiants utilisateur
-  Future<String> _buildDescriptionWithIdentifiers(String description) async {
+  Future<String> _buildDescriptionWithIdentifiers(String description, {String? logs}) async {
     final identifiers = await _getUserIdentifiers();
+    
+    final logsSection = logs != null ? '''
+---
+### Logs techniques
+```text
+$logs
+```
+---
+''' : '';
     
     return '''
 ---
@@ -51,6 +60,7 @@ class FeedbackService {
 ---
 
 $description
+$logsSection
 ''';
   }
 
@@ -62,6 +72,7 @@ $description
   /// [email] : Email de contact (optionnel)
   /// [appVersion] : Version de l'app
   /// [platform] : Plateforme (Android, iOS, etc.)
+  /// [logs] : Logs techniques (optionnel)
   Future<FeedbackResult> sendFeedback({
     required String type,
     required String title,
@@ -69,10 +80,14 @@ $description
     String? email,
     String? appVersion,
     String? platform,
+    String? logs,
   }) async {
     try {
       // Ajouter les identifiants utilisateur à la description
-      final fullDescription = await _buildDescriptionWithIdentifiers(description);
+      final fullDescription = await _buildDescriptionWithIdentifiers(
+        description,
+        logs: logs,
+      );
       
       // Récupérer les identifiants pour les métadonnées
       final identifiers = await _getUserIdentifiers();

@@ -1566,7 +1566,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        request['pubkey'].toString().substring(0, 16) + '...',
+                        '${request['pubkey'].toString().substring(0, 16)}...',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w500,
