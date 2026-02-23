@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import '../services/image_compression_service.dart';
 import 'feedback_screen.dart';
 
 /// Écran de gestion du profil utilisateur
@@ -39,8 +40,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
   
-  File? _selectedPicture;
-  File? _selectedBanner;
+  String? _base64Picture;
+  String? _base64Banner;
   bool _isSaving = false;
   bool _isUploading = false;
 
@@ -107,102 +108,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _selectImage(String type) async {
-    final ImagePicker picker = ImagePicker();
+    final imageService = ImageCompressionService();
+    final dataUri = type == 'picture'
+        ? await imageService.pickAndCompressAvatar()
+        : await imageService.pickAndCompressBanner();
     
-    // Afficher le choix source (caméra ou galerie)
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.orange),
-              title: const Text('Prendre une photo', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.orange),
-              title: const Text('Choisir depuis la galerie', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            if ((type == 'picture' && _selectedPicture != null) ||
-                (type == 'banner' && _selectedBanner != null))
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Supprimer l\'image', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    if (type == 'picture') {
-                      _selectedPicture = null;
-                    } else {
-                      _selectedBanner = null;
-                    }
-                  });
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-    
-    if (source == null) return;
-    
-    try {
-      final XFile? image = await picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      
-      if (image != null) {
-        setState(() {
-          if (type == 'picture') {
-            _selectedPicture = File(image.path);
-          } else if (type == 'banner') {
-            _selectedBanner = File(image.path);
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Erreur sélection image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (dataUri != null) {
+      setState(() {
+        if (type == 'picture') {
+          _base64Picture = dataUri;
+        } else {
+          _base64Banner = dataUri;
+        }
+      });
     }
-  }
-
-  Future<String?> _uploadImage(File imageFile, String type) async {
-    setState(() => _isUploading = true);
-    
-    try {
-      final result = await _apiService.uploadImage(
-        npub: widget.user.npub,
-        imageFile: imageFile,
-        type: type,
-      );
-      
-      if (result != null) {
-        // Préférer l'URL IPFS (décentralisée) à l'URL locale
-        return result['ipfs_url'] ?? result['url'];
-      }
-    } catch (e) {
-      debugPrint('Erreur upload $type: $e');
-    } finally {
-      setState(() => _isUploading = false);
-    }
-    
-    return null;
   }
 
   Future<void> _saveProfile() async {
@@ -211,18 +130,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
-      String? pictureUrl;
-      String? bannerUrl;
-
-      // 1. Upload picture si sélectionnée
-      if (_selectedPicture != null) {
-        pictureUrl = await _uploadImage(_selectedPicture!, 'avatar');
-      }
-
-      // 2. Upload banner si sélectionnée
-      if (_selectedBanner != null) {
-        bannerUrl = await _uploadImage(_selectedBanner!, 'banner');
-      }
+      // Remplacer l'attente de l'API par la récupération directe des Strings
+      String? pictureUrl = _base64Picture ?? widget.user.picture;
+      String? bannerUrl = _base64Banner ?? widget.user.banner;
 
       // 3. Publier sur Nostr (kind 0)
       final market = await _storageService.getMarket();
@@ -410,14 +320,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 8),
-                      ElevatedButton.icon(
-                        onPressed: _isUploading ? null : () => _selectImage('picture'),
-                        icon: const Icon(Icons.image),
-                        label: Text(_selectedPicture != null 
-                            ? 'Changer' 
-                            : 'Sélectionner'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A7EA4),
+                      GestureDetector(
+                        onTap: _isUploading ? null : () => _selectImage('picture'),
+                        child: ImageCompressionService.buildImage(
+                          uri: _base64Picture ?? widget.user.picture,
+                          width: 60,
+                          height: 60,
+                          borderRadius: BorderRadius.circular(8),
+                          placeholder: const Icon(Icons.add_a_photo, color: Colors.white70),
                         ),
                       ),
                     ],
@@ -433,14 +343,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 8),
-                      ElevatedButton.icon(
-                        onPressed: _isUploading ? null : () => _selectImage('banner'),
-                        icon: const Icon(Icons.image),
-                        label: Text(_selectedBanner != null 
-                            ? 'Changer' 
-                            : 'Sélectionner'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A7EA4),
+                      GestureDetector(
+                        onTap: _isUploading ? null : () => _selectImage('banner'),
+                        child: ImageCompressionService.buildImage(
+                          uri: _base64Banner ?? widget.user.banner,
+                          width: double.infinity,
+                          height: 60,
+                          borderRadius: BorderRadius.circular(8),
+                          placeholder: const Icon(Icons.add_a_photo, color: Colors.white70),
                         ),
                       ),
                     ],

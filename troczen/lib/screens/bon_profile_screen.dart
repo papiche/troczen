@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import '../services/image_compression_service.dart';
 
 /// Écran de gestion du profil d'un bon
 /// Permet à l'émetteur (détenteur P1) de modifier les métadonnées
@@ -36,8 +37,9 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   final _storage = StorageService();
   
   String _selectedCategory = 'generic';
-  File? _selectedImage;
+  String? _base64Image;
   bool _isSaving = false;
+  bool _isUploading = false;
   bool _canEdit = false;
 
   final _categories = {
@@ -63,100 +65,109 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   }
 
   void _loadProfile() {
-    _titleController.text = 'Bon ${widget.bon.value.toStringAsFixed(0)} ẐEN - ${widget.bon.issuerName}';
-    _selectedCategory = 'generic';  // TODO: Load from bon metadata
+    _titleController.text = widget.bon.issuerName;
+    _descriptionController.text = widget.bon.wish ?? '';
+    _selectedCategory = widget.bon.cardType ?? 'generic';
+  }
+
+  Future<void> _selectImage() async {
+    final imageService = ImageCompressionService();
+    
+    setState(() => _isUploading = true);
+    
+    try {
+      final dataUri = await imageService.pickAndCompressAvatar();
+          
+      if (dataUri != null) {
+        setState(() {
+          _base64Image = dataUri;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur sélection image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate() || !_canEdit) return;
-
     setState(() => _isSaving = true);
 
     try {
-      // 1. Upload image vers IPFS si sélectionnée
-      String? imageUrl;
-      if (_selectedImage != null) {
-        final result = await _apiService.uploadImage(
-          npub: widget.user.npub,
-          imageFile: _selectedImage!,
-          type: 'logo',
-        );
-        imageUrl = result?['ipfs_url'] ?? result?['url'];
-      }
-
-      // 2. ✅ Profil mis à jour uniquement sur Nostr (kind 0 et 30303)
-      // L'API backend n'est plus utilisée pour les profils
-
-      // 3. Republier sur Nostr avec métadonnées mises à jour
       final market = await _storage.getMarket();
       if (market != null && widget.bon.p2 != null) {
-        // ✅ SÉCURITÉ: Récupérer P3 en Uint8List directement
-        final p3Bytes = await _storage.getP3FromCacheBytes(widget.bon.bonId);
         
-        if (p3Bytes != null) {
-          // ✅ SÉCURITÉ: Récupérer P2 en Uint8List directement
-          final p2Bytes = widget.bon.p2Bytes;
+        final p3Bytes = await _storage.getP3FromCacheBytes(widget.bon.bonId);
+        final p2Bytes = widget.bon.p2Bytes;
+        
+        if (p3Bytes != null && p2Bytes != null) {
+          final nostrService = NostrService(cryptoService: _crypto, storageService: _storage);
+          await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
           
-          if (p2Bytes != null) {
-            final nostrService = NostrService(
-              cryptoService: _crypto,
-              storageService: _storage,
-            );
+          final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+          final nsecHex = HEX.encode(nsecBonBytes);
+          
+          String finalPicture = _base64Image ?? widget.bon.picture ?? widget.bon.logoUrl ?? '';
 
-            await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
-            
-            // ✅ SÉCURITÉ: Reconstruire sk_B en Uint8List
-            final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-            final nsecHex = HEX.encode(nsecBonBytes);
-            
-            // Publication du profil du bon (kind 0)
-            await nostrService.publishUserProfile(
-              npub: widget.bon.bonId,
-              nsec: nsecHex,
-              name: widget.bon.issuerName,
-              displayName: widget.bon.issuerName,
-              about: 'Bon ${widget.bon.value} ẐEN - ${market.name}',
-              picture: imageUrl,
-              banner: imageUrl,  // Utilise la même image pour le bandeau
-              website: widget.user.website,  // Par défaut: site du profil utilisateur
-              g1pub: widget.user.g1pub,  // Par défaut: g1pub du profil utilisateur
-            );
-            
-            // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
-            _crypto.secureZeroiseBytes(nsecBonBytes);
-            _crypto.secureZeroiseBytes(p2Bytes);
-            _crypto.secureZeroiseBytes(p3Bytes);
+          // 1. Publication Kind 0
+          await nostrService.publishUserProfile(
+            npub: widget.bon.bonId,
+            nsec: nsecHex,
+            name: _titleController.text,
+            displayName: _titleController.text,
+            about: _descriptionController.text,
+            picture: finalPicture,
+            banner: finalPicture,
+          );
+          
+          _crypto.secureZeroiseBytes(nsecBonBytes);
+          _crypto.secureZeroiseBytes(p2Bytes);
+          _crypto.secureZeroiseBytes(p3Bytes);
 
-            // Republier P3 avec nouvelles métadonnées
-            // Note: publishP3 attend des String, mais les parts sont déjà en RAM
-            // On utilise les propriétés String du bon (déjà en mémoire)
-            await nostrService.publishP3(
-              bonId: widget.bon.bonId,
-              p2Hex: widget.bon.p2!,
-              p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
-              seedMarket: market.seedMarket,
-              issuerNpub: widget.user.npub,
-              marketName: market.name,
-              value: widget.bon.value,
-              category: _selectedCategory,
-              rarity: widget.bon.rarity,
-            );
+          // 2. Republier P3
+          await nostrService.publishP3(
+            bonId: widget.bon.bonId,
+            p2Hex: widget.bon.p2!,
+            p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
+            seedMarket: market.seedMarket,
+            issuerNpub: widget.user.npub,
+            marketName: market.name,
+            value: widget.bon.value,
+            category: _selectedCategory,
+            rarity: widget.bon.rarity,
+            wish: _descriptionController.text, // Sauvegarde du vœu sur le réseau
+          );
+          await nostrService.disconnect();
 
-            await nostrService.disconnect();
-          }
+          // 🔥 3. SAUVEGARDE LOCALE (Ce qu'il manquait !)
+          final updatedBon = widget.bon.copyWith(
+            issuerName: _titleController.text,
+            wish: _descriptionController.text,
+            cardType: _selectedCategory,
+            picture: finalPicture,
+            logoUrl: finalPicture, // Pour compatibilité
+          );
+          await _storage.saveBon(updatedBon);
         }
       }
 
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Profil mis à jour !'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('✅ Profil mis à jour !'), backgroundColor: Colors.green),
       );
-
       Navigator.pop(context);
+      
     } on ShamirReconstructionException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -173,9 +184,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -306,31 +315,48 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // Image (TODO: Image picker)
+              // Image
               _buildSectionTitle('Image du Bon'),
-              Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey[600]),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Ajouter une photo',
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
-                      Text(
-                        '(Sera stockée sur IPFS)',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
+              GestureDetector(
+                onTap: _isUploading ? null : _selectImage,
+                child: Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A2A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[700]!),
                   ),
+                  child: _base64Image != null || widget.bon.picture != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: ImageCompressionService.buildImage(
+                            uri: _base64Image ?? widget.bon.picture,
+                            width: double.infinity,
+                            height: 150,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isUploading)
+                                const CircularProgressIndicator()
+                              else ...[
+                                Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey[600]),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Ajouter une photo',
+                                  style: TextStyle(color: Colors.grey[500]),
+                                ),
+                                Text(
+                                  '(Sera stockée localement)',
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                 ),
               ),
 
