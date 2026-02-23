@@ -1230,10 +1230,17 @@ def publish_nostr_profile():
 @app.route('/api/nostr/bons/all', methods=['GET'])
 def get_all_bons_no_filter():
     """
-    API pour récupérer TOUS les bons (kind 30303) sans filtre de marché
+    API pour récupérer TOUS les bons (kind 30303) sans filtre de marché avec pagination
     Utile pour diagnostiquer quels bons existent sur le relai
+    
+    Query params:
+        page: Numéro de page (défaut: 1)
+        limit: Résultats par page (défaut: 50)
     """
-    print('🌻 [API] GET /api/nostr/bons/all (sans filtre marché)')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 50))
+    
+    print(f'🌻 [API] GET /api/nostr/bons/all (sans filtre marché, page={page}, limit={limit})')
     
     NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
     NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
@@ -1242,7 +1249,11 @@ def get_all_bons_no_filter():
         return jsonify({
             'success': False,
             'error': 'Nostr disabled',
-            'bons': []
+            'bons': [],
+            'page': page,
+            'limit': limit,
+            'total': 0,
+            'count': 0
         })
     
     try:
@@ -1253,24 +1264,36 @@ def get_all_bons_no_filter():
             return jsonify({
                 'success': False,
                 'error': 'Failed to connect to Nostr relay',
-                'bons': []
+                'bons': [],
+                'page': page,
+                'limit': limit,
+                'total': 0,
+                'count': 0
             })
         
         # Passer None pour récupérer tous les bons sans filtre
-        bons = client.get_bons(None)
+        all_bons = client.get_bons(None, max_results=10000)
+        
+        # Appliquer la pagination
+        offset = (page - 1) * limit
+        bons = all_bons[offset:offset + limit]
+        
         client.disconnect()
         
         # Grouper par marché pour stats
         markets = {}
-        for bon in bons:
+        for bon in all_bons:
             m = bon.get('market', 'unknown')
             markets[m] = markets.get(m, 0) + 1
         
-        print(f'🌻 [API] {len(bons)} bons trouvés sur {len(markets)} marchés: {markets}')
+        print(f'🌻 [API] {len(all_bons)} bons trouvés au total sur {len(markets)} marchés: {markets}')
         
         return jsonify({
             'success': True,
             'bons': bons,
+            'page': page,
+            'limit': limit,
+            'total': len(all_bons),
             'count': len(bons),
             'markets': markets,
             'source': 'nostr_strfry'
@@ -1281,27 +1304,42 @@ def get_all_bons_no_filter():
         return jsonify({
             'success': False,
             'error': str(e),
-            'bons': []
+            'bons': [],
+            'page': page,
+            'limit': limit,
+            'total': 0,
+            'count': 0
         })
 
 
 @app.route('/api/nostr/bons', methods=['GET'])
 def get_all_bons():
     """
-    API pour récupérer tous les bons (kind 30303)
+    API pour récupérer tous les bons (kind 30303) avec pagination
     Optionnel: filtrer par marché avec ?market=nom_marche
+    
+    Query params:
+        page: Numéro de page (défaut: 1)
+        limit: Résultats par page (défaut: 50)
+        market: Filtre par marché (optionnel)
     """
     NOSTR_RELAY = os.getenv('NOSTR_RELAY', 'ws://127.0.0.1:7777')
     NOSTR_ENABLED = os.getenv('NOSTR_ENABLED', 'true').lower() == 'true'
     market_name = request.args.get('market')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 50))
     
-    print(f'🌻 [API] GET /api/nostr/bons (market={market_name})')
+    print(f'🌻 [API] GET /api/nostr/bons (market={market_name}, page={page}, limit={limit})')
     
     if not NOSTR_ENABLED:
         return jsonify({
             'success': False,
             'error': 'Nostr disabled',
-            'bons': []
+            'bons': [],
+            'page': page,
+            'limit': limit,
+            'total': 0,
+            'count': 0
         })
     
     try:
@@ -1312,17 +1350,30 @@ def get_all_bons():
             return jsonify({
                 'success': False,
                 'error': 'Failed to connect to Nostr relay',
-                'bons': []
+                'bons': [],
+                'page': page,
+                'limit': limit,
+                'total': 0,
+                'count': 0
             })
         
-        bons = client.get_bons(market_name)
+        # Récupérer tous les bons d'abord pour compter
+        all_bons = client.get_bons(market_name, max_results=10000)
+        
+        # Appliquer la pagination
+        offset = (page - 1) * limit
+        bons = all_bons[offset:offset + limit]
+        
         client.disconnect()
         
-        print(f'🌻 [API] {len(bons)} bons trouvés pour market={market_name}')
+        print(f'🌻 [API] {len(all_bons)} bons trouvés au total, page {page} avec {len(bons)} bons')
         
         return jsonify({
             'success': True,
             'bons': bons,
+            'page': page,
+            'limit': limit,
+            'total': len(all_bons),
             'count': len(bons),
             'market': market_name,
             'source': 'nostr_strfry'
@@ -1333,7 +1384,11 @@ def get_all_bons():
         return jsonify({
             'success': False,
             'error': str(e),
-            'bons': []
+            'bons': [],
+            'page': page,
+            'limit': limit,
+            'total': 0,
+            'count': 0
         })
 
 
@@ -1415,7 +1470,7 @@ def submit_feedback():
     
     # Configuration GitHub
     GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-    GITHUB_REPO = os.getenv('GITHUB_REPO', 'copylaradio/TrocZen')
+    GITHUB_REPO = os.getenv('GITHUB_REPO', 'papiche/troczen')
     
     if not GITHUB_TOKEN:
         return jsonify({
@@ -1768,16 +1823,17 @@ def get_circuits(market):
         return jsonify({'error': 'Service DRAGON non disponible'}), 503
     
     try:
-        # Version simplifiée
-        health = dragon.get_market_health(market)
+        # Récupérer les circuits avec pagination
+        circuits_data = dragon.get_circuits(market, page, limit)
         
         return jsonify({
             'success': True,
             'market': market,
-            'page': page,
-            'limit': limit,
-            'loops_30d': health.get('loops_30d', 0),
-            'circuits': []  # TODO: implémenter la liste complète
+            'page': circuits_data.get('page', page),
+            'limit': circuits_data.get('limit', limit),
+            'total': circuits_data.get('total', 0),
+            'count': circuits_data.get('count', 0),
+            'circuits': circuits_data.get('circuits', [])
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

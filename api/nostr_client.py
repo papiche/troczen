@@ -262,14 +262,18 @@ class NostrClient:
     async def get_bons(
         self,
         market_name: Optional[str] = None,
-        max_results: int = MAX_TOTAL_RESULTS
+        max_results: int = MAX_TOTAL_RESULTS,
+        page: int = 1,
+        limit: int = 50
     ) -> List[Dict]:
         """
         Récupérer les bons (kind 30303) avec pagination
         
         Args:
             market_name: Filtre par marché (optionnel)
-            max_results: Nombre maximum de bons à récupérer
+            max_results: Nombre maximum de bons à récupérer (protection)
+            page: Numéro de page (défaut: 1)
+            limit: Résultats par page (défaut: 50)
             
         Returns:
             Liste des bons
@@ -281,12 +285,20 @@ class NostrClient:
             market_tag = normalize_market_tag(market_name)
             additional_filters["#t"] = [market_tag]
         
+        # Calculer l'offset pour la pagination
+        offset = (page - 1) * limit
+        
         # Récupérer avec pagination (le filtrage est fait par le relai!)
+        # On récupère suffisamment d'événements pour couvrir la page demandée
         events = await self.query_events_paginated(
             kinds=[30303],
+            page_size=limit,
             max_results=max_results,
             additional_filters=additional_filters
         )
+        
+        # Appliquer l'offset et limit pour la page demandée
+        events = events[offset:offset + limit]
                 
         bons = []
         for event in events:
@@ -636,14 +648,18 @@ class NostrClientSync:
     def get_bons(
         self,
         market_name: Optional[str] = None,
-        max_results: int = MAX_TOTAL_RESULTS
+        max_results: int = MAX_TOTAL_RESULTS,
+        page: int = 1,
+        limit: int = 50
     ) -> List[Dict]:
         """
         Récupérer les bons (kind 30303) avec pagination
         
         Args:
             market_name: Filtre par marché (optionnel)
-            max_results: Nombre maximum de bons à récupérer
+            max_results: Nombre maximum de bons à récupérer (protection)
+            page: Numéro de page (défaut: 1)
+            limit: Résultats par page (défaut: 50)
             
         Returns:
             Liste des bons
@@ -655,12 +671,20 @@ class NostrClientSync:
             market_tag = normalize_market_tag(market_name)
             additional_filters["#t"] = [market_tag]
         
+        # Calculer l'offset pour la pagination
+        offset = (page - 1) * limit
+        
         # Récupérer avec pagination (le filtrage est fait par le relai!)
+        # On récupère suffisamment d'événements pour couvrir la page demandée
         events = self.query_events_paginated(
             kinds=[30303],
+            page_size=limit,
             max_results=max_results,
             additional_filters=additional_filters
         )
+        
+        # Appliquer l'offset et limit pour la page demandée
+        events = events[offset:offset + limit]
         
         bons = []
         for event in events:

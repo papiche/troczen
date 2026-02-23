@@ -191,6 +191,7 @@ class DUEngine:
         Récupère la liste N1 (liens réciproques).
         
         N1 = ensemble des utilisateurs qui se suivent mutuellement.
+        Optimisé: Récupère tous les kind 3 des follows en une seule requête.
         """
         # Récupérer les follows de l'utilisateur (Kind 3)
         events = await self.client.query_events([{
@@ -208,22 +209,37 @@ class DUEngine:
             if len(tag) >= 2 and tag[0] == 'p':
                 follows.add(tag[1])
         
-        # Pour chaque follow, vérifier la réciprocité
+        if not follows:
+            return []
+        
+        # Récupérer tous les kind 3 des follows en une seule requête
+        # On utilise un filtre authors avec la liste des follows
+        follows_list = list(follows)
+        follow_events = await self.client.query_events([{
+            "kinds": [3],
+            "authors": follows_list,
+            "limit": len(follows_list)  # Un événement par auteur au maximum
+        }])
+        
+        # Créer un dictionnaire pour accéder rapidement aux follows de chaque auteur
+        follows_by_author = {}
+        for event in follow_events:
+            author = event.get('pubkey')
+            if author:
+                follows_by_author[author] = set()
+                for tag in event.get('tags', []):
+                    if len(tag) >= 2 and tag[0] == 'p':
+                        follows_by_author[author].add(tag[1])
+        
+        # Vérifier la réciprocité: un follow est dans N1 si:
+        # 1. L'utilisateur suit ce follow (déjà dans `follows`)
+        # 2. Le follow suit l'utilisateur (présent dans les tags de son kind 3)
         n1 = []
         for follow_pubkey in follows:
-            reciprocal = await self.client.query_events([{
-                "kinds": [3],
-                "authors": [follow_pubkey],
-                "#p": [user_pubkey],
-                "limit": 1
-            }])
-            
-            if reciprocal:
-                # Vérifier que user_pubkey est dans leurs follows
-                for tag in reciprocal[0].get('tags', []):
-                    if len(tag) >= 2 and tag[0] == 'p' and tag[1] == user_pubkey:
-                        n1.append(follow_pubkey)
-                        break
+            # Vérifier si le follow a un kind 3 et s'il suit l'utilisateur
+            if follow_pubkey in follows_by_author:
+                if user_pubkey in follows_by_author[follow_pubkey]:
+                    n1.append(follow_pubkey)
         
         return n1
     
@@ -232,15 +248,29 @@ class DUEngine:
         Récupère la liste N2 (amis des amis réciproques, sans doublons avec N1).
         
         N2 = ensemble des N1 des N1, moins N1 et l'utilisateur.
+        Optimisé: Récupère tous les kind 3 des N1 en une seule requête batch.
         """
         n1 = await self._get_n1_list(user_pubkey)
-        n2_set = set()
         
-        for friend in n1:
-            friend_n1 = await self._get_n1_list(friend)
-            for f in friend_n1:
-                if f != user_pubkey and f not in n1:
-                    n2_set.add(f)
+        if not n1:
+            return []
+        
+        # Récupérer tous les kind 3 des N1 en une seule requête batch
+        n1_events = await self.client.query_events([{
+            "kinds": [3],
+            "authors": n1,
+            "limit": len(n1)  # Un événement par N1 au maximum
+        }])
+        
+        # Extraire tous les follows des N1
+        n2_set = set()
+        for event in n1_events:
+            for tag in event.get('tags', []):
+                if len(tag) >= 2 and tag[0] == 'p':
+                    pubkey = tag[1]
+                    # Exclure l'utilisateur et les N1
+                    if pubkey != user_pubkey and pubkey not in n1:
+                        n2_set.add(pubkey)
         
         return list(n2_set)
     

@@ -157,35 +157,82 @@ class DragonService:
     # ==================== Circuits ====================
     
     async def get_circuits(
-        self, 
+        self,
         market_id: str,
         page: int = 1,
         limit: int = 50
     ) -> Dict:
         """
-        Récupère les circuits indexés d'un marché.
+        Récupère les circuits indexés d'un marché avec pagination.
         
         Args:
             market_id: ID du marché
-            page: Numéro de page
-            limit: Résultats par page
+            page: Numéro de page (défaut: 1)
+            limit: Résultats par page (défaut: 50)
             
         Returns:
-            Liste paginée des circuits
+            Dictionnaire avec pagination et métadonnées
         """
         await self.connect()
         try:
-            circuits = await self.circuit_indexer.get_circuits(
+            # Récupérer tous les circuits (sans limite) pour compter
+            all_circuits = await self.circuit_indexer.get_circuits(
                 market_id,
-                limit=limit
+                limit=10000  # Limite élevée pour compter tous les circuits
             )
+            
+            # Calculer l'offset pour la pagination
+            offset = (page - 1) * limit
+            
+            # Appliquer la pagination
+            circuits = all_circuits[offset:offset + limit]
             
             return {
                 'market_id': market_id,
                 'page': page,
                 'limit': limit,
+                'total': len(all_circuits),
                 'count': len(circuits),
                 'circuits': circuits
+            }
+        finally:
+            await self.disconnect()
+    
+    async def get_bons(
+        self,
+        market_id: str,
+        page: int = 1,
+        limit: int = 50
+    ) -> Dict:
+        """
+        Récupère les bons d'un marché avec pagination.
+        
+        Args:
+            market_id: ID du marché
+            page: Numéro de page (défaut: 1)
+            limit: Résultats par page (défaut: 50)
+            
+        Returns:
+            Dictionnaire avec pagination et métadonnées
+        """
+        await self.connect()
+        try:
+            # Récupérer tous les bons (sans limite) pour compter
+            all_bonds = await self.circuit_indexer.get_active_bonds(market_id)
+            
+            # Calculer l'offset pour la pagination
+            offset = (page - 1) * limit
+            
+            # Appliquer la pagination
+            bonds = all_bonds[offset:offset + limit]
+            
+            return {
+                'market_id': market_id,
+                'page': page,
+                'limit': limit,
+                'total': len(all_bonds),
+                'count': len(bonds),
+                'bonds': bonds
             }
         finally:
             await self.disconnect()
@@ -498,6 +545,91 @@ class DragonServiceSync:
                 "loops_30d": len(circuits),
                 "status": "good" if active_bonds > 10 else "moderate",
                 "computed_at": now
+            }
+        finally:
+            self.client.disconnect()
+    
+    def get_circuits(
+        self,
+        market_id: str,
+        page: int = 1,
+        limit: int = 50
+    ) -> Dict:
+        """
+        Récupère les circuits indexés d'un marché avec pagination (version synchrone).
+        
+        Args:
+            market_id: ID du marché
+            page: Numéro de page (défaut: 1)
+            limit: Résultats par page (défaut: 50)
+            
+        Returns:
+            Dictionnaire avec pagination et métadonnées
+        """
+        if not self.client.connect():
+            return {"error": "Relai inaccessible"}
+        
+        try:
+            # Récupérer tous les circuits (sans limite) pour compter
+            all_circuits = self.circuit_indexer.get_circuits(
+                market_id,
+                limit=10000  # Limite élevée pour compter tous les circuits
+            )
+            
+            # Calculer l'offset pour la pagination
+            offset = (page - 1) * limit
+            
+            # Appliquer la pagination
+            circuits = all_circuits[offset:offset + limit]
+            
+            return {
+                'market_id': market_id,
+                'page': page,
+                'limit': limit,
+                'total': len(all_circuits),
+                'count': len(circuits),
+                'circuits': circuits
+            }
+        finally:
+            self.client.disconnect()
+    
+    def get_bons(
+        self,
+        market_id: str,
+        page: int = 1,
+        limit: int = 50
+    ) -> Dict:
+        """
+        Récupère les bons d'un marché avec pagination (version synchrone).
+        
+        Args:
+            market_id: ID du marché
+            page: Numéro de page (défaut: 1)
+            limit: Résultats par page (défaut: 50)
+            
+        Returns:
+            Dictionnaire avec pagination et métadonnées
+        """
+        if not self.client.connect():
+            return {"error": "Relai inaccessible"}
+        
+        try:
+            # Récupérer tous les bons (sans limite) pour compter
+            all_bonds = self.circuit_indexer.get_active_bonds(market_id)
+            
+            # Calculer l'offset pour la pagination
+            offset = (page - 1) * limit
+            
+            # Appliquer la pagination
+            bonds = all_bonds[offset:offset + limit]
+            
+            return {
+                'market_id': market_id,
+                'page': page,
+                'limit': limit,
+                'total': len(all_bonds),
+                'count': len(bonds),
+                'bonds': bonds
             }
         finally:
             self.client.disconnect()
