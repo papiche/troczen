@@ -223,10 +223,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         cryptoService: _cryptoService,
       );
       final currentDu = await duService.getCurrentGlobalDu();
+      // Forcer la valeur à 0 (Bon manuels à 0)
+      final bonValue = 0.0;
 
       final bon = Bon(
         bonId: bonNpubHex,
-        value: double.parse(_valueController.text),
+        value: bonValue,
         issuerName: _issuerNameController.text,
         issuerNpub: widget.user.npub,
         createdAt: DateTime.now(),
@@ -272,7 +274,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             nsec: nsecHex,
             name: _issuerNameController.text,
             displayName: _issuerNameController.text,
-            about: 'Bon ${_valueController.text} ẐEN - ${_selectedMarket!.name}',
+            about: 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
             picture: imageUrl,
             banner: imageUrl,  // Utilise la même image pour le bandeau
             website: _websiteController.text.trim().isNotEmpty
@@ -294,7 +296,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             seedMarket: _selectedMarket!.seedMarket,
             issuerNpub: widget.user.npub,
             marketName: _selectedMarket!.name,
-            value: double.parse(_valueController.text),
+            value: bonValue,
             category: 'generic',  // TODO: Sélection UI
             wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
           );
