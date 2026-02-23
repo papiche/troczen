@@ -103,6 +103,48 @@ class _MainShellState extends State<MainShell> {
     }
     
     return Scaffold(
+      // ✅ CORRECTION: Ajout d'un AppBar pour permettre l'accès au Drawer
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Color(0xFFFFB347)),
+            tooltip: 'Menu',
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
+        title: Text(
+          _getTabTitle(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        actions: [
+          // Badge de mode utilisateur
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFB347).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFFB347)),
+            ),
+            child: Text(
+              _appMode.label,
+              style: const TextStyle(
+                color: Color(0xFFFFB347),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: IndexedStack(
         index: _currentTab,
         children: _buildViews(),
@@ -117,6 +159,49 @@ class _MainShellState extends State<MainShell> {
       floatingActionButton: _buildMainFAB(),
       drawer: _buildSettingsDrawer(),
     );
+  }
+  
+  /// Retourne le titre de l'onglet actif
+  String _getTabTitle() {
+    switch (_appMode) {
+      case AppMode.flaneur:
+        switch (_currentTab) {
+          case 0:
+            return 'Mon Wallet';
+          case 1:
+            return 'Mon Profil';
+          default:
+            return 'TrocZen';
+        }
+      
+      case AppMode.artisan:
+        switch (_currentTab) {
+          case 0:
+            return 'Mon Wallet';
+          case 1:
+            return 'Explorer';
+          case 2:
+            return 'Ma Caisse';
+          case 3:
+            return 'Mon Profil';
+          default:
+            return 'TrocZen';
+        }
+      
+      case AppMode.alchimiste:
+        switch (_currentTab) {
+          case 0:
+            return 'Mon Wallet';
+          case 1:
+            return 'Explorer';
+          case 2:
+            return 'Observatoire';
+          case 3:
+            return 'Mon Profil';
+          default:
+            return 'TrocZen';
+        }
+    }
   }
   
   /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique des vues selon le mode
@@ -340,7 +425,7 @@ class _MainShellState extends State<MainShell> {
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFB347).withOpacity(0.2),
+                        color: const Color(0xFFFFB347).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.share, color: Color(0xFFFFB347)),
@@ -386,7 +471,7 @@ class _MainShellState extends State<MainShell> {
                   // ✅ LOGS : Accessible à TOUS les modes (debugging)
                   ListTile(
                     leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
-                    title: const Text('📋 Logs de l\'application', style: TextStyle(color: Colors.white)),
+                    title: const Text('📋 Logs de l\'application', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
                     subtitle: Text(
                       'Voir les événements techniques (${Logger.logCount} entrées)',
                       style: const TextStyle(color: Colors.white70),
@@ -446,19 +531,6 @@ class _MainShellState extends State<MainShell> {
                       title: const Text('Vider cache P3', style: TextStyle(color: Colors.white)),
                       subtitle: const Text('Supprimer les P3 locales', style: TextStyle(color: Colors.white70)),
                       onTap: () => _clearP3Cache(),
-                    ),
-                    
-                    const Divider(color: Colors.white24),
-                    
-                    // Logs (Alchimiste uniquement)
-                    ListTile(
-                      leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
-                      title: const Text('Logs de l\'application', style: TextStyle(color: Colors.white)),
-                      subtitle: Text(
-                        'Voir les événements techniques (${Logger.logCount} entrées)',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      onTap: () => _navigateToLogs(),
                     ),
                   ],
                   
@@ -754,70 +826,139 @@ class _MainShellState extends State<MainShell> {
             const SizedBox(height: 16),
             
             // Mode Flâneur
-            RadioListTile<AppMode>(
-              value: AppMode.flaneur,
-              groupValue: _appMode,
-              activeColor: const Color(0xFFFFB347),
-              title: Text(
-                AppMode.flaneur.label,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                AppMode.flaneur.description,
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
-              ),
-              onChanged: (value) {
-                if (value != null) {
-                  Navigator.pop(context);
-                  _changeAppMode(value);
-                }
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _changeAppMode(AppMode.flaneur);
               },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _appMode == AppMode.flaneur
+                      ? const Color(0xFFFFB347).withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _appMode == AppMode.flaneur
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: const Color(0xFFFFB347),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppMode.flaneur.label,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppMode.flaneur.description,
+                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             
-            const Divider(color: Colors.white24),
+            const Divider(color: Colors.white24, height: 24),
             
             // Mode Artisan
-            RadioListTile<AppMode>(
-              value: AppMode.artisan,
-              groupValue: _appMode,
-              activeColor: const Color(0xFFFFB347),
-              title: Text(
-                AppMode.artisan.label,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                AppMode.artisan.description,
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
-              ),
-              onChanged: (value) {
-                if (value != null) {
-                  Navigator.pop(context);
-                  _changeAppMode(value);
-                }
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _changeAppMode(AppMode.artisan);
               },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _appMode == AppMode.artisan
+                      ? const Color(0xFFFFB347).withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _appMode == AppMode.artisan
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: const Color(0xFFFFB347),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppMode.artisan.label,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppMode.artisan.description,
+                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             
-            const Divider(color: Colors.white24),
+            const Divider(color: Colors.white24, height: 24),
             
             // Mode Alchimiste
-            RadioListTile<AppMode>(
-              value: AppMode.alchimiste,
-              groupValue: _appMode,
-              activeColor: const Color(0xFFFFB347),
-              title: Text(
-                AppMode.alchimiste.label,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                AppMode.alchimiste.description,
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
-              ),
-              onChanged: (value) {
-                if (value != null) {
-                  Navigator.pop(context);
-                  _changeAppMode(value);
-                }
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _changeAppMode(AppMode.alchimiste);
               },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _appMode == AppMode.alchimiste
+                      ? const Color(0xFFFFB347).withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _appMode == AppMode.alchimiste
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: const Color(0xFFFFB347),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppMode.alchimiste.label,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppMode.alchimiste.description,
+                            style: const TextStyle(color: Colors.white60, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

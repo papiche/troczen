@@ -72,19 +72,21 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     final notifier = context.watch<OnboardingNotifier>();
     final state = notifier.state;
     
+    // ✅ CORRECTION: Utiliser SingleChildScrollView pour éviter que le clavier recouvre les champs
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+            child: SingleChildScrollView(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                     const SizedBox(height: 16),
                     
                     Text(
@@ -203,9 +205,9 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
+                              color: Colors.orange.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               children: [
@@ -261,13 +263,17 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
                         ],
                       ),
                     ),
+                    
+                    // ✅ Ajouter un peu d'espace en bas pour le clavier
+                    const SizedBox(height: 120),
                   ],
                 ),
               ),
             ),
           ),
+          ),
           
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           
           // Bouton principal
           SizedBox(
@@ -500,12 +506,12 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         
         // ✅ NOUVEAU: Publier les Skill Permits en arrière-plan (ne pas attendre)
         // Cela permet de ne pas ralentir la finalisation de l'onboarding
-        if (state.activityTags != null && state.activityTags!.isNotEmpty) {
+        if (state.activityTags.isNotEmpty) {
           _publishSkillPermitsInBackground(
             nostrService: nostrService,
             npub: user.npub,
             nsec: user.nsec,
-            skillTags: state.activityTags!,
+            skillTags: state.activityTags,
             seedMarket: market.seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
           );
         }
