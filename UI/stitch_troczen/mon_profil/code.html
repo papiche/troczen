@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#121212",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen pb-20">
+<!-- Header Section -->
+<header class="relative bg-gradient-to-b from-primary/20 to-transparent pt-12 pb-6 px-6 text-center">
+<div class="flex justify-between items-center absolute top-4 left-0 right-0 px-6 w-full">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100 cursor-pointer">settings</span>
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100 cursor-pointer">share</span>
+</div>
+<div class="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-primary to-orange-400 text-white text-5xl font-bold shadow-xl border-4 border-background-dark mb-4">
+            M
+        </div>
+<h1 class="text-2xl font-bold tracking-tight">Marc V.</h1>
+<p class="text-primary font-medium">@marcv_zen</p>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Membre depuis 2023</p>
+</header>
+<main class="px-4 space-y-6">
+<!-- Toile de confiance Section -->
+<section class="bg-white dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary">hub</span>
+<h3 class="text-lg font-bold">Toile de confiance</h3>
+</div>
+<div class="flex justify-between items-end mb-2">
+<p class="text-sm font-medium">Suivis mutuels</p>
+<p class="text-sm font-bold text-primary">3 / 5</p>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden mb-3">
+<div class="bg-primary h-full rounded-full" style="width: 60%;"></div>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                Encore 2 pour débloquer le Dividende Universel (DU)
+            </p>
+</section>
+<!-- Mes statistiques Section -->
+<section class="space-y-4">
+<h3 class="text-lg font-bold flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-primary">monitoring</span>
+                Mes statistiques
+            </h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Émis</p>
+<p class="text-xl font-bold">12 bons</p>
+<p class="text-sm text-primary font-medium">300 ZEN</p>
+</div>
+<div class="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+<p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Reçus</p>
+<p class="text-xl font-bold">14 bons</p>
+<p class="text-sm text-primary font-medium">150 ZEN</p>
+</div>
+</div>
+<div class="bg-primary/10 dark:bg-primary/20 p-4 rounded-xl border border-primary/30 flex justify-between items-center">
+<p class="font-medium">Total Échangé</p>
+<p class="text-2xl font-black text-primary">450 ZEN</p>
+</div>
+</section>
+<!-- Clés cryptographiques Section -->
+<section class="bg-white dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+<h3 class="text-lg font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">key</span>
+                Clés cryptographiques
+            </h3>
+<div class="space-y-3">
+<div>
+<label class="text-xs text-slate-500 dark:text-slate-400 block mb-1">Clé publique (npub)</label>
+<div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
+<code class="text-xs truncate flex-1 opacity-70">npub1marc7vzen8929fkjs93k...</code>
+<button class="text-primary">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+</div>
+</div>
+<div>
+<label class="text-xs text-slate-500 dark:text-slate-400 block mb-1">Clé privée (nsec)</label>
+<div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
+<code class="text-xs truncate flex-1 opacity-40">••••••••••••••••••••••••••••••••</code>
+<button class="text-slate-400">
+<span class="material-symbols-outlined text-[18px]">visibility_off</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-background-dark/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-4 py-2 z-50">
+<div class="max-w-md mx-auto flex justify-between items-center">
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400 px-3 py-1" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Accueil</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400 px-3 py-1" href="#">
+<span class="material-symbols-outlined">swap_horiz</span>
+<span class="text-[10px] font-medium">Échanges</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400 px-3 py-1" href="#">
+<span class="material-symbols-outlined text-[28px] text-primary">add_circle</span>
+<span class="text-[10px] font-medium">Donner</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary px-3 py-1" href="#">
+<span class="material-symbols-outlined font-variation-fill">person</span>
+<span class="text-[10px] font-bold">Profil</span>
+</a>
+</div>
+</nav>
+<style>
+        .font-variation-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</body></html>

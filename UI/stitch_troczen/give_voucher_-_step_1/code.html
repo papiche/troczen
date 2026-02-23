@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header -->
+<header class="flex items-center p-4 justify-between bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<button class="text-slate-900 dark:text-slate-100 flex size-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h2 class="text-lg font-bold leading-tight tracking-tight">Donner (Mode Miroir)</h2>
+</div>
+<button class="text-primary font-semibold text-sm">Aide</button>
+</header>
+<!-- Main Content Area: Split View -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Top Half (White Background for QR visibility) -->
+<section class="flex-1 flex flex-col items-center justify-center bg-white p-6">
+<div class="text-center mb-4">
+<p class="text-slate-500 font-medium text-sm uppercase tracking-wider mb-1">Montrez ce code</p>
+<h1 class="text-primary text-4xl font-extrabold">50 ZEN</h1>
+</div>
+<div class="relative p-4 bg-white border-4 border-primary rounded-xl shadow-lg">
+<div class="w-48 h-48 bg-center bg-no-repeat bg-cover" data-alt="Un grand code QR noir sur fond blanc" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC8ZzN3WZb09sc71q-IlPZRHKXxX-YThuQPq0dfGmL1CuAc5SfHmgLNLTmTgl6t7AZBd7E3NZ6Omr5XwIt41DIOmOflIJvsYhA41JRnJnJVVKRqFF2LgRVTx-C5D-OB3rGZ0pxv4YAjwc40O63g7c9WtWuyPnGizJEmNov4tptA7DiOLFvcXvZWLZ2nVjcfMRzkkaQcl3LhZq3rx6ObQyR3JqWE6-QoxttyjXRw6DQObWngaY8ezAKDreaOH9o3M23HMuhhxb24qyuj");'>
+</div>
+</div>
+<p class="mt-4 text-slate-400 text-xs italic">Usage unique • Valable 5 min</p>
+</section>
+<!-- Middle Separator -->
+<div class="h-1 bg-primary w-full shadow-[0_0_15px_rgba(236,91,19,0.5)] z-10"></div>
+<!-- Bottom Half (Dark Theme / Camera View) -->
+<section class="flex-1 flex flex-col items-center justify-center bg-background-dark relative overflow-hidden">
+<!-- Simulated Camera Feed Background -->
+<div class="absolute inset-0 opacity-40 grayscale" data-alt="Vue floue de la caméra montrant un environnement sombre" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCaPAZBEJpAKgesCzW0QzPXKXXNCi_xN3TxUWTPYybNIR8V5psXD4lEAkWs_N6PMNK1-uht0cnIwqnFbXT0K7koz1YYeDsfXr4U2xjSSPK9gdVxzezju6J8ZOk5Wo0LF9aBs5AfSNrZiW3pGvSjgybm1UtlcX8nSln6_QM3Qm86Ah0J0AFf7YplWjt4h8r6Fbf5Al7tHAWzByTxN2_oq2DNkJ4ntMrmh--zh0AtLuqGlSniqQxZBw724aALHMW9c9Im4AL5dWDFpJll'); background-size: cover;">
+</div>
+<!-- Aiming Square -->
+<div class="relative w-64 h-64 flex items-center justify-center z-20">
+<!-- Corner Borders -->
+<div class="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-primary rounded-tl-xl"></div>
+<div class="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-primary rounded-tr-xl"></div>
+<div class="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-primary rounded-bl-xl"></div>
+<div class="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-primary rounded-br-xl"></div>
+<!-- Scanning Line -->
+<div class="w-full h-0.5 bg-primary/50 absolute top-1/2 -translate-y-1/2 shadow-[0_0_10px_#ec5b13]"></div>
+<span class="material-symbols-outlined text-primary/30 text-6xl">qr_code_scanner</span>
+</div>
+<!-- Status Message -->
+<div class="absolute bottom-8 left-0 right-0 px-8 text-center z-20">
+<div class="bg-primary/20 backdrop-blur-md border border-primary/30 py-3 px-6 rounded-full inline-block">
+<p class="text-white font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">info</span>
+                        Placez les téléphones face à face
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="flex border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-background-dark px-4 pb-6 pt-2">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<p class="text-[10px] font-medium leading-normal">Accueil</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">sync_alt</span>
+<p class="text-[10px] font-medium leading-normal">Échanges</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">featured_seasonal_and_gifts</span>
+<p class="text-[10px] font-bold leading-normal">Donner</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">person</span>
+<p class="text-[10px] font-medium leading-normal">Profil</p>
+</a>
+</nav>
+</body></html>

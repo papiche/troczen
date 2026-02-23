@@ -1,146 +1,134 @@
-# Navigation V4 — TrocZen
+# Navigation Adaptative (Progressive Disclosure) — TrocZen
 
-Documentation complète de la refonte de navigation (v1.0.8, 18 février 2026).
+Documentation complète de l'architecture de navigation adaptative (Février 2026).
 
 ---
 
-## Architecture MainShell
+## Architecture `MainShell` Dynamique
 
-La navigation repose sur un `MainShell` avec `IndexedStack` (4 vues) + `NavigationBar` + FAB contextuel + Drawer paramètres.
+La navigation repose sur un `MainShell` utilisant un `IndexedStack` pour conserver l'état des vues. Cependant, contrairement à la V4 statique, la navigation s'adapte dynamiquement au **Mode d'Utilisation** (`AppMode`) choisi par l'utilisateur (Progressive Disclosure) pour réduire la surcharge cognitive.
 
 ```dart
 Scaffold(
-  body: IndexedStack(index: _currentTab, children: [
-    WalletView(),      // 0 — Mon Wallet
-    ExploreView(),     // 1 — Explorer / Marché
-    DashboardView(),   // 2 — Dashboard économique
-    ProfileView(),     // 3 — Mon Profil
-  ]),
-  bottomNavigationBar: NavigationBar(...),
-  floatingActionButton: _buildContextualFAB(),
-  drawer: _buildSettingsDrawer(),
+  body: IndexedStack(
+    index: _currentTab, 
+    children: _buildViews() // Dynamique : 2 ou 4 vues selon le mode
+  ),
+  bottomNavigationBar: NavigationBar(
+    destinations: _buildDestinations() // S'adapte au mode
+  ),
+  floatingActionButton: _buildMainFAB(), // Contextuel au tab ET au mode
+  drawer: _buildSettingsDrawer(), // Contenu filtré selon le mode
 )
 ```
 
-**Fichiers créés :**
-```
+**Fichiers centraux :**
+```text
 lib/screens/main_shell.dart
-lib/screens/views/wallet_view.dart
-lib/screens/views/explore_view.dart
-lib/screens/views/dashboard_view.dart
-lib/screens/views/profile_view.dart
+lib/models/app_mode.dart
+lib/providers/app_mode_provider.dart
 ```
 
 ---
 
-## Les 4 vues
+## Les 3 Modes de Navigation
 
-| Onglet | Vue | Fonction | FAB |
-|--------|-----|----------|-----|
-| 0 | WalletView | Bons P2 de l'utilisateur | 📷 Scanner |
-| 1 | ExploreView | Marché local + P3 disponibles | ➕ Créer bon |
-| 2 | DashboardView | Analytics économiques (fusion MerchantDashboard) | 📤 Exporter |
-| 3 | ProfileView | Profil, clés Nostr, G1pub | ✏️ Modifier |
+L'interface se métamorphose en fonction du "chapeau" porté par l'utilisateur :
 
-### WalletView
-- Liste bons avec PaniniCard, mode galerie
-- Détails en modal bottom sheet
-- État vide explicatif
-- `AutomaticKeepAliveClientMixin` pour conserver l'état entre onglets
-
-### ExploreView
-- Affichage du marché configuré
-- Grille P3 disponibles (2 colonnes)
-- Navigation vers MarketScreen
-
-### DashboardView
-- 3 onglets : Vue d'ensemble / Graphiques / Activité
-- Métriques : valeur totale, nombre de bons, taux de croissance 30j
-- ⏳ Graphiques et activité à implémenter
-
-### ProfileView
-- Avatar circulaire, npub/nsec (nsec masqué), g1pub
-- Copie dans presse-papier
-- Clé privée affichée `•••` avec avertissement
+| Mode | Nombre d'onglets | Vues intégrées |
+| :--- | :---: | :--- |
+| 🚶‍♂️ **Flâneur** | **2** | Wallet, Profil |
+| 🧑‍🌾 **Artisan** | **4** | Wallet, Explorer, **Dashboard Simple**, Profil |
+| 🧙‍♂️ **Alchimiste**| **4** | Wallet, Explorer, **Dashboard Avancé**, Profil |
 
 ---
 
-## Drawer — Paramètres avancés
+## Détail des Vues
 
-Réservé aux paramètres non fréquents :
-1. Configuration relais Nostr / API / IPFS → `SettingsScreen`
-2. Exporter seed de marché (QR code)
-3. Synchroniser Nostr (P3)
-4. Vider cache P3 (**confirmation requise**)
-5. À propos / version
-6. Feedback (via backend proxy — **jamais de token GitHub dans l'app**)
+| Onglet | Vue | Fonction | FAB Associé |
+|--------|-----|----------|-------------|
+| **0** | `WalletView` | Bons P2 de l'utilisateur (galerie Panini). | 📷 Recevoir (Flâneur)<br>➕ Créer / 📷 Recevoir (Artisan+) |
+| **1** | `ExploreView` | Marché local, P3 dispos et WoTx2 (Savoir-Faire). | *Aucun* |
+| **2** | `DashboardSimpleView` | *[Artisan]* Métriques comptables simples (Solde, Entrées/Sorties, Historique). | 📤 Exporter |
+| **2** | `DashboardView` | *[Alchimiste]* Analytics éco. (C², Alpha), requêtes au moteur DRAGON. | 📤 Exporter |
+| **3** | `ProfileView` | Profil, clés Nostr, G1pub, Jauge Toile de Confiance (N1). | ✏️ Modifier |
+
+*Note : `MerchantDashboardScreen` a été définitivement supprimé et remplacé par l'architecture à double dashboard (`DashboardSimpleView` / `DashboardView`).*
 
 ---
 
-## Migration depuis WalletScreen
+## Le Bouton d'Action Flottant (FAB) Contextuel
 
-### Point d'entrée (`main.dart`)
-```dart
-// AVANT
-Navigator.pushReplacement(context,
-  MaterialPageRoute(builder: (_) => WalletScreen(user: user)));
+Le FAB change en fonction de l'onglet actif **et** du mode d'utilisation :
 
-// APRÈS
-Navigator.pushReplacement(context,
-  MaterialPageRoute(builder: (_) => MainShell(user: user)));
+### En Mode Flâneur
+- **Wallet (0)** : Uniquement le bouton "📷 Recevoir" (Scan QR).
+- **Profil (1)** : Masqué.
+
+### En Modes Artisan & Alchimiste
+- **Wallet (0)** : **Double FAB** empilé.
+  - "➕ Créer" (Ouvre `CreateBonScreen`)
+  - "📷 Recevoir" (Ouvre `MirrorReceiveScreen`)
+- **Explorer (1)** : Masqué.
+- **Dashboard (2)** : "📤 Exporter" (les données comptables).
+- **Profil (3)** : "✏️ Modifier" (Ouvre `UserProfileScreen`).
+
+---
+
+## Le Menu Latéral (Drawer) Adaptatif
+
+Le Drawer centralise les paramètres avancés. Son contenu est filtré dynamiquement selon le mode :
+
+### Toujours visible (Tous modes)
+1. **Partager TrocZen** 📤 : Accès à `ApkShareScreen` (Serveur HTTP local + QR Code) pour distribution virale de l'APK.
+2. **Changer de mode** 🔄 : Permet de basculer librement entre Flâneur, Artisan et Alchimiste.
+3. **Envoyer un feedback** 💬 : Création automatique d'Issue GitHub via le backend proxy.
+4. **Logs** 🐛 : Accès à l'historique technique (`LoggerService`).
+5. **Relais Nostr / API** ⚙️ : Configuration des relais et de la graine.
+
+### Fonctionnalités Avancées (Artisan + Alchimiste)
+6. **Synchroniser Nostr** ⟳ : Déclenche le fetching des Kind 30303.
+
+### Outils Techniques (Alchimiste uniquement)
+7. **Exporter seed marché** 🔑 : Affiche le QR Code de la seed pour recruter.
+8. **Vider cache P3** 🗑️ : Bouton d'urgence (avec confirmation).
+
+---
+
+## Écrans toujours accessibles via "Push"
+
+Bien que non présents dans la barre de navigation, ces écrans restent accessibles contextuellement :
+- `ScanScreen` / `MirrorReceiveScreen` — Via le FAB du Wallet.
+- `CreateBonScreen` — Via le FAB du Wallet (Artisan+).
+- `MarketScreen` — Via l'onglet Explorer (Rejoindre/Créer un marché).
+- `BonJourneyScreen` — Via les détails d'un bon (Carnet de voyage / Révélation de circuit).
+- `SettingsScreen` — Via le Drawer.
+
+---
+
+## Performances et UX
+
+| Opération | Implémentation | Avantage |
+|-----------|----------------|----------|
+| **Changement d'onglet** | `IndexedStack` | **Instantané**, pas de rechargement des vues. |
+| **Maintien d'état** | `AutomaticKeepAliveClientMixin` | Le scroll de la galerie de bons est conservé. |
+| **Surcharge cognitive** | `AppModeProvider` | Les acheteurs ne voient pas les outils complexes des émetteurs. |
+| **Sync massive** | Batching SQLite (`saveP3BatchToCache`) | Évite le Jank (freeze de l'UI) lors de la réception de centaines de bons. |
+
+---
+
+## État d'avancement (v1.0.9)
+
+- [x] MainShell avec `IndexedStack` dynamique.
+- [x] Implémentation du système `AppMode` (Progressive Disclosure).
+- [x] Séparation `DashboardSimpleView` (Artisan) et `DashboardView` (Alchimiste).
+- [x] Drawer adaptatif intégrant `ApkShareScreen`.
+- [x] FAB empilé pour la vue Wallet.
+- [x] Backend proxy feedback implémenté (`api_backend.py`).
+- [x] Migration de `FlutterSecureStorage` vers SQLite pour le cache P3 (pour éviter les crashs OOM).
 ```
 
-### MerchantDashboardScreen déprécié
-Fusionné dans `DashboardView`. Pour accès programmatique :
-```dart
-// Naviguer vers l'onglet Dashboard
-final shell = context.findAncestorStateOfType<MainShellState>();
-shell?.switchTab(2);
-```
-
-### Écrans toujours accessibles via push
-- `ScanScreen` — via FAB Wallet
-- `CreateBonScreen` — via FAB Explorer
-- `MarketScreen` — via ExploreView
-- `SettingsScreen` — via Drawer
-- `GalleryScreen` — via WalletView
-
-### Écrans masqués de l'UI (deep link uniquement)
-- `AtomicSwapScreen` — accessible via action spécifique
-- `MerchantDashboardScreen` — déprécié, utiliser DashboardView
-
----
-
-## Méthodes à implémenter dans StorageService
-
-```dart
-Future<List<Map<String, dynamic>>> getP3List() async { ... }
-Future<void> saveP3List(List<Map<String, dynamic>> p3List) async { ... }
-Future<void> clearP3Cache() async { ... }
-Future<DateTime?> getLastP3Sync() async { ... }
-```
-
----
-
-## Performances
-
-| Opération | Avant | Après |
-|-----------|-------|-------|
-| Changement d'onglet | ~300ms (push/pop) | **instantané** (IndexedStack) |
-| Retour à une vue déjà ouverte | rechargement | **instantané** (état conservé) |
-| Reconstructions de widgets | fréquentes | -60% (AutomaticKeepAlive) |
-
----
-
-## Checklist
-
-- [x] MainShell avec IndexedStack
-- [x] 4 vues principales
-- [x] FAB contextuel
-- [x] Drawer paramètres avancés
-- [x] Migration main.dart
-- [ ] `getP3List()` / `clearP3Cache()` dans StorageService
-- [ ] `getEvents()` dans AuditTrailService
-- [ ] Graphiques Dashboard (onglets 2 & 3)
-- [ ] Backend proxy feedback
-- [ ] Tests automatisés navigation
+### Pourquoi ces modifications ?
+1. **Cohérence totale avec le code :** Le fichier reflète maintenant l'utilisation de l'enum `AppMode`, du `MainShell` dynamique, du serveur d'APK (`ApkShareScreen`) et du double FAB empilé pour la création/réception de bons.
+2. **Clarification de l'architecture :** Il explique pourquoi `MerchantDashboardScreen` n'existe plus (remplacé par les vues simples et avancées).
+3. **Mise à jour des performances :** Mention du Batching SQLite qui a été mis en place pour régler les problèmes de freezes UI évoqués dans vos fichiers (`CacheDatabaseService`).

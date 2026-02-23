@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#ec5b13",
+              "background-light": "#f8f6f6",
+              "background-dark": "#221610",
+              "success": "#10b981",
+            },
+            fontFamily: {
+              "display": ["Public Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<header class="flex items-center bg-background-light dark:bg-background-dark p-4 justify-between border-b border-primary/10">
+<div class="flex size-12 shrink-0 items-center justify-center cursor-pointer">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-12">Mirror Mode</h2>
+</header>
+<main class="flex-1 flex flex-col overflow-y-auto">
+<!-- Top Half: QR Code Section -->
+<div class="bg-white dark:bg-slate-800 p-8 flex flex-col items-center justify-center space-y-4">
+<div class="flex flex-col items-center space-y-2">
+<span class="text-success font-bold text-sm uppercase tracking-wider">Confirmation generated</span>
+<p class="text-slate-500 dark:text-slate-400 text-base">Let the donor scan</p>
+</div>
+<div class="relative p-4 bg-white rounded-xl shadow-lg border border-slate-100">
+<img alt="QR code for donor to scan" class="w-48 h-48" data-alt="Large black and white QR code on white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7p2OfgBk_Epm-PxK9k32PHHXFx1Dxwr699nLufW6re0YZZC8-8bsRf1FERt6gGdaxbb02V9t1rXtGlXIHVhJSd3BERcRijJUpn9lza4RueZHwsuDgcjb5ztJpC16xYtJLSDs8G1ZJQSVW4OhxicA8fsZ_c-NRrj7mAz2xK-eO7jzZjb_VI3cqNsyool1ArgzvVWOWGHcV6IOeW8jYqASk48LmXsHhH4br-QspcPxMTEfETfA0TxkzRQA79j88Qbg6dxTp-E_RF6Oq"/>
+</div>
+</div>
+<!-- Bottom Half: Camera Preview with Overlay -->
+<div class="flex-1 relative min-h-[300px] bg-background-dark overflow-hidden">
+<!-- Camera Placeholder -->
+<div class="absolute inset-0 bg-cover bg-center opacity-40" data-alt="Blurred background representing a camera viewfinder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAl-ItyNrZNpb28jb1cX9xvqOtu0DS5l_bOaM98QD7oEHw6lyRC92Th0NOcSCjcfIQ4-tE_r52biLWInFbKK1Nw_rAQNjaVcjUOgAJ6ruBf2nLWAyGNnejAatoIWbRDAmPPHov0ox1i-Ki-qNNkrVIOFmJmXLI4njaAV0T2tEF6OyHSBnzbXAheoSMV8dmVbH-S9djGfQFsNtTb-6bxJTcgrO3GB_eb9F9q4-reHkbb_prdfEbnFadFj5bojWeEdnE4FV4H-15bcVdS');">
+</div>
+<!-- Scan Complete Overlay -->
+<div class="absolute inset-0 flex flex-col items-center justify-center bg-background-dark/40 backdrop-blur-[2px]">
+<div class="bg-primary/20 p-6 rounded-full mb-4">
+<span class="material-symbols-outlined text-primary text-6xl" style="font-variation-settings: 'FILL' 1">check_circle</span>
+</div>
+<h3 class="text-white text-2xl font-bold">Scan complete</h3>
+<p class="text-white/80 mt-2">Initial scan verified</p>
+</div>
+<!-- Success Message at Bottom of Preview -->
+<div class="absolute bottom-6 left-0 right-0 px-6">
+<div class="bg-success/90 backdrop-blur-md text-white py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-xl">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-bold text-lg">Voucher Received!</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="flex gap-2 border-t border-primary/10 bg-background-light dark:bg-background-dark px-4 pb-6 pt-3">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<p class="text-[10px] font-bold tracking-wider uppercase">HOME</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">tab_unselected</span>
+<p class="text-[10px] font-bold tracking-wider uppercase">MIRROR</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<p class="text-[10px] font-bold tracking-wider uppercase">HISTORY</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<p class="text-[10px] font-bold tracking-wider uppercase">PROFILE</p>
+</a>
+</nav>
+</body></html>

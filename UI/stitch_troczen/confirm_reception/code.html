@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Confirmation de Réception de Bon - TrocZen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-slate-200 dark:bg-slate-900 font-display">
+<!-- Screen Mockup Wrapper (simulating mobile view) -->
+<div class="relative mx-auto max-w-[430px] h-screen overflow-hidden bg-background-light dark:bg-background-dark shadow-2xl flex flex-col">
+<!-- Blurred Background Content (Simulating the scan screen behind) -->
+<div class="flex-1 p-6 opacity-40">
+<div class="flex items-center justify-between mb-8">
+<div class="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+<div class="h-6 w-24 bg-slate-300 dark:bg-slate-700 rounded"></div>
+<div class="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+</div>
+<div class="aspect-square w-full border-4 border-dashed border-primary rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-6xl text-primary">qr_code_scanner</span>
+</div>
+</div>
+<!-- Bottom Sheet Overlay -->
+<div class="absolute inset-0 bg-black/60 flex flex-col justify-end">
+<!-- Bottom Sheet Container -->
+<div class="bg-background-dark text-slate-100 rounded-t-[2.5rem] p-6 shadow-2xl border-t border-primary/10">
+<!-- BottomSheetHandle -->
+<div class="flex justify-center mb-6">
+<div class="h-1.5 w-12 rounded-full bg-slate-700"></div>
+</div>
+<!-- Circular Icon Header -->
+<div class="flex flex-col items-center mb-6">
+<div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-white text-3xl">card_giftcard</span>
+</div>
+<h2 class="text-2xl font-bold text-slate-100">Recevoir ce bon ?</h2>
+</div>
+<!-- Voucher Preview Box -->
+<div class="mb-6 p-6 rounded-xl border-2 border-primary bg-primary/5 text-center">
+<p class="text-primary text-sm font-semibold uppercase tracking-wider mb-1">Valeur du bon</p>
+<p class="text-primary text-5xl font-extrabold leading-tight">50.00 ẐEN</p>
+</div>
+<!-- Issuer Info Box -->
+<div class="mb-6 bg-slate-800/50 p-4 rounded-xl flex items-center gap-4">
+<div class="h-14 w-14 rounded-xl bg-cover bg-center shrink-0" data-alt="Avatar of Alice la Boulangère baker" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDPLBPtO2kOEFzoHeDHrR9H0LGqzFxQXqFYh0V4SOc2gIcrKC46aE8Z9G-J_jEVG4XzaWJgNdAXhXRj4s9oxEXlo0C4n1x0LdUN9cFUV-GA8gtFd7nv-9fG7la3ET6AXJYPgO7YKROciq4RWJFEhjxLR2xiA9lCfdcqGT7-UNkOwglex5Pduqp7QH82MaZ52Nq4qJPUByrXh8qinJiv1j-XCe0vh-GSS6xF4uoPl73Q9LZjcuLtXVl7KTufth4mIKMDPHdWbjzRZ450')"></div>
+<div class="flex-1 overflow-hidden">
+<p class="text-slate-400 text-xs font-medium">Émis par</p>
+<p class="text-slate-100 font-bold text-lg truncate">Alice la Boulangère</p>
+<p class="text-primary text-xs font-mono truncate">npub1...7a9x</p>
+</div>
+</div>
+<!-- Info Box (Blue/Teal Accents) -->
+<div class="mb-8 p-3 bg-sky-900/30 border border-sky-500/30 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-sky-400 text-lg">info</span>
+<div class="flex-1">
+<p class="text-sky-100 text-sm leading-snug">Verify the issuer before accepting</p>
+<a class="text-sky-400 text-xs font-bold flex items-center mt-1 uppercase tracking-wide" href="#">
+                            En savoir plus
+                            <span class="material-symbols-outlined text-[14px] ml-1">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex gap-4 mb-2">
+<button class="flex-1 py-4 px-6 rounded-xl border-2 border-slate-700 text-slate-300 font-bold hover:bg-slate-800 transition-colors">
+                        Refuser
+                    </button>
+<button class="flex-1 py-4 px-6 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/25 hover:brightness-110 active:scale-95 transition-all">
+                        Accepter
+                    </button>
+</div>
+<!-- Safe area padding for mobile -->
+<div class="h-4"></div>
+</div>
+</div>
+</div>
+</body></html>

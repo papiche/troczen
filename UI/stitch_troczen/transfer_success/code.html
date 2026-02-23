@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                        "success-green": "#22c55e"
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-success-green font-display min-h-screen flex flex-col">
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Navigation -->
+<div class="flex items-center p-4 justify-end">
+<div class="text-white flex size-12 shrink-0 items-center justify-center cursor-pointer">
+<span class="material-symbols-outlined text-3xl">close</span>
+</div>
+</div>
+<!-- Main Content (Centered) -->
+<div class="flex-grow flex flex-col items-center justify-center px-6 text-center">
+<!-- Success Icon -->
+<div class="mb-8 flex items-center justify-center">
+<div class="bg-white/20 p-6 rounded-full">
+<div class="bg-white text-success-green flex size-24 shrink-0 items-center justify-center rounded-full shadow-lg">
+<span class="material-symbols-outlined text-6xl font-bold">check</span>
+</div>
+</div>
+</div>
+<!-- Success Message -->
+<h1 class="text-white text-3xl font-bold leading-tight mb-2">Transfert Réussi !</h1>
+<p class="text-white/80 text-lg mb-12">Le bon a été transféré avec succès.</p>
+<!-- Summary Card -->
+<div class="w-full max-w-sm">
+<div class="flex flex-col gap-4 rounded-xl bg-white p-6 shadow-xl">
+<div class="flex items-center gap-4 text-left">
+<div class="size-16 shrink-0 bg-primary/10 rounded-full flex items-center justify-center overflow-hidden">
+<div class="w-full h-full bg-center bg-no-repeat bg-cover" data-alt="Avatar icon of Alice the Baker bakery shop" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCiqnnjuC6oF70HDUT4USs-PhVi4bMXQlKedjHv13AqEg_XrAFH1Eql3aF5PtRJjg29MPErrEYjeWj0UD0FxKe4056S4UwRjCb04EGAPcwAUkgYgPA1J2kUglhaaISr_VYnO4FmXsxaI9HIpXYo-dGImKi8Dk9i3wrZ8S8z0MlU4JWNc6qc0JCgj9RA8lHvNO6Jx4FjEPt-fSmzPPrbEzDKKevM1JSKeCsr0fXCWzs8qMbW6YV6sqV8GmFxQEM7kq4EQCXcJGzA-VR0");'></div>
+</div>
+<div class="flex flex-col">
+<p class="text-slate-500 text-sm font-medium">Boulangerie</p>
+<h3 class="text-slate-900 text-xl font-bold">Alice la Boulangère</h3>
+</div>
+</div>
+<div class="border-t border-slate-100 my-2"></div>
+<div class="flex justify-between items-center">
+<div class="text-left">
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Montant</p>
+<p class="text-primary text-2xl font-black">50 ZEN</p>
+</div>
+<div class="text-right">
+<p class="text-slate-500 text-xs uppercase tracking-wider font-semibold">Envoyé à</p>
+<p class="text-slate-900 text-lg font-bold">Marc V.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Action -->
+<div class="p-6 mt-auto">
+<button class="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-white text-success-green text-lg font-bold shadow-lg hover:bg-slate-50 transition-colors">
+<span class="truncate">Retour à l'accueil</span>
+</button>
+<div class="h-6"></div>
+</div>
+</div>
+</body></html>

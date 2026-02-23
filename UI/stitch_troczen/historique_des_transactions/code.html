@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "accent-orange": "#FFB347",
+                        "accent-blue": "#0A7EA4",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#1a120e",
+                        "card-dark": "#2a1d17",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>TrocZen - Historique</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Top Bar -->
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 px-4 py-4 flex items-center justify-between">
+<h1 class="text-xl font-bold tracking-tight">Historique</h1>
+<button class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto">
+<!-- Summary Cards -->
+<div class="p-4 grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-card-dark p-4 rounded-xl shadow-sm border border-slate-200 dark:border-white/5">
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total échangé</p>
+<p class="text-xl font-bold mt-1 text-accent-blue">450.00 ZEN</p>
+</div>
+<div class="bg-white dark:bg-card-dark p-4 rounded-xl shadow-sm border border-slate-200 dark:border-white/5">
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Transactions (30j)</p>
+<p class="text-xl font-bold mt-1 text-accent-orange">24</p>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 overflow-x-auto px-4 py-2 no-scrollbar">
+<button class="flex-none px-4 py-1.5 rounded-full bg-primary text-white text-sm font-semibold">Tous</button>
+<button class="flex-none px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-sm font-medium">Reçus</button>
+<button class="flex-none px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-sm font-medium">Donnés</button>
+<button class="flex-none px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-sm font-medium">DU</button>
+<button class="flex-none px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 text-sm font-medium">Révélations</button>
+</div>
+<!-- Transaction List -->
+<div class="mt-4 px-4 pb-24">
+<h2 class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Aujourd'hui</h2>
+<div class="space-y-3">
+<!-- Received Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-card-dark p-4 rounded-xl border border-slate-100 dark:border-white/5">
+<div class="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
+<span class="material-symbols-outlined">download</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-sm">Alice la Boulangère</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Aujourd'hui, 14:30</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-green-500">+50.00 ZEN</p>
+</div>
+</div>
+<!-- DU Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-card-dark p-4 rounded-xl border border-slate-100 dark:border-white/5">
+<div class="w-12 h-12 rounded-full bg-accent-blue/10 flex items-center justify-center text-accent-blue">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-sm">Dividende Universel</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Aujourd'hui, 08:00</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-accent-blue">+10.24 ZEN</p>
+</div>
+</div>
+<h2 class="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-6 mb-3">Hier</h2>
+<!-- Given Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-card-dark p-4 rounded-xl border border-slate-100 dark:border-white/5">
+<div class="w-12 h-12 rounded-full bg-accent-orange/10 flex items-center justify-center text-accent-orange">
+<span class="material-symbols-outlined">upload</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-sm">Marché Bio Local</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Hier, 17:15</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-accent-orange">-20.00 ZEN</p>
+</div>
+</div>
+<!-- Revelation Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-card-dark p-4 rounded-xl border border-slate-100 dark:border-white/5">
+<div class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500">
+<span class="material-symbols-outlined">celebration</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-sm">Circuit Révélé</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Hier, 10:45</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-purple-400">+5.00 ZEN</p>
+</div>
+</div>
+<!-- Another Given Item -->
+<div class="flex items-center gap-4 bg-white dark:bg-card-dark p-4 rounded-xl border border-slate-100 dark:border-white/5">
+<div class="w-12 h-12 rounded-full bg-accent-orange/10 flex items-center justify-center text-accent-orange">
+<span class="material-symbols-outlined">upload</span>
+</div>
+<div class="flex-1">
+<h3 class="font-bold text-sm">Atelier Réparation</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Hier, 09:20</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-accent-orange">-15.50 ZEN</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-white/10 px-6 pb-6 pt-3">
+<div class="flex justify-between items-center max-w-lg mx-auto">
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Accueil</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-1">history</span>
+<span class="text-[10px] font-bold uppercase tracking-wider">Échanges</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">send</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Donner</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium uppercase tracking-wider">Profil</span>
+</a>
+</div>
+</nav>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .fill-1 {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</body></html>

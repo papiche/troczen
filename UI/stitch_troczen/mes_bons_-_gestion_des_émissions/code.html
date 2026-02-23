@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#121212",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .panini-card {
+            transition: transform 0.2s;
+            background: linear-gradient(135deg, rgba(236, 91, 19, 0.1) 0%, rgba(20, 20, 20, 1) 100%);
+            border: 1px solid rgba(236, 91, 19, 0.2);
+        }
+        .rare-gradient {
+            background: linear-gradient(135deg, #ec5b13 0%, #632608 100%);
+        }
+        .du-gradient {
+            background: linear-gradient(135deg, #2563eb 0%, #1e1b4b 100%);
+        }
+        .zero-gradient {
+            background: linear-gradient(135deg, #4b5563 0%, #111827 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<!-- Header -->
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-primary/10 px-4 py-4 flex items-center justify-between">
+<h1 class="text-2xl font-bold tracking-tight">Mes Bons</h1>
+<button class="bg-primary hover:bg-primary/90 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">add</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Summary Card -->
+<div class="p-4">
+<div class="bg-primary/10 border border-primary/20 rounded-xl p-6 flex items-center justify-between relative overflow-hidden">
+<div class="relative z-10">
+<p class="text-primary text-sm font-medium uppercase tracking-wider mb-1">Résumé Artisan</p>
+<h2 class="text-3xl font-bold dark:text-white">450 ẐEN</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Total émis • 12 bons actifs</p>
+</div>
+<div class="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">storefront</span>
+</div>
+<!-- Abstract pattern background -->
+<div class="absolute -right-4 -bottom-4 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+</div>
+</div>
+<!-- Filter Tabs -->
+<div class="px-4 mb-6">
+<div class="flex border-b border-slate-200 dark:border-slate-800">
+<button class="flex-1 pb-3 text-sm font-bold border-b-2 border-primary text-primary">Tous</button>
+<button class="flex-1 pb-3 text-sm font-medium text-slate-500 dark:text-slate-400 border-b-2 border-transparent">Bons 0 ẐEN</button>
+<button class="flex-1 pb-3 text-sm font-medium text-slate-500 dark:text-slate-400 border-b-2 border-transparent">Dividendes (DU)</button>
+</div>
+</div>
+<!-- Content Grid -->
+<div class="px-4 grid grid-cols-2 gap-4">
+<!-- Create Bon Zéro Card -->
+<div class="col-span-2 panini-card rounded-xl p-4 flex flex-col items-center text-center justify-center border-dashed border-2 border-primary/40 bg-primary/5 py-8">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-primary">handshake</span>
+</div>
+<h3 class="font-bold text-lg">Créer un Bon Zéro</h3>
+<p class="text-xs text-slate-400 mt-1 px-4">Tisser des liens sans dépenser. Idéal pour un premier contact.</p>
+<button class="mt-4 px-6 py-2 bg-primary rounded-full text-xs font-bold uppercase tracking-widest text-white">Lancer</button>
+</div>
+<!-- Bon de Bienvenue -->
+<div class="panini-card rounded-xl overflow-hidden flex flex-col h-64 shadow-xl">
+<div class="h-32 zero-gradient relative flex items-center justify-center">
+<span class="material-symbols-outlined text-white/50 text-5xl">person_add</span>
+<div class="absolute top-2 right-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold text-white uppercase">Manuel</div>
+</div>
+<div class="p-3 flex-1 flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-sm leading-tight">Bon de Bienvenue</h4>
+<p class="text-[10px] text-slate-500 mt-1">Nouveau contact</p>
+</div>
+<div class="flex items-end justify-between">
+<span class="text-lg font-black text-primary">0 ẐEN</span>
+<span class="material-symbols-outlined text-slate-600 text-sm">info</span>
+</div>
+</div>
+</div>
+<!-- DU Card 1 -->
+<div class="panini-card rounded-xl overflow-hidden flex flex-col h-64 shadow-xl border-blue-500/20">
+<div class="h-32 du-gradient relative flex items-center justify-center">
+<span class="material-symbols-outlined text-white/50 text-5xl">auto_awesome</span>
+<div class="absolute top-2 right-2 bg-blue-600 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-tighter shadow-lg">DU</div>
+</div>
+<div class="p-3 flex-1 flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-sm leading-tight">Dividende Universel</h4>
+<p class="text-[10px] text-slate-500 mt-1">Distribution auto</p>
+</div>
+<div class="flex items-end justify-between">
+<span class="text-lg font-black text-blue-400">10 ẐEN</span>
+<span class="material-symbols-outlined text-blue-900 text-sm">verified</span>
+</div>
+</div>
+</div>
+<!-- Custom Artisan Card -->
+<div class="panini-card rounded-xl overflow-hidden flex flex-col h-64 shadow-xl border-primary/40 col-span-2">
+<div class="flex h-full">
+<div class="w-1/3 bg-cover bg-center h-full" data-alt="Artisan working in a workshop with wood or metal" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD6pbt1Z4jYk33xPx9ADibbn9mAMrdIlUszE7eVpdQEVn5AO2XjYu7zhr5Et8uIrJasjJIVupL5EFyCtoKIaPfiDO7_0lWrLKGBYwDAjudnuvHLgcREQ7dUSYNUYV8EMESMyeniz78tNAv-nl0FjU70ANti_W27VMt_8gn5l3UYnUZNGqWqXESX5hXwqB9yxNtFwShljP3R3Afaw87Y9iN1mrrYDbjTvng0aJrjJQCxOuj8rN6LVc-6b9nlqfrOtuDZjCQznTwkCj73');">
+<div class="w-full h-full bg-primary/20 flex items-center justify-center">
+<div class="bg-black/60 backdrop-blur-sm p-2 rounded-lg">
+<span class="material-symbols-outlined text-primary text-3xl">build</span>
+</div>
+</div>
+</div>
+<div class="w-2/3 p-4 flex flex-col justify-between bg-black/40">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-lg leading-tight">Bon Maintenance</h4>
+<span class="bg-primary/20 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">Manuel</span>
+</div>
+<p class="text-xs text-slate-400 mt-2 italic">"Service expert pour vos outils et équipements"</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-xs text-slate-500 uppercase font-bold tracking-tighter">Valeur Artisan</span>
+<span class="text-2xl font-black text-primary italic">75 ẐEN</span>
+</div>
+<button class="bg-primary/10 hover:bg-primary/20 p-2 rounded-full text-primary transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- DU Card 2 -->
+<div class="panini-card rounded-xl overflow-hidden flex flex-col h-64 shadow-xl border-blue-500/20">
+<div class="h-32 du-gradient relative flex items-center justify-center">
+<span class="material-symbols-outlined text-white/50 text-5xl">auto_awesome</span>
+<div class="absolute top-2 right-2 bg-blue-600 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-tighter">DU</div>
+</div>
+<div class="p-3 flex-1 flex flex-col justify-between">
+<div>
+<h4 class="font-bold text-sm leading-tight">Dividende Universel</h4>
+<p class="text-[10px] text-slate-500 mt-1">Distribution auto</p>
+</div>
+<div class="flex items-end justify-between">
+<span class="text-lg font-black text-blue-400">20 ẐEN</span>
+<span class="material-symbols-outlined text-blue-900 text-sm">verified</span>
+</div>
+</div>
+</div>
+<!-- Placeholder for scrolling -->
+<div class="h-10 col-span-2"></div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 bg-background-light dark:bg-[#1e1e1e] border-t border-slate-200 dark:border-white/5 px-4 pb-6 pt-2 z-20">
+<div class="flex justify-between items-center max-w-md mx-auto">
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-medium uppercase tracking-tight">Wallet</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-1">explore</span>
+<span class="text-[10px] font-bold uppercase tracking-tight">Explorer</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<span class="text-[10px] font-medium uppercase tracking-tight">Ma Caisse</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium uppercase tracking-tight">Profil</span>
+</a>
+</div>
+</nav>
+</body></html>

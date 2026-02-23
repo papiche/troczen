@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark overflow-x-hidden max-w-md mx-auto">
+<!-- Header -->
+<div class="flex items-center p-4 pb-2 justify-between sticky top-0 z-10 bg-background-light dark:bg-background-dark/95 backdrop-blur-sm">
+<div class="text-slate-900 dark:text-slate-100 flex size-12 shrink-0 items-center justify-start">
+<span class="material-symbols-outlined cursor-pointer">close</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-tight flex-1 text-center">Créer un Bon Zéro</h2>
+<div class="size-12"></div> <!-- Spacer for centering -->
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Preview Card Section -->
+<div class="p-4">
+<div class="bg-primary/10 border border-primary/20 bg-cover bg-center flex flex-col items-stretch justify-end rounded-xl pt-[132px] shadow-lg relative overflow-hidden" data-alt="Abstract orange and dark geometric pattern representing a digital card" style='background-image: linear-gradient(to top, rgba(34, 22, 16, 0.9) 0%, rgba(34, 22, 16, 0.2) 60%, rgba(236, 91, 19, 0.3) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuDOcrKKvu2hsRQtamklfuVldF4Jea1HPcrTWa6hg9s29tKeG_JB7QrCy-ditiDIOfllfX0WOCnL6w9Mitm-cPEzSWc8dsBR6GFMywlb8VLXjmYnzVay9K06AXtnCrDrewKBm5H4DvTckcV8U5nUOhHl9So6tYfCAFwLaAfqlEvd_0VQ2P8xZrF3wAIwlHLTfEM3aWA-plTy4GPI3iWHFNFwZw7VFxJDVa1kVwvcfuIKL9btgBAtHOoQPmKT6C7i8aN5Ga2tzfurpsjY");'>
+<div class="absolute top-4 right-4 bg-primary text-white text-xs font-bold px-2 py-1 rounded-full uppercase tracking-widest">Panini Edition</div>
+<div class="flex w-full items-end justify-between gap-4 p-4">
+<div class="flex max-w-[440px] flex-1 flex-col gap-1">
+<p class="text-white tracking-tight text-3xl font-extrabold leading-tight">0 ẐEN</p>
+<p class="text-white/90 text-sm font-medium leading-normal flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">person</span>
+                                Jean Dupont (Émetteur)
+                            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Form Content -->
+<div class="flex flex-col gap-4 px-4 py-2">
+<!-- Input: Nom du bon -->
+<label class="flex flex-col w-full">
+<p class="text-slate-700 dark:text-slate-300 text-sm font-semibold leading-normal pb-2 px-1">Nom du bon</p>
+<input class="flex w-full rounded-xl text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-primary/30 bg-white dark:bg-primary/5 focus:border-primary focus:ring-1 focus:ring-primary h-14 placeholder:text-slate-400 dark:placeholder:text-primary/40 px-4 text-base font-normal outline-none transition-all" placeholder="ex: Bon de Bienvenue" type="text"/>
+</label>
+<!-- Input: Vœu / Petite Annonce -->
+<label class="flex flex-col w-full">
+<div class="flex items-center justify-between pb-2 px-1">
+<p class="text-slate-700 dark:text-slate-300 text-sm font-semibold leading-normal">Vœu / Petite Annonce</p>
+<span class="material-symbols-outlined text-primary text-lg cursor-help" title="Ce vœu voyage de main en main avec le bon">info</span>
+</div>
+<textarea class="flex w-full rounded-xl text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-primary/30 bg-white dark:bg-primary/5 focus:border-primary focus:ring-1 focus:ring-primary min-h-[120px] placeholder:text-slate-400 dark:placeholder:text-primary/40 p-4 text-base font-normal outline-none resize-none transition-all" placeholder="ex: Je cherche du houblon local pour ma prochaine brasse..."></textarea>
+<p class="text-[10px] text-slate-500 dark:text-primary/60 mt-2 italic px-1">💡 Ce message sera transmis à chaque utilisateur qui recevra ce bon.</p>
+</label>
+<!-- Categories -->
+<div class="py-2">
+<p class="text-slate-700 dark:text-slate-300 text-sm font-semibold leading-normal pb-3 px-1">Catégorie</p>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full border border-primary bg-primary text-white text-sm font-medium transition-colors">Alimentation</button>
+<button class="px-4 py-2 rounded-full border border-slate-300 dark:border-primary/30 bg-transparent text-slate-600 dark:text-primary/80 text-sm font-medium hover:border-primary transition-colors">Artisanat</button>
+<button class="px-4 py-2 rounded-full border border-slate-300 dark:border-primary/30 bg-transparent text-slate-600 dark:text-primary/80 text-sm font-medium hover:border-primary transition-colors">Services</button>
+<button class="px-4 py-2 rounded-full border border-slate-300 dark:border-primary/30 bg-transparent text-slate-600 dark:text-primary/80 text-sm font-medium hover:border-primary transition-colors">Prêt d'outils</button>
+<button class="px-4 py-2 rounded-full border border-slate-300 dark:border-primary/30 bg-transparent text-slate-600 dark:text-primary/80 text-sm font-medium hover:border-primary transition-colors">Cours</button>
+</div>
+</div>
+<!-- Security Note -->
+<div class="mt-4 p-4 bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20 flex gap-3">
+<span class="material-symbols-outlined text-primary shrink-0">verified_user</span>
+<p class="text-xs leading-relaxed text-slate-600 dark:text-primary/80">
+                        Ce bon a une valeur monétaire de <span class="font-bold">0 ẐEN</span> mais une <span class="font-bold">grande valeur sociale</span>. Il expirera dans <span class="font-bold">28 jours</span> s'il n'est pas utilisé.
+                    </p>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="p-4 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-primary/10">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+                LANCER LA CRÉATION
+                <span class="material-symbols-outlined">rocket_launch</span>
+</button>
+</div>
+</div>
+</body></html>

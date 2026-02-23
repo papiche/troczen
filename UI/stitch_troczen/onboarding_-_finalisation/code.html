@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden">
+<!-- TopAppBar -->
+<div class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between">
+<div class="text-slate-900 dark:text-slate-100 flex size-12 shrink-0 items-center cursor-pointer" data-icon="arrow_back">
+<span class="material-symbols-outlined">arrow_back</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Onboarding</h2>
+</div>
+<!-- Progress Section -->
+<div class="flex flex-col gap-3 p-4">
+<div class="flex gap-6 justify-between">
+<p class="text-slate-900 dark:text-slate-100 text-base font-medium leading-normal">Récupération du compte</p>
+<p class="text-slate-700 dark:text-slate-300 text-sm font-normal leading-normal">6 sur 7</p>
+</div>
+<div class="rounded-full bg-primary/20 dark:bg-primary/10">
+<div class="h-2 rounded-full bg-primary" style="width: 85%;"></div>
+</div>
+</div>
+<div class="flex flex-col flex-1 max-w-[480px] mx-auto w-full">
+<h3 class="text-slate-900 dark:text-slate-100 tracking-tight text-2xl font-bold leading-tight px-4 text-center pb-2 pt-5">Identifiants de récupération</h3>
+<!-- Warning Banner -->
+<div class="mx-4 my-4 p-4 rounded-xl bg-primary/10 border border-primary/20 flex gap-3 items-start">
+<span class="material-symbols-outlined text-primary">warning</span>
+<p class="text-slate-800 dark:text-slate-200 text-sm font-medium leading-relaxed">
+                    Ces identifiants sont cruciaux. Ils permettent de régénérer votre clé privée en cas de perte de votre appareil. Ne les partagez jamais.
+                </p>
+</div>
+<!-- Form Content -->
+<div class="flex flex-col gap-4 px-4 py-3">
+<label class="flex flex-col w-full">
+<p class="text-slate-900 dark:text-slate-100 text-base font-medium leading-normal pb-2">Login (identifiant unique)</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">person</span>
+<input class="form-input flex w-full min-w-0 flex-1 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-0 focus:ring-2 focus:ring-primary border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 h-14 placeholder:text-slate-400 pl-12 pr-4 text-base font-normal leading-normal" placeholder="Ex: crypto_nomade_24" type="text"/>
+</div>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-slate-900 dark:text-slate-100 text-base font-medium leading-normal pb-2">Mot de passe de récupération</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">lock</span>
+<input class="form-input flex w-full min-w-0 flex-1 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-0 focus:ring-2 focus:ring-primary border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 h-14 placeholder:text-slate-400 pl-12 pr-12 text-base font-normal leading-normal" placeholder="Mot de passe robuste" type="password"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer">visibility</span>
+</div>
+<p class="text-slate-500 text-xs mt-2 px-1">Utilisez au moins 12 caractères avec des chiffres et symboles.</p>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-slate-900 dark:text-slate-100 text-base font-medium leading-normal pb-2">Confirmer le mot de passe</p>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">enhanced_encryption</span>
+<input class="form-input flex w-full min-w-0 flex-1 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-0 focus:ring-2 focus:ring-primary border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 h-14 placeholder:text-slate-400 pl-12 pr-4 text-base font-normal leading-normal" placeholder="Répétez votre mot de passe" type="password"/>
+</div>
+</label>
+</div>
+<!-- Footer Action -->
+<div class="mt-auto p-4 flex flex-col gap-3">
+<div class="flex items-center gap-3 px-2 py-3">
+<input class="rounded text-primary focus:ring-primary h-5 w-5 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" type="checkbox"/>
+<p class="text-slate-700 dark:text-slate-300 text-sm">J'ai bien noté mes identifiants dans un endroit sûr.</p>
+</div>
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-primary text-white text-lg font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+<span class="truncate">Entrer dans TrocZen</span>
+</button>
+<p class="text-center text-slate-500 dark:text-slate-400 text-xs py-2">
+                    En cliquant, vous acceptez les conditions d'utilisation de TrocZen.
+                </p>
+</div>
+<div class="h-5"></div>
+</div>
+</div>
+</body></html>
