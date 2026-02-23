@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import '../services/image_compression_service.dart';
 
 /// Écran de gestion du profil d'un bon
 /// Permet à l'émetteur (détenteur P1) de modifier les métadonnées
@@ -36,8 +37,9 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   final _storage = StorageService();
   
   String _selectedCategory = 'generic';
-  File? _selectedImage;
+  String? _selectedImage;
   bool _isSaving = false;
+  bool _isUploading = false;
   bool _canEdit = false;
 
   final _categories = {
@@ -63,8 +65,39 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   }
 
   void _loadProfile() {
-    _titleController.text = 'Bon ${widget.bon.value.toStringAsFixed(0)} ẐEN - ${widget.bon.issuerName}';
+    _titleController.text = widget.bon.issuerName;
+    _descriptionController.text = widget.bon.wish ?? '';
     _selectedCategory = 'generic';  // TODO: Load from bon metadata
+  }
+
+  Future<void> _selectImage() async {
+    final imageService = ImageCompressionService();
+    
+    setState(() => _isUploading = true);
+    
+    try {
+      final dataUri = await imageService.pickAndCompressAvatar();
+          
+      if (dataUri != null) {
+        setState(() {
+          _selectedImage = dataUri;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur sélection image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -73,16 +106,8 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Upload image vers IPFS si sélectionnée
-      String? imageUrl;
-      if (_selectedImage != null) {
-        final result = await _apiService.uploadImage(
-          npub: widget.user.npub,
-          imageFile: _selectedImage!,
-          type: 'logo',
-        );
-        imageUrl = result?['ipfs_url'] ?? result?['url'];
-      }
+      // 1. Utiliser l'image Base64 si sélectionnée
+      String? imageUrl = _selectedImage ?? widget.bon.picture;
 
       // 2. ✅ Profil mis à jour uniquement sur Nostr (kind 0 et 30303)
       // L'API backend n'est plus utilisée pour les profils
@@ -113,9 +138,9 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             await nostrService.publishUserProfile(
               npub: widget.bon.bonId,
               nsec: nsecHex,
-              name: widget.bon.issuerName,
-              displayName: widget.bon.issuerName,
-              about: 'Bon ${widget.bon.value} ẐEN - ${market.name}',
+              name: _titleController.text,
+              displayName: _titleController.text,
+              about: _descriptionController.text.isNotEmpty ? _descriptionController.text : 'Bon ${widget.bon.value} ẐEN - ${market.name}',
               picture: imageUrl,
               banner: imageUrl,  // Utilise la même image pour le bandeau
               website: widget.user.website,  // Par défaut: site du profil utilisateur
@@ -146,6 +171,15 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           }
         }
       }
+
+      // ✅ Sauvegarder les modifications du Profil du Bon en LOCAL
+      final updatedBon = widget.bon.copyWith(
+        picture: imageUrl ?? widget.bon.picture,
+        logoUrl: imageUrl ?? widget.bon.logoUrl,
+        issuerName: _titleController.text,
+        wish: _descriptionController.text,
+      );
+      await _storage.saveBon(updatedBon);
 
       if (!mounted) return;
 
@@ -306,31 +340,48 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // Image (TODO: Image picker)
+              // Image
               _buildSectionTitle('Image du Bon'),
-              Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey[600]),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Ajouter une photo',
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
-                      Text(
-                        '(Sera stockée sur IPFS)',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
+              GestureDetector(
+                onTap: _isUploading ? null : _selectImage,
+                child: Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A2A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[700]!),
                   ),
+                  child: _selectedImage != null || widget.bon.picture != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: ImageCompressionService.buildImage(
+                            uri: _selectedImage ?? widget.bon.picture,
+                            width: double.infinity,
+                            height: 150,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isUploading)
+                                const CircularProgressIndicator()
+                              else ...[
+                                Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey[600]),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Ajouter une photo',
+                                  style: TextStyle(color: Colors.grey[500]),
+                                ),
+                                Text(
+                                  '(Sera stockée localement)',
+                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                 ),
               ),
 

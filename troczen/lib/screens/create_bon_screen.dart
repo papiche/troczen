@@ -24,7 +24,7 @@ class CreateBonScreen extends StatefulWidget {
 
 class _CreateBonScreenState extends State<CreateBonScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _valueController = TextEditingController(text: '5');
+  final _valueController = TextEditingController(text: '0');
   final _issuerNameController = TextEditingController();
   final _expirationController = TextEditingController(text: '90'); // Jours par défaut
   final _cryptoService = CryptoService();
@@ -240,6 +240,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         marketName: _selectedMarket!.name,
         color: _selectedColor.value,
         duAtCreation: currentDu,
+        cardType: 'bootstrap',
+        rarity: 'bootstrap',
       );
 
       // 6. Sauvegarder le bon
@@ -479,10 +481,34 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
               ),
               const SizedBox(height: 16),
 
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.blue),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'La création manuelle génère un Bon Zéro (0 ẐEN) servant à tisser votre toile de confiance. Les vrais ẐEN seront générés automatiquement par le Dividende Universel (DU).',
+                        style: TextStyle(color: Colors.blue[100], height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
               TextFormField(
                 controller: _valueController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
+                readOnly: true,
+                style: const TextStyle(color: Colors.grey),
                 decoration: InputDecoration(
                   labelText: 'Valeur (ẐEN)',
                   labelStyle: TextStyle(color: Colors.grey[400]),
@@ -495,19 +521,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF2A2A2A),
+                  fillColor: const Color(0xFF1E1E1E),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer une valeur';
-                  }
-                  final number = double.tryParse(value);
-                  if (number == null || number <= 0) {
-                    return 'Valeur invalide';
-                  }
-                  return null;
-                },
-                onChanged: (_) => setState(() {}),
               ),
 
               const SizedBox(height: 16),
