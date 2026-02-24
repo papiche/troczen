@@ -195,7 +195,7 @@ class NostrService {
   
   Future<int> syncMarketsP3s(List<Market> markets) async {
     // Utiliser le relay du premier marché
-    final relayUrl = markets.first.relayUrl ?? 'wss://relay.troczen.com';
+    final relayUrl = markets.first.relayUrl ?? 'wss://relay.copylaradio.com';
     
     if (!_connection.isConnected) {
       final connected = await _connection.connect(relayUrl);

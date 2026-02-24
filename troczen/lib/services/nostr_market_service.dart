@@ -340,7 +340,7 @@ class NostrMarketService {
     
     try {
       if (!_connection.isConnected) {
-        final connected = await _connection.connect(market.relayUrl ?? 'wss://relay.troczen.com');
+        final connected = await _connection.connect(market.relayUrl ?? 'wss://relay.copylaradio.com');
         if (!connected) {
           _isSyncing = false;
           return 0;
