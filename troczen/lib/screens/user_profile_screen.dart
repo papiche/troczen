@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/nostr_profile.dart';
