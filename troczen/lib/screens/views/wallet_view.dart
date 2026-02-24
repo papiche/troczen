@@ -80,11 +80,10 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       
       if (!mounted) return;
       setState(() {
-        // Afficher les bons non brûlés dont on possède P2 (bons reçus)
-        // OU les bons actifs dont on possède P1 (nos créations pas encore transférées)
+        // Afficher les bons non brûlés dont on possède P2 (bons créés ou reçus)
         bons = loadedBons.where((b) =>
           b.status != BonStatus.burned &&
-          (b.p2 != null || (b.status == BonStatus.active && b.p1 != null))
+          (b.p2 != null)
         ).toList();
         
         Logger.log('WalletView', 'Bons après filtrage: ${bons.length}');

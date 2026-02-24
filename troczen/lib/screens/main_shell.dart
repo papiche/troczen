@@ -346,10 +346,11 @@ class _MainShellState extends State<MainShell> {
         );
       
       case 3: // Profil
-        return FloatingActionButton(
-          onPressed: () => _navigateToEditProfile(),
+        return FloatingActionButton.extended(
+          onPressed: () => _exportDashboardData(),
+          icon: const Icon(Icons.upload),
+          label: const Text('Exporter'),
           backgroundColor: const Color(0xFFFFB347),
-          child: const Icon(Icons.edit),
         );
       
       default:
@@ -573,29 +574,13 @@ class _MainShellState extends State<MainShell> {
     
     // On force la reconstruction de l'interface
     setState(() {});
-    
-    if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text('Tirez l\'écran vers le bas pour actualiser vos bons')),
-       );
-    }
   }
 
   Future<void> _exportDashboardData() async {
     // TODO: Implémenter l'export des données du dashboard
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Export des données en cours...'),
-        backgroundColor: Color(0xFF0A7EA4),
-      ),
-    );
-  }
-
-  void _navigateToEditProfile() {
-    // TODO: Naviguer vers l'écran d'édition de profil
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Édition du profil à venir'),
+        content: Text('Export des données TODO...'),
         backgroundColor: Color(0xFF0A7EA4),
       ),
     );
