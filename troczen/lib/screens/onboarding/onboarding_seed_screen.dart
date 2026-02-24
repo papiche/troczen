@@ -88,14 +88,18 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
           
           const SizedBox(height: 16),
           
-          // Option 3: Mode 000 (Hackathon)
+          // Option 3: Marché Global Ğ1 (Par défaut - Transparence publique)
           _buildOptionCard(
-            icon: Icons.warning_amber,
-            title: 'Mode Test (000)',
-            description: 'Mode développeur - Sécurité faible pour démonstration',
-            mode: 'mode000',
-            iconColor: Colors.orange,
-            onTap: () => _showMode000Confirmation(),
+            icon: Icons.public,
+            title: 'Marché Global Ğ1',
+            description: 'Espace public, transparent et auditable. Connecté à l\'écosystème Ğ1 (1 ẐEN ≈ 0.1 Ğ1).',
+            mode: 'global',
+            iconColor: Colors.blue,
+            onTap: () {
+              // Plus de dialog effrayant, on passe direct !
+              final seed = '0' * 64;
+              _setSeedAndContinue(seed, 'global');
+            },
           ),
         ],
       ),
@@ -405,118 +409,9 @@ class _OnboardingSeedScreenState extends State<OnboardingSeedScreen> {
     });
   }
   
-  void _showMode000Confirmation() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber, color: Colors.orange),
-            SizedBox(width: 8),
-            Text(
-              'Avertissement',
-              style: TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Vous êtes sur le point d\'activer le mode faible sécurité (seed 000…).\n\n'
-          'Ce mode est volontairement vulnérable. Tout bon créé peut être cassé.\n\n'
-          'Ceci est un défi ouvert aux chercheurs en sécurité.',
-          style: TextStyle(color: Colors.white),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showMode000TextConfirmation();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-            ),
-            child: const Text(
-              'Continuer',
-              style: TextStyle(color: Colors.black),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showMode000TextConfirmation() {
-    final controller = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
-        title: const Text(
-          'Confirmation requise',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Tapez HACKATHON pour confirmer :',
-              style: TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'HACKATHON',
-                hintStyle: TextStyle(color: Colors.grey[600]),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey[700]!),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.orange),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text == 'HACKATHON') {
-                Navigator.pop(context);
-                final seed = '0' * 64; // 32 octets de zéros
-                _setSeedAndContinue(seed, 'mode000');
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Texte incorrect'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-            ),
-            child: const Text(
-              'Confirmer',
-              style: TextStyle(color: Colors.black),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Les fonctions _showMode000Confirmation() et _showMode000TextConfirmation()
+  // ont été supprimées car le Marché Global Ğ1 est maintenant l'option par défaut
+  // rassurante, sans dialogue d'avertissement effrayant.
   
   void _setSeedAndContinue(String seed, String mode) {
     setState(() {

@@ -11,7 +11,7 @@ import 'screens/onboarding/onboarding_flow.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialiser le logger et vérifier le mode HACKATHON
+  // Initialiser le logger et vérifier le mode Marché Global Ğ1 (transparence publique)
   await Logger.checkDebugMode();
   
   runApp(const TrocZenApp());

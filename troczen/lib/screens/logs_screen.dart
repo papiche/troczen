@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/logger_service.dart';
 import '../config/app_config.dart';
 
-/// Écran d'accès aux logs pour le mode HACKATHON
+/// Écran d'accès aux logs pour le Marché Global Ğ1 (transparence publique)
 /// Permet de visualiser, exporter et soumettre les logs à l'API
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});

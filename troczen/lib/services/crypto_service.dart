@@ -51,16 +51,24 @@ class EncryptP2Result {
 class CryptoService {
   final Random _secureRandom = Random.secure();
   
-  /// ✅ HACKATHON: Seed constante (32 octets à zéro) - MARCHE GLOBAL - UPLANET ORIGIN
+  /// ✅ MARCHÉ GLOBAL Ğ1: Seed constante (32 octets à zéro) - UPLANET ORIGIN
   /// 0000000000000000000000000000000000000000000000000000000000000000
-  /// Utilisée le marchés "HACKATHON" (clarté totale et espace de fongibilité du ẐEN)
+  /// Utilisée pour le Marché Global Ğ1 (transparence totale et auditabilité publique)
+  /// Ce n'est PAS une faille de sécurité, c'est une FEATURE : tout le monde peut auditer
+  /// les transactions (comme une blockchain publique). Équivalence : 1 ẐEN ≈ 0.1 Ğ1
+  ///
+  /// Alias: HACKATHON_SEED (rétrocompatibilité)
   static final Uint8List HACKATHON_SEED = Uint8List(32); // 32 octets à zéro
+  static final Uint8List GLOBAL_MARKET_SEED = Uint8List(32); // Alias sémantique
   
-  /// Retourne true si la seed correspond à HACKATHON_SEED
+  /// Retourne true si la seed correspond au Marché Global (seed à zéro = transparence publique)
   bool _isHackathonSeed(String seedHex) {
-    final hackathonSeedHex = '0' * 64; // 32 octets à zéro en hex
-    return seedHex == hackathonSeedHex;
+    final globalMarketSeedHex = '0' * 64; // 32 octets à zéro en hex
+    return seedHex == globalMarketSeedHex;
   }
+  
+  /// Alias sémantique pour _isHackathonSeed
+  bool _isGlobalMarketSeed(String seedHex) => _isHackathonSeed(seedHex);
   
   /// ✅ SÉCURITÉ: Nettoyage sécurisé de la mémoire pour Uint8List
   /// Remplit le tableau d'octets avec des zéros de manière sécurisée

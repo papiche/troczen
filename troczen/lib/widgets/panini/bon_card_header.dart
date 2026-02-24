@@ -22,6 +22,15 @@ class BonCardHeader extends StatelessWidget {
     required this.color,
   });
 
+  /// Vérifie si le bon appartient au Marché Global Ğ1 (seed à zéro)
+  /// Dans ce cas, on affiche l'équivalence 1 ẐEN ≈ 0.1 Ğ1
+  bool _isGlobalMarket(String marketName) {
+    final upperName = marketName.toUpperCase();
+    return upperName == 'MARCHÉ GLOBAL Ğ1' ||
+           upperName == 'MARCHÉ GLOBAL G1' ||
+           upperName == 'HACKATHON';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isRare = bon.isRare;
@@ -67,6 +76,17 @@ class BonCardHeader extends StatelessWidget {
                   color: Colors.grey[800],
                 ),
               ),
+              // Afficher l'équivalence Ğ1 si c'est le Marché Global
+              if (_isGlobalMarket(bon.marketName))
+                Text(
+                  '≈ ${(bon.value * 0.1).toStringAsFixed(2)} Ğ1',
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[600],
+                  ),
+                ),
               if (bon.duAtCreation != null)
                 Row(
                   children: [

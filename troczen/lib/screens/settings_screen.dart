@@ -277,7 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Bouton Logs HACKATHON (visible uniquement en mode debug)
+              // Bouton Logs (visible uniquement en mode debug)
               if (Logger.isDebugMode) ...[
                 ElevatedButton.icon(
                   onPressed: () {
@@ -287,11 +287,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: Colors.blue,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   icon: const Icon(Icons.bug_report),
-                  label: Text('🐛 Logs HACKATHON (${Logger.logCount})'),
+                  label: Text('🐛 Logs Debug (${Logger.logCount})'),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -333,26 +333,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: const Text('Réinitialiser le marché'),
               ),
               
-              // Indicateur mode HACKATHON
-              if (_currentMarket?.name.toUpperCase() == 'HACKATHON') ...[
+              // Indicateur Marché Global (seed à zéro = transparence publique)
+              if (_currentMarket?.seedMarket == ('0' * 64)) ...[
                 const SizedBox(height: 24),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
+                    color: Colors.blue.shade900.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange),
+                    border: Border.all(color: Colors.blue),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.warning_amber, color: Colors.orange),
-                      SizedBox(width: 8),
+                      Icon(Icons.public, color: Colors.blue),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '⚠️ Mode HACKATHON actif\n'
-                          'Seed à zéro - Sécurité réduite\n'
-                          'Chiffrement P3 affaibli',
-                          style: TextStyle(fontSize: 12),
+                          '🌐 Marché Global Public\n'
+                          'Les transactions de ce marché sont totalement transparentes et auditables par tous.\n'
+                          'Équivalence : 1 ẐEN ≈ 0.1 Ğ1',
+                          style: TextStyle(fontSize: 12, color: Colors.white),
                         ),
                       ),
                     ],

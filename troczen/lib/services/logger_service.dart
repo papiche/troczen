@@ -4,9 +4,9 @@ import 'storage_service.dart';
 import 'feedback_service.dart';
 
 /// Service de log centralisé qui conditionne l'affichage des logs
-/// au mode DEBUG (marché "HACKATHON") ou au mode debug Flutter.
+/// au mode DEBUG (Marché Global Ğ1) ou au mode debug Flutter.
 ///
-/// En mode HACKATHON:
+/// En Marché Global Ğ1 (transparence publique):
 /// - Les logs sont stockés en mémoire pour export ultérieur
 /// - Un accès facile aux logs est disponible via getLogs() et exportLogs()
 /// - Les logs peuvent être transmis via /api/feedback pour soumission d'issues
@@ -26,20 +26,25 @@ class Logger {
   /// Taille maximale du buffer de logs en production (en nombre d'entrées)
   static const int _maxBufferSizeProd = 200;
 
-  /// Vérifie si le mode HACKATHON est actif
+  /// Vérifie si le mode Marché Global Ğ1 est actif (seed à zéro = transparence)
   /// Doit être appelé au démarrage de l'application ou dans les vues principales
   static Future<void> checkDebugMode() async {
     if (_initialized) return;
     
     try {
       final market = await _storage.getMarket();
-      _isDebugMode = market?.name.toUpperCase() == 'HACKATHON';
+      final marketName = market?.name.toUpperCase() ?? '';
+      // Le mode debug est activé pour le Marché Global (transparence publique)
+      _isDebugMode = marketName == 'MARCHÉ GLOBAL Ğ1' ||
+                     marketName == 'MARCHÉ GLOBAL G1' ||
+                     marketName == 'HACKATHON' ||
+                     market?.seedMarket == ('0' * 64);
       _initialized = true;
       
       if (_isDebugMode) {
-        debugPrint('🐛 MODE DEBUG ACTIVÉ (Marché: HACKATHON) 🐛');
+        debugPrint('🌐 MODE DEBUG ACTIVÉ (Marché Global Ğ1 - Transparence publique) 🌐');
         debugPrint('📋 Les logs sont stockés en mémoire et peuvent être exportés');
-        _addLog('SYSTEM', 'Mode HACKATHON activé - Logs en mémoire activés', 'info');
+        _addLog('SYSTEM', 'Marché Global Ğ1 activé - Logs en mémoire activés (Transparence)', 'info');
       }
     } catch (e) {
       // En cas d'erreur, on reste en mode non-debug
@@ -88,7 +93,7 @@ class Logger {
     final logs = _logBuffer.map((log) => log.toJson()).toList();
     return jsonEncode({
       'exportTime': DateTime.now().toIso8601String(),
-      'hackathonMode': _isDebugMode,
+      'globalMarketMode': _isDebugMode,
       'logCount': logs.length,
       'logs': logs,
     });
@@ -99,7 +104,7 @@ class Logger {
     final buffer = StringBuffer();
     buffer.writeln('=== TROCZEN LOG EXPORT ===');
     buffer.writeln('Export Time: ${DateTime.now().toIso8601String()}');
-    buffer.writeln('Hackathon Mode: $_isDebugMode');
+    buffer.writeln('Marché Global Mode: $_isDebugMode');
     buffer.writeln('Log Count: ${_logBuffer.length}');
     buffer.writeln('==========================');
     buffer.writeln();
@@ -116,7 +121,7 @@ class Logger {
   /// Retourne true si la transmission a réussi
   static Future<bool> submitLogsToApi({String? issueDescription}) async {
     if (!_isDebugMode) {
-      warn('Logger', 'Tentative de soumission de logs hors mode HACKATHON');
+      warn('Logger', 'Tentative de soumission de logs hors mode Marché Global');
       return false;
     }
     
@@ -136,12 +141,12 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
 ```
 
 ---
-*Soumis depuis le mode HACKATHON de TrocZen*
+*Soumis depuis le Marché Global Ğ1 de TrocZen*
 ''';
 
       // Utiliser le FeedbackService existant
       final result = await _feedbackService.reportBug(
-        title: '[HACKATHON] Issue avec logs',
+        title: '[Marché Global] Issue avec logs',
         description: fullDescription,
         appVersion: '1.0.9',
         platform: defaultTargetPlatform.name,
