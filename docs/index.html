@@ -3,100 +3,1387 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ẐEN - Monnaie Locale et Bons</title>
+<title>ẐEN — Bons locaux, confiance réelle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-    body { font-family: Arial, sans-serif; background-color: #fdf6e3; color: #333; margin:0; padding:0; }
-    header { background-color: #ffcc00; padding: 2rem; text-align: center; }
-    header h1 { margin:0; font-size:2.5rem; color: #333; }
-    header p { font-size: 1.2rem; }
-    section { padding: 2rem; max-width: 900px; margin: auto; }
-    h2 { color: #ff6600; margin-top: 2rem; }
-    ul { margin-left: 1.5rem; }
-    .cta { background-color: #33cc33; color: white; padding: 1rem 2rem; font-size: 1.2rem; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; display:inline-block; margin-top:1rem;}
-    .cta:hover { background-color: #28a428; }
-    .highlight { background-color: #fff3cc; padding: 0.2rem 0.5rem; border-radius:4px; }
-    footer { background-color: #333; color: white; text-align: center; padding: 1rem; margin-top:2rem;}
-    a { color: #ffcc00; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+/* ===================== TOKENS ===================== */
+:root {
+  --cream:   #f5f0e8;
+  --parchment: #ede5d0;
+  --ink:     #1c1a14;
+  --ink-soft: #4a4535;
+  --soil:    #7a5c3a;
+  --moss:    #3d6147;
+  --moss-light: #5a8a67;
+  --moss-pale: #d4e8d9;
+  --rust:    #c4521a;
+  --gold:    #d4a017;
+  --gold-pale: #f5e8c0;
+  --border:  rgba(122,92,58,0.15);
+  --radius:  6px;
+}
+
+/* ===================== RESET ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ===================== GRAIN ===================== */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ===================== NAV ===================== */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+  background: rgba(245,240,232,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--moss);
+  letter-spacing: -0.01em;
+}
+
+.nav-logo span { color: var(--rust); }
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--moss); }
+
+/* ===================== HERO ===================== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  padding: 120px 40px 80px;
+}
+
+/* Animated background — travelling nodes */
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.travel-node {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--moss-light);
+  opacity: 0;
+  animation: travel var(--dur, 8s) var(--delay, 0s) ease-in-out infinite;
+}
+
+.travel-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--moss-pale), transparent);
+  opacity: 0;
+  animation: travelLine var(--dur, 8s) var(--delay, 0s) ease-in-out infinite;
+  transform-origin: left center;
+}
+
+@keyframes travel {
+  0% { opacity: 0; transform: scale(0.5); }
+  10% { opacity: 0.7; transform: scale(1); }
+  45% { opacity: 0.7; }
+  55% { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 0; }
+}
+
+@keyframes travelLine {
+  0% { opacity: 0; width: 0; }
+  10% { opacity: 0.4; }
+  50% { opacity: 0.4; width: var(--w, 200px); }
+  60% { opacity: 0; width: var(--w, 200px); }
+  100% { opacity: 0; }
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.hero-text { }
+
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--moss);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-eyebrow::before {
+  content: '';
+  width: 28px; height: 1px;
+  background: var(--moss);
+  display: block;
+}
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(42px, 6vw, 72px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 28px;
+}
+
+h1 em {
+  font-style: italic;
+  color: var(--moss);
+}
+
+.hero-sub {
+  font-size: 17px;
+  font-weight: 300;
+  color: var(--ink-soft);
+  max-width: 440px;
+  margin-bottom: 40px;
+  line-height: 1.7;
+}
+
+.hero-cta-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--moss);
+  color: #fff;
+  padding: 14px 28px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.btn-primary:hover { background: var(--moss-light); transform: translateY(-1px); }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--soil);
+  padding: 14px 28px;
+  border-radius: var(--radius);
+  border: 1px solid var(--soil);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover { background: var(--gold-pale); border-color: var(--gold); }
+
+/* Hero card (visual) */
+.hero-card-area {
+  position: relative;
+}
+
+.bon-card {
+  background: var(--ink);
+  border-radius: 16px;
+  padding: 32px;
+  color: var(--cream);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(28,26,20,0.2), 0 0 0 1px rgba(255,255,255,0.05);
+  animation: cardFloat 6s ease-in-out infinite;
+}
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-8px) rotate(-1deg); }
+}
+
+.bon-card::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(90,138,103,0.25) 0%, transparent 70%);
+}
+
+.bon-card-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--moss-light);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bon-card-tag::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--moss-light);
+  box-shadow: 0 0 8px var(--moss-light);
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.bon-card-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.bon-card-value span { font-size: 24px; color: var(--moss-light); margin-left: 6px; }
+
+.bon-card-issuer {
+  font-size: 13px;
+  color: rgba(245,240,232,0.5);
+  margin-bottom: 32px;
+  font-style: italic;
+}
+
+.bon-card-journey {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 20px;
+}
+
+.bon-card-journey-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(245,240,232,0.4);
+  margin-bottom: 14px;
+}
+
+.journey-hops {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.hop {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: rgba(255,255,255,0.05);
+  position: relative;
+}
+
+.hop.active {
+  border-color: var(--moss-light);
+  background: rgba(90,138,103,0.15);
+  box-shadow: 0 0 12px rgba(90,138,103,0.3);
+}
+
+.hop-line {
+  width: 20px; height: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+.hop-line.active { background: var(--moss-light); }
+
+.bon-card-meta {
+  margin-top: 16px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.meta-chip {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: rgba(245,240,232,0.5);
+  background: rgba(255,255,255,0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.meta-chip.green { color: var(--moss-light); border-color: rgba(90,138,103,0.3); }
+
+/* Floating smaller cards */
+.bon-card-mini {
+  position: absolute;
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(28,26,20,0.1);
+}
+
+.bon-card-mini.card-a {
+  top: -24px; right: -24px;
+  animation: floatA 5s ease-in-out infinite;
+  transform: rotate(4deg);
+}
+
+.bon-card-mini.card-b {
+  bottom: -20px; left: -20px;
+  animation: floatB 6s ease-in-out infinite;
+  transform: rotate(-3deg);
+}
+
+@keyframes floatA {
+  0%,100% { transform: rotate(4deg) translateY(0); }
+  50% { transform: rotate(4deg) translateY(-6px); }
+}
+@keyframes floatB {
+  0%,100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(-3deg) translateY(5px); }
+}
+
+.mini-emoji { font-size: 20px; margin-bottom: 4px; }
+.mini-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ink-soft); letter-spacing: 0.1em; }
+.mini-value { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; color: var(--ink); }
+
+/* ===================== SECTIONS COMMUNES ===================== */
+section {
+  padding: 100px 40px;
+}
+
+.section-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--moss);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-label::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: var(--moss);
+}
+
+h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+  color: var(--ink);
+}
+
+h2 em { font-style: italic; color: var(--moss); }
+
+.section-intro {
+  font-size: 17px;
+  font-weight: 300;
+  color: var(--ink-soft);
+  max-width: 540px;
+  line-height: 1.7;
+  margin-bottom: 60px;
+}
+
+/* ===================== HOW IT WORKS ===================== */
+.how-section { background: var(--ink); color: var(--cream); }
+.how-section h2 { color: var(--cream); }
+.how-section h2 em { color: var(--moss-light); }
+.how-section .section-label { color: var(--moss-light); }
+.how-section .section-label::before { background: var(--moss-light); }
+.how-section .section-intro { color: rgba(245,240,232,0.6); }
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+.step {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 40px 32px;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.step:first-child { border-radius: 8px 0 0 8px; }
+.step:last-child { border-radius: 0 8px 8px 0; }
+.step:hover { background: rgba(255,255,255,0.06); }
+
+.step-number {
+  font-family: 'Playfair Display', serif;
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(255,255,255,0.04);
+  position: absolute;
+  top: 20px; right: 24px;
+}
+
+.step-icon {
+  font-size: 36px;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.step-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--cream);
+}
+
+.step-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  color: rgba(245,240,232,0.55);
+}
+
+/* ===================== FOR WHO ===================== */
+.forwho-section { background: var(--parchment); }
+
+.profiles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.profile-card {
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(28,26,20,0.08);
+}
+
+.profile-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+
+.profile-card.producer::before { background: var(--moss); }
+.profile-card.client::before { background: var(--rust); }
+
+.profile-emoji {
+  font-size: 40px;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.profile-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.profile-sub {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 28px;
+  font-style: italic;
+}
+
+.profile-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-list li {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.profile-list li::before {
+  content: '→';
+  color: var(--moss);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.profile-card.client .profile-list li::before { color: var(--rust); }
+
+/* ===================== METRICS ===================== */
+.metrics-section {
+  background: var(--cream);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.metric-item {
+  padding: 40px 32px;
+  border-right: 1px solid var(--border);
+  text-align: center;
+}
+
+.metric-item:last-child { border-right: none; }
+
+.metric-number {
+  font-family: 'Playfair Display', serif;
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.metric-number span { color: var(--moss); }
+
+.metric-desc {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+/* ===================== LEGAL ===================== */
+.legal-section { background: var(--parchment); }
+
+.legal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.legal-card {
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+}
+
+.legal-icon {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  background: var(--moss-pale);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.legal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.legal-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+
+/* ===================== BOUCLES ===================== */
+.boucles-section { background: var(--ink); color: var(--cream); }
+.boucles-section h2 { color: var(--cream); }
+.boucles-section h2 em { color: var(--gold); }
+.boucles-section .section-label { color: var(--gold); }
+.boucles-section .section-label::before { background: var(--gold); }
+.boucles-section .section-intro { color: rgba(245,240,232,0.55); }
+
+.boucle-visual {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.boucle-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.b-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.b-dot {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border: 2px solid;
+  transition: transform 0.2s;
+}
+
+.b-dot:hover { transform: scale(1.1); }
+
+.b-dot.origin { border-color: var(--moss-light); background: rgba(90,138,103,0.15); box-shadow: 0 0 16px rgba(90,138,103,0.2); }
+.b-dot.mid { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+.b-dot.return { border-color: var(--gold); background: rgba(212,160,23,0.15); box-shadow: 0 0 16px rgba(212,160,23,0.2); animation: glow-gold 2s ease infinite; }
+
+@keyframes glow-gold {
+  0%,100% { box-shadow: 0 0 12px rgba(212,160,23,0.2); }
+  50% { box-shadow: 0 0 28px rgba(212,160,23,0.4); }
+}
+
+.b-name { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(245,240,232,0.4); letter-spacing: 0.05em; }
+
+.b-arrow {
+  width: 40px; height: 2px;
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.b-arrow.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--moss-light), rgba(90,138,103,0.3));
+  animation: flowRight 1.5s linear infinite;
+}
+
+.b-arrow.plain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+}
+
+@keyframes flowRight {
+  0% { transform: scaleX(0); transform-origin: left; }
+  50% { transform: scaleX(1); transform-origin: left; }
+  51% { transform: scaleX(1); transform-origin: right; }
+  100% { transform: scaleX(0); transform-origin: right; }
+}
+
+.b-tag {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+.b-tag.good { background: rgba(90,138,103,0.2); color: var(--moss-light); border: 1px solid rgba(90,138,103,0.3); }
+.b-tag.warn { background: rgba(212,160,23,0.15); color: var(--gold); border: 1px solid rgba(212,160,23,0.25); }
+.b-tag.bad  { background: rgba(196,82,26,0.15); color: #e07040; border: 1px solid rgba(196,82,26,0.25); }
+
+.boucle-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.boucle-stat {
+  background: rgba(255,255,255,0.03);
+  padding: 20px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.boucle-stat-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.boucle-stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(245,240,232,0.35);
+}
+
+/* ===================== FINANCE ===================== */
+.finance-section {
+  background: var(--cream);
+}
+
+.finance-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: start;
+}
+
+.finance-text h2 { margin-bottom: 16px; }
+.finance-text p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+
+.finance-card {
+  background: var(--ink);
+  border-radius: 16px;
+  padding: 40px;
+  color: var(--cream);
+  position: sticky;
+  top: 100px;
+}
+
+.finance-card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--cream);
+}
+
+.finance-card-sub {
+  font-size: 13px;
+  color: rgba(245,240,232,0.5);
+  margin-bottom: 28px;
+}
+
+.uses-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.uses-list li {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: rgba(245,240,232,0.7);
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.uses-list li::before {
+  content: '✦';
+  color: var(--moss-light);
+  flex-shrink: 0;
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+/* ===================== FOOTER ===================== */
+footer {
+  background: var(--ink);
+  color: rgba(245,240,232,0.5);
+  padding: 48px 40px;
+}
+
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.footer-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--cream);
+}
+
+.footer-logo span { color: var(--moss-light); }
+
+.footer-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+
+.footer-links a {
+  font-size: 12px;
+  color: rgba(245,240,232,0.4);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: var(--moss-light); }
+
+.footer-copy {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: rgba(245,240,232,0.25);
+}
+
+/* ===================== UTILITIES ===================== */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 900px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+  .hero { padding: 100px 24px 60px; }
+  .bon-card-mini { display: none; }
+  section { padding: 64px 24px; }
+  .steps-grid { grid-template-columns: 1fr; gap: 2px; }
+  .step:first-child { border-radius: 8px 8px 0 0; }
+  .step:last-child { border-radius: 0 0 8px 8px; }
+  .profiles-grid { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .metric-item:nth-child(2) { border-right: none; }
+  .legal-grid { grid-template-columns: 1fr; }
+  .boucle-stats { grid-template-columns: 1fr; }
+  .finance-inner { grid-template-columns: 1fr; }
+  .footer-inner { flex-direction: column; align-items: flex-start; }
+}
 </style>
 </head>
 <body>
 
-<header>
-    <h1>ẐEN — Bons locaux sécurisés</h1>
-    <p>Une application décentralisée pour soutenir les producteurs et commerçants locaux</p>
-</header>
+<!-- ===================== NAV ===================== -->
+<nav>
+  <div class="nav-logo">ẐEN<span>·</span></div>
+  <ul class="nav-links">
+    <li><a href="#comment">Comment ça marche</a></li>
+    <li><a href="#pour-qui">Pour qui</a></li>
+    <li><a href="#boucles">Les boucles</a></li>
+    <li><a href="#financer">Soutenir</a></li>
+  </ul>
+</nav>
 
-<section>
-    <h2>Comment ça marche</h2>
-    <p>Le système ẐEN permet d’échanger des <span class="highlight">bons numériques</span> entre producteurs, commerçants et clients, de manière <strong>offline</strong> et sécurisée :</p>
-    <ul>
-        <li>Chaque bon est un objet cryptographique unique (P1 / P2 / P3).</li>
-        <li>Le client reçoit un QR Code (P2) qu’il montre au commerçant.</li>
-        <li>Un double scan atomique garantit que le bon ne peut pas être dupliqué.</li>
-        <li>Le réseau local (P3) assure validation et traçabilité sans serveur central.</li>
-    </ul>
+<!-- ===================== HERO ===================== -->
+<section class="hero" id="hero">
+
+  <!-- Animated travelling nodes -->
+  <div class="hero-canvas" id="heroCanvas"></div>
+
+  <div class="hero-inner">
+    <div class="hero-text fade-in">
+      <div class="hero-eyebrow">Bons locaux décentralisés</div>
+      <h1>La confiance qui<br><em>circule</em> crée<br>la richesse</h1>
+      <p class="hero-sub">
+        ẐEN est un protocole de bons numériques pour les marchés locaux. 
+        Offline, sécurisé, sans banque — chaque échange tissu un lien 
+        dans votre communauté.
+      </p>
+      <div class="hero-cta-row">
+        <a href="https://github.com/papiche/troczen" target="_blank" class="btn-primary">
+          ↓ Télécharger l'app
+        </a>
+        <a href="#comment" class="btn-secondary">
+          Voir comment ça marche
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-card-area fade-in" style="transition-delay:0.2s">
+      <div class="bon-card-mini card-a">
+        <div class="mini-emoji">🌾</div>
+        <div class="mini-label">Rucher de Jean</div>
+        <div class="mini-value">5 ẐEN</div>
+      </div>
+
+      <div class="bon-card">
+        <div class="bon-card-tag">Bon actif · Marché Toulouse</div>
+        <div class="bon-card-value">10 <span>ẐEN</span></div>
+        <div class="bon-card-issuer">Émis par La Ferme des Combes</div>
+
+        <div class="bon-card-journey">
+          <div class="bon-card-journey-label">Carnet de voyage · 4 hops · 11 jours</div>
+          <div class="journey-hops">
+            <div class="hop active">🌿</div>
+            <div class="hop-line active"></div>
+            <div class="hop active">🛒</div>
+            <div class="hop-line active"></div>
+            <div class="hop active">🍞</div>
+            <div class="hop-line active"></div>
+            <div class="hop active">🧑‍🔧</div>
+            <div class="hop-line"></div>
+            <div class="hop">…</div>
+          </div>
+        </div>
+
+        <div class="bon-card-meta">
+          <span class="meta-chip green">● En transit</span>
+          <span class="meta-chip">TTL : 17 jours restants</span>
+          <span class="meta-chip">rare</span>
+        </div>
+      </div>
+
+      <div class="bon-card-mini card-b">
+        <div class="mini-emoji">🍞</div>
+        <div class="mini-label">Boulangerie du Pont</div>
+        <div class="mini-value">20 ẐEN</div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section>
-    <h2>Pourquoi c’est utile</h2>
-    <ul>
-        <li>Favorise les circuits courts et les producteurs locaux.</li>
-        <li>Permet les transactions même sans réseau mobile.</li>
-        <li>Sécurisé par design : cryptographie et double scan atomique.</li>
-        <li>Traçabilité complète pour les commerçants et obligations fiscales.</li>
-    </ul>
+<!-- ===================== MÉTRIQUES ===================== -->
+<div class="metrics-section">
+  <div class="metrics-grid">
+    <div class="metric-item fade-in">
+      <div class="metric-number">100<span>%</span></div>
+      <div class="metric-desc">Offline — fonctionne<br>sans réseau mobile</div>
+    </div>
+    <div class="metric-item fade-in" style="transition-delay:0.1s">
+      <div class="metric-number">0<span>€</span></div>
+      <div class="metric-desc">Frais bancaires,<br>commissions ou abonnement</div>
+    </div>
+    <div class="metric-item fade-in" style="transition-delay:0.2s">
+      <div class="metric-number">3<span>×</span></div>
+      <div class="metric-desc">Parts cryptographiques —<br>impossible à falsifier</div>
+    </div>
+    <div class="metric-item fade-in" style="transition-delay:0.3s">
+      <div class="metric-number">∞<span>j</span></div>
+      <div class="metric-desc">Portée locale — de<br>main en main, sans limite</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== COMMENT ÇA MARCHE ===================== -->
+<section class="how-section" id="comment">
+  <div class="section-inner">
+    <div class="section-label">Comment ça marche</div>
+    <h2>Un bon numérique aussi<br>simple qu'un <em>billet de marché</em></h2>
+    <p class="section-intro">
+      Trois rôles, deux scans, zéro serveur central.
+      Le transfert est cryptographiquement atomique — soit tout s'est passé, soit rien.
+    </p>
+
+    <div class="steps-grid fade-in">
+      <div class="step">
+        <div class="step-number">1</div>
+        <span class="step-icon">🌱</span>
+        <div class="step-title">Émettre</div>
+        <div class="step-desc">
+          Un commerçant crée un bon. La clé secrète est divisée en trois parts (P1 chez l'émetteur, P2 chez le porteur, P3 sur le réseau local). Personne n'a les trois à la fois.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <span class="step-icon">📱</span>
+        <div class="step-title">Transférer</div>
+        <div class="step-desc">
+          Deux téléphones se font face. Un QR, un accusé de réception — le tout en 2 secondes. Le bon voyage de main en main, même sans Internet.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <span class="step-icon">🔁</span>
+        <div class="step-title">Boucler</div>
+        <div class="step-desc">
+          Quand le bon revient à son émetteur, la boucle est fermée. Son parcours est révélé. L'économie locale devient visible sans que personne n'ait été espionné.
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section>
-    <h2>Pour les commerçants</h2>
-    <p>Avec l’application ẐEN :</p>
-    <ul>
-        <li>Recevez les bons des clients instantanément.</li>
-        <li>Validez les bons avec votre smartphone grâce au double scan.</li>
-        <li>Participez au réseau local pour propager les bons et sécuriser les transactions.</li>
-        <li>Conservez un historique simple et sécurisé pour vos déclarations.</li>
-    </ul>
+<!-- ===================== POUR QUI ===================== -->
+<section class="forwho-section" id="pour-qui">
+  <div class="section-inner">
+    <div class="section-label">Pour qui</div>
+    <h2>Un outil pour chaque<br>côté du <em>marché</em></h2>
+    <p class="section-intro">
+      Que vous vendiez des légumes ou que vous achetiez du pain, 
+      ẐEN s'adapte à votre usage sans friction.
+    </p>
+
+    <div class="profiles-grid fade-in">
+      <div class="profile-card producer">
+        <span class="profile-emoji">🌾</span>
+        <div class="profile-title">Producteurs & commerçants</div>
+        <div class="profile-sub">Émettre, fidéliser, écouler</div>
+        <ul class="profile-list">
+          <li>Créez des bons de réduction ou prévente en quelques secondes</li>
+          <li>Validez les bons clients sans connexion réseau</li>
+          <li>Visualisez l'activité de vos bons dans un tableau de bord simple</li>
+          <li>Exportez l'historique pour votre comptabilité</li>
+          <li>Participez au réseau local pour recevoir les bons d'autres commerçants</li>
+        </ul>
+      </div>
+      <div class="profile-card client">
+        <span class="profile-emoji">🛒</span>
+        <div class="profile-title">Clients & consommateurs</div>
+        <div class="profile-sub">Recevoir, utiliser, transmettre</div>
+        <ul class="profile-list">
+          <li>Recevez des bons directement de vos producteurs favoris</li>
+          <li>Un scan suffit pour payer — pas de compte, pas de mot de passe</li>
+          <li>Transmettez un bon à un ami si vous ne l'utilisez pas</li>
+          <li>Vos données personnelles ne quittent jamais votre téléphone</li>
+          <li>Soutenez les circuits courts simplement, en achetant comme d'habitude</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section>
-    <h2>Pour les clients</h2>
-    <ul>
-        <li>Recevez ou achetez des bons chez vos producteurs favoris.</li>
-        <li>Utilisez-les directement sur votre smartphone pour vos achats.</li>
-        <li>Pas de mot de passe, pas de carte bancaire : un scan = un bon validé.</li>
-        <li>Contribuez à soutenir le commerce local et les circuits courts.</li>
-    </ul>
+<!-- ===================== LES BOUCLES ===================== -->
+<section class="boucles-section" id="boucles">
+  <div class="section-inner">
+    <div class="section-label">L'Observatoire</div>
+    <h2>Quand un bon boucle,<br>il raconte la <em>vitalité</em><br>d'un réseau</h2>
+    <p class="section-intro">
+      Chaque retour à l'émetteur révèle combien de mains ont porté ce bon. 
+      Ce n'est pas de la surveillance — c'est de l'économie qui devient lisible.
+    </p>
+
+    <div class="boucle-visual fade-in">
+      <!-- Boucle longue -->
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <span class="b-tag good">✦ Boucle longue · Réseau vivant</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);">→ C² élevé · DU augmenté</span>
+        </div>
+        <div class="boucle-row">
+          <div class="b-node">
+            <div class="b-dot origin">🌾</div>
+            <div class="b-name">Alice</div>
+          </div>
+          <div class="b-arrow active"></div>
+          <div class="b-node">
+            <div class="b-dot mid">🛒</div>
+            <div class="b-name">Bob</div>
+          </div>
+          <div class="b-arrow active"></div>
+          <div class="b-node">
+            <div class="b-dot mid">🍞</div>
+            <div class="b-name">Chloé</div>
+          </div>
+          <div class="b-arrow active"></div>
+          <div class="b-node">
+            <div class="b-dot mid">🧑‍🔧</div>
+            <div class="b-name">David</div>
+          </div>
+          <div class="b-arrow active"></div>
+          <div class="b-node">
+            <div class="b-dot mid">🌿</div>
+            <div class="b-name">Eva</div>
+          </div>
+          <div class="b-arrow active"></div>
+          <div class="b-node">
+            <div class="b-dot return">🌾</div>
+            <div class="b-name" style="color:var(--gold);">Alice ✦</div>
+          </div>
+          <div style="flex:1;padding-left:24px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.4);">
+            5 hops · 18 jours · boucle fermée<br>
+            <span style="color:var(--moss-light);">Le bon a traversé 5 univers différents.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Séparateur -->
+      <div style="border-top:1px solid rgba(255,255,255,0.06);"></div>
+
+      <!-- Boucle courte -->
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <span class="b-tag warn">▲ Boucle courte · Réseau dense</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);">→ Sain, mais peu étendu</span>
+        </div>
+        <div class="boucle-row">
+          <div class="b-node">
+            <div class="b-dot origin">🌾</div>
+            <div class="b-name">Alice</div>
+          </div>
+          <div class="b-arrow plain"></div>
+          <div class="b-node">
+            <div class="b-dot mid">🛒</div>
+            <div class="b-name">Bob</div>
+          </div>
+          <div class="b-arrow plain"></div>
+          <div class="b-node">
+            <div class="b-dot return" style="animation-duration:3.5s;">🌾</div>
+            <div class="b-name" style="color:var(--gold);">Alice ✦</div>
+          </div>
+          <div style="flex:1;padding-left:24px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.4);">
+            2 hops · 3 jours · boucle fermée<br>
+            <span style="color:rgba(212,160,23,0.7);">Le réseau fonctionne, mais reste intime.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="boucle-stats fade-in" style="margin-top:24px;">
+      <div class="boucle-stat">
+        <div class="boucle-stat-value" style="color:var(--moss-light);">4.8</div>
+        <div class="boucle-stat-label">Hops moyens</div>
+      </div>
+      <div class="boucle-stat">
+        <div class="boucle-stat-value" style="color:var(--gold);">12j</div>
+        <div class="boucle-stat-label">Retour médian</div>
+      </div>
+      <div class="boucle-stat">
+        <div class="boucle-stat-value" style="color:rgba(245,240,232,0.7);">82%</div>
+        <div class="boucle-stat-label">Ratio santé</div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section>
-    <h2>Avantages économiques et légalité fiscale</h2>
-    <ul>
-        <li><strong>Soutien à l’économie locale :</strong> les bons ẐEN favorisent les circuits courts et permettent aux producteurs et commerçants de vendre directement à leurs clients.</li>
-        <li><strong>Prix transparents :</strong> le bon représente une valeur prépayée ou une remise spécifique, facilitant des promotions légales sans impacter le chiffre d’affaires déclaré.</li>
-        <li><strong>Légalité :</strong> les bons sont considérés comme des instruments de créance ou bons cadeaux, conformes aux obligations fiscales et comptables. Les transactions en euros restent traçables.</li>
-        <li><strong>Résilience :</strong> fonctionnement offline et double validation sécurisée réduit les risques de fraude.</li>
-        <li><strong>Traçabilité :</strong> toutes les transactions sont enregistrées de façon immuable sur le réseau Nostr, assurant preuve et transparence pour l’administration.</li>
-    </ul>
+<!-- ===================== LÉGAL ===================== -->
+<section class="legal-section">
+  <div class="section-inner">
+    <div class="section-label">Légalité & fiscalité</div>
+    <h2>Conforme, <em>traçable</em>,<br>et respectueux</h2>
+    <p class="section-intro">
+      Les bons ẐEN sont des instruments juridiquement reconnus. 
+      Chaque transaction est enregistrée de façon immuable sur le réseau Nostr.
+    </p>
+
+    <div class="legal-grid fade-in">
+      <div class="legal-card">
+        <div class="legal-icon">📋</div>
+        <div class="legal-title">Statut juridique clair</div>
+        <div class="legal-text">Les bons ẐEN sont des instruments de créance ou bons cadeaux, conformes aux obligations fiscales et comptables françaises. Les transactions en euros restent entièrement traçables.</div>
+      </div>
+      <div class="legal-card">
+        <div class="legal-icon">🔗</div>
+        <div class="legal-title">Traçabilité Nostr</div>
+        <div class="legal-text">Chaque création, transfert et encaissement est signé cryptographiquement et publié sur le réseau Nostr. L'historique est permanent, vérifiable et disponible pour l'administration fiscale.</div>
+      </div>
+      <div class="legal-card">
+        <div class="legal-icon">🔒</div>
+        <div class="legal-title">Vie privée préservée</div>
+        <div class="legal-text">Les identités des porteurs sont protégées par des clés HMAC. La conformité est assurée sans créer un registre de surveillance des comportements d'achat.</div>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section>
-    <h2>Financer le projet</h2>
-    <p>Pour continuer à développer l’application et le réseau ẐEN, vous pouvez soutenir le <strong>G1FabLab</strong> :</p>
-    <p><a class="cta" href="https://opencollective.com/monnaie-libre" target="_blank">Faire un don au labo G1FabLab</a></p>
-    <p>Chaque don contribue à : </p>
-    <ul>
-        <li><strong>Mode Hackathon :</strong> Un mode développeur est intégré avec une Seed prévisible (000...) pour permettre aux chercheurs de tester la robustesse de l'implémentation hors-ligne.</li>
-        <li>Maintenir le développement et la maintenance de l’application.</li>
-        <li>Déployer le réseau de relais locaux pour les marchés.</li>
-        <li>Assurer la sécurité et la traçabilité des bons.</li>
-    </ul>
+<!-- ===================== FINANCER ===================== -->
+<section class="finance-section" id="financer">
+  <div class="section-inner">
+    <div class="finance-inner fade-in">
+      <div class="finance-text">
+        <div class="section-label">Soutenir le projet</div>
+        <h2>Un labo ouvert,<br>une <em>infrastructure</em><br>commune</h2>
+
+        <p>
+          TrocZen est développé par le <strong>G1FabLab</strong>, un collectif 
+          de développeurs et d'économistes qui construisent des outils 
+          monétaires libres et souverains.
+        </p>
+
+        <p>
+          Le code est open-source (AGPL-3.0). Votre soutien finance 
+          directement les développeurs, les relais Nostr locaux, 
+          et les TrocZen Box déployées sur les marchés.
+        </p>
+      </div>
+
+      <div class="finance-card">
+        <div class="finance-card-title">G1FabLab</div>
+        <div class="finance-card-sub">Collectif · Infrastructure Monnaie Libre</div>
+
+        <ul class="uses-list">
+          <li>Développement et maintenance de l'application</li>
+          <li>Déploiement des relais Nostr sur les marchés locaux</li>
+          <li>TrocZen Box solaires pour les marchés sans réseau</li>
+          <li>Documentation et formation des commerçants</li>
+          <li>Audit de sécurité du protocole cryptographique</li>
+        </ul>
+
+        <a href="https://opencollective.com/monnaie-libre" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">
+          Soutenir sur OpenCollective →
+        </a>
+
+        <div style="margin-top:16px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);letter-spacing:0.08em;">
+          AGPL-3.0 · CODE OUVERT · GOUVERNANCE COLLECTIVE
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
+<!-- ===================== FOOTER ===================== -->
 <footer>
-    <p>&copy; 2026 ẐEN — Monnaie Locale Décentralisée | <a href="https://opencollective.com/monnaie-libre" target="_blank">Soutenir le projet</a></p>
+  <div class="footer-inner">
+    <div class="footer-logo">ẐEN<span>·</span></div>
+    <ul class="footer-links">
+      <li><a href="https://github.com/papiche/troczen" target="_blank">GitHub</a></li>
+      <li><a href="https://opencollective.com/monnaie-libre" target="_blank">OpenCollective</a></li>
+      <li><a href="https://forum.monnaie-libre.fr" target="_blank">Forum ML</a></li>
+    </ul>
+    <div class="footer-copy">© 2026 G1FabLab · AGPL-3.0</div>
+  </div>
 </footer>
+
+<!-- ===================== JS ===================== -->
+<script>
+/* Animated travelling nodes in hero */
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const nodes = [
+    { x: '15%', y: '20%', delay: 0, dur: 7 },
+    { x: '70%', y: '15%', delay: 1.2, dur: 9 },
+    { x: '30%', y: '65%', delay: 2.5, dur: 8 },
+    { x: '80%', y: '55%', delay: 0.7, dur: 11 },
+    { x: '50%', y: '80%', delay: 3.1, dur: 7.5 },
+    { x: '10%', y: '75%', delay: 1.8, dur: 10 },
+    { x: '90%', y: '30%', delay: 4,   dur: 8.5 },
+  ];
+  const lines = [
+    { x: '15%', y: '20%', w: '220px', delay: 0.3, dur: 7 },
+    { x: '30%', y: '65%', w: '180px', delay: 2.8, dur: 8 },
+    { x: '70%', y: '15%', w: '150px', delay: 1.5, dur: 9 },
+    { x: '10%', y: '75%', w: '200px', delay: 2.0, dur: 10 },
+  ];
+
+  nodes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'travel-node';
+    el.style.left = n.x;
+    el.style.top = n.y;
+    el.style.setProperty('--dur', n.dur + 's');
+    el.style.setProperty('--delay', n.delay + 's');
+    canvas.appendChild(el);
+  });
+
+  lines.forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'travel-line';
+    el.style.left = l.x;
+    el.style.top = l.y;
+    el.style.setProperty('--dur', l.dur + 's');
+    el.style.setProperty('--delay', l.delay + 's');
+    el.style.setProperty('--w', l.w);
+    canvas.appendChild(el);
+  });
+})();
+
+/* Intersection Observer for fade-in */
+(function() {
+  const els = document.querySelectorAll('.fade-in');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  els.forEach(el => observer.observe(el));
+})();
+</script>
 
 </body>
 </html>
-

@@ -554,7 +554,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       final market = Market(
         name: state.marketName ?? 'Marché Local',
         seedMarket: state.seedMarket!,
-        validUntil: DateTime.now().add(const Duration(days: 365)),
+        validUntil: DateTime.now().add(const Duration(days: 36500)), // Valable 100 ans par défaut
         relayUrl: state.relayUrl,
       );
       await storageService.saveMarket(market);

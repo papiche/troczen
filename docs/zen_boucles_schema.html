@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrocZen — Les Boucles Révèlent l'Économie Vivante</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #0a0f0d;
+    --bg2: #101810;
+    --grid: #1a2a1f;
+    --zen: #4afa7b;
+    --zen-dim: #1a4a28;
+    --zen-glow: rgba(74,250,123,0.15);
+    --amber: #f5a623;
+    --amber-dim: #3a2800;
+    --red: #ff4757;
+    --blue: #3d9eff;
+    --white: #e8f5e9;
+    --muted: #5a7a62;
+    --border: #1f3326;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 40px 24px;
+    line-height: 1.5;
+  }
+
+  /* === GRAIN OVERLAY === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.6;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* === HEADER === */
+  .header {
+    text-align: center;
+    margin-bottom: 56px;
+    position: relative;
+  }
+
+  .header-badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--zen);
+    border: 1px solid var(--zen-dim);
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+    background: var(--zen-glow);
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    color: var(--white);
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+
+  h1 span { color: var(--zen); }
+
+  .subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  /* === JOURNEY SECTION === */
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* === BOUCLE VISUALIZER === */
+  .boucle-container {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .boucle-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--zen), transparent);
+  }
+
+  .boucle-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .boucle-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .boucle-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 3px;
+  }
+
+  .score-green { background: var(--zen-dim); color: var(--zen); border: 1px solid var(--zen-dim); }
+  .score-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid #4a3000; }
+  .score-red { background: #3a0f14; color: var(--red); border: 1px solid #5a1a22; }
+
+  /* === HOP CHAIN === */
+  .hop-chain {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .hop-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .hop-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 2px solid;
+    position: relative;
+    transition: transform 0.2s;
+  }
+
+  .hop-dot:hover { transform: scale(1.1); }
+
+  .hop-dot.issuer {
+    background: var(--zen-dim);
+    border-color: var(--zen);
+    box-shadow: 0 0 12px var(--zen-glow);
+  }
+
+  .hop-dot.active {
+    background: #1a2535;
+    border-color: var(--blue);
+    box-shadow: 0 0 8px rgba(61,158,255,0.2);
+  }
+
+  .hop-dot.return {
+    background: var(--zen-dim);
+    border-color: var(--zen);
+    box-shadow: 0 0 16px var(--zen-glow), 0 0 32px var(--zen-glow);
+  }
+
+  .hop-dot.expired {
+    background: #2a1515;
+    border-color: var(--red);
+    opacity: 0.6;
+  }
+
+  .hop-dot.stagnant {
+    background: #1e1e1e;
+    border-color: var(--muted);
+    opacity: 0.5;
+  }
+
+  .hop-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: center;
+    max-width: 44px;
+    word-break: break-word;
+  }
+
+  .hop-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    margin-bottom: 16px;
+  }
+
+  .hop-arrow svg { display: block; }
+
+  .hop-day {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    text-align: center;
+    position: absolute;
+    top: -14px;
+    white-space: nowrap;
+  }
+
+  .return-arrow {
+    position: relative;
+  }
+
+  .return-arc {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  /* === METRICS ROW === */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .metric-cell {
+    background: #0d1510;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .metric-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .mv-green { color: var(--zen); }
+  .mv-amber { color: var(--amber); }
+  .mv-red { color: var(--red); }
+  .mv-blue { color: var(--blue); }
+
+  .metric-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* === COMPARISON TABLE === */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .compare-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .compare-card.featured {
+    border-color: var(--zen-dim);
+    background: #0d1a10;
+  }
+
+  .compare-card.featured::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--zen);
+  }
+
+  .compare-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .compare-name {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .compare-desc {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+
+  .compare-metric {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+  }
+
+  .dot-yes { width: 6px; height: 6px; border-radius: 50%; background: var(--zen); flex-shrink: 0; }
+  .dot-no { width: 6px; height: 6px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+  .dot-meh { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+
+  /* === DU FORMULA === */
+  .formula-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .formula-main {
+    font-size: clamp(12px, 2.5vw, 17px);
+    color: var(--white);
+    text-align: center;
+    margin-bottom: 24px;
+    line-height: 2;
+  }
+
+  .formula-main .var-zen { color: var(--zen); font-weight: 700; }
+  .formula-main .var-amber { color: var(--amber); }
+  .formula-main .var-blue { color: var(--blue); }
+
+  .formula-legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    align-items: flex-start;
+  }
+
+  .legend-var {
+    font-weight: 700;
+    flex-shrink: 0;
+    min-width: 60px;
+  }
+
+  .legend-desc { color: var(--muted); line-height: 1.5; }
+
+  /* === HEALTH BAR === */
+  .health-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .health-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .health-row:last-child { margin-bottom: 0; }
+
+  .health-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .health-bar-track {
+    flex: 1;
+    height: 8px;
+    background: #1a2a1f;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .health-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+
+  .fill-green { background: linear-gradient(90deg, var(--zen-dim), var(--zen)); }
+  .fill-amber { background: linear-gradient(90deg, var(--amber-dim), var(--amber)); }
+  .fill-red { background: linear-gradient(90deg, #3a0f14, var(--red)); }
+
+  .health-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    width: 40px;
+    text-align: right;
+  }
+
+  /* === FOOTER === */
+  .footer-note {
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer-note span { color: var(--zen); }
+
+  /* === ANIMATIONS === */
+  @keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 8px var(--zen-glow); }
+    50% { box-shadow: 0 0 20px var(--zen-glow), 0 0 40px rgba(74,250,123,0.08); }
+  }
+
+  .hop-dot.return { animation: pulse-green 2.5s ease-in-out infinite; }
+
+  @keyframes flow {
+    0% { stroke-dashoffset: 20; }
+    100% { stroke-dashoffset: 0; }
+  }
+
+  .flow-line { animation: flow 1.5s linear infinite; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .boucle-container {
+    animation: fadeIn 0.5s ease both;
+  }
+
+  .boucle-container:nth-child(2) { animation-delay: 0.1s; }
+  .boucle-container:nth-child(3) { animation-delay: 0.2s; }
+
+  @media (max-width: 640px) {
+    .compare-grid { grid-template-columns: 1fr; }
+    .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    .formula-legend { grid-template-columns: 1fr; }
+    body { padding: 24px 16px; }
+    .hop-chain { gap: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">TrocZen · Observatoire Économique</div>
+    <h1>Quand un bon fait une <span>balade</span>,<br>il raconte une histoire</h1>
+    <p class="subtitle">// Les boucles fermées révèlent la vitalité d'un réseau d'échange local</p>
+  </div>
+
+  <!-- SECTION 1 : TROIS TYPES DE BOUCLES -->
+  <div class="section-title">01 — Anatomie d'une boucle</div>
+
+  <!-- BOUCLE LONGUE (saine) -->
+  <div class="boucle-container">
+    <div class="boucle-label">
+      <div class="boucle-title">🎉 Boucle longue — réseau vivant</div>
+      <div class="boucle-score score-green">✦ SANTÉ MAXIMALE</div>
+    </div>
+    <div class="hop-chain">
+
+      <div class="hop-node">
+        <div class="hop-dot issuer">🌾</div>
+        <div class="hop-label">Alice<br>Émettrice</div>
+      </div>
+
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#3d9eff" stroke-width="1.5" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#3d9eff"/>
+          <text x="8" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+2</text>
+        </svg>
+      </div>
+
+      <div class="hop-node">
+        <div class="hop-dot active">🛒</div>
+        <div class="hop-label">Bob<br>Client</div>
+      </div>
+
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#3d9eff" stroke-width="1.5" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#3d9eff"/>
+          <text x="8" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+5</text>
+        </svg>
+      </div>
+
+      <div class="hop-node">
+        <div class="hop-dot active">🍞</div>
+        <div class="hop-label">Chloé<br>Boulangère</div>
+      </div>
+
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#3d9eff" stroke-width="1.5" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#3d9eff"/>
+          <text x="8" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+9</text>
+        </svg>
+      </div>
+
+      <div class="hop-node">
+        <div class="hop-dot active">🧑‍🔧</div>
+        <div class="hop-label">David<br>Réparateur</div>
+      </div>
+
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#3d9eff" stroke-width="1.5" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#3d9eff"/>
+          <text x="8" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+13</text>
+        </svg>
+      </div>
+
+      <div class="hop-node">
+        <div class="hop-dot active">🌿</div>
+        <div class="hop-label">Eva<br>Herboriste</div>
+      </div>
+
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#f5a623" stroke-width="2" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#f5a623"/>
+          <text x="6" y="6" fill="#f5a623" font-size="7" font-family="monospace">J+18</text>
+        </svg>
+      </div>
+
+      <div class="hop-node" style="position:relative;">
+        <div class="hop-dot return">🌾</div>
+        <div class="hop-label" style="color:var(--zen);">Alice<br>✦ Retour</div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-cell">
+        <div class="metric-value mv-green">5</div>
+        <div class="metric-label">Hops</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-amber">18j</div>
+        <div class="metric-label">Durée</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-green">+42%</div>
+        <div class="metric-label">C² boost</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-green">100</div>
+        <div class="metric-label">Score santé</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOUCLE COURTE (locale) -->
+  <div class="boucle-container">
+    <div class="boucle-label">
+      <div class="boucle-title">🔵 Boucle courte — réseau local actif</div>
+      <div class="boucle-score score-amber">▲ RÉSEAU DENSE MAIS LIMITÉ</div>
+    </div>
+    <div class="hop-chain">
+      <div class="hop-node">
+        <div class="hop-dot issuer">🌾</div>
+        <div class="hop-label">Alice<br>Émettrice</div>
+      </div>
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#3d9eff" stroke-width="1.5" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#3d9eff"/>
+          <text x="8" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+1</text>
+        </svg>
+      </div>
+      <div class="hop-node">
+        <div class="hop-dot active">🛒</div>
+        <div class="hop-label">Bob</div>
+      </div>
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#f5a623" stroke-width="2" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#f5a623"/>
+          <text x="8" y="6" fill="#f5a623" font-size="7" font-family="monospace">J+3</text>
+        </svg>
+      </div>
+      <div class="hop-node">
+        <div class="hop-dot return" style="animation-duration:3.5s;">🌾</div>
+        <div class="hop-label" style="color:var(--zen);">Alice<br>✦ Retour</div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;padding-left:20px;">
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);font-style:italic;">"Seulement 2 hops — le ẐEN reste<br>dans un petit cercle. Ça fonctionne,<br>mais le réseau pourrait s'étendre."</span>
+      </div>
+    </div>
+    <div class="metrics-row">
+      <div class="metric-cell">
+        <div class="metric-value mv-amber">2</div>
+        <div class="metric-label">Hops</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-green">3j</div>
+        <div class="metric-label">Durée</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-amber">+8%</div>
+        <div class="metric-label">C² boost</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-amber">54</div>
+        <div class="metric-label">Score santé</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BON EXPIRÉ (mauvais signal) -->
+  <div class="boucle-container">
+    <div class="boucle-label">
+      <div class="boucle-title">💀 Bon expiré — confiance bloquée</div>
+      <div class="boucle-score score-red">✕ SIGNAL D'ALERTE</div>
+    </div>
+    <div class="hop-chain">
+      <div class="hop-node">
+        <div class="hop-dot issuer">🌾</div>
+        <div class="hop-label">Alice<br>Émettrice</div>
+      </div>
+      <div class="hop-arrow">
+        <svg width="32" height="16" viewBox="0 0 32 16">
+          <line x1="2" y1="8" x2="28" y2="8" stroke="#3d9eff" stroke-width="1.5" stroke-dasharray="4,3" class="flow-line"/>
+          <polygon points="26,4 32,8 26,12" fill="#3d9eff"/>
+          <text x="8" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+2</text>
+        </svg>
+      </div>
+      <div class="hop-node">
+        <div class="hop-dot active">🛒</div>
+        <div class="hop-label">Bob</div>
+      </div>
+      <div class="hop-arrow">
+        <svg width="48" height="16" viewBox="0 0 48 16">
+          <line x1="2" y1="8" x2="44" y2="8" stroke="#5a7a62" stroke-width="1" stroke-dasharray="2,4"/>
+          <text x="10" y="6" fill="#5a7a62" font-size="7" font-family="monospace">J+4 → ???</text>
+        </svg>
+      </div>
+      <div class="hop-node">
+        <div class="hop-dot stagnant">💤</div>
+        <div class="hop-label">Bloqué<br>personne<br>accepte?</div>
+      </div>
+      <div class="hop-arrow">
+        <svg width="48" height="16" viewBox="0 0 48 16">
+          <line x1="2" y1="8" x2="44" y2="8" stroke="#ff4757" stroke-width="1" stroke-dasharray="2,4"/>
+          <text x="8" y="6" fill="#ff4757" font-size="7" font-family="monospace">J+28 ⚠</text>
+        </svg>
+      </div>
+      <div class="hop-node">
+        <div class="hop-dot expired">💀</div>
+        <div class="hop-label" style="color:var(--red);">Expiré<br>valeur<br>perdue</div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;padding-left:20px;">
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:#ff6b7a;font-style:italic;">"Ce bon n'a pas circulé. Signe que<br>quelque chose bloque la confiance<br>à cet endroit du réseau."</span>
+      </div>
+    </div>
+    <div class="metrics-row">
+      <div class="metric-cell">
+        <div class="metric-value mv-red">1</div>
+        <div class="metric-label">Hops</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-red">28j</div>
+        <div class="metric-label">TTL Max</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-red">0%</div>
+        <div class="metric-label">C² boost</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-value mv-red">12</div>
+        <div class="metric-label">Score santé</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 : FORMULE DU -->
+  <div class="section-title" style="margin-top:40px;">02 — Ce que les boucles font à votre DU</div>
+
+  <div class="formula-box">
+    <div class="formula-main">
+      <span class="var-zen">DU_final</span>
+      &nbsp;=&nbsp;
+      <span class="var-blue">(DU_prev + C² × M_locale)</span>
+      &nbsp;×&nbsp;
+      <span class="var-amber">(1 + α × S_compétence)</span>
+    </div>
+    <div class="formula-legend">
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--zen);">DU_final</span>
+        <span class="legend-desc">Votre création monétaire quotidienne en ẐEN — résultat de vos échanges réels</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--blue);">C²</span>
+        <span class="legend-desc">Calculé depuis la vitesse de retour de vos boucles — plus vite elles reviennent, plus C² monte</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--blue);">M_locale</span>
+        <span class="legend-desc">Masse de ẐEN actifs (non expirés) dans votre N1 + N2 — récompense l'activité, pas l'accumulation</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--amber);">α × S_i</span>
+        <span class="legend-desc">Bonus compétence — vos savoir-faire attestés par vos pairs augmentent votre DU</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 : COMPARAISON -->
+  <div class="section-title" style="margin-top:40px;">03 — Ce que TrocZen voit, que les autres ne voient pas</div>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <span class="compare-icon">💶</span>
+      <div class="compare-name">Euro</div>
+      <div class="compare-desc">Monnaie de dette, soldes bancaires, aucune traçabilité circulaire</div>
+      <div class="compare-metric"><span class="dot-no"></span> Vitesse de circulation</div>
+      <div class="compare-metric"><span class="dot-no"></span> Boucles fermées</div>
+      <div class="compare-metric"><span class="dot-no"></span> Réseau de confiance</div>
+      <div class="compare-metric"><span class="dot-yes"></span> Accumulation possible</div>
+      <div class="compare-metric"><span class="dot-no"></span> Compétences reconnues</div>
+    </div>
+
+    <div class="compare-card">
+      <span class="compare-icon">Ğ1</span>
+      <div class="compare-name">Monnaie Libre Ğ1</div>
+      <div class="compare-desc">DU universel, toile de confiance, mais pas de traçabilité des flux</div>
+      <div class="compare-metric"><span class="dot-no"></span> Vitesse de circulation</div>
+      <div class="compare-metric"><span class="dot-no"></span> Boucles fermées</div>
+      <div class="compare-metric"><span class="dot-yes"></span> Toile de confiance (N1)</div>
+      <div class="compare-metric"><span class="dot-meh"></span> Accumulation limitée</div>
+      <div class="compare-metric"><span class="dot-no"></span> Compétences reconnues</div>
+    </div>
+
+    <div class="compare-card featured">
+      <span class="compare-icon">ẐEN</span>
+      <div class="compare-name" style="color:var(--zen);">TrocZen</div>
+      <div class="compare-desc">Bons à expiration, boucles traçables, DU hyper-relativiste</div>
+      <div class="compare-metric"><span class="dot-yes"></span> Vitesse de circulation</div>
+      <div class="compare-metric"><span class="dot-yes"></span> Boucles fermées (hops)</div>
+      <div class="compare-metric"><span class="dot-yes"></span> N1 + N2 Nostr</div>
+      <div class="compare-metric"><span class="dot-no"></span> Accumulation impossible</div>
+      <div class="compare-metric"><span class="dot-yes"></span> WoTx2 compétences</div>
+    </div>
+  </div>
+
+  <!-- SECTION 4 : INDICATEURS DE SANTÉ -->
+  <div class="section-title" style="margin-top:40px;">04 — Tableau de santé d'un marché local</div>
+
+  <div class="health-section">
+    <div class="health-row">
+      <div class="health-label">Ratio de santé</div>
+      <div class="health-bar-track">
+        <div class="health-bar-fill fill-green" style="width:82%"></div>
+      </div>
+      <div class="health-val" style="color:var(--zen);">82%</div>
+    </div>
+    <div class="health-row">
+      <div class="health-label">Hops moyens/boucle</div>
+      <div class="health-bar-track">
+        <div class="health-bar-fill fill-green" style="width:60%"></div>
+      </div>
+      <div class="health-val" style="color:var(--zen);">4.8</div>
+    </div>
+    <div class="health-row">
+      <div class="health-label">Taux d'expiration</div>
+      <div class="health-bar-track">
+        <div class="health-bar-fill fill-amber" style="width:18%"></div>
+      </div>
+      <div class="health-val" style="color:var(--amber);">18%</div>
+    </div>
+    <div class="health-row">
+      <div class="health-label">Vitesse retour médian</div>
+      <div class="health-bar-track">
+        <div class="health-bar-fill fill-green" style="width:72%"></div>
+      </div>
+      <div class="health-val" style="color:var(--zen);">12j</div>
+    </div>
+    <div class="health-row">
+      <div class="health-label">Taux inter-marchés</div>
+      <div class="health-bar-track">
+        <div class="health-bar-fill fill-amber" style="width:30%"></div>
+      </div>
+      <div class="health-val" style="color:var(--amber);">30%</div>
+    </div>
+
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);">
+      ⟶ Signal :
+      <span style="color:var(--zen);">Réseau en bonne santé</span> —
+      Augmentez le taux inter-marchés pour diversifier la communauté.
+      TTL conseillé : <span style="color:var(--white);">21 jours</span>.
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer-note">
+    <p><span>TrocZen</span> · Protocole v6 · Bons ẐEN · Kind 30303/30304 · AGPL-3.0</p>
+    <p style="margin-top:6px;">Les boucles ne mentent pas — elles montrent là où la confiance existe vraiment.</p>
+  </div>
+
+</div>
+</body>
+</html>

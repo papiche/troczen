@@ -27,7 +27,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   final _formKey = GlobalKey<FormState>();
   final _valueController = TextEditingController(text: '0');
   final _issuerNameController = TextEditingController();
-  final _expirationController = TextEditingController(text: '90'); // Jours par défaut
   final _cryptoService = CryptoService();
   final _storageService = StorageService();
   final _apiService = ApiService();
@@ -41,6 +40,15 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   final _websiteController = TextEditingController();
   final _wishController = TextEditingController();
   List<String> _suggestedTags = [];
+  
+  final List<Map<String, dynamic>> _expirationOptions = [
+    {'label': '7 jours', 'days': 7},
+    {'label': '28 jours', 'days': 28},
+    {'label': '3 mois', 'days': 90},
+    {'label': '6 mois', 'days': 180},
+    {'label': '1 an', 'days': 365},
+  ];
+  double _expirationSliderValue = 1; // Index 1 = 28 jours par défaut
 
   @override
   void initState() {
@@ -198,7 +206,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     _issuerNameController.dispose();
     _websiteController.dispose();
     _wishController.dispose();
-    _expirationController.dispose();
     super.dispose();
   }
 
@@ -258,7 +265,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         issuerName: _issuerNameController.text,
         issuerNpub: widget.user.npub,
         createdAt: DateTime.now(),
-        expiresAt: DateTime.now().add(Duration(days: int.parse(_expirationController.text))),
+        expiresAt: DateTime.now().add(Duration(days: _expirationOptions[_expirationSliderValue.toInt()]['days'] as int)),
         status: BonStatus.active,
         p1: p1,
         p2: p2,
@@ -764,52 +771,68 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
               const SizedBox(height: 24),
 
               // Section Expiration
-              Text(
-                'Durée de validité',
-                style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Durée de validité',
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFB347).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFFB347)),
+                    ),
+                    child: Text(
+                      _expirationOptions[_expirationSliderValue.toInt()]['label'] as String,
+                      style: const TextStyle(
+                        color: Color(0xFFFFB347),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: const Color(0xFFFFB347),
+                  inactiveTrackColor: Colors.grey[800],
+                  thumbColor: const Color(0xFFFFB347),
+                  overlayColor: const Color(0xFFFFB347).withValues(alpha: 0.2),
+                  tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 4),
+                  activeTickMarkColor: Colors.white,
+                  inactiveTickMarkColor: Colors.grey[600],
+                ),
+                child: Slider(
+                  value: _expirationSliderValue,
+                  min: 0,
+                  max: (_expirationOptions.length - 1).toDouble(),
+                  divisions: _expirationOptions.length - 1,
+                  onChanged: (value) {
+                    setState(() {
+                      _expirationSliderValue = value;
+                    });
+                  },
                 ),
               ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _expirationController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Jours avant expiration',
-                  suffixText: 'jours',
-                  labelStyle: TextStyle(color: Colors.grey[400]),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[700]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: Color(0xFFFFB347)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF2A2A2A),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('7j', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    Text('1 an', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer une durée';
-                  }
-                  final days = int.tryParse(value);
-                  if (days == null || days <= 0) {
-                    return 'Durée invalide';
-                  }
-                  // ✅ R1 Protocole v6: TTL min 7j, max 365j
-                  if (days < 7) {
-                    return 'Minimum 7 jours (Règle R1 protocole v6)';
-                  }
-                  if (days > 365) {
-                    return 'Maximum 365 jours (Règle R1 protocole v6)';
-                  }
-                  return null;
-                },
               ),
 
               const SizedBox(height: 24),

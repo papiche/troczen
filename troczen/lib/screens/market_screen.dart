@@ -1090,7 +1090,7 @@ class _MarketScreenState extends State<MarketScreen> {
               final market = Market(
                 name: nameController.text.trim(),
                 seedMarket: seedController.text.trim().toLowerCase(),
-                validUntil: DateTime.now().add(const Duration(days: 365)),
+                validUntil: DateTime.now().add(const Duration(days: 36500)), // Valable 100 ans par défaut
                 relayUrl: relayController.text.trim().isEmpty
                     ? null
                     : relayController.text.trim(),
