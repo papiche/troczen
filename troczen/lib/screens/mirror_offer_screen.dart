@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:crypto/crypto.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../services/qr_service.dart';
@@ -136,7 +137,12 @@ class _MirrorOfferScreenState extends State<MirrorOfferScreen> {
         ...timestampBytes.buffer.asUint8List(),
       ]);
       
-      final signatureBytes = _cryptoService.signMessageBytesDirect(messageBytes, nsecBonBytes);
+      // ✅ CORRECTION BIP-340: Le message composite (112 octets) doit être hashé en SHA256
+      // pour obtenir un message de 32 octets requis par Schnorr/BIP-340
+      final messageHash = sha256.convert(messageBytes);
+      final messageHashBytes = Uint8List.fromList(messageHash.bytes);
+      
+      final signatureBytes = _cryptoService.signMessageBytesDirect(messageHashBytes, nsecBonBytes);
       
       // Nettoyer les bytes sensibles immédiatement
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
@@ -195,14 +201,21 @@ class _MirrorOfferScreenState extends State<MirrorOfferScreen> {
       final decodedBytes = base64Decode(base64String);
       final ackData = _qrService.decodeAck(decodedBytes);
 
-      if (!_cryptoService.isValidPublicKey(ackData['bonId']) || 
-          ackData['bonId'] != widget.bon.bonId || 
+      if (!_cryptoService.isValidPublicKey(ackData['bonId']) ||
+          ackData['bonId'] != widget.bon.bonId ||
           ackData['status'] != 0x01) {
         throw Exception('QR code incorrect');
       }
 
+      // ✅ CORRECTION BIP-340: Le challenge de 16 octets doit être hashé en SHA256
+      // pour obtenir un message de 32 octets requis par Schnorr/BIP-340
+      // Le receveur a signé sha256(challenge), on doit vérifier avec le même hash
+      final challengeBytes = Uint8List.fromList(HEX.decode(_currentChallenge));
+      final challengeHash = sha256.convert(challengeBytes);
+      final challengeHashHex = challengeHash.toString();
+      
       final isValid = _cryptoService.verifySignature(
-        _currentChallenge,
+        challengeHashHex,
         ackData['signature'],
         widget.bon.bonId,
       );

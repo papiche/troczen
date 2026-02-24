@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hex/hex.dart';
@@ -7,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:crypto/crypto.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
 import '../models/qr_payload_v2.dart';
@@ -143,6 +145,20 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
       final marketName = market?.name ?? 'Marché Local';
 
       final existingBon = await _storageService.getBonById(payload.bonId);
+      
+      // ✅ Récupérer l'expiration depuis le cache du marché (kind 30303)
+      // Le protocole v6 stipule que expires_at est IMMUTABLE - la monnaie fondante continue
+      // de s'appliquer après chaque transfert (force la vélocité, évite la thésaurisation)
+      DateTime? expiresAtFromMarket;
+      final marketBonData = await _storageService.getMarketBonById(payload.bonId);
+      if (marketBonData != null && marketBonData['expiresAt'] != null) {
+        try {
+          expiresAtFromMarket = DateTime.parse(marketBonData['expiresAt'] as String);
+        } catch (e) {
+          debugPrint('Erreur parsing expiresAt: $e');
+        }
+      }
+      
       final bon = existingBon ?? Bon(
         bonId: payload.bonId,
         value: payload.value,
@@ -153,12 +169,19 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
         status: BonStatus.active,
         createdAt: payload.emittedAt,
         marketName: marketName,
-        // ✅ RÈGLE ÉCONOMIQUE : Une fois échangé, le bon perd sa date d'expiration
-        // (La monnaie fondante ne s'applique qu'au créateur initial pour forcer l'injection)
-        expiresAt: null,
+        // ✅ CORRECTION PROTOCOLE v6: Le expires_at est IMMUTABLE
+        // Récupéré depuis l'événement kind 30303 (P3) du marché
+        expiresAt: expiresAtFromMarket,
       );
 
-      final updatedBon = existingBon != null ? existingBon.copyWith(status: BonStatus.active, p2: p2) : bon;
+      final updatedBon = existingBon != null
+          ? existingBon.copyWith(
+              status: BonStatus.active,
+              p2: p2,
+              // ✅ CORRECTION: Préserver l'expiration existante (ou utiliser celle du marché)
+              expiresAt: existingBon.expiresAt ?? expiresAtFromMarket,
+            )
+          : bon;
       await _storageService.saveBon(updatedBon);
 
       await _logReceptionToAuditTrail(
@@ -177,8 +200,13 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
       
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, bonP2Bytes, bonP3Bytes);
       
-      // ✅ OPTIMISATION: Signer directement en bytes
-      final signatureBytes = _cryptoService.signMessageBytesDirect(payload.challenge, nsecBonBytes);
+      // ✅ CORRECTION BIP-340: Le challenge de 16 octets doit être hashé en SHA256
+      // pour obtenir un message de 32 octets requis par Schnorr/BIP-340
+      final challengeHash = sha256.convert(payload.challenge).bytes;
+      final challengeHashBytes = Uint8List.fromList(challengeHash);
+      
+      // ✅ OPTIMISATION: Signer directement en bytes (message de 32 octets)
+      final signatureBytes = _cryptoService.signMessageBytesDirect(challengeHashBytes, nsecBonBytes);
       
       _cryptoService.secureZeroiseBytes(nsecBonBytes);
       _cryptoService.secureZeroiseBytes(bonP2Bytes);

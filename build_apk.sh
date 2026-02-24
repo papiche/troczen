@@ -306,7 +306,7 @@ if [ "$PUSH_TO_GIT" = true ]; then
     if git diff --cached --quiet; then
         echo "ℹ️  Aucun changement à committer"
     else
-        git commit -m "Mise à jour APK $VERSION sur IPFS (CID: $IPFS_CID)"
+        git commit -m "Mise à jour APK (https://$IPFS_GATEWAY/ipfs/$IPFS_CID/$APK_NAME)"
         echo "✅ Changements commités"
         
         # Push vers origin

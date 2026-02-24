@@ -625,6 +625,13 @@ class StorageService {
     return await getP3List();
   }
 
+  /// ✅ CORRECTION EXPIRATION: Récupère les métadonnées d'un bon depuis le cache du marché
+  /// Permet de récupérer l'expiration (expiresAt) depuis l'événement kind 30303
+  /// Utilisé lors de la réception d'un bon pour préserver l'expiration (monnaie fondante)
+  Future<Map<String, dynamic>?> getMarketBonById(String bonId) async {
+    return await _cacheService.getMarketBonById(bonId);
+  }
+
   /// ✅ CORRECTION: Récupère les données économiques agrégées pour le dashboard
   /// Combine les données du marché global avec le wallet local
   Future<Map<String, dynamic>> getMarketEconomicData() async {
