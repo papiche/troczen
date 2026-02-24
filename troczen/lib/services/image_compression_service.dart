@@ -114,6 +114,7 @@ class ImageCompressionService {
   /// Crée un widget Image depuis un data URI ou une URL
   static Widget buildImage({
     required String? uri,
+    String? fallbackUri,
     double? width,
     double? height,
     BoxFit fit = BoxFit.cover,
@@ -122,6 +123,17 @@ class ImageCompressionService {
     BorderRadius? borderRadius,
   }) {
     if (uri == null || uri.isEmpty) {
+      if (fallbackUri != null && fallbackUri.isNotEmpty) {
+        return buildImage(
+          uri: fallbackUri,
+          width: width,
+          height: height,
+          fit: fit,
+          placeholder: placeholder,
+          errorWidget: errorWidget,
+          borderRadius: borderRadius,
+        );
+      }
       return errorWidget ?? _buildDefaultPlaceholder(width, height);
     }
     
@@ -131,6 +143,17 @@ class ImageCompressionService {
       // Image Base64
       final bytes = extractBytesFromDataUri(uri);
       if (bytes == null) {
+        if (fallbackUri != null && fallbackUri.isNotEmpty) {
+          return buildImage(
+            uri: fallbackUri,
+            width: width,
+            height: height,
+            fit: fit,
+            placeholder: placeholder,
+            errorWidget: errorWidget,
+            borderRadius: borderRadius,
+          );
+        }
         return errorWidget ?? _buildDefaultPlaceholder(width, height);
       }
       imageWidget = Image.memory(
@@ -138,7 +161,20 @@ class ImageCompressionService {
         width: width,
         height: height,
         fit: fit,
-        errorBuilder: (_, __, ___) => errorWidget ?? _buildDefaultPlaceholder(width, height),
+        errorBuilder: (_, __, ___) {
+          if (fallbackUri != null && fallbackUri.isNotEmpty) {
+            return buildImage(
+              uri: fallbackUri,
+              width: width,
+              height: height,
+              fit: fit,
+              placeholder: placeholder,
+              errorWidget: errorWidget,
+              borderRadius: borderRadius,
+            );
+          }
+          return errorWidget ?? _buildDefaultPlaceholder(width, height);
+        },
       );
     } else {
       // URL distante
@@ -147,7 +183,20 @@ class ImageCompressionService {
         width: width,
         height: height,
         fit: fit,
-        errorBuilder: (_, __, ___) => errorWidget ?? _buildDefaultPlaceholder(width, height),
+        errorBuilder: (_, __, ___) {
+          if (fallbackUri != null && fallbackUri.isNotEmpty) {
+            return buildImage(
+              uri: fallbackUri,
+              width: width,
+              height: height,
+              fit: fit,
+              placeholder: placeholder,
+              errorWidget: errorWidget,
+              borderRadius: borderRadius,
+            );
+          }
+          return errorWidget ?? _buildDefaultPlaceholder(width, height);
+        },
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return placeholder ?? _buildDefaultPlaceholder(width, height);

@@ -7,8 +7,11 @@ class User {
   final DateTime createdAt;
   final String? website;       // Site web du profil
   final String? g1pub;         // Clé publique Ğ1 (Base58)
+  final String? about;         // Description du profil
   final String? picture;       // URL de l'avatar
   final String? banner;        // ✅ NOUVEAU: URL de la bannière
+  final String? picture64;     // Fallback Base64
+  final String? banner64;      // Fallback Base64
   final String? relayUrl;      // URL du relai Nostr de l'utilisateur
   final List<String>? activityTags;  // Tags d'activité/savoir-faire (WoTx)
 
@@ -19,8 +22,11 @@ class User {
     required this.createdAt,
     this.website,
     this.g1pub,
+    this.about,
     this.picture,
     this.banner,
+    this.picture64,
+    this.banner64,
     this.relayUrl,
     this.activityTags,
   });
@@ -45,8 +51,11 @@ class User {
       'createdAt': createdAt.toIso8601String(),
       if (website != null) 'website': website,
       if (g1pub != null) 'g1pub': g1pub,
+      if (about != null) 'about': about,
       if (picture != null) 'picture': picture,
       if (banner != null) 'banner': banner,
+      if (picture64 != null) 'picture64': picture64,
+      if (banner64 != null) 'banner64': banner64,
       if (relayUrl != null) 'relayUrl': relayUrl,
       if (activityTags != null) 'activityTags': activityTags,
     };
@@ -60,8 +69,11 @@ class User {
       createdAt: DateTime.parse(json['createdAt']),
       website: json['website'],
       g1pub: json['g1pub'],
+      about: json['about'],
       picture: json['picture'],
       banner: json['banner'],
+      picture64: json['picture64'],
+      banner64: json['banner64'],
       relayUrl: json['relayUrl'],
       activityTags: json['activityTags'] != null
           ? List<String>.from(json['activityTags'])

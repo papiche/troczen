@@ -19,6 +19,9 @@ class OnboardingState {
   String? displayName;
   String? about;
   String? pictureUrl;
+  String? bannerUrl;
+  String? profileImagePath; // Chemin local pour upload IPFS ultérieur
+  String? bannerImagePath;  // Chemin local pour upload IPFS ultérieur
   List<String> activityTags;
   String? g1PublicKey;
   
@@ -36,6 +39,9 @@ class OnboardingState {
     this.displayName,
     this.about,
     this.pictureUrl,
+    this.bannerUrl,
+    this.profileImagePath,
+    this.bannerImagePath,
     this.activityTags = const [],
     this.g1PublicKey,
     this.marketName = 'Marché Local',
@@ -52,6 +58,9 @@ class OnboardingState {
     String? displayName,
     String? about,
     String? pictureUrl,
+    String? bannerUrl,
+    String? profileImagePath,
+    String? bannerImagePath,
     List<String>? activityTags,
     String? g1PublicKey,
     String? marketName,
@@ -67,6 +76,9 @@ class OnboardingState {
       displayName: displayName ?? this.displayName,
       about: about ?? this.about,
       pictureUrl: pictureUrl ?? this.pictureUrl,
+      bannerUrl: bannerUrl ?? this.bannerUrl,
+      profileImagePath: profileImagePath ?? this.profileImagePath,
+      bannerImagePath: bannerImagePath ?? this.bannerImagePath,
       activityTags: activityTags ?? this.activityTags,
       g1PublicKey: g1PublicKey ?? this.g1PublicKey,
       marketName: marketName ?? this.marketName,

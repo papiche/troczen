@@ -111,6 +111,8 @@ class NostrProfile {
   final String? about;
   final String? picture;
   final String? banner;
+  final String? picture64; // ✅ Fallback Base64
+  final String? banner64;  // ✅ Fallback Base64
   final String? nip05;
   final String? lud16;
   final String? website;
@@ -133,6 +135,8 @@ class NostrProfile {
     this.about,
     this.picture,
     this.banner,
+    this.picture64,
+    this.banner64,
     this.nip05,
     this.lud16,
     this.website,
@@ -152,6 +156,8 @@ class NostrProfile {
       if (about != null) 'about': about,
       if (picture != null) 'picture': picture,
       if (banner != null) 'banner': banner,
+      if (picture64 != null) 'picture64': picture64,
+      if (banner64 != null) 'banner64': banner64,
       if (nip05 != null) 'nip05': nip05,
       if (lud16 != null) 'lud16': lud16,
       if (website != null) 'website': website,
@@ -192,6 +198,8 @@ class NostrProfile {
       about: json['about'],
       picture: json['picture'],
       banner: json['banner'],
+      picture64: json['picture64'],
+      banner64: json['banner64'],
       nip05: json['nip05'],
       lud16: json['lud16'],
       website: json['website'],
@@ -213,6 +221,8 @@ class NostrProfile {
     String? about,
     String? picture,
     String? banner,
+    String? picture64,
+    String? banner64,
     String? nip05,
     String? lud16,
     String? website,
@@ -229,6 +239,8 @@ class NostrProfile {
       about: about ?? this.about,
       picture: picture ?? this.picture,
       banner: banner ?? this.banner,
+      picture64: picture64 ?? this.picture64,
+      banner64: banner64 ?? this.banner64,
       nip05: nip05 ?? this.nip05,
       lud16: lud16 ?? this.lud16,
       website: website ?? this.website,

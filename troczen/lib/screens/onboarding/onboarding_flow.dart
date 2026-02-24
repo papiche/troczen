@@ -193,6 +193,9 @@ class OnboardingNotifier extends ChangeNotifier {
     required String displayName,
     String? about,
     String? pictureUrl,
+    String? bannerUrl,
+    String? profileImagePath,
+    String? bannerImagePath,
     List<String>? activityTags,
     String? g1PublicKey,
   }) {
@@ -200,6 +203,9 @@ class OnboardingNotifier extends ChangeNotifier {
       displayName: displayName,
       about: about,
       pictureUrl: pictureUrl,
+      bannerUrl: bannerUrl,
+      profileImagePath: profileImagePath,
+      bannerImagePath: bannerImagePath,
       activityTags: activityTags,
       g1PublicKey: g1PublicKey,
     );

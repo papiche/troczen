@@ -1126,6 +1126,8 @@ class _MarketScreenState extends State<MarketScreen> {
                     about: market.about,
                     picture: market.picture,
                     banner: market.banner,
+                    picture64: market.picture,
+                    banner64: market.banner,
                   );
                   
                   await nostrService.disconnect();

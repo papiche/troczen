@@ -64,6 +64,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     // Charger le profil depuis le stockage local
     _nameController.text = widget.user.displayName;
     _displayNameController.text = widget.user.displayName;
+    _aboutController.text = widget.user.about ?? '';
     _websiteController.text = widget.user.website ?? '';
     _g1pubController.text = widget.user.g1pub ?? '';
     
@@ -157,6 +158,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               : null,
           picture: pictureUrl,
           banner: bannerUrl,
+          picture64: _base64Picture,
+          banner64: _base64Banner,
           website: _websiteController.text.trim().isNotEmpty
               ? _websiteController.text.trim()
               : null,
@@ -192,9 +195,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         g1pub: _g1pubController.text.trim().isNotEmpty
             ? _g1pubController.text.trim()
             : widget.user.g1pub,
+        about: _aboutController.text.trim().isNotEmpty
+            ? _aboutController.text.trim()
+            : widget.user.about,
         // ✅ NOUVEAU: Sauvegarder les URLs des images
         picture: pictureUrl ?? widget.user.picture,
         banner: bannerUrl ?? widget.user.banner,
+        picture64: _base64Picture ?? widget.user.picture64,
+        banner64: _base64Banner ?? widget.user.banner64,
       );
       await _storageService.saveUser(updatedUser);
 
@@ -322,6 +330,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         onTap: _isUploading ? null : () => _selectImage('picture'),
                         child: ImageCompressionService.buildImage(
                           uri: _base64Picture ?? widget.user.picture,
+                          fallbackUri: widget.user.picture64,
                           width: 60,
                           height: 60,
                           borderRadius: BorderRadius.circular(8),
@@ -345,6 +354,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         onTap: _isUploading ? null : () => _selectImage('banner'),
                         child: ImageCompressionService.buildImage(
                           uri: _base64Banner ?? widget.user.banner,
+                          fallbackUri: widget.user.banner64,
                           width: double.infinity,
                           height: 60,
                           borderRadius: BorderRadius.circular(8),

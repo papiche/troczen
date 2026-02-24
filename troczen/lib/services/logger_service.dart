@@ -148,7 +148,7 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
       final result = await _feedbackService.reportBug(
         title: '[Marché Global] Issue avec logs',
         description: fullDescription,
-        appVersion: '1.0.9',
+        appVersion: '3.6.1',
         platform: defaultTargetPlatform.name,
       );
       

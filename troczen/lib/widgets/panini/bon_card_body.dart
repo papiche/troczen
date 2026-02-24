@@ -183,6 +183,7 @@ class BonCardBodyWithTransfers extends StatelessWidget {
                 child: OfflineFirstImage(
                   url: pictureUrl,
                   localPath: localPicturePath,
+                  fallbackBase64: bon.picture64,
                   width: 60,
                   height: 60,
                   color: color,

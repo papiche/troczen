@@ -422,11 +422,42 @@ class DuCalculationService {
       rarity: 'bootstrap', // Rareté spéciale pour le bon de bootstrap
       cardType: 'bootstrap',
       duAtCreation: 0.0, // Pas de DU à la création
+      picture: user.picture,
+      logoUrl: user.picture,
+      picture64: user.picture64,
     );
 
     // Sauvegarder localement
     await _storageService.saveBon(bon);
     await _storageService.saveP3ToCache(bonId, p3Hex);
+
+    // Publier le profil du bon (Kind 0)
+    try {
+      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(
+        null,
+        Uint8List.fromList(HEX.decode(p2Hex)),
+        Uint8List.fromList(HEX.decode(p3Hex))
+      );
+      final nsecBonHex = HEX.encode(nsecBonBytes);
+      
+      await _nostrService.publishUserProfile(
+        npub: bonId,
+        nsec: nsecBonHex,
+        name: user.displayName,
+        displayName: user.displayName,
+        about: 'Bon Zéro - ${market.name}',
+        picture: user.picture,
+        banner: user.banner,
+        picture64: user.picture64,
+        banner64: user.banner64,
+        website: user.website,
+        g1pub: user.g1pub,
+      );
+      
+      _cryptoService.secureZeroiseBytes(nsecBonBytes);
+    } catch (e) {
+      Logger.warn('DuCalculationService', 'Erreur publication profil Bon Zéro: $e');
+    }
 
     // Publier sur Nostr
     await _nostrService.publishP3(

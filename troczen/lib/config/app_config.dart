@@ -3,7 +3,7 @@
 class AppConfig {
   // ==================== VERSION ====================
   /// Version de l'application (doit correspondre à pubspec.yaml)
-  static const String appVersion = '1.0.9';
+  static const String appVersion = '3.6.1';
   
   /// Nom de l'application
   static const String appName = 'TrocZen';

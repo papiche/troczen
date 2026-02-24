@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/nostr_service.dart';
 import '../../services/du_calculation_service.dart';
 import '../../models/market.dart';
 import '../../models/user.dart';
+import '../../models/onboarding_state.dart';
 import '../main_shell.dart';
 import 'onboarding_flow.dart';
 
@@ -394,6 +397,106 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
   /// Utilise un fire-and-forget pour ne pas ralentir l'onboarding
   ///
   /// ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché.
+  /// Upload IPFS en arrière-plan (fire-and-forget)
+  /// Met à jour le profil local et republie sur Nostr une fois terminé
+  void _uploadImagesToIPFSInBackground({
+    required OnboardingState state,
+    required User user,
+    required StorageService storageService,
+    required CryptoService cryptoService,
+  }) async {
+    try {
+      final apiService = ApiService();
+      apiService.setCustomApi(state.apiUrl, state.relayUrl);
+      
+      String? newPictureUrl;
+      String? newBannerUrl;
+      bool updated = false;
+      
+      // Upload Avatar
+      if (state.profileImagePath != null) {
+        debugPrint('Démarrage upload IPFS avatar en arrière-plan...');
+        final result = await apiService.uploadImage(
+          npub: user.npub,
+          imageFile: File(state.profileImagePath!),
+          type: 'avatar',
+          waitForIpfs: true, // On attend l'URL IPFS car on est en background
+        );
+        if (result != null) {
+          newPictureUrl = result['ipfs_url'] ?? result['url'];
+          if (newPictureUrl != null) updated = true;
+        }
+      }
+      
+      // Upload Banner
+      if (state.bannerImagePath != null) {
+        debugPrint('Démarrage upload IPFS banner en arrière-plan...');
+        final result = await apiService.uploadImage(
+          npub: user.npub,
+          imageFile: File(state.bannerImagePath!),
+          type: 'banner',
+          waitForIpfs: true, // On attend l'URL IPFS car on est en background
+        );
+        if (result != null) {
+          newBannerUrl = result['ipfs_url'] ?? result['url'];
+          if (newBannerUrl != null) updated = true;
+        }
+      }
+      
+      // Si au moins une image a été uploadée avec succès
+      if (updated) {
+        // 1. Mettre à jour l'utilisateur local
+        final updatedUser = User(
+          npub: user.npub,
+          nsec: user.nsec,
+          displayName: user.displayName,
+          createdAt: user.createdAt,
+          website: user.website,
+          g1pub: user.g1pub,
+          picture: newPictureUrl ?? user.picture,
+          banner: newBannerUrl ?? user.banner,
+          picture64: user.picture64,
+          banner64: user.banner64,
+          relayUrl: user.relayUrl,
+          activityTags: user.activityTags,
+        );
+        await storageService.saveUser(updatedUser);
+        
+        // 2. Republier le profil sur Nostr avec les nouvelles URLs
+        try {
+          final nostrService = NostrService(
+            cryptoService: cryptoService,
+            storageService: storageService,
+          );
+          
+          if (await nostrService.connect(state.relayUrl)) {
+            await nostrService.publishUserProfile(
+              npub: updatedUser.npub,
+              nsec: updatedUser.nsec,
+              name: updatedUser.displayName,
+              displayName: updatedUser.displayName,
+              about: state.about ?? 'Utilisateur TrocZen - Monnaie locale ẐEN',
+              picture: updatedUser.picture,
+              banner: updatedUser.banner,
+              picture64: updatedUser.picture64,
+              banner64: updatedUser.banner64,
+              website: null,
+              g1pub: updatedUser.g1pub,
+              tags: updatedUser.activityTags,
+            );
+            await nostrService.disconnect();
+            debugPrint('✅ Profil Nostr mis à jour avec les URLs IPFS');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Erreur republication profil Nostr (IPFS): $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur upload IPFS arrière-plan: $e');
+    }
+  }
+
+  /// ✅ WOTX: Publie les demandes d'attestation (Kind 30501) en arrière-plan sans bloquer l'UI
   void _publishSkillPermitsInBackground({
     required NostrService nostrService,
     required String npub,
@@ -472,6 +575,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       final publicKeyHex = cryptoService.derivePublicKey(privateKeyBytes);
       final g1pub = state.g1PublicKey ?? cryptoService.generateG1Pub(privateKeyBytes);
       
+      // 2. Créer l'utilisateur avec les identifiants fournis (salt/pepper)
       final user = User(
         npub: publicKeyHex,
         nsec: privateKeyHex,
@@ -479,11 +583,16 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         createdAt: DateTime.now(),
         website: null,
         g1pub: g1pub,
+        picture: state.pictureUrl, // Base64 initial
+        banner: state.bannerUrl,   // Base64 initial
+        picture64: state.pictureUrl, // Le base64 est dans state.pictureUrl
+        banner64: state.bannerUrl,   // Le base64 est dans state.bannerUrl
+        activityTags: state.activityTags,
       );
       
       await storageService.saveUser(user);
       
-      // 3. Publier le profil sur Nostr
+      // 3. Publier le profil sur Nostr (avec Base64 initial)
       try {
         final nostrService = NostrService(
           cryptoService: cryptoService,
@@ -498,7 +607,10 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           name: user.displayName,
           displayName: user.displayName,
           about: state.about ?? 'Utilisateur TrocZen - Monnaie locale ẐEN',
-          picture: state.pictureUrl,  // ✅ Image profil IPFS
+          picture: user.picture,
+          banner: user.banner,
+          picture64: user.picture64,
+          banner64: user.banner64,
           website: null,
           g1pub: user.g1pub,
           tags: state.activityTags,  // ✅ Tags d'activité/centres d'intérêt
@@ -522,7 +634,17 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         // Continuer même si la publication échoue
       }
       
-      // 4. Générer le Bon Zéro de bootstrap (0 ẐEN, TTL 28j)
+      // 4. Lancer l'upload IPFS en arrière-plan (non bloquant)
+      if (state.profileImagePath != null || state.bannerImagePath != null) {
+        _uploadImagesToIPFSInBackground(
+          state: state,
+          user: user,
+          storageService: storageService,
+          cryptoService: cryptoService,
+        );
+      }
+      
+      // 5. Générer le Bon Zéro de bootstrap (0 ẐEN, TTL 28j)
       try {
         final nostrService = NostrService(
           cryptoService: cryptoService,
@@ -545,12 +667,12 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         // Continuer même si le bootstrap échoue
       }
       
-      // 5. Marquer l'onboarding comme complété
+      // 6. Marquer l'onboarding comme complété
       await storageService.markOnboardingComplete();
       
       setState(() => _isCreatingAccount = false);
       
-      // 5. Navigation vers l'écran principal
+      // 7. Navigation vers l'écran principal
       if (!mounted) return;
       
       Navigator.of(context).pushAndRemoveUntil(

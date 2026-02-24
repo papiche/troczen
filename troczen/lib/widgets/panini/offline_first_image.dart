@@ -1,7 +1,8 @@
-import 'dart:io';
+ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/bon_extensions.dart';
+import '../../services/image_compression_service.dart';
 
 /// Widget d'image avec support offline-first.
 /// 
@@ -23,6 +24,7 @@ import '../../utils/bon_extensions.dart';
 class OfflineFirstImage extends StatelessWidget {
   final String? url;
   final String? localPath;
+  final String? fallbackBase64; // ✅ Fallback Base64
   final double width;
   final double height;
   final Color color;
@@ -35,6 +37,7 @@ class OfflineFirstImage extends StatelessWidget {
     super.key,
     required this.url,
     required this.localPath,
+    this.fallbackBase64,
     required this.width,
     required this.height,
     required this.color,
@@ -62,6 +65,17 @@ class OfflineFirstImage extends StatelessWidget {
           // En cas d'erreur de lecture locale, fallback sur le réseau
           return _buildNetworkImage();
         },
+      );
+    }
+    
+    // Si l'URL est un data URI Base64, l'afficher directement
+    if (url != null && ImageCompressionService.isBase64DataUri(url)) {
+      return ImageCompressionService.buildImage(
+        uri: url,
+        width: width,
+        height: height,
+        fit: fit,
+        errorWidget: _buildDefaultIcon(),
       );
     }
     
@@ -107,7 +121,19 @@ class OfflineFirstImage extends StatelessWidget {
       maxHeightDiskCache: (height * 4).toInt(),
       maxWidthDiskCache: (width * 4).toInt(),
       placeholder: (context, url) => _buildLoadingPlaceholder(),
-      errorWidget: (context, url, error) => _buildDefaultIcon(),
+      errorWidget: (context, url, error) {
+        // Si le réseau échoue et qu'on a un fallback Base64, on l'utilise
+        if (fallbackBase64 != null && ImageCompressionService.isBase64DataUri(fallbackBase64)) {
+          return ImageCompressionService.buildImage(
+            uri: fallbackBase64,
+            width: width,
+            height: height,
+            fit: fit,
+            errorWidget: _buildDefaultIcon(),
+          );
+        }
+        return _buildDefaultIcon();
+      },
     );
   }
 

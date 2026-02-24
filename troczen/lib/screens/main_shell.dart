@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/user.dart';
 import '../models/app_mode.dart';
 import '../config/app_config.dart';
+import '../providers/app_mode_provider.dart';
+import 'help_screen.dart';
 import 'views/wallet_view.dart';
 import 'views/explore_view.dart';
 import 'views/dashboard_view.dart';
@@ -43,10 +46,6 @@ class _MainShellState extends State<MainShell> {
   late final NostrService _nostrService;
   bool _isSyncing = false;
   
-  // ✅ PROGRESSIVE DISCLOSURE
-  AppMode _appMode = AppMode.flaneur;
-  bool _isLoadingMode = true;
-
   @override
   void initState() {
     super.initState();
@@ -54,23 +53,7 @@ class _MainShellState extends State<MainShell> {
       cryptoService: _cryptoService,
       storageService: _storageService,
     );
-    _loadAppMode();
     _initAutoSync();
-  }
-  
-  /// ✅ Charge le mode d'utilisation depuis le storage
-  Future<void> _loadAppMode() async {
-    try {
-      final modeIndex = await _storageService.getAppMode();
-      setState(() {
-        _appMode = AppMode.fromIndex(modeIndex);
-        _isLoadingMode = false;
-      });
-      Logger.log('MainShell', 'Mode chargé: ${_appMode.label}');
-    } catch (e) {
-      Logger.error('MainShell', 'Erreur chargement mode', e);
-      setState(() => _isLoadingMode = false);
-    }
   }
 
   Future<void> _initAutoSync() async {
@@ -92,16 +75,10 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    // Afficher un loader pendant le chargement du mode
-    if (_isLoadingMode) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF121212),
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFFFFB347)),
-        ),
-      );
-    }
-    
+    // ✅ PROGRESSIVE DISCLOSURE : Écoute du provider
+    final appModeProvider = context.watch<AppModeProvider>();
+    final _appMode = appModeProvider.currentMode;
+
     return Scaffold(
       // ✅ CORRECTION: Ajout d'un AppBar pour permettre l'accès au Drawer
       appBar: AppBar(
@@ -117,7 +94,7 @@ class _MainShellState extends State<MainShell> {
           ),
         ),
         title: Text(
-          _getTabTitle(),
+          _getTabTitle(_appMode),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -147,22 +124,22 @@ class _MainShellState extends State<MainShell> {
       ),
       body: IndexedStack(
         index: _currentTab,
-        children: _buildViews(),
+        children: _buildViews(_appMode),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTab,
         onDestinationSelected: (index) {
           setState(() => _currentTab = index);
         },
-        destinations: _buildDestinations(),
+        destinations: _buildDestinations(_appMode),
       ),
-      floatingActionButton: _buildMainFAB(),
-      drawer: _buildSettingsDrawer(),
+      floatingActionButton: _buildMainFAB(_appMode),
+      drawer: _buildSettingsDrawer(_appMode),
     );
   }
   
   /// Retourne le titre de l'onglet actif
-  String _getTabTitle() {
+  String _getTabTitle(AppMode _appMode) {
     switch (_appMode) {
       case AppMode.flaneur:
         switch (_currentTab) {
@@ -205,7 +182,7 @@ class _MainShellState extends State<MainShell> {
   }
   
   /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique des vues selon le mode
-  List<Widget> _buildViews() {
+  List<Widget> _buildViews(AppMode _appMode) {
     switch (_appMode) {
       case AppMode.flaneur:
         // Mode Flâneur : Wallet + Profil uniquement
@@ -235,7 +212,7 @@ class _MainShellState extends State<MainShell> {
   }
   
   /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique de la navigation selon le mode
-  List<NavigationDestination> _buildDestinations() {
+  List<NavigationDestination> _buildDestinations(AppMode _appMode) {
     switch (_appMode) {
       case AppMode.flaneur:
         return const [
@@ -292,7 +269,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   /// FAB contextuel selon l'onglet actif et le mode
-  Widget? _buildMainFAB() {
+  Widget? _buildMainFAB(AppMode _appMode) {
     // Mode Flâneur
     if (_appMode.isFlaneur) {
       switch (_currentTab) {
@@ -300,7 +277,7 @@ class _MainShellState extends State<MainShell> {
           return FloatingActionButton.extended(
             onPressed: () => _navigateToScan(),
             icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Recevoir'),
+            label: const Text('Scanner / Recevoir'),
             backgroundColor: const Color(0xFFFFB347),
           );
         case 1: // Profil
@@ -312,46 +289,31 @@ class _MainShellState extends State<MainShell> {
     
     // Mode Artisan et Alchimiste
     switch (_currentTab) {
-      case 0: // Wallet - ✅ Déplacé: Créer un bon + Recevoir
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.extended(
-              onPressed: () => _navigateToCreateBon(),
-              heroTag: 'create_bon',
-              icon: const Icon(Icons.add),
-              label: const Text('Créer'),
-              backgroundColor: const Color(0xFFFFB347),
-            ),
-            const SizedBox(height: 12),
-            FloatingActionButton.extended(
-              onPressed: () => _navigateToScan(),
-              heroTag: 'receive_bon',
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Recevoir'),
-              backgroundColor: const Color(0xFF0A7EA4),
-            ),
-          ],
+      case 0: // Wallet - ✅ Action universelle de la caisse
+        return FloatingActionButton.extended(
+          onPressed: () => _navigateToScan(),
+          heroTag: 'receive_bon',
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Scanner / Recevoir'),
+          backgroundColor: const Color(0xFFFFB347),
         );
       
-      case 1: // Explorer - Plus de bouton ici
-        return null;
+      case 1: // Explorer - ✅ Déplacé: Créer un bon
+        return FloatingActionButton.extended(
+          onPressed: () => _navigateToCreateBon(),
+          heroTag: 'create_bon',
+          icon: const Icon(Icons.add),
+          label: const Text('Créer un bon'),
+          backgroundColor: const Color(0xFFFFB347),
+        );
       
       case 2: // Dashboard (Simple ou Avancé)
-        return FloatingActionButton.extended(
-          onPressed: () => _exportDashboardData(),
-          icon: const Icon(Icons.upload),
-          label: const Text('Exporter'),
-          backgroundColor: const Color(0xFFFFB347),
-        );
+        // Masqué tant que non implémenté
+        return null;
       
       case 3: // Profil
-        return FloatingActionButton.extended(
-          onPressed: () => _exportDashboardData(),
-          icon: const Icon(Icons.upload),
-          label: const Text('Exporter'),
-          backgroundColor: const Color(0xFFFFB347),
-        );
+        // Pas de FAB sur le profil
+        return null;
       
       default:
         return null;
@@ -359,7 +321,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   /// Drawer — Paramètres avancés uniquement
-  Widget _buildSettingsDrawer() {
+  Widget _buildSettingsDrawer(AppMode _appMode) {
     return Drawer(
       backgroundColor: const Color(0xFF1E1E1E),
       child: SafeArea(
@@ -449,15 +411,6 @@ class _MainShellState extends State<MainShell> {
                   
                   const Divider(color: Colors.white24),
                   
-                  // ✅ CHANGER DE MODE : Accessible à TOUS
-                  ListTile(
-                    leading: const Icon(Icons.swap_horiz, color: Color(0xFF9C27B0)),
-                    title: const Text('🔄 Changer de mode', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                    subtitle: Text('Mode actuel: ${_appMode.label}', style: const TextStyle(color: Colors.white70)),
-                    onTap: () => _showChangeModeDialog(),
-                  ),
-                  
-                  const Divider(color: Colors.white24),
                   
                   // ✅ FEEDBACK : Accessible à TOUS les modes (priorité utilisateur)
                   ListTile(
@@ -482,58 +435,29 @@ class _MainShellState extends State<MainShell> {
                   
                   const Divider(color: Colors.white24),
                   
-                  // Configuration réseau (tous modes)
+                  // Paramètres (tous modes)
                   ListTile(
-                    leading: const Icon(Icons.network_check, color: Color(0xFFFFB347)),
-                    title: const Text('Relais Nostr / API', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Configurer les relais et services', style: TextStyle(color: Colors.white70)),
+                    leading: const Icon(Icons.settings, color: Color(0xFFFFB347)),
+                    title: const Text('Paramètres', style: TextStyle(color: Colors.white)),
+                    subtitle: const Text('Mode, réseau, cache...', style: TextStyle(color: Colors.white70)),
                     onTap: () => _navigateToSettings(),
                   ),
                   
-                  // ✅ PROGRESSIVE DISCLOSURE : Fonctionnalités avancées selon le mode
-                  if (_appMode.isArtisan || _appMode.isAlchimiste) ...[
-                    const Divider(color: Colors.white24),
-                    
-                    // Synchroniser Nostr (Artisan+)
-                    ListTile(
-                      leading: _isSyncing
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(Color(0xFFFFB347)),
-                              ),
-                            )
-                          : const Icon(Icons.sync, color: Color(0xFFFFB347)),
-                      title: const Text('Synchroniser Nostr', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Actualiser les P3 du marché', style: TextStyle(color: Colors.white70)),
-                      onTap: _isSyncing ? null : () => _syncNostr(),
-                    ),
-                  ],
+                  const Divider(color: Colors.white24),
                   
-                  // ✅ ALCHIMISTE UNIQUEMENT : Outils techniques avancés
-                  if (_appMode.isAlchimiste) ...[
-                    const Divider(color: Colors.white24),
-                    
-                    // Exporter seed de marché (Alchimiste uniquement)
-                    ListTile(
-                      leading: const Icon(Icons.qr_code, color: Color(0xFFFFB347)),
-                      title: const Text('Exporter seed marché', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Afficher le QR code', style: TextStyle(color: Colors.white70)),
-                      onTap: () => _exportMarketSeed(),
-                    ),
-                    
-                    const Divider(color: Colors.white24),
-                    
-                    // Vider cache P3 (Alchimiste uniquement)
-                    ListTile(
-                      leading: const Icon(Icons.delete_sweep, color: Colors.orange),
-                      title: const Text('Vider cache P3', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Supprimer les P3 locales', style: TextStyle(color: Colors.white70)),
-                      onTap: () => _clearP3Cache(),
-                    ),
-                  ],
+                  // Guide / Tutoriel
+                  ListTile(
+                    leading: const Icon(Icons.help_outline, color: Color(0xFF0A7EA4)),
+                    title: const Text('Guide & Tutoriel', style: TextStyle(color: Colors.white)),
+                    subtitle: const Text('Comment utiliser TrocZen', style: TextStyle(color: Colors.white70)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => HelpScreen(user: widget.user)),
+                      );
+                    },
+                  ),
                   
                   const Divider(color: Colors.white24),
                   
@@ -797,208 +721,6 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
-  /// Affiche un dialog pour changer de mode utilisateur
-  void _showChangeModeDialog() {
-    Navigator.pop(context); // Fermer le drawer
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
-          '🔄 Changer de mode',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Choisissez votre niveau d\'expérience :',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            
-            // Mode Flâneur
-            InkWell(
-              onTap: () {
-                Navigator.pop(context);
-                _changeAppMode(AppMode.flaneur);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _appMode == AppMode.flaneur
-                      ? const Color(0xFFFFB347).withValues(alpha: 0.15)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _appMode == AppMode.flaneur
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: const Color(0xFFFFB347),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppMode.flaneur.label,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            AppMode.flaneur.description,
-                            style: const TextStyle(color: Colors.white60, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const Divider(color: Colors.white24, height: 24),
-            
-            // Mode Artisan
-            InkWell(
-              onTap: () {
-                Navigator.pop(context);
-                _changeAppMode(AppMode.artisan);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _appMode == AppMode.artisan
-                      ? const Color(0xFFFFB347).withValues(alpha: 0.15)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _appMode == AppMode.artisan
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: const Color(0xFFFFB347),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppMode.artisan.label,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            AppMode.artisan.description,
-                            style: const TextStyle(color: Colors.white60, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const Divider(color: Colors.white24, height: 24),
-            
-            // Mode Alchimiste
-            InkWell(
-              onTap: () {
-                Navigator.pop(context);
-                _changeAppMode(AppMode.alchimiste);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _appMode == AppMode.alchimiste
-                      ? const Color(0xFFFFB347).withValues(alpha: 0.15)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _appMode == AppMode.alchimiste
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: const Color(0xFFFFB347),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppMode.alchimiste.label,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            AppMode.alchimiste.description,
-                            style: const TextStyle(color: Colors.white60, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Change le mode de l'application et sauvegarde
-  Future<void> _changeAppMode(AppMode newMode) async {
-    try {
-      // Sauvegarder le nouveau mode
-      await _storageService.setAppMode(newMode.index);
-      
-      // Mettre à jour l'interface
-      setState(() {
-        _appMode = newMode;
-        _currentTab = 0; // Revenir au premier onglet
-      });
-      
-      Logger.log('MainShell', 'Mode changé vers: ${newMode.label}');
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ Mode changé vers: ${newMode.label}'),
-          backgroundColor: const Color(0xFF4CAF50),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      Logger.error('MainShell', 'Erreur changement de mode', e);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Erreur: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   void _showAboutDialog() {
     Navigator.pop(context); // Fermer le drawer

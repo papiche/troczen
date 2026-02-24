@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../config/app_config.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
@@ -44,9 +45,13 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   /// ✅ v2.0.2: Miniature base64 pour l'événement Nostr (offline-first)
   /// Cette miniature est affichée instantanément, l'upload IPFS se fait en arrière-plan
   String? _base64Avatar;
+  String? _base64Banner;
   
   /// URL IPFS une fois l'upload terminé (optionnel, en arrière-plan)
   String? _ipfsAvatarUrl;
+  String? _ipfsBannerUrl;
+  
+  File? _selectedBannerImage;
   
   // Les skills prédéfinis sont maintenant centralisés dans AppConfig.defaultSkills
   
@@ -190,45 +195,94 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
                     _buildSectionTitle('Identité'),
                     const SizedBox(height: 16),
                     
-                    // Photo de profil
-                    Center(
-                      child: GestureDetector(
-                        onTap: _pickProfileImage,
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF2A2A2A),
-                            border: Border.all(
-                              color: const Color(0xFFFFB347),
-                              width: 3,
-                            ),
-                          ),
-                          child: _selectedProfileImage != null
-                              ? ClipOval(
-                                  child: Image.file(
-                                    _selectedProfileImage!,
-                                    fit: BoxFit.cover,
+                    // Photo de profil et Bannière
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                onTap: _pickProfileImage,
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF2A2A2A),
+                                    border: Border.all(
+                                      color: const Color(0xFFFFB347),
+                                      width: 2,
+                                    ),
                                   ),
-                                )
-                              : const Icon(
-                                  Icons.add_a_photo,
-                                  size: 48,
-                                  color: Color(0xFFFFB347),
+                                  child: _selectedProfileImage != null
+                                      ? ClipOval(
+                                          child: Image.file(
+                                            _selectedProfileImage!,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.add_a_photo,
+                                          size: 32,
+                                          color: Color(0xFFFFB347),
+                                        ),
                                 ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Avatar',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        'Toucher pour ajouter une photo',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
+                        Expanded(
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                onTap: _pickBannerImage,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 80,
+                                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: const Color(0xFF2A2A2A),
+                                    border: Border.all(
+                                      color: const Color(0xFFFFB347),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: _selectedBannerImage != null
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Image.file(
+                                            _selectedBannerImage!,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.add_photo_alternate,
+                                          size: 32,
+                                          color: Color(0xFFFFB347),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Bannière',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     
@@ -625,27 +679,54 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   }
   
   void _pickProfileImage() async {
-    // Utiliser le service de compression pour obtenir une miniature base64
     final imageService = ImageCompressionService();
     final dataUri = await imageService.pickAndCompressAvatar();
     
     if (dataUri != null) {
-      // Stocker la miniature base64 pour l'événement Nostr
-      _base64Avatar = dataUri;
+      setState(() {
+        _base64Avatar = dataUri;
+      });
       
-      // Aussi récupérer le fichier original pour upload IPFS optionnel
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        setState(() {
-          _selectedProfileImage = File(image.path);
-        });
+      // Créer un fichier temporaire pour l'upload IPFS
+      try {
+        final bytes = ImageCompressionService.extractBytesFromDataUri(dataUri);
+        if (bytes != null) {
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/avatar_temp_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          await tempFile.writeAsBytes(bytes);
+          _selectedProfileImage = tempFile;
+        }
+      } catch (e) {
+        Logger.error('OnboardingProfile', 'Erreur création fichier temp', e);
       }
       
       Logger.log('OnboardingProfile', 'Avatar base64 généré: ${dataUri.length} chars');
+    }
+  }
+
+  void _pickBannerImage() async {
+    final imageService = ImageCompressionService();
+    final dataUri = await imageService.pickAndCompressBanner();
+    
+    if (dataUri != null) {
+      setState(() {
+        _base64Banner = dataUri;
+      });
+      
+      // Créer un fichier temporaire pour l'upload IPFS
+      try {
+        final bytes = ImageCompressionService.extractBytesFromDataUri(dataUri);
+        if (bytes != null) {
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/banner_temp_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          await tempFile.writeAsBytes(bytes);
+          _selectedBannerImage = tempFile;
+        }
+      } catch (e) {
+        Logger.error('OnboardingProfile', 'Erreur création fichier temp', e);
+      }
+      
+      Logger.log('OnboardingProfile', 'Banner base64 généré: ${dataUri.length} chars');
     }
   }
   
@@ -671,66 +752,14 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
       // ✅ CORRECTION: La clé G1 est dérivée automatiquement, pas saisie manuellement
       g1PublicKey: null,
       pictureUrl: pictureUrl,
+      bannerUrl: _base64Banner,
+      profileImagePath: _selectedProfileImage?.path,
+      bannerImagePath: _selectedBannerImage?.path,
     );
     
     Logger.log('OnboardingProfile', 'Profil configuré avec base64: ${pictureUrl != null ? "${pictureUrl.length} chars" : "null"}');
     
-    // ✅ UX: Upload IPFS en arrière-plan silencieux (non bloquant)
-    // L'utilisateur a déjà continué, cet upload est optionnel et améliore la performance
-    if (_selectedProfileImage != null && _ipfsAvatarUrl == null) {
-      _uploadAvatarToIPFSInBackground(state);
-    }
-    
     // Continuer immédiatement
     widget.onNext();
-  }
-  
-  /// Upload IPFS en arrière-plan (fire-and-forget)
-  /// Amélioration progressive : si l'upload réussit, l'URL IPFS sera disponible plus tard
-  void _uploadAvatarToIPFSInBackground(state) async {
-    try {
-      Logger.info('OnboardingProfile', 'Démarrage upload IPFS en arrière-plan...');
-      
-      final storageService = StorageService();
-      final user = await storageService.getUser();
-      
-      if (user != null && _selectedProfileImage != null) {
-        final apiService = ApiService();
-        apiService.setCustomApi(state.apiUrl, state.relayUrl);
-        
-        final result = await apiService.uploadImage(
-          npub: user.npub,
-          imageFile: _selectedProfileImage!,
-          type: 'avatar',
-          waitForIpfs: false,
-        );
-        
-        if (result != null) {
-          final ipfsUrl = result['ipfs_url'] ?? result['url'];
-          if (ipfsUrl != null && ipfsUrl.isNotEmpty) {
-            _ipfsAvatarUrl = ipfsUrl;
-            Logger.success('OnboardingProfile', '✅ Upload IPFS terminé en arrière-plan: $ipfsUrl');
-            
-            // Optionnel: Mettre à jour le profil stocké avec l'URL IPFS
-            // (l'utilisateur a déjà continué, c'est juste pour la prochaine fois)
-            final updatedUser = User(
-              npub: user.npub,
-              nsec: user.nsec,
-              displayName: user.displayName,
-              createdAt: user.createdAt,
-              website: user.website,
-              g1pub: user.g1pub,
-              picture: ipfsUrl,  // Mise à jour avec l'URL IPFS
-              relayUrl: user.relayUrl,
-              activityTags: user.activityTags,
-            );
-            await storageService.saveUser(updatedUser);
-          }
-        }
-      }
-    } catch (e) {
-      Logger.warn('OnboardingProfile', 'Upload IPFS arrière-plan échoué (non bloquant): $e');
-      // Pas grave, le base64 fonctionne déjà
-    }
   }
 }

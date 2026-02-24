@@ -26,6 +26,7 @@ class Bon {
   final String marketName;
   final String? logoUrl;        // URL du logo du commerçant
   final String? picture;        // URL de l'avatar de l'émetteur
+  final String? picture64;      // ✅ Fallback Base64
   final int? color;             // Couleur dominante (ARGB) - Pour UI uniquement
   final int? transferCount;     // Nombre de transferts effectués
   final String? issuerNostrProfile; // URL profil Nostr du commerçant
@@ -63,6 +64,7 @@ class Bon {
     required this.marketName,
     this.logoUrl,
     this.picture,
+    this.picture64,
     this.color,
     this.transferCount = 0,
     this.issuerNostrProfile,
@@ -302,6 +304,7 @@ class Bon {
     String? marketName,
     String? logoUrl,
     String? picture,
+    String? picture64,
     int? color,
     String? rarity,
     int? transferCount,
@@ -331,6 +334,7 @@ class Bon {
       marketName: marketName ?? this.marketName,
       logoUrl: logoUrl ?? this.logoUrl,
       picture: picture ?? this.picture,
+      picture64: picture64 ?? this.picture64,
       color: color ?? this.color,
       rarity: rarity ?? this.rarity,
       transferCount: transferCount ?? this.transferCount,
@@ -363,6 +367,7 @@ class Bon {
       'marketName': marketName,
       'logoUrl': logoUrl,
       'picture': picture,
+      'picture64': picture64,
       'color': color,
       'rarity': rarity,
       'transferCount': transferCount,
@@ -400,6 +405,7 @@ class Bon {
       marketName: json['marketName'],
       logoUrl: json['logoUrl'],
       picture: json['picture'],
+      picture64: json['picture64'],
       color: json['color'],
       rarity: json['rarity'] ?? 'common',
       transferCount: json['transferCount'] ?? 0,

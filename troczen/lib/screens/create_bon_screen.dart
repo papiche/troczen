@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -149,12 +150,29 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     }
   }
 
-  /// Uploader l'image du bon vers IPFS
-  Future<String?> _uploadImage() async {
-    if (_selectedImage == null) return null;
+  /// Uploader l'image du bon vers IPFS et générer le fallback Base64
+  Future<Map<String, String?>> _uploadImage() async {
+    if (_selectedImage == null) return {'url': null, 'base64': null};
     
     setState(() => _isUploading = true);
     
+    String? ipfsUrl;
+    String? base64Data;
+    
+    // 1. Générer le fallback Base64
+    try {
+      final bytes = await _selectedImage!.readAsBytes();
+      if (bytes.length <= 50000) { // Limite arbitraire de 50Ko pour le fallback
+        final base64 = base64Encode(bytes);
+        base64Data = 'data:image/jpeg;base64,$base64';
+      } else {
+        debugPrint('Image trop grande pour le fallback Base64 (${bytes.length} bytes)');
+      }
+    } catch (e) {
+      debugPrint('Erreur fallback Base64: $e');
+    }
+    
+    // 2. Uploader vers IPFS
     try {
       final result = await _apiService.uploadImage(
         npub: widget.user.npub,
@@ -163,8 +181,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       );
       
       if (result != null) {
-        // Préférer l'URL IPFS (décentralisée) à l'URL locale
-        return result['ipfs_url'] ?? result['url'];
+        ipfsUrl = result['ipfs_url'] ?? result['url'];
       }
     } catch (e) {
       debugPrint('Erreur upload image bon: $e');
@@ -172,7 +189,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       setState(() => _isUploading = false);
     }
     
-    return null;
+    return {'url': ipfsUrl, 'base64': base64Data};
   }
 
   @override
@@ -214,8 +231,11 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
       // 4. ✅ Uploader l'image du bon (si sélectionnée) AVANT la création de l'objet Bon
       String? imageUrl;
+      String? imageBase64;
       if (_selectedImage != null) {
-        imageUrl = await _uploadImage();
+        final imageResult = await _uploadImage();
+        imageUrl = imageResult['url'];
+        imageBase64 = imageResult['base64'];
       }
 
       // 5. Créer le bon
@@ -249,8 +269,9 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         rarity: 'bootstrap', // FORCE EN BOOTSTRAP
         cardType: 'bootstrap', // FORCE EN BOOTSTRAP
         wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
-        picture: imageUrl, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
-        logoUrl: imageUrl, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
+        picture: imageUrl ?? imageBase64, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
+        logoUrl: imageUrl ?? imageBase64, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
+        picture64: imageBase64,
       );
 
       // 6. Sauvegarder le bon
@@ -279,9 +300,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             nsec: nsecHex,
             name: _issuerNameController.text,
             displayName: _issuerNameController.text,
-            about: 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
+            about: _wishController.text.trim().isNotEmpty
+                ? _wishController.text.trim()
+                : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
             picture: imageUrl,
             banner: imageUrl,  // Utilise la même image pour le bandeau
+            picture64: imageBase64,
+            banner64: imageBase64,
             website: _websiteController.text.trim().isNotEmpty
                 ? _websiteController.text.trim()
                 : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
