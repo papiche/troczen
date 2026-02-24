@@ -212,7 +212,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       // 3. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
       await _storageService.saveP3ToCache(bonNpubHex, p3);
 
-      // 4. Créer le bon
+      // 4. ✅ Uploader l'image du bon (si sélectionnée) AVANT la création de l'objet Bon
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+
+      // 5. Créer le bon
       final nostrService = NostrService(
         cryptoService: _cryptoService,
         storageService: _storageService,
@@ -243,16 +249,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         rarity: 'bootstrap', // FORCE EN BOOTSTRAP
         cardType: 'bootstrap', // FORCE EN BOOTSTRAP
         wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
+        picture: imageUrl, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
+        logoUrl: imageUrl, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
       );
 
       // 6. Sauvegarder le bon
       await _storageService.saveBon(bon);
-
-      // 7. ✅ Uploader l'image du bon (si sélectionnée)
-      String? imageUrl;
-      if (_selectedImage != null) {
-        imageUrl = await _uploadImage();
-      }
 
       // 8. ✅ PUBLIER PROFIL DU BON SUR NOSTR (kind 0)
       // SIGNÉ PAR LE BON LUI-MÊME (reconstruction éphémère P2+P3)

@@ -363,8 +363,7 @@ class NostrService {
 
     final registered = await _market.ensurePubkeyRegistered(npub);
     if (!registered) {
-      Logger.error('NostrService', 'Publication profil annulée');
-      return false;
+      Logger.warn('NostrService', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
     }
 
     try {

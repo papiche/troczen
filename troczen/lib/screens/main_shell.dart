@@ -563,13 +563,22 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _navigateToCreateBon() {
-    Navigator.push(
+  Future<void> _navigateToCreateBon() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CreateBonScreen(user: widget.user),
       ),
     );
+    
+    // On force la reconstruction de l'interface
+    setState(() {});
+    
+    if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Tirez l\'écran vers le bas pour actualiser vos bons')),
+       );
+    }
   }
 
   Future<void> _exportDashboardData() async {

@@ -43,7 +43,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _base64Picture;
   String? _base64Banner;
   bool _isSaving = false;
-  bool _isUploading = false;
+  final bool _isUploading = false;
 
   @override
   void initState() {

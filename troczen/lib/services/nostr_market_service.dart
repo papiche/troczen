@@ -88,11 +88,11 @@ class NostrMarketService {
         return true;
       } else {
         Logger.error('NostrMarket', 'Erreur enregistrement pubkey: ${response.statusCode}');
-        return false;
+        return true; // 🔥 MODIFICATION CRITIQUE : Toujours retourner true pour tenter la publication Nostr quand même !
       }
     } catch (e) {
       Logger.error('NostrMarket', 'Erreur appel /api/nostr/register', e);
-      return false;
+      return true; // 🔥 MODIFICATION CRITIQUE : Toujours retourner true pour tenter la publication Nostr quand même !
     }
   }
   
@@ -141,11 +141,7 @@ class NostrMarketService {
       // 3. Enregistrer la pubkey du bon
       final registered = await ensurePubkeyRegistered(bonId);
       if (!registered) {
-        Logger.error('NostrMarket', 'Publication P3 annulée: pubkey non enregistrée');
-        _cryptoService.secureZeroiseBytes(nsecBonBytes);
-        _cryptoService.secureZeroiseBytes(p2Bytes);
-        _cryptoService.secureZeroiseBytes(p3Bytes);
-        return false;
+        Logger.warn('NostrMarket', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
       }
 
       // 4. Créer l'event Nostr
@@ -224,8 +220,7 @@ class NostrMarketService {
 
     final registered = await ensurePubkeyRegistered(bonId);
     if (!registered) {
-      Logger.error('NostrMarket', 'Publication circuit annulée: pubkey non enregistrée');
-      return false;
+      Logger.warn('NostrMarket', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
     }
 
     try {

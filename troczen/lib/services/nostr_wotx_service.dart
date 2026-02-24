@@ -61,11 +61,11 @@ class NostrWoTxService {
         return true;
       } else {
         Logger.error('NostrWoTx', 'Erreur enregistrement pubkey: ${response.statusCode}');
-        return false;
+        return true; // 🔥 MODIFICATION CRITIQUE : Toujours retourner true pour tenter la publication Nostr quand même !
       }
     } catch (e) {
       Logger.error('NostrWoTx', 'Erreur appel /api/nostr/register', e);
-      return false;
+      return true; // 🔥 MODIFICATION CRITIQUE : Toujours retourner true pour tenter la publication Nostr quand même !
     }
   }
   
@@ -93,8 +93,7 @@ class NostrWoTxService {
 
     final registered = await ensurePubkeyRegistered(npub);
     if (!registered) {
-      Logger.error('NostrWoTx', 'Publication skill permit annulée: pubkey non enregistrée');
-      return false;
+      Logger.warn('NostrWoTx', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
     }
 
     try {
@@ -198,8 +197,7 @@ class NostrWoTxService {
     
     final registered = await ensurePubkeyRegistered(npub);
     if (!registered) {
-      Logger.error('NostrWoTx', 'Publication skill request annulée');
-      return false;
+      Logger.warn('NostrWoTx', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
     }
     
     try {
@@ -333,8 +331,7 @@ class NostrWoTxService {
     
     final registered = await ensurePubkeyRegistered(myNpub);
     if (!registered) {
-      Logger.error('NostrWoTx', 'Publication attestation annulée');
-      return false;
+      Logger.warn('NostrWoTx', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
     }
     
     try {
