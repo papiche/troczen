@@ -188,6 +188,76 @@ class NostrMarketService {
   }
   
   // ============================================================
+  // MISE À JOUR PROFIL BON (Kind 30303)
+  // ============================================================
+
+  /// Publie une mise à jour du profil d'un bon (Kind 30303)
+  /// Permet à l'émetteur de modifier les métadonnées (nom, image, description)
+  /// sans changer la valeur ni le TTL.
+  Future<bool> publishBonProfileUpdate({
+    required String bonId,
+    required String issuerNsecHex,
+    required String issuerNpub,
+    required String marketName,
+    required double value,
+    required String p3Cipher,
+    required String p3Nonce,
+    required int expiryTimestamp,
+    required Map<String, dynamic> profileData,
+    String? category,
+    String? rarity,
+    String? wish,
+  }) async {
+    if (!_connection.isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      final now = DateTime.now();
+      
+      final event = {
+        'kind': 30303,
+        'pubkey': issuerNpub,
+        'created_at': now.millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['d', 'zen-$bonId'],
+          ['t', _normalizeMarketTag(marketName)],
+          ['market', marketName],
+          ['currency', 'ZEN'],
+          ['value', value.toString()],
+          ['issuer', issuerNpub],
+          ['category', category ?? 'generic'],
+          ['expiration', expiryTimestamp.toString()],
+          ['rarity', rarity ?? 'common'],
+          ['p3_cipher', p3Cipher],
+          ['p3_nonce', p3Nonce],
+          ['version', '1'],
+          ['policy', '2of3-ssss'],
+          if (wish != null && wish.isNotEmpty) ['wish', wish],
+        ],
+        'content': jsonEncode(profileData),
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+      
+      // Signer avec la clé de l'émetteur
+      final issuerNsecBytes = Uint8List.fromList(HEX.decode(issuerNsecHex));
+      final signature = _cryptoService.signMessageBytes(eventId, issuerNsecBytes);
+      event['sig'] = signature;
+      
+      _cryptoService.secureZeroiseBytes(issuerNsecBytes);
+
+      final message = jsonEncode(['EVENT', event]);
+      return await _connection.sendEventAndWait(eventId, message);
+    } catch (e) {
+      onError?.call('Erreur mise à jour profil bon: $e');
+      return false;
+    }
+  }
+
+  // ============================================================
   // PUBLICATION CIRCUIT (Kind 30304)
   // ============================================================
   

@@ -160,6 +160,34 @@ class NostrService {
     wish: wish,
   );
   
+  Future<bool> publishBonProfileUpdate({
+    required String bonId,
+    required String issuerNsecHex,
+    required String issuerNpub,
+    required String marketName,
+    required double value,
+    required String p3Cipher,
+    required String p3Nonce,
+    required int expiryTimestamp,
+    required Map<String, dynamic> profileData,
+    String? category,
+    String? rarity,
+    String? wish,
+  }) => _market.publishBonProfileUpdate(
+    bonId: bonId,
+    issuerNsecHex: issuerNsecHex,
+    issuerNpub: issuerNpub,
+    marketName: marketName,
+    value: value,
+    p3Cipher: p3Cipher,
+    p3Nonce: p3Nonce,
+    expiryTimestamp: expiryTimestamp,
+    profileData: profileData,
+    category: category,
+    rarity: rarity,
+    wish: wish,
+  );
+
   Future<bool> publishBonCircuit({
     required String bonId,
     required double valueZen,

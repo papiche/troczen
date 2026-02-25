@@ -1819,34 +1819,59 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
       final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
       
       if (await nostrService.connect(relayUrl)) {
-        // ✅ TODO: Publier la mise à jour du profil Kind 30303
-        // Pour l'instant, on simule la mise à jour locale
-        
         // Construire les métadonnées du profil
         final profileData = {
-          'name': _nameController.text,
+          'display_name': _nameController.text,
           'about': _aboutController.text,
           'website': _websiteController.text,
           'picture': _pictureController.text,
-          'market': market.name,
-          'marketId': market.marketId,
+          'design': 'panini-standard',
         };
         
         Logger.success('EditBonProfile', 'Profil préparé pour publication: $profileData');
         
+        final cryptoService = CryptoService();
+        
+        // Récupérer les infos de chiffrement P3 depuis le bon
+        // Note: Dans une implémentation complète, il faudrait stocker p3Cipher et p3Nonce dans le modèle Bon
+        // Pour l'instant, on les re-chiffre avec la seed du marché
+        final now = DateTime.now();
+        final p3Encrypted = await cryptoService.encryptP3WithSeed(widget.bon.p3!, market.seedMarket, now);
+        
+        final expiryTimestamp = widget.bon.expiresAt?.millisecondsSinceEpoch != null
+            ? widget.bon.expiresAt!.millisecondsSinceEpoch ~/ 1000
+            : now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
+
+        final success = await nostrService.publishBonProfileUpdate(
+          bonId: widget.bon.bonId,
+          issuerNsecHex: widget.user.nsec,
+          issuerNpub: widget.bon.issuerNpub,
+          marketName: widget.bon.marketName,
+          value: widget.bon.value,
+          p3Cipher: p3Encrypted['ciphertext']!,
+          p3Nonce: p3Encrypted['nonce']!,
+          expiryTimestamp: expiryTimestamp,
+          profileData: profileData,
+          rarity: widget.bon.rarity,
+          wish: widget.bon.wish,
+        );
+        
         await nostrService.disconnect();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Profil enregistré localement (publication Nostr à venir)'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-          
-          widget.onUpdated();
-          Navigator.pop(context);
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Profil du bon mis à jour sur Nostr'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            widget.onUpdated();
+            Navigator.pop(context);
+          } else {
+            throw Exception('Échec de la publication sur Nostr');
+          }
         }
       }
     } catch (e) {
