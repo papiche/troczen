@@ -680,53 +680,29 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   
   void _pickProfileImage() async {
     final imageService = ImageCompressionService();
-    final dataUri = await imageService.pickAndCompressAvatar();
+    final result = await imageService.pickAvatarWithOriginal();
     
-    if (dataUri != null) {
+    if (result != null) {
       setState(() {
-        _base64Avatar = dataUri;
+        _base64Avatar = result.base64DataUri;
+        _selectedProfileImage = File(result.originalPath);
       });
       
-      // Créer un fichier temporaire pour l'upload IPFS
-      try {
-        final bytes = ImageCompressionService.extractBytesFromDataUri(dataUri);
-        if (bytes != null) {
-          final tempDir = await getTemporaryDirectory();
-          final tempFile = File('${tempDir.path}/avatar_temp_${DateTime.now().millisecondsSinceEpoch}.jpg');
-          await tempFile.writeAsBytes(bytes);
-          _selectedProfileImage = tempFile;
-        }
-      } catch (e) {
-        Logger.error('OnboardingProfile', 'Erreur création fichier temp', e);
-      }
-      
-      Logger.log('OnboardingProfile', 'Avatar base64 généré: ${dataUri.length} chars');
+      Logger.log('OnboardingProfile', 'Avatar base64 généré: ${result.base64DataUri.length} chars, original: ${result.originalPath}');
     }
   }
 
   void _pickBannerImage() async {
     final imageService = ImageCompressionService();
-    final dataUri = await imageService.pickAndCompressBanner();
+    final result = await imageService.pickBannerWithOriginal();
     
-    if (dataUri != null) {
+    if (result != null) {
       setState(() {
-        _base64Banner = dataUri;
+        _base64Banner = result.base64DataUri;
+        _selectedBannerImage = File(result.originalPath);
       });
       
-      // Créer un fichier temporaire pour l'upload IPFS
-      try {
-        final bytes = ImageCompressionService.extractBytesFromDataUri(dataUri);
-        if (bytes != null) {
-          final tempDir = await getTemporaryDirectory();
-          final tempFile = File('${tempDir.path}/banner_temp_${DateTime.now().millisecondsSinceEpoch}.jpg');
-          await tempFile.writeAsBytes(bytes);
-          _selectedBannerImage = tempFile;
-        }
-      } catch (e) {
-        Logger.error('OnboardingProfile', 'Erreur création fichier temp', e);
-      }
-      
-      Logger.log('OnboardingProfile', 'Banner base64 généré: ${dataUri.length} chars');
+      Logger.log('OnboardingProfile', 'Banner base64 généré: ${result.base64DataUri.length} chars, original: ${result.originalPath}');
     }
   }
   

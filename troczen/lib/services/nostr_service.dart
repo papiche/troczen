@@ -42,6 +42,10 @@ class NostrService {
   Function(bool connected)? onConnectionChange;
   Function(List<String> tags)? onTagsReceived;
 
+  // Références aux listeners pour pouvoir les retirer
+  late final Function(bool) _connListener;
+  late final Function(String) _errListener;
+  
   NostrService({
     required CryptoService cryptoService,
     required StorageService storageService,
@@ -63,15 +67,17 @@ class NostrService {
     );
     
     // Rediriger les callbacks
-    _connection.onConnectionChange = (connected) {
+    _connListener = (connected) {
       onConnectionChange?.call(connected);
     };
+    _connection.addConnectionChangeListener(_connListener);
     
-    _connection.onError = (error) {
+    _errListener = (error) {
       onError?.call(error);
     };
+    _connection.addErrorListener(_errListener);
     
-    _connection.onMessage = _handleMessage;
+    _connection.addMessageListener(_handleMessage);
     
     _market.onP3Received = (bonId, p3Hex) {
       onP3Received?.call(bonId, p3Hex);
@@ -120,7 +126,9 @@ class NostrService {
   }
   
   void dispose() {
-    _connection.dispose();
+    _connection.removeConnectionChangeListener(_connListener);
+    _connection.removeErrorListener(_errListener);
+    _connection.removeMessageListener(_handleMessage);
     _market.dispose();
   }
   

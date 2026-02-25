@@ -5,8 +5,10 @@ import 'services/crypto_service.dart';
 import 'services/storage_service.dart';
 import 'services/nostr_service.dart';
 import 'services/logger_service.dart';
+import 'package:provider/provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding/onboarding_flow.dart';
+import 'providers/app_mode_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +16,16 @@ void main() async {
   // Initialiser le logger et vérifier le mode Marché Global Ğ1 (transparence publique)
   await Logger.checkDebugMode();
   
-  runApp(const TrocZenApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AppModeProvider(StorageService()),
+        ),
+      ],
+      child: const TrocZenApp(),
+    ),
+  );
 }
 
 class TrocZenApp extends StatelessWidget {

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hex/hex.dart';
 import '../config/app_config.dart';
@@ -69,17 +70,20 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
     _selectedCategory = widget.bon.cardType ?? 'generic';
   }
 
+  File? _selectedImageFile;
+
   Future<void> _selectImage() async {
     final imageService = ImageCompressionService();
     
     setState(() => _isUploading = true);
     
     try {
-      final dataUri = await imageService.pickAndCompressAvatar();
+      final result = await imageService.pickBannerWithOriginal();
           
-      if (dataUri != null) {
+      if (result != null) {
         setState(() {
-          _base64Image = dataUri;
+          _base64Image = result.base64DataUri;
+          _selectedImageFile = File(result.originalPath);
         });
       }
     } catch (e) {
@@ -111,13 +115,27 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
         final p2Bytes = widget.bon.p2Bytes;
         
         if (p3Bytes != null && p2Bytes != null) {
+          // Upload IPFS si une nouvelle image a été sélectionnée
+          String? ipfsUrl;
+          if (_selectedImageFile != null) {
+            final result = await _apiService.uploadImage(
+              npub: widget.bon.bonId,
+              imageFile: _selectedImageFile!,
+              type: 'logo',
+            );
+            if (result != null) {
+              ipfsUrl = result['ipfs_url'] ?? result['url'];
+            }
+          }
+
           final nostrService = NostrService(cryptoService: _crypto, storageService: _storage);
           await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
           
           final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
           final nsecHex = HEX.encode(nsecBonBytes);
           
-          String finalPicture = _base64Image ?? widget.bon.picture ?? widget.bon.logoUrl ?? '';
+          // Ne pas mettre de base64 dans picture/banner (NIP-01)
+          String? finalPictureUrl = ipfsUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
 
           // 1. Publication Kind 0
           await nostrService.publishUserProfile(
@@ -126,10 +144,10 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             name: _titleController.text,
             displayName: _titleController.text,
             about: _descriptionController.text,
-            picture: finalPicture,
-            banner: finalPicture,
-            picture64: _base64Image,
-            banner64: _base64Image,
+            picture: finalPictureUrl,
+            banner: finalPictureUrl,
+            picture64: _base64Image ?? widget.bon.picture64,
+            banner64: _base64Image ?? widget.bon.picture64, // Utilise picture64 comme fallback pour banner64
           );
           
           _crypto.secureZeroiseBytes(nsecBonBytes);
@@ -156,9 +174,9 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             issuerName: _titleController.text,
             wish: _descriptionController.text,
             cardType: _selectedCategory,
-            picture: finalPicture,
-            logoUrl: finalPicture, // Pour compatibilité
-            picture64: _base64Image,
+            picture: finalPictureUrl ?? _base64Image ?? widget.bon.picture,
+            logoUrl: finalPictureUrl ?? _base64Image ?? widget.bon.logoUrl, // Pour compatibilité
+            picture64: _base64Image ?? widget.bon.picture64,
           );
           await _storage.saveBon(updatedBon);
         }

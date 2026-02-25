@@ -22,9 +22,10 @@ void main() {
 
     test('Callbacks null-safe', () {
       // Ne doit pas planter même si les callbacks ne sont pas assignés
-      expect(() => service.onConnectionChange?.call(true), returnsNormally);
-      expect(() => service.onError?.call('test'), returnsNormally);
-      expect(() => service.onMessage?.call(['test']), returnsNormally);
+      // Les callbacks sont maintenant gérés via des listes de listeners
+      expect(() => service.addConnectionChangeListener((_) {}), returnsNormally);
+      expect(() => service.addErrorListener((_) {}), returnsNormally);
+      expect(() => service.addMessageListener((_) {}), returnsNormally);
     });
 
     test('onAppPaused met à jour le flag', () {

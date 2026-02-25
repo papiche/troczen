@@ -498,37 +498,47 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
 
   /// ✅ WOTX: Publie les demandes d'attestation (Kind 30501) en arrière-plan sans bloquer l'UI
   void _publishSkillPermitsInBackground({
-    required NostrService nostrService,
+    required String relayUrl,
     required String npub,
     required String nsec,
     required List<String> skillTags,
     required String seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+    required StorageService storageService,
+    required CryptoService cryptoService,
   }) {
     // Lancer la publication en arrière-plan sans attendre
     Future(() async {
       try {
-        int successCount = 0;
-        for (final tag in skillTags) {
-          try {
-            // ✅ WOTX: Émettre les requêtes d'attestation (Kind 30501) pour chaque savoir-faire
-            final success = await nostrService.publishSkillRequest(
-              npub: npub,
-              nsec: nsec,
-              skill: tag,
-              seedMarket: seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
-            );
-            if (success) {
-              successCount++;
-              debugPrint('✅ Skill Request (Kind 30501) publiée pour: $tag');
-            } else {
-              debugPrint('⚠️ Échec publication Skill Request pour: $tag');
+        final bgNostrService = NostrService(
+          cryptoService: cryptoService,
+          storageService: storageService,
+        );
+        
+        if (await bgNostrService.connect(relayUrl)) {
+          int successCount = 0;
+          for (final tag in skillTags) {
+            try {
+              // ✅ WOTX: Émettre les requêtes d'attestation (Kind 30501) pour chaque savoir-faire
+              final success = await bgNostrService.publishSkillRequest(
+                npub: npub,
+                nsec: nsec,
+                skill: tag,
+                seedMarket: seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+              );
+              if (success) {
+                successCount++;
+                debugPrint('✅ Skill Request (Kind 30501) publiée pour: $tag');
+              } else {
+                debugPrint('⚠️ Échec publication Skill Request pour: $tag');
+              }
+            } catch (e) {
+              debugPrint('⚠️ Erreur publication Skill Request pour $tag: $e');
+              // Continuer avec les autres tags même si un échoue
             }
-          } catch (e) {
-            debugPrint('⚠️ Erreur publication Skill Request pour $tag: $e');
-            // Continuer avec les autres tags même si un échoue
           }
+          debugPrint('✅ WOTX: $successCount/${skillTags.length} demandes de savoir-faire (Kind 30501) publiées');
+          await bgNostrService.disconnect();
         }
-        debugPrint('✅ WOTX: $successCount/${skillTags.length} demandes de savoir-faire (Kind 30501) publiées');
       } catch (e) {
         debugPrint('⚠️ Erreur générale publication Skill Requests: $e');
       }
@@ -620,17 +630,38 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         // Cela permet de ne pas ralentir la finalisation de l'onboarding
         if (state.activityTags.isNotEmpty) {
           _publishSkillPermitsInBackground(
-            nostrService: nostrService,
+            relayUrl: state.relayUrl,
             npub: user.npub,
             nsec: user.nsec,
             skillTags: state.activityTags,
             seedMarket: market.seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+            storageService: storageService,
+            cryptoService: cryptoService,
           );
+        }
+        
+        // 5. Générer le Bon Zéro de bootstrap (0 ẐEN, TTL 28j)
+        // On utilise la même connexion Nostr pour publier le Bon Zéro
+        try {
+          final duService = DuCalculationService(
+            storageService: storageService,
+            nostrService: nostrService,
+            cryptoService: cryptoService,
+          );
+          
+          // Vérifier que l'utilisateur n'a pas déjà reçu le bootstrap
+          if (!await storageService.hasReceivedBootstrap()) {
+            await duService.generateBootstrapAllocation(user, market);
+            debugPrint('✅ Bon Zéro (bootstrap) créé pour ${user.displayName}');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Erreur génération Bon Zéro: $e');
+          // Continuer même si le bootstrap échoue
         }
         
         await nostrService.disconnect();
       } catch (e) {
-        debugPrint('⚠️ Erreur publication profil Nostr: $e');
+        debugPrint('⚠️ Erreur publication profil Nostr ou Bon Zéro: $e');
         // Continuer même si la publication échoue
       }
       
@@ -642,29 +673,6 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           storageService: storageService,
           cryptoService: cryptoService,
         );
-      }
-      
-      // 5. Générer le Bon Zéro de bootstrap (0 ẐEN, TTL 28j)
-      try {
-        final nostrService = NostrService(
-          cryptoService: cryptoService,
-          storageService: storageService,
-        );
-        
-        final duService = DuCalculationService(
-          storageService: storageService,
-          nostrService: nostrService,
-          cryptoService: cryptoService,
-        );
-        
-        // Vérifier que l'utilisateur n'a pas déjà reçu le bootstrap
-        if (!await storageService.hasReceivedBootstrap()) {
-          await duService.generateBootstrapAllocation(user, market);
-          debugPrint('✅ Bon Zéro (bootstrap) créé pour ${user.displayName}');
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erreur génération Bon Zéro: $e');
-        // Continuer même si le bootstrap échoue
       }
       
       // 6. Marquer l'onboarding comme complété

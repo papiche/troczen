@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
 import '../services/api_service.dart';
 import '../services/du_calculation_service.dart';
+import '../services/image_compression_service.dart';
 
 class CreateBonScreen extends StatefulWidget {
   final User user;
@@ -94,56 +95,22 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     });
   }
 
+  String? _base64Image;
+
   /// Sélectionner une image pour le bon
   Future<void> _selectImage() async {
-    final ImagePicker picker = ImagePicker();
+    final imageService = ImageCompressionService();
     
-    // Afficher le choix source (caméra ou galerie)
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.orange),
-              title: const Text('Prendre une photo', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.orange),
-              title: const Text('Choisir depuis la galerie', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            if (_selectedImage != null)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Supprimer l\'image', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() => _selectedImage = null);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-    
-    if (source == null) return;
+    setState(() => _isUploading = true);
     
     try {
-      final XFile? image = await picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      
-      if (image != null) {
-        setState(() => _selectedImage = File(image.path));
+      final result = await imageService.pickBannerWithOriginal();
+          
+      if (result != null) {
+        setState(() {
+          _base64Image = result.base64DataUri;
+          _selectedImage = File(result.originalPath);
+        });
       }
     } catch (e) {
       debugPrint('Erreur sélection image: $e');
@@ -155,32 +122,22 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
-  /// Uploader l'image du bon vers IPFS et générer le fallback Base64
+  /// Uploader l'image du bon vers IPFS
   Future<Map<String, String?>> _uploadImage() async {
-    if (_selectedImage == null) return {'url': null, 'base64': null};
+    if (_selectedImage == null) return {'url': null, 'base64': _base64Image};
     
     setState(() => _isUploading = true);
     
     String? ipfsUrl;
-    String? base64Data;
     
-    // 1. Générer le fallback Base64
-    try {
-      final bytes = await _selectedImage!.readAsBytes();
-      if (bytes.length <= 50000) { // Limite arbitraire de 50Ko pour le fallback
-        final base64 = base64Encode(bytes);
-        base64Data = 'data:image/jpeg;base64,$base64';
-      } else {
-        debugPrint('Image trop grande pour le fallback Base64 (${bytes.length} bytes)');
-      }
-    } catch (e) {
-      debugPrint('Erreur fallback Base64: $e');
-    }
-    
-    // 2. Uploader vers IPFS
+    // Uploader vers IPFS
     try {
       final result = await _apiService.uploadImage(
         npub: widget.user.npub,
@@ -197,7 +154,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       setState(() => _isUploading = false);
     }
     
-    return {'url': ipfsUrl, 'base64': base64Data};
+    return {'url': ipfsUrl, 'base64': _base64Image};
   }
 
   @override

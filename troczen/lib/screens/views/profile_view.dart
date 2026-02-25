@@ -188,14 +188,10 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
   }
 
   Widget _buildProfileHeader() {
+    final hasBanner = _currentUser!.banner != null || _currentUser!.banner64 != null;
+    
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -205,67 +201,123 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Avatar
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            // Background (Banner or Gradient)
+            if (hasBanner)
+              Positioned.fill(
+                child: ImageCompressionService.buildImage(
+                  uri: _currentUser!.banner,
+                  fallbackUri: _currentUser!.banner64,
+                  fit: BoxFit.cover,
                 ),
-              ],
-            ),
-            child: ClipOval(
-              child: ImageCompressionService.buildImage(
-                uri: _currentUser!.picture,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-                errorWidget: Center(
-                  child: Text(
-                    _currentUser!.displayName.isNotEmpty
-                        ? _currentUser!.displayName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFB347),
+              )
+            else
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
                 ),
               ),
+              
+            // Overlay to ensure text readability if banner is present
+            if (hasBanner)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.5),
+                ),
+              ),
+              
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: ImageCompressionService.buildImage(
+                        uri: _currentUser!.picture,
+                        fallbackUri: _currentUser!.picture64,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        errorWidget: Center(
+                          child: Text(
+                            _currentUser!.displayName.isNotEmpty
+                                ? _currentUser!.displayName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFFB347),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Nom d'affichage
+                  Text(
+                    _currentUser!.displayName,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black87,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Date de création
+                  Text(
+                    'Membre depuis ${_formatDate(_currentUser!.createdAt)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black87,
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Nom d'affichage
-          Text(
-            _currentUser!.displayName,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          
-          // Date de création
-          Text(
-            'Membre depuis ${_formatDate(_currentUser!.createdAt)}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

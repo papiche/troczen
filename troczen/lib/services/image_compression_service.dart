@@ -2,7 +2,15 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 import 'logger_service.dart';
+
+class ImageResult {
+  final String originalPath;
+  final String base64DataUri;
+  
+  ImageResult({required this.originalPath, required this.base64DataUri});
+}
 
 /// ✅ v2.0.1: Service de compression d'images pour Nostr
 /// 
@@ -24,6 +32,74 @@ class ImageCompressionService {
   
   final ImagePicker _picker = ImagePicker();
   
+  /// Sélectionne une image, garde l'original et génère une miniature Base64
+  Future<ImageResult?> pickAvatarWithOriginal() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
+      
+      if (image == null) return null;
+      
+      final originalBytes = await image.readAsBytes();
+      final decodedImage = img.decodeImage(originalBytes);
+      
+      if (decodedImage == null) return null;
+      
+      final resizedImage = img.copyResize(
+        decodedImage,
+        width: maxAvatarSize,
+        height: maxAvatarSize,
+        maintainAspect: true,
+      );
+      
+      final compressedBytes = img.encodeJpg(resizedImage, quality: 70);
+      final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
+      
+      return ImageResult(
+        originalPath: image.path,
+        base64DataUri: base64Uri,
+      );
+    } catch (e) {
+      Logger.error('ImageCompressionService', 'Erreur sélection avatar avec original', e);
+      return null;
+    }
+  }
+
+  /// Sélectionne une bannière, garde l'original et génère une miniature Base64
+  Future<ImageResult?> pickBannerWithOriginal() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
+      
+      if (image == null) return null;
+      
+      final originalBytes = await image.readAsBytes();
+      final decodedImage = img.decodeImage(originalBytes);
+      
+      if (decodedImage == null) return null;
+      
+      final resizedImage = img.copyResize(
+        decodedImage,
+        width: maxBannerWidth,
+        height: maxBannerHeight,
+        maintainAspect: true,
+      );
+      
+      final compressedBytes = img.encodeJpg(resizedImage, quality: 70);
+      final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
+      
+      return ImageResult(
+        originalPath: image.path,
+        base64DataUri: base64Uri,
+      );
+    } catch (e) {
+      Logger.error('ImageCompressionService', 'Erreur sélection bannière avec original', e);
+      return null;
+    }
+  }
+
   /// Sélectionne et compresse une image depuis la galerie
   /// Retourne une chaîne data URI (data:image/jpeg;base64,...)
   Future<String?> pickAndCompressAvatar() async {

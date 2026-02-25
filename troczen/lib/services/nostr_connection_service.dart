@@ -6,6 +6,14 @@ import 'logger_service.dart';
 /// Service de gestion de la connexion WebSocket Nostr
 /// Responsabilité unique: Connexion, reconnexion, cycle de vie
 class NostrConnectionService {
+  static final NostrConnectionService _instance = NostrConnectionService._internal();
+  
+  factory NostrConnectionService() {
+    return _instance;
+  }
+  
+  NostrConnectionService._internal();
+
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   bool _isConnected = false;
@@ -25,10 +33,40 @@ class NostrConnectionService {
   // Évite l'erreur "Stream has already been listened to"
   final Map<String, Function(List<dynamic>)> _subscriptionHandlers = {};
   
-  // Callbacks
-  Function(bool connected)? onConnectionChange;
-  Function(String error)? onError;
-  Function(dynamic message)? onMessage;
+  // Callbacks (support multiple listeners for singleton)
+  final List<Function(bool connected)> _onConnectionChangeListeners = [];
+  final List<Function(String error)> _onErrorListeners = [];
+  final List<Function(dynamic message)> _onMessageListeners = [];
+  
+  void addConnectionChangeListener(Function(bool) listener) {
+    if (!_onConnectionChangeListeners.contains(listener)) {
+      _onConnectionChangeListeners.add(listener);
+    }
+  }
+  
+  void removeConnectionChangeListener(Function(bool) listener) {
+    _onConnectionChangeListeners.remove(listener);
+  }
+  
+  void addErrorListener(Function(String) listener) {
+    if (!_onErrorListeners.contains(listener)) {
+      _onErrorListeners.add(listener);
+    }
+  }
+  
+  void removeErrorListener(Function(String) listener) {
+    _onErrorListeners.remove(listener);
+  }
+  
+  void addMessageListener(Function(dynamic) listener) {
+    if (!_onMessageListeners.contains(listener)) {
+      _onMessageListeners.add(listener);
+    }
+  }
+  
+  void removeMessageListener(Function(dynamic) listener) {
+    _onMessageListeners.remove(listener);
+  }
   
   // Getters publics
   bool get isConnected => _isConnected;
@@ -54,13 +92,19 @@ class NostrConnectionService {
         _handleMessage,
         onError: (error) {
           _isConnected = false;
-          onError?.call('Erreur WebSocket: $error');
-          onConnectionChange?.call(false);
+          for (var listener in _onErrorListeners) {
+            listener('Erreur WebSocket: $error');
+          }
+          for (var listener in _onConnectionChangeListeners) {
+            listener(false);
+          }
           _scheduleReconnect();
         },
         onDone: () {
           _isConnected = false;
-          onConnectionChange?.call(false);
+          for (var listener in _onConnectionChangeListeners) {
+            listener(false);
+          }
           if (!_isAppInBackground) {
             _scheduleReconnect();
           }
@@ -69,13 +113,19 @@ class NostrConnectionService {
 
       _isConnected = true;
       _reconnectAttempts = 0;
-      onConnectionChange?.call(true);
+      for (var listener in _onConnectionChangeListeners) {
+        listener(true);
+      }
       Logger.log('NostrConnection', 'Connecté à $relayUrl');
       return true;
     } catch (e) {
       _isConnected = false;
-      onError?.call('Connexion impossible: $e');
-      onConnectionChange?.call(false);
+      for (var listener in _onErrorListeners) {
+        listener('Connexion impossible: $e');
+      }
+      for (var listener in _onConnectionChangeListeners) {
+        listener(false);
+      }
       _scheduleReconnect();
       return false;
     }
@@ -83,6 +133,13 @@ class NostrConnectionService {
 
   /// Déconnexion du relais
   Future<void> disconnect() async {
+    // En mode singleton, on ne déconnecte pas vraiment sauf si forcé
+    // pour éviter les connexions/déconnexions intempestives
+    Logger.log('NostrConnection', 'Demande de déconnexion ignorée (mode persistant)');
+  }
+  
+  /// Force la déconnexion réelle (utilisé lors de la fermeture de l'app)
+  Future<void> forceDisconnect() async {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _reconnectAttempts = 0;
@@ -93,8 +150,10 @@ class NostrConnectionService {
     _channel = null;
     _isConnected = false;
     _currentRelayUrl = null;
-    onConnectionChange?.call(false);
-    Logger.log('NostrConnection', 'Déconnecté');
+    for (var listener in _onConnectionChangeListeners) {
+      listener(false);
+    }
+    Logger.log('NostrConnection', 'Déconnecté (forcé)');
   }
   
   /// Envoie un message au relais
@@ -124,8 +183,10 @@ class NostrConnectionService {
         _subscriptionHandlers[subscriptionId]!(message);
       }
       
-      // Notifier le callback global
-      onMessage?.call(message);
+      // Notifier les callbacks globaux
+      for (var listener in _onMessageListeners) {
+        listener(message);
+      }
       
       // Gestion spéciale des messages système
       switch (messageType) {
@@ -134,16 +195,22 @@ class NostrConnectionService {
           final success = message[2];
           if (!success) {
             final errorMsg = message.length > 3 ? message[3] : 'Erreur inconnue';
-            onError?.call('Event $eventId rejeté: $errorMsg');
+            for (var listener in _onErrorListeners) {
+              listener('Event $eventId rejeté: $errorMsg');
+            }
           }
           break;
         case 'NOTICE':
           final notice = message[1];
-          onError?.call('Notice: $notice');
+          for (var listener in _onErrorListeners) {
+            listener('Notice: $notice');
+          }
           break;
       }
     } catch (e) {
-      onError?.call('Erreur parsing message: $e');
+      for (var listener in _onErrorListeners) {
+        listener('Erreur parsing message: $e');
+      }
     }
   }
   
@@ -186,7 +253,7 @@ class NostrConnectionService {
   void dispose() {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
-    disconnect();
+    forceDisconnect();
   }
   
   // ============================================================
@@ -198,7 +265,9 @@ class NostrConnectionService {
     // Ne pas reconnecter si en arrière-plan ou max tentatives atteint
     if (_isAppInBackground || _reconnectAttempts >= _maxReconnectAttempts) {
       if (_reconnectAttempts >= _maxReconnectAttempts) {
-        onError?.call('Max tentatives de reconnexion atteint');
+        for (var listener in _onErrorListeners) {
+          listener('Max tentatives de reconnexion atteint');
+        }
       }
       return;
     }

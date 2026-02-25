@@ -7,12 +7,14 @@ set -e
 # Usage: ./build_apk.sh [OPTIONS]
 # Options:
 #   -p, --push    Commit et push vers Git après le build
+#   -d, --debug   Compile l'APK en mode debug
 #   -h, --help    Affiche cette aide
 
 # ============================================
 # Parse arguments
 # ============================================
 PUSH_TO_GIT=false
+DEBUG_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -20,16 +22,22 @@ while [[ $# -gt 0 ]]; do
             PUSH_TO_GIT=true
             shift
             ;;
+        -d|--debug)
+            DEBUG_MODE=true
+            shift
+            ;;
         -h|--help)
             echo "Usage: ./build_apk.sh [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  -p, --push    Commit et push vers Git après le build"
+            echo "  -d, --debug   Compile l'APK en mode debug"
             echo "  -h, --help    Affiche cette aide"
             echo ""
             echo "Exemples:"
-            echo "  ./build_apk.sh           # Build uniquement"
-            echo "  ./build_apk.sh --push    # Build + commit + push Git"
+            echo "  ./build_apk.sh           # Build release uniquement"
+            echo "  ./build_apk.sh --debug   # Build debug uniquement"
+            echo "  ./build_apk.sh --push    # Build release + commit + push Git"
             exit 0
             ;;
         *)
@@ -52,23 +60,34 @@ IPFS_FALLBACK_GATEWAYS="ipfs.paratge.copylaradio.com ipfs.guenoel.fr"
 echo "🔧 Nettoyage du projet Flutter..."
 cd troczen && flutter clean
 
-echo "📦 Build de l'APK release..."
-flutter build apk --release
+# Extraire la version depuis pubspec.yaml
+VERSION=$(grep "^version:" pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
 
-# Chemin du APK généré
-APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
+if [ "$DEBUG_MODE" = true ]; then
+    echo "📦 Build de l'APK debug..."
+    flutter build apk --debug
+    
+    # Chemin du APK généré
+    APK_SRC="build/app/outputs/flutter-apk/app-debug.apk"
+    
+    # Nom de l'APK avec le préfixe troczen et la version
+    APK_NAME="troczen-$VERSION-debug.apk"
+else
+    echo "📦 Build de l'APK release..."
+    flutter build apk --release
+    
+    # Chemin du APK généré
+    APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
+    
+    # Nom de l'APK avec le préfixe troczen et la version
+    APK_NAME="troczen-$VERSION.apk"
+fi
 
 # Dossier de destination dans l'API
 DEST_DIR="../api/apks"
 
 # Créer le dossier s'il n'existe pas
 mkdir -p "$DEST_DIR"
-
-# Extraire la version depuis pubspec.yaml
-VERSION=$(grep "^version:" pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
-
-# Nom de l'APK avec le préfixe troczen et la version
-APK_NAME="troczen-$VERSION.apk"
 
 # Copier l'APK avec le bon nom
 cp "$APK_SRC" "$DEST_DIR/$APK_NAME"

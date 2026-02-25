@@ -4,6 +4,7 @@ import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/logger_service.dart';
+import '../services/image_compression_service.dart';
 
 class BonJourneyScreen extends StatefulWidget {
   final Bon bon;
@@ -128,66 +129,118 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
       children: [
         // En-tête du bon
         Container(
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
             borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFB347).withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${widget.bon.value.toStringAsFixed(0)} ẐEN',
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                  ),
-                  const Icon(Icons.auto_awesome, color: Colors.white, size: 32),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Émis par ${widget.bon.issuerName}',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              if (widget.bon.wish != null && widget.bon.wish!.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.campaign, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Petite Annonce (Vœu)',
-                              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '"${widget.bon.wish}"',
-                              style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 16),
-                            ),
-                          ],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              children: [
+                // Background (Banner or Gradient)
+                if (widget.bon.picture != null || widget.bon.picture64 != null)
+                  Positioned.fill(
+                    child: ImageCompressionService.buildImage(
+                      uri: widget.bon.picture,
+                      fallbackUri: widget.bon.picture64,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Positioned.fill(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
+                    ),
+                  ),
+                  
+                // Overlay to ensure text readability if banner is present
+                if (widget.bon.picture != null || widget.bon.picture64 != null)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${widget.bon.value.toStringAsFixed(0)} ẐEN',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              shadows: [Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 2))],
+                            ),
+                          ),
+                          const Icon(Icons.auto_awesome, color: Colors.white, size: 32),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Émis par ${widget.bon.issuerName}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          shadows: [Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1))],
+                        ),
+                      ),
+                      if (widget.bon.wish != null && widget.bon.wish!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white24),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.campaign, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Petite Annonce (Vœu)',
+                                      style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '"${widget.bon.wish}"',
+                                      style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
-            ],
+            ),
           ),
         ),
         

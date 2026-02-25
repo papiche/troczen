@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
@@ -40,8 +41,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   
   String? _base64Picture;
   String? _base64Banner;
+  File? _selectedPictureFile;
+  File? _selectedBannerFile;
   bool _isSaving = false;
-  final bool _isUploading = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -108,18 +111,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _selectImage(String type) async {
     final imageService = ImageCompressionService();
-    final dataUri = type == 'picture'
-        ? await imageService.pickAndCompressAvatar()
-        : await imageService.pickAndCompressBanner();
     
-    if (dataUri != null) {
-      setState(() {
-        if (type == 'picture') {
-          _base64Picture = dataUri;
-        } else {
-          _base64Banner = dataUri;
-        }
-      });
+    setState(() => _isUploading = true);
+    
+    try {
+      final result = type == 'picture'
+          ? await imageService.pickAvatarWithOriginal()
+          : await imageService.pickBannerWithOriginal();
+      
+      if (result != null) {
+        setState(() {
+          if (type == 'picture') {
+            _base64Picture = result.base64DataUri;
+            _selectedPictureFile = File(result.originalPath);
+          } else {
+            _base64Banner = result.base64DataUri;
+            _selectedBannerFile = File(result.originalPath);
+          }
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
@@ -129,9 +143,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Remplacer l'attente de l'API par la récupération directe des Strings
-      String? pictureUrl = _base64Picture ?? widget.user.picture;
-      String? bannerUrl = _base64Banner ?? widget.user.banner;
+      // Upload IPFS si de nouvelles images ont été sélectionnées
+      String? ipfsPictureUrl;
+      String? ipfsBannerUrl;
+      
+      if (_selectedPictureFile != null) {
+        final result = await _apiService.uploadImage(
+          npub: widget.user.npub,
+          imageFile: _selectedPictureFile!,
+          type: 'avatar',
+        );
+        if (result != null) {
+          ipfsPictureUrl = result['ipfs_url'] ?? result['url'];
+        }
+      }
+      
+      if (_selectedBannerFile != null) {
+        final result = await _apiService.uploadImage(
+          npub: widget.user.npub,
+          imageFile: _selectedBannerFile!,
+          type: 'banner',
+        );
+        if (result != null) {
+          ipfsBannerUrl = result['ipfs_url'] ?? result['url'];
+        }
+      }
+
+      // Ne pas mettre de base64 dans picture/banner (NIP-01)
+      String? finalPictureUrl = ipfsPictureUrl ?? (widget.user.picture != null && !widget.user.picture!.startsWith('data:') ? widget.user.picture : null);
+      String? finalBannerUrl = ipfsBannerUrl ?? (widget.user.banner != null && !widget.user.banner!.startsWith('data:') ? widget.user.banner : null);
 
       // 3. Publier sur Nostr (kind 0)
       final market = await _storageService.getMarket();
@@ -156,10 +196,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           about: _aboutController.text.trim().isNotEmpty
               ? _aboutController.text.trim()
               : null,
-          picture: pictureUrl,
-          banner: bannerUrl,
-          picture64: _base64Picture,
-          banner64: _base64Banner,
+          picture: finalPictureUrl,
+          banner: finalBannerUrl,
+          picture64: _base64Picture ?? widget.user.picture64,
+          banner64: _base64Banner ?? widget.user.banner64,
           website: _websiteController.text.trim().isNotEmpty
               ? _websiteController.text.trim()
               : null,
@@ -199,8 +239,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ? _aboutController.text.trim()
             : widget.user.about,
         // ✅ NOUVEAU: Sauvegarder les URLs des images
-        picture: pictureUrl ?? widget.user.picture,
-        banner: bannerUrl ?? widget.user.banner,
+        picture: finalPictureUrl ?? _base64Picture ?? widget.user.picture,
+        banner: finalBannerUrl ?? _base64Banner ?? widget.user.banner,
         picture64: _base64Picture ?? widget.user.picture64,
         banner64: _base64Banner ?? widget.user.banner64,
       );
