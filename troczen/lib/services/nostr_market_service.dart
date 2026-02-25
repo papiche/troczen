@@ -340,6 +340,44 @@ class NostrMarketService {
         }
       }
 
+      // Synchroniser les followers
+      try {
+        final user = await _storageService.getUser();
+        if (user != null) {
+          // On utilise une requête directe pour éviter la dépendance circulaire
+          final subscriptionId = 'followers_sync_${DateTime.now().millisecondsSinceEpoch}';
+          final followers = <String>{};
+          
+          _connection.registerHandler(subscriptionId, (message) {
+            if (message[0] == 'EVENT' && message.length >= 3) {
+              final event = message[2] as Map<String, dynamic>;
+              followers.add(event['pubkey'].toString());
+            }
+          });
+
+          final request = jsonEncode([
+            'REQ',
+            subscriptionId,
+            {
+              'kinds': [3],
+              '#p': [user.npub],
+            }
+          ]);
+          
+          _connection.sendMessage(request);
+          
+          // On attend 3 secondes pour les followers
+          await Future.delayed(const Duration(seconds: 3));
+          _connection.removeHandler(subscriptionId);
+          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          
+          await _storageService.saveFollowersBatch(followers.toList());
+          Logger.info('NostrMarket', '${followers.length} followers synchronisés');
+        }
+      } catch (e) {
+        Logger.error('NostrMarket', 'Erreur sync followers', e);
+      }
+
       int syncedCount = 0;
       final completer = Completer<int>();
     

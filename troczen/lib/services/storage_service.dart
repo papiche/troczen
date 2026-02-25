@@ -41,6 +41,7 @@ class StorageService {
   static const String _bootstrapExpirationKey = 'bootstrap_expiration'; // Date expiration Bon Zéro initial
   static const String _appModeKey = 'app_mode'; // Mode d'utilisation (0=Flâneur, 1=Artisan, 2=Alchimiste)
   static const String _lastDuGenerationKey = 'last_du_generation'; // Date de dernière génération du DU
+  static const String _lastDuValueKey = 'last_du_value'; // Dernière valeur du DU générée
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
@@ -699,6 +700,17 @@ class StorageService {
     return await _cacheService.getMarketBonById(bonId);
   }
 
+  /// Calculer la masse monétaire d'un groupe d'utilisateurs (M_n1)
+  Future<double> calculateMonetaryMass(List<String> npubs) async {
+    return await _cacheService.calculateMonetaryMass(npubs);
+  }
+
+  /// Calculer la masse monétaire des autres utilisateurs (M_n2)
+  /// Retourne un tuple (masse, nombre_utilisateurs)
+  Future<Map<String, dynamic>> calculateOtherMonetaryMass(List<String> excludedNpubs) async {
+    return await _cacheService.calculateOtherMonetaryMass(excludedNpubs);
+  }
+
   /// ✅ CORRECTION: Récupère les données économiques agrégées pour le dashboard
   /// Combine les données du marché global avec le wallet local
   Future<Map<String, dynamic>> getMarketEconomicData() async {
@@ -908,6 +920,30 @@ class StorageService {
   }
 
   // ============================================================
+  // ✅ GESTION DES FOLLOWERS (Ceux qui suivent l'utilisateur)
+  // ============================================================
+
+  /// Sauvegarde un follower
+  Future<void> saveFollower(String npub) async {
+    await _cacheService.saveFollower(npub);
+  }
+
+  /// Sauvegarde un lot de followers
+  Future<void> saveFollowersBatch(List<String> npubs) async {
+    await _cacheService.saveFollowersBatch(npubs);
+  }
+
+  /// Récupère tous les followers
+  Future<List<String>> getFollowers() async {
+    return await _cacheService.getFollowers();
+  }
+
+  /// Vide le cache des followers
+  Future<void> clearFollowersCache() async {
+    await _cacheService.clearFollowersCache();
+  }
+
+  // ============================================================
   // ✅ GESTION DES CONTACTS (Réseau de confiance)
   // ============================================================
 
@@ -969,6 +1005,30 @@ class StorageService {
       Logger.error('StorageService', 'Erreur removeContact', e);
       return false;
     }
+  }
+
+  // ============================================================
+  // ✅ GESTION DU CACHE N2 (Amis d'amis)
+  // ============================================================
+
+  /// Sauvegarde un contact N2
+  Future<void> saveN2Contact(String npub, String viaN1Npub) async {
+    await _cacheService.saveN2Contact(npub, viaN1Npub);
+  }
+
+  /// Sauvegarde un lot de contacts N2
+  Future<void> saveN2ContactsBatch(List<Map<String, String>> contacts) async {
+    await _cacheService.saveN2ContactsBatch(contacts);
+  }
+
+  /// Vérifie si un npub est dans le réseau N2
+  Future<bool> isN2Contact(String npub) async {
+    return await _cacheService.isN2Contact(npub);
+  }
+
+  /// Vide le cache N2
+  Future<void> clearN2Cache() async {
+    await _cacheService.clearN2Cache();
   }
 
   // ============================================================
@@ -1117,6 +1177,30 @@ class StorageService {
       return DateTime.parse(value);
     } catch (e) {
       Logger.error('StorageService', 'Erreur getLastDuGenerationDate', e);
+      return null;
+    }
+  }
+
+  /// Sauvegarde la dernière valeur du DU générée
+  Future<void> setLastDuValue(double value) async {
+    try {
+      await _secureStorage.write(
+        key: _lastDuValueKey,
+        value: value.toString(),
+      );
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur setLastDuValue', e);
+    }
+  }
+
+  /// Récupère la dernière valeur du DU générée
+  Future<double?> getLastDuValue() async {
+    try {
+      final value = await _secureStorage.read(key: _lastDuValueKey);
+      if (value == null) return null;
+      return double.parse(value);
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getLastDuValue', e);
       return null;
     }
   }

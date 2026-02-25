@@ -18,6 +18,7 @@ class CacheDatabaseService {
   static const String _syncMetadataTable = 'sync_metadata';
   static const String _n2CacheTable = 'n2_cache';
   static const String _localWalletBonsTable = 'local_wallet_bons';
+  static const String _followersCacheTable = 'followers_cache';
 
   /// Initialiser la base de données de cache
   Future<Database> get database async {
@@ -104,6 +105,14 @@ class CacheDatabaseService {
       CREATE TABLE $_localWalletBonsTable (
         bon_id TEXT PRIMARY KEY,
         raw_data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+
+    // Table pour les followers (ceux qui suivent l'utilisateur)
+    await db.execute('''
+      CREATE TABLE $_followersCacheTable (
+        npub TEXT PRIMARY KEY,
         updated_at INTEGER NOT NULL
       )
     ''');
@@ -392,6 +401,64 @@ class CacheDatabaseService {
     return result.first['count'] as int;
   }
 
+  /// Calculer la masse monétaire d'un groupe d'utilisateurs (M_n1)
+  Future<double> calculateMonetaryMass(List<String> npubs) async {
+    if (npubs.isEmpty) return 0.0;
+    
+    final db = await database;
+    final placeholders = List.filled(npubs.length, '?').join(',');
+    
+    final result = await db.rawQuery(
+      '''
+      SELECT SUM(value) as total
+      FROM $_marketBonsTable
+      WHERE status = 'active'
+      AND issuer_npub IN ($placeholders)
+      ''',
+      npubs,
+    );
+    
+    final total = result.first['total'];
+    return total != null ? (total as num).toDouble() : 0.0;
+  }
+
+  /// Calculer la masse monétaire des autres utilisateurs (M_n2)
+  /// Retourne un tuple (masse, nombre_utilisateurs)
+  Future<Map<String, dynamic>> calculateOtherMonetaryMass(List<String> excludedNpubs) async {
+    final db = await database;
+    
+    String query;
+    List<dynamic> args;
+    
+    if (excludedNpubs.isEmpty) {
+      query = '''
+        SELECT SUM(value) as total, COUNT(DISTINCT issuer_npub) as count
+        FROM $_marketBonsTable
+        WHERE status = 'active'
+      ''';
+      args = [];
+    } else {
+      final placeholders = List.filled(excludedNpubs.length, '?').join(',');
+      query = '''
+        SELECT SUM(value) as total, COUNT(DISTINCT issuer_npub) as count
+        FROM $_marketBonsTable
+        WHERE status = 'active'
+        AND issuer_npub NOT IN ($placeholders)
+      ''';
+      args = excludedNpubs;
+    }
+    
+    final result = await db.rawQuery(query, args);
+    
+    final total = result.first['total'];
+    final count = result.first['count'];
+    
+    return {
+      'mass': total != null ? (total as num).toDouble() : 0.0,
+      'count': count != null ? (count as int) : 0,
+    };
+  }
+
   // ============================================================
   // MÉTHODES SYNC METADATA
   // ============================================================
@@ -474,6 +541,57 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES FOLLOWERS CACHE
+  // ============================================================
+
+  /// Sauvegarder un follower
+  Future<void> saveFollower(String npub) async {
+    final db = await database;
+    await db.insert(
+      _followersCacheTable,
+      {
+        'npub': npub,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Sauvegarder un lot de followers
+  Future<void> saveFollowersBatch(List<String> npubs) async {
+    if (npubs.isEmpty) return;
+    
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    
+    await db.transaction((txn) async {
+      for (final npub in npubs) {
+        await txn.insert(
+          _followersCacheTable,
+          {
+            'npub': npub,
+            'updated_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  /// Récupérer tous les followers
+  Future<List<String>> getFollowers() async {
+    final db = await database;
+    final results = await db.query(_followersCacheTable);
+    return results.map((row) => row['npub'] as String).toList();
+  }
+
+  /// Vider le cache des followers
+  Future<void> clearFollowersCache() async {
+    final db = await database;
+    await db.delete(_followersCacheTable);
+  }
+
+  // ============================================================
   // MÉTHODES DE GESTION
   // ============================================================
 
@@ -486,6 +604,7 @@ class CacheDatabaseService {
     await db.delete(_syncMetadataTable);
     await db.delete(_n2CacheTable);
     await db.delete(_localWalletBonsTable);
+    await db.delete(_followersCacheTable);
   }
 
   /// Exécute la maintenance automatique de la base de données

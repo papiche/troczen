@@ -193,6 +193,18 @@ class NostrService {
     _market.subscribeToMarkets(marketNames, since: since);
   
   Future<int> syncMarketP3s(Market market) async {
+    // Synchroniser les followers avant de lancer la sync du marché
+    try {
+      final user = await _storageService.getUser();
+      if (user != null && _connection.isConnected) {
+        final followers = await fetchFollowers(user.npub);
+        await _storageService.saveFollowersBatch(followers);
+        Logger.info('NostrService', '${followers.length} followers synchronisés');
+      }
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur sync followers', e);
+    }
+
     final duService = DuCalculationService(
       storageService: _storageService,
       nostrService: this,
@@ -256,6 +268,14 @@ class NostrService {
       _market.onP3Received = originalCallback;
       
       try {
+        // Synchroniser les followers avant de vérifier le DU
+        final user = await _storageService.getUser();
+        if (user != null) {
+          final followers = await fetchFollowers(user.npub);
+          await _storageService.saveFollowersBatch(followers);
+          Logger.info('NostrService', '${followers.length} followers synchronisés');
+        }
+
         final duService = DuCalculationService(
           storageService: _storageService,
           nostrService: this,
