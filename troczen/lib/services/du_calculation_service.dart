@@ -50,15 +50,20 @@ class DuParams {
   }
 
   /// Crée des paramètres de fallback (mode hors-ligne)
-  factory DuParams.fallback({double cSquared = 0.01, double duBase = 10.0}) {
+  factory DuParams.fallback({
+    double cSquared = 0.01,
+    double duBase = 10.0,
+    int n1 = 0,
+    int n2 = 0,
+  }) {
     return DuParams(
       cSquared: cSquared,
       alpha: 0.0,
       duBase: duBase,
       duSkill: 0.0,
       duTotal: duBase,
-      n1: 0,
-      n2: 0,
+      n1: n1,
+      n2: n2,
       computedAt: DateTime.now(),
       fromBox: false,
     );
@@ -87,8 +92,8 @@ class DuCalculationService {
   // Durée de vie d'un bon DU (Monnaie fondante)
   static const int _duExpirationDays = 28;
   
-  // DU initial au lancement du marché (10 ẐEN/jour)
-  static const double _initialDuValue = 10.0;
+  // DU initial au lancement du marché (100 ẐEN/jour)
+  static const double _initialDuValue = 100.0;
 
   DuCalculationService({
     required StorageService storageService,
@@ -102,7 +107,18 @@ class DuCalculationService {
   Future<DuParams> _calculateLocalDu({
     required List<String> mutuals,
     required double currentDu,
+    required bool isFirstTime,
   }) async {
+    if (isFirstTime) {
+      Logger.log('DuCalculationService', 'Premier DU: émission de la valeur initiale ($_initialDuValue ẐEN)');
+      return DuParams.fallback(
+        cSquared: _cSquared,
+        duBase: _initialDuValue,
+        n1: mutuals.length,
+        n2: 0,
+      );
+    }
+
     // 1. Calculer M_n1 (masse monétaire des N1 mutuels) via SQL
     final mn1 = await _storageService.calculateMonetaryMass(mutuals);
 
@@ -127,17 +143,19 @@ class DuCalculationService {
     
     // Utiliser le C²
     final duIncrement = _cSquared * effectiveMass / effectivePopulation;
-    final newDu = currentDu + duIncrement;
     
-    // Plafond de sécurité (+5% max)
-    final cappedDu = min(newDu, currentDu * 1.05);
+    // Plafond de sécurité pour l'incrément (+5% max de la masse cumulée)
+    final maxIncrement = currentDu * 0.05;
+    final cappedIncrement = min(duIncrement, maxIncrement);
 
     Logger.log('DuCalculationService',
-      'Calcul local: DU=${cappedDu.toStringAsFixed(2)} ẐEN (C²=$_cSquared, N1=${mutuals.length}, N2=$n2Count, Mn1=$mn1, Mn2=$mn2)');
+      'Calcul local: Incrément=${cappedIncrement.toStringAsFixed(2)} ẐEN (C²=$_cSquared, N1=${mutuals.length}, N2=$n2Count, Mn1=$mn1, Mn2=$mn2)');
 
     return DuParams.fallback(
       cSquared: _cSquared,
-      duBase: cappedDu,
+      duBase: cappedIncrement,
+      n1: mutuals.length,
+      n2: n2Count,
     );
   }
 
@@ -159,17 +177,29 @@ class DuCalculationService {
         return false;
       }
 
-      // 1. Vérifier si le DU a déjà été généré aujourd'hui
+      // 1. Calculer le nombre de jours écoulés depuis la dernière génération
       final lastDuDate = await _storageService.getLastDuGenerationDate();
+      int missedDays = 1;
+      
       if (lastDuDate != null) {
         final now = DateTime.now();
-        final hasGeneratedToday = lastDuDate.year == now.year &&
-            lastDuDate.month == now.month &&
-            lastDuDate.day == now.day;
+        final today = DateTime(now.year, now.month, now.day);
+        final lastDate = DateTime(lastDuDate.year, lastDuDate.month, lastDuDate.day);
         
-        if (hasGeneratedToday) {
+        missedDays = today.difference(lastDate).inDays;
+        
+        if (missedDays <= 0) {
           Logger.log('DuCalculationService', 'DU déjà généré aujourd\'hui');
           return false;
+        }
+        
+        // Limite de rattrapage : on ne peut rattraper qu'un certain nombre de jours d'inactivité
+        // Cela évite une création monétaire massive si l'app est rouverte après 2 ans
+        // et incite à une participation régulière au réseau.
+        const int maxCatchupDays = 30; // Limite fixée à 30 jours
+        if (missedDays > maxCatchupDays) {
+          Logger.warn('DuCalculationService', 'Plafond de rattrapage atteint: $missedDays jours réduits à $maxCatchupDays');
+          missedDays = maxCatchupDays;
         }
       }
 
@@ -199,11 +229,14 @@ class DuCalculationService {
       }
 
       // 4. ✅ PROTOCOLE V6: Calcul local 100%
-      final currentDu = await getCurrentGlobalDu();
+      final lastDu = await _storageService.getLastDuValue();
+      final isFirstTime = lastDu == null;
+      final currentDu = lastDu ?? 0.0;
       
       final duParams = await _calculateLocalDu(
         mutuals: mutuals,
         currentDu: currentDu,
+        isFirstTime: isFirstTime,
       );
 
       // 5. Vérifier que le DU est positif
@@ -212,16 +245,55 @@ class DuCalculationService {
         return false;
       }
 
+      // Multiplier l'incrément par le nombre de jours manqués
+      final totalIncrement = duParams.duTotal * missedDays;
+
       Logger.success('DuCalculationService',
-        'Nouveau DU: ${duParams.duTotal.toStringAsFixed(2)} ẐEN '
-        '(base: ${duParams.duBase.toStringAsFixed(2)} + skill: ${duParams.duSkill.toStringAsFixed(2)})');
+        'Incrément DU: ${totalIncrement.toStringAsFixed(2)} ẐEN '
+        '(${duParams.duTotal.toStringAsFixed(2)} ẐEN/jour × $missedDays jours)');
 
-      // 6. Générer les bons quantitatifs
-      await _generateQuantitativeBons(user, market, duParams.duTotal);
+      // 6. Ajouter l'incrément total au DU disponible à émettre
+      await _storageService.addAvailableDuToEmit(totalIncrement);
 
-      // 7. Enregistrer la date de génération et la valeur du DU
+      // 7. Enregistrer la date de génération et la nouvelle valeur cumulée
       await _storageService.setLastDuGenerationDate(DateTime.now());
-      await _storageService.setLastDuValue(duParams.duTotal);
+      await _storageService.setLastDuValue(currentDu + totalIncrement);
+
+      // 8. Publier les données économiques sur le profil Nostr
+      try {
+        final availableDu = await _storageService.getAvailableDuToEmit();
+        final economicData = {
+          'cumulative_du': currentDu + duParams.duTotal,
+          'available_du': availableDu,
+          'daily_increment': duParams.duTotal,
+          'missed_days_caught_up': missedDays,
+          'n1_count': mutuals.length,
+          'n2_count': duParams.n2,
+          'last_update': DateTime.now().toIso8601String(),
+        };
+
+        // On récupère le profil actuel pour ne pas écraser les autres champs
+        final currentProfile = await _nostrService.fetchUserProfile(user.npub);
+        
+        await _nostrService.publishUserProfile(
+          npub: user.npub,
+          nsec: user.nsec,
+          name: currentProfile?.name ?? user.displayName,
+          displayName: currentProfile?.displayName ?? user.displayName,
+          about: currentProfile?.about,
+          picture: currentProfile?.picture,
+          banner: currentProfile?.banner,
+          website: currentProfile?.website,
+          g1pub: currentProfile?.g1pub ?? user.g1pub,
+          tags: currentProfile?.tags,
+          activity: currentProfile?.activity,
+          profession: currentProfile?.profession,
+          economicData: economicData,
+        );
+        Logger.success('DuCalculationService', 'Données économiques publiées sur le profil');
+      } catch (e) {
+        Logger.warn('DuCalculationService', 'Erreur publication données économiques: $e');
+      }
 
       return true;
     } catch (e) {
@@ -231,7 +303,7 @@ class DuCalculationService {
   }
 
   /// Récupère la valeur actuelle du DU global
-  /// Au lancement du marché, DU(0) = 10 ẐEN/jour
+  /// Au lancement du marché, DU(0) = 100 ẐEN/jour
   Future<double> getCurrentGlobalDu() async {
     // Récupérer la dernière valeur générée
     final lastDu = await _storageService.getLastDuValue();
@@ -240,7 +312,7 @@ class DuCalculationService {
     }
     
     // Si c'est la première fois, on retourne la valeur initiale
-    return _initialDuValue; // 10 ẐEN au lancement
+    return _initialDuValue; // 100 ẐEN au lancement
   }
 
   /// Génère un bon de bootstrap pour un nouvel utilisateur
@@ -413,80 +485,5 @@ class DuCalculationService {
     return await _storageService.hasReceivedBootstrap();
   }
 
-  /// Génère des bons en coupures standards (1, 2, 5, 10, 20, 50)
-  Future<void> _generateQuantitativeBons(User user, Market market, double totalValue) async {
-    final denominations = [50.0, 20.0, 10.0, 5.0, 2.0, 1.0];
-    double remaining = totalValue;
-    
-    for (final denom in denominations) {
-      while (remaining >= denom) {
-        await _createAndPublishBon(user, market, denom, totalValue);
-        remaining -= denom;
-      }
-    }
-    
-    // S'il reste une fraction, on crée un dernier bon
-    if (remaining > 0.1) {
-      await _createAndPublishBon(user, market, double.parse(remaining.toStringAsFixed(2)), totalValue);
-    }
-  }
-
-  /// Crée un bon individuel et le publie sur Nostr
-  /// ✅ SÉCURITÉ: Utilise shamirSplitBytes() pour éviter les String en RAM
-  Future<void> _createAndPublishBon(User user, Market market, double value, double currentDu) async {
-    final keys = _cryptoService.generateNostrKeyPair();
-    final bonId = keys['publicKeyHex']!;
-    final nsecHex = keys['privateKeyHex']!;
-    
-    // ✅ SÉCURITÉ: Convertir en Uint8List et utiliser shamirSplitBytes
-    final nsecBytes = Uint8List.fromList(HEX.decode(nsecHex));
-    final parts = _cryptoService.shamirSplitBytes(nsecBytes);
-    
-    // Nettoyer la clé privée originale immédiatement
-    _cryptoService.secureZeroiseBytes(nsecBytes);
-    
-    // Convertir en hex uniquement pour la sauvegarde
-    final p1Hex = HEX.encode(parts[0]);
-    final p2Hex = HEX.encode(parts[1]);
-    final p3Hex = HEX.encode(parts[2]);
-    
-    final now = DateTime.now();
-    final bon = Bon(
-      bonId: bonId,
-      value: value,
-      issuerName: user.displayName,
-      issuerNpub: user.npub,
-      createdAt: now,
-      expiresAt: now.add(const Duration(days: _duExpirationDays)), // Monnaie fondante
-      status: BonStatus.active,
-      p1: p1Hex,
-      p2: p2Hex,
-      p3: p3Hex,
-      marketName: market.name,
-      rarity: 'common',
-      cardType: 'DU',
-      duAtCreation: currentDu, // Stocker la valeur du DU à la création
-    );
-
-    // Sauvegarder localement
-    await _storageService.saveBon(bon);
-    await _storageService.saveP3ToCache(bonId, p3Hex);
-
-    // Publier sur Nostr
-    await _nostrService.publishP3(
-      bonId: bonId,
-      issuerNsecHex: user.nsec,
-      p3Hex: p3Hex,
-      seedMarket: market.seedMarket,
-      issuerNpub: user.npub,
-      marketName: market.name,
-      value: value,
-      category: 'DU',
-    );
-    
-    // ✅ SÉCURITÉ: Nettoyer les parts de la RAM après sauvegarde
-    for (final part in parts) {
-      _cryptoService.secureZeroiseBytes(part);
-    }
-  }
 }
+

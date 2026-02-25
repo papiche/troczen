@@ -42,6 +42,7 @@ class StorageService {
   static const String _appModeKey = 'app_mode'; // Mode d'utilisation (0=Flâneur, 1=Artisan, 2=Alchimiste)
   static const String _lastDuGenerationKey = 'last_du_generation'; // Date de dernière génération du DU
   static const String _lastDuValueKey = 'last_du_value'; // Dernière valeur du DU générée
+  static const String _availableDuToEmitKey = 'available_du_to_emit'; // DU disponible à émettre
 
   // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
   // FlutterSecureStorage n'a pas de système de transaction
@@ -1203,5 +1204,45 @@ class StorageService {
       Logger.error('StorageService', 'Erreur getLastDuValue', e);
       return null;
     }
+  }
+
+  /// Sauvegarde le DU disponible à émettre
+  Future<void> setAvailableDuToEmit(double value) async {
+    try {
+      await _secureStorage.write(
+        key: _availableDuToEmitKey,
+        value: value.toString(),
+      );
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur setAvailableDuToEmit', e);
+    }
+  }
+
+  /// Récupère le DU disponible à émettre
+  Future<double> getAvailableDuToEmit() async {
+    try {
+      final value = await _secureStorage.read(key: _availableDuToEmitKey);
+      if (value == null) return 0.0;
+      return double.parse(value);
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur getAvailableDuToEmit', e);
+      return 0.0;
+    }
+  }
+
+  /// Ajoute au DU disponible à émettre
+  Future<void> addAvailableDuToEmit(double amount) async {
+    final current = await getAvailableDuToEmit();
+    await setAvailableDuToEmit(current + amount);
+  }
+
+  /// Déduit du DU disponible à émettre
+  Future<bool> deductAvailableDuToEmit(double amount) async {
+    final current = await getAvailableDuToEmit();
+    if (current >= amount) {
+      await setAvailableDuToEmit(current - amount);
+      return true;
+    }
+    return false;
   }
 }

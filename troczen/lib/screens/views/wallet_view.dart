@@ -38,6 +38,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   void initState() {
     super.initState();
     _loadBons();
+    _loadAvailableDu();
     _searchController.addListener(_filterBons);
   }
 
@@ -132,7 +133,20 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         .fold(0.0, (sum, bon) => sum + bon.value);
   }
 
+  double _availableDu = 0.0;
+
+  Future<void> _loadAvailableDu() async {
+    final storageService = StorageService();
+    final available = await storageService.getAvailableDuToEmit();
+    if (mounted) {
+      setState(() {
+        _availableDu = available;
+      });
+    }
+  }
+
   Future<void> _refreshBons() async {
+    await _loadAvailableDu();
     await _loadBons();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +265,36 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               ],
             ),
           ],
+          
+          // DU disponible à émettre
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A7EA4).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF0A7EA4).withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.add_circle_outline,
+                  size: 16,
+                  color: Color(0xFF0A7EA4),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'DU disponible à émettre: ${_availableDu.toStringAsFixed(2)} ẐEN',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF0A7EA4),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

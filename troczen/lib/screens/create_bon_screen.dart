@@ -39,6 +39,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   final _websiteController = TextEditingController();
   final _wishController = TextEditingController();
   List<String> _suggestedTags = [];
+  double _availableDu = 0.0;
   
   final List<Map<String, dynamic>> _expirationOptions = [
     {'label': '7 jours', 'days': 7},
@@ -57,6 +58,16 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     _websiteController.text = widget.user.website ?? '';
     _loadMarkets();
     _loadSuggestedTags();
+    _loadAvailableDu();
+  }
+
+  Future<void> _loadAvailableDu() async {
+    final available = await _storageService.getAvailableDuToEmit();
+    if (mounted) {
+      setState(() {
+        _availableDu = available;
+      });
+    }
   }
 
   Future<void> _loadSuggestedTags() async {
@@ -172,6 +183,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       return;
     }
 
+    final bonValue = double.tryParse(_valueController.text) ?? 0.0;
+    
+    if (bonValue > 0 && bonValue > _availableDu) {
+      _showError('Vous n\'avez pas assez de DU disponible pour émettre ce montant.\nDisponible: ${_availableDu.toStringAsFixed(2)} ẐEN');
+      return;
+    }
+
     setState(() => _isCreating = true);
 
     try {
@@ -211,12 +229,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         cryptoService: _cryptoService,
       );
       final currentDu = await duService.getCurrentGlobalDu();
-      // Forcer la valeur à 0 (Bon manuels à 0)
-      final bonValue = 0.0;
+
+      final isBootstrap = bonValue == 0.0;
 
       final bon = Bon(
         bonId: bonNpubHex,
-        value: 0.0, // Forcé à 0
+        value: bonValue,
         issuerName: _issuerNameController.text,
         issuerNpub: widget.user.npub,
         createdAt: DateTime.now(),
@@ -226,13 +244,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         p2: p2,
         p3: null,
         marketName: _selectedMarket!.name,
-        color: _selectedColor.value,
+        color: _selectedColor.toARGB32(),
         duAtCreation: currentDu,
-        rarity: 'bootstrap', // FORCE EN BOOTSTRAP
-        cardType: 'bootstrap', // FORCE EN BOOTSTRAP
+        rarity: isBootstrap ? 'bootstrap' : 'common',
+        cardType: isBootstrap ? 'bootstrap' : 'DU',
         wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
-        picture: imageUrl ?? imageBase64, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
-        logoUrl: imageUrl ?? imageBase64, // 🔥 AJOUT CRITIQUE POUR LE WALLET LOCAL
+        picture: imageUrl ?? imageBase64,
+        logoUrl: imageUrl ?? imageBase64,
         picture64: imageBase64,
       );
 
@@ -289,7 +307,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             issuerNpub: widget.user.npub,
             marketName: _selectedMarket!.name,
             value: bonValue,
-            category: 'generic',  // TODO: Sélection UI
+            category: isBootstrap ? 'bootstrap' : 'DU',
             wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
           );
 
@@ -300,8 +318,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           await nostrService.disconnect();
         }
 
-        // 9. ✅ Profil du bon créé uniquement sur Nostr (kind 0 et 30303)
-        // L'API backend n'est plus utilisée pour les profils
+        // 9. Déduire le montant du DU disponible
+        if (bonValue > 0) {
+          await _storageService.deductAvailableDuToEmit(bonValue);
+        }
 
       } catch (e) {
         debugPrint('⚠️ Erreur publication Nostr: $e');
@@ -471,7 +491,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Encart Pédagogique Bon Zéro
+              // Encart Pédagogique
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -487,7 +507,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                         Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
                         SizedBox(width: 8),
                         Text(
-                          'Création de Bon Zéro',
+                          'Émission de Bons',
                           style: TextStyle(
                             color: Color(0xFF0A7EA4),
                             fontWeight: FontWeight.bold,
@@ -497,13 +517,51 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Vous créez un "Bon Zéro" (0 ẐEN). Ce bon sert de carte de visite pour tisser votre toile de confiance.\n\nLes vrais ẐEN seront générés automatiquement par le Dividende Universel une fois que vous aurez 5 liens réciproques.',
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    Text(
+                      'DU disponible à émettre : ${_availableDu.toStringAsFixed(2)} ẐEN\n\n'
+                      'Vous pouvez émettre un "Bon Zéro" (0 ẐEN) pour tisser votre toile de confiance, '
+                      'ou émettre un bon avec une valeur jusqu\'à votre DU disponible.',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _valueController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Valeur du bon (ẐEN)',
+                  labelStyle: TextStyle(color: Colors.grey[400]),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[700]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Color(0xFFFFB347)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Veuillez entrer une valeur';
+                  }
+                  final val = double.tryParse(value);
+                  if (val == null || val < 0) {
+                    return 'Valeur invalide';
+                  }
+                  if (val > _availableDu) {
+                    return 'DU disponible insuffisant';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+
               const SizedBox(height: 16),
 
               TextFormField(

@@ -440,6 +440,7 @@ class NostrService {
     List<String>? tags,
     String? activity,
     String? profession,
+    Map<String, dynamic>? economicData,
   }) async {
     if (!_connection.isConnected) {
       onError?.call('Non connecté au relais');
@@ -466,6 +467,7 @@ class NostrService {
         tags: tags,
         activity: activity,
         profession: profession,
+        economicData: economicData,
       );
 
       final nostrTags = <List<String>>[];

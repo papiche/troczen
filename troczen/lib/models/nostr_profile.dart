@@ -131,6 +131,9 @@ class NostrProfile {
   // ✅ WOTX2: Credentials de compétences vérifiés (Kind 30503)
   final List<SkillCredential>? skillCredentials;
 
+  // ✅ Données économiques (DU)
+  final Map<String, dynamic>? economicData;
+
   NostrProfile({
     required this.npub,
     required this.name,
@@ -148,6 +151,7 @@ class NostrProfile {
     this.activity,
     this.profession,
     this.skillCredentials,
+    this.economicData,
   });
 
   /// Sérialisation JSON conforme NIP-24
@@ -179,6 +183,8 @@ class NostrProfile {
           'badge': c.badgeLabel,
           if (c.eventId != null) 'event_id': c.eventId,
         }).toList(),
+      // ✅ Données économiques
+      if (economicData != null) 'economic_data': economicData,
     };
   }
 
@@ -215,6 +221,8 @@ class NostrProfile {
       profession: json['profession'],
       // ✅ WOTX2: Credentials
       skillCredentials: credentials,
+      // ✅ Données économiques
+      economicData: json['economic_data'] as Map<String, dynamic>?,
     );
   }
   
@@ -236,6 +244,7 @@ class NostrProfile {
     String? activity,
     String? profession,
     List<SkillCredential>? skillCredentials,
+    Map<String, dynamic>? economicData,
   }) {
     return NostrProfile(
       npub: npub ?? this.npub,
@@ -254,6 +263,7 @@ class NostrProfile {
       activity: activity ?? this.activity,
       profession: profession ?? this.profession,
       skillCredentials: skillCredentials ?? this.skillCredentials,
+      economicData: economicData ?? this.economicData,
     );
   }
   

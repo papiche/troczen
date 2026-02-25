@@ -67,12 +67,14 @@ sequenceDiagram
 
     %% ÉTAPE 4 : ÉMISSION
     rect rgb(30, 25, 45)
-    Note over Alice, Nostr: 4. Émission des Bons ẐEN
-    App->>App: Découpe DU en coupures standards (1,2,5,10,20,50)
-    App->>App: Pour chaque bon : SSSS(nsec_bon) → P1, P2, P3
+    Note over Alice, Nostr: 4. Émission Manuelle des Bons ẐEN
+    App->>App: Incrémente le "DU disponible à émettre"
+    App->>Alice: "Nouveau DU : +X ẐEN disponible (Total: Y ẐEN)"
+    Alice->>App: Choisit d'émettre un bon de Z ẐEN avec TTL choisi
+    App->>App: SSSS(nsec_bon) → P1, P2, P3
     App->>App: path[] initialisé : [HMAC(Alice.pubkey, bon_id)]
     App->>Nostr: Publie Kind 30303 (P3 chiffré + preuve WoT)
-    App->>Alice: "Nouveau DU : +X ẐEN (Y.YY DU) — TTL conseillé : Z jours"
+    App->>App: Déduit Z ẐEN du "DU disponible à émettre"
     end
 
     %% ÉTAPE 5 : TRANSFERT P2P
@@ -193,16 +195,23 @@ DU_i(t+1) = DU_i(t) + C² × (M_n1 + M_n2 / √N2) / (N1 + √N2)
 
 ---
 
-### 4. Émission des Bons ẐEN
+### 4. Émission Manuelle des Bons ẐEN
 
-Le montant du DU est découpé en **coupures standards** (1, 2, 5, 10, 20, 50 ẐEN) pour faciliter les échanges au marché. L'app suggère une répartition basée sur les montants habituellement échangés dans la communauté locale.
+L'application ne génère pas automatiquement les bons chaque jour. Au lieu de cela, elle **cumule l'incrément quotidien** dans une jauge de "DU disponible à émettre".
 
-Pour chaque bon généré :
+L'utilisateur est libre de :
+- Émettre des petits bons tous les jours.
+- Attendre plusieurs jours/semaines pour accumuler assez de droits d'émission et créer un bon de plus grande valeur.
+- Choisir le montant exact et le TTL (Time To Live) de chaque bon émis, en fonction de son besoin réel d'échange.
 
-1. `SSSS(nsec_bon) → P1, P2, P3` (partage de secret de Shamir)
-2. `path[]` initialisé avec `HMAC(émetteur.pubkey, bon_id)` — **anonymisation dès la création**
-3. `expires_at = now() + TTL_choisi` — **immuable**, ne sera jamais modifié
-4. Publication sur Nostr : `Kind 30303` (P3 chiffré + preuve de calcul WoT)
+Pour chaque bon généré manuellement :
+
+1. L'utilisateur choisit le montant (limité par son DU disponible) et le TTL.
+2. `SSSS(nsec_bon) → P1, P2, P3` (partage de secret de Shamir)
+3. `path[]` initialisé avec `HMAC(émetteur.pubkey, bon_id)` — **anonymisation dès la création**
+4. `expires_at = now() + TTL_choisi` — **immuable**, ne sera jamais modifié
+5. Publication sur Nostr : `Kind 30303` (P3 chiffré + preuve de calcul WoT)
+6. Le montant du bon est déduit de la jauge de "DU disponible à émettre".
 
 **Structure d'un Bon ẐEN :**
 
