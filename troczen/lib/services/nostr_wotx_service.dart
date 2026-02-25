@@ -232,9 +232,11 @@ class NostrWoTxService {
       event['id'] = eventId;
       event['sig'] = _cryptoService.signMessage(eventId, nsec);
 
-      _connection.sendMessage(jsonEncode(['EVENT', event]));
-      Logger.success('NostrWoTx', 'Skill request publiée: $skill');
-      return true;
+      final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
+      if (success) {
+        Logger.success('NostrWoTx', 'Skill request publiée: $skill');
+      }
+      return success;
     } catch (e) {
       Logger.error('NostrWoTx', 'Erreur publishSkillRequest', e);
       return false;
@@ -366,9 +368,11 @@ class NostrWoTxService {
       event['id'] = eventId;
       event['sig'] = _cryptoService.signMessage(eventId, myNsec);
 
-      _connection.sendMessage(jsonEncode(['EVENT', event]));
-      Logger.success('NostrWoTx', 'Attestation publiée pour $requesterNpub');
-      return true;
+      final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
+      if (success) {
+        Logger.success('NostrWoTx', 'Attestation publiée pour $requesterNpub');
+      }
+      return success;
     } catch (e) {
       Logger.error('NostrWoTx', 'Erreur publishSkillAttestation', e);
       return false;

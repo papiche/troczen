@@ -77,7 +77,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     // ✅ PROGRESSIVE DISCLOSURE : Écoute du provider
     final appModeProvider = context.watch<AppModeProvider>();
-    final _appMode = appModeProvider.currentMode;
+    final appMode = appModeProvider.currentMode;
 
     return Scaffold(
       // ✅ CORRECTION: Ajout d'un AppBar pour permettre l'accès au Drawer
@@ -94,7 +94,7 @@ class _MainShellState extends State<MainShell> {
           ),
         ),
         title: Text(
-          _getTabTitle(_appMode),
+          _getTabTitle(appMode),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -112,7 +112,7 @@ class _MainShellState extends State<MainShell> {
               border: Border.all(color: const Color(0xFFFFB347)),
             ),
             child: Text(
-              _appMode.label,
+              appMode.label,
               style: const TextStyle(
                 color: Color(0xFFFFB347),
                 fontSize: 12,
@@ -124,23 +124,23 @@ class _MainShellState extends State<MainShell> {
       ),
       body: IndexedStack(
         index: _currentTab,
-        children: _buildViews(_appMode),
+        children: _buildViews(appMode),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTab,
         onDestinationSelected: (index) {
           setState(() => _currentTab = index);
         },
-        destinations: _buildDestinations(_appMode),
+        destinations: _buildDestinations(appMode),
       ),
-      floatingActionButton: _buildMainFAB(_appMode),
-      drawer: _buildSettingsDrawer(_appMode),
+      floatingActionButton: _buildMainFAB(appMode),
+      drawer: _buildSettingsDrawer(appMode),
     );
   }
   
   /// Retourne le titre de l'onglet actif
-  String _getTabTitle(AppMode _appMode) {
-    switch (_appMode) {
+  String _getTabTitle(AppMode appMode) {
+    switch (appMode) {
       case AppMode.flaneur:
         switch (_currentTab) {
           case 0:
@@ -182,8 +182,8 @@ class _MainShellState extends State<MainShell> {
   }
   
   /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique des vues selon le mode
-  List<Widget> _buildViews(AppMode _appMode) {
-    switch (_appMode) {
+  List<Widget> _buildViews(AppMode appMode) {
+    switch (appMode) {
       case AppMode.flaneur:
         // Mode Flâneur : Wallet + Profil uniquement
         return [
@@ -212,8 +212,8 @@ class _MainShellState extends State<MainShell> {
   }
   
   /// ✅ PROGRESSIVE DISCLOSURE : Construction dynamique de la navigation selon le mode
-  List<NavigationDestination> _buildDestinations(AppMode _appMode) {
-    switch (_appMode) {
+  List<NavigationDestination> _buildDestinations(AppMode appMode) {
+    switch (appMode) {
       case AppMode.flaneur:
         return const [
           NavigationDestination(
@@ -269,9 +269,9 @@ class _MainShellState extends State<MainShell> {
   }
 
   /// FAB contextuel selon l'onglet actif et le mode
-  Widget? _buildMainFAB(AppMode _appMode) {
+  Widget? _buildMainFAB(AppMode appMode) {
     // Mode Flâneur
-    if (_appMode.isFlaneur) {
+    if (appMode.isFlaneur) {
       switch (_currentTab) {
         case 0: // Wallet
           return FloatingActionButton.extended(
@@ -321,7 +321,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   /// Drawer — Paramètres avancés uniquement
-  Widget _buildSettingsDrawer(AppMode _appMode) {
+  Widget _buildSettingsDrawer(AppMode appMode) {
     return Drawer(
       backgroundColor: const Color(0xFF1E1E1E),
       child: SafeArea(
@@ -367,7 +367,7 @@ class _MainShellState extends State<MainShell> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _appMode.label,
+                      appMode.label,
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.white,

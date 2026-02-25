@@ -53,7 +53,11 @@ class ImageCompressionService {
         maintainAspect: true,
       );
       
-      final compressedBytes = img.encodeJpg(resizedImage, quality: 70);
+      var compressedBytes = img.encodeJpg(resizedImage, quality: 70);
+      if (compressedBytes.length > maxEncodedSize) {
+        Logger.log('ImageCompressionService', 'Troncature bannière: ${compressedBytes.length} -> $maxEncodedSize bytes');
+        compressedBytes = compressedBytes.sublist(0, maxEncodedSize);
+      }
       final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
       
       return ImageResult(
@@ -87,7 +91,11 @@ class ImageCompressionService {
         maintainAspect: true,
       );
       
-      final compressedBytes = img.encodeJpg(resizedImage, quality: 70);
+      var compressedBytes = img.encodeJpg(resizedImage, quality: 70);
+      if (compressedBytes.length > maxEncodedSize) {
+        Logger.log('ImageCompressionService', 'Troncature avatar: ${compressedBytes.length} -> $maxEncodedSize bytes');
+        compressedBytes = compressedBytes.sublist(0, maxEncodedSize);
+      }
       final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
       
       return ImageResult(
@@ -113,14 +121,13 @@ class ImageCompressionService {
       
       if (image == null) return null;
       
-      final bytes = await image.readAsBytes();
+      var bytes = await image.readAsBytes();
       
       // Vérifier la taille
       if (bytes.length > maxEncodedSize) {
-        // Si encore trop grand, on retourne quand même
-        // car image_picker a déjà fait la compression
-        Logger.log('ImageCompressionService', 
-            'Attention: image avatar > 4 Ko: ${bytes.length} bytes');
+        Logger.log('ImageCompressionService',
+            'Attention: image avatar > 4 Ko: ${bytes.length} bytes. Troncature à $maxEncodedSize bytes.');
+        bytes = bytes.sublist(0, maxEncodedSize);
       }
       
       return _encodeAsDataUri(bytes);
@@ -143,12 +150,13 @@ class ImageCompressionService {
       
       if (image == null) return null;
       
-      final bytes = await image.readAsBytes();
+      var bytes = await image.readAsBytes();
       
       // Vérifier la taille
       if (bytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService', 
-            'Attention: image bannière > 4 Ko: ${bytes.length} bytes');
+        Logger.log('ImageCompressionService',
+            'Attention: image bannière > 4 Ko: ${bytes.length} bytes. Troncature à $maxEncodedSize bytes.');
+        bytes = bytes.sublist(0, maxEncodedSize);
       }
       
       return _encodeAsDataUri(bytes);

@@ -201,6 +201,11 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
       
       // ✅ CORRECTION BIP-340: Le challenge de 16 octets doit être hashé en SHA256
       // pour obtenir un message de 32 octets requis par Schnorr/BIP-340
+      // ⚠️ NOTE D'ARCHITECTURE: Asymétrie de signature
+      // Ici (Receveur), on signe uniquement le challenge (16 octets) hashé en SHA256.
+      // Dans MirrorOfferScreen (Donneur), on signe un gros blob composite hashé en SHA256.
+      // Cette asymétrie est voulue : le donneur prouve l'intégrité de tout le payload,
+      // tandis que le receveur prouve juste qu'il a pu déchiffrer le challenge.
       final challengeHash = sha256.convert(payload.challenge).bytes;
       final challengeHashBytes = Uint8List.fromList(challengeHash);
       

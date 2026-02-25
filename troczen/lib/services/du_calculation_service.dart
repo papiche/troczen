@@ -462,7 +462,7 @@ class DuCalculationService {
     // Publier sur Nostr
     await _nostrService.publishP3(
       bonId: bonId,
-      p2Hex: p2Hex,
+      issuerNsecHex: user.nsec,
       p3Hex: p3Hex,
       seedMarket: market.seedMarket,
       issuerNpub: user.npub,
@@ -544,7 +544,7 @@ class DuCalculationService {
     // Publier sur Nostr
     await _nostrService.publishP3(
       bonId: bonId,
-      p2Hex: p2Hex,
+      issuerNsecHex: user.nsec,
       p3Hex: p3Hex,
       seedMarket: market.seedMarket,
       issuerNpub: user.npub,

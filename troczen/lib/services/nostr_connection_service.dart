@@ -33,6 +33,9 @@ class NostrConnectionService {
   // Évite l'erreur "Stream has already been listened to"
   final Map<String, Function(List<dynamic>)> _subscriptionHandlers = {};
   
+  // Attente des acquittements (OK)
+  final Map<String, Completer<bool>> _publishCompleters = {};
+  
   // Callbacks (support multiple listeners for singleton)
   final List<Function(bool connected)> _onConnectionChangeListeners = [];
   final List<Function(String error)> _onErrorListeners = [];
@@ -168,6 +171,27 @@ class NostrConnectionService {
   /// Alias pour compatibilité avec les services existants
   void sendMessage(String message) => send(message);
   
+  /// Envoie un événement et attend l'acquittement (OK) du relais
+  Future<bool> sendEventAndWait(String eventId, String message, {Duration timeout = const Duration(seconds: 5)}) async {
+    if (!_isConnected) {
+      Logger.warn('NostrConnection', 'Tentative d\'envoi sans connexion');
+      return false;
+    }
+    
+    final completer = Completer<bool>();
+    _publishCompleters[eventId] = completer;
+    
+    send(message);
+    
+    try {
+      return await completer.future.timeout(timeout);
+    } catch (e) {
+      _publishCompleters.remove(eventId);
+      Logger.warn('NostrConnection', 'Timeout attente OK pour event $eventId');
+      return false;
+    }
+  }
+  
   /// Gère les messages reçus du relais
   void _handleMessage(dynamic data) {
     try {
@@ -193,6 +217,12 @@ class NostrConnectionService {
         case 'OK':
           final eventId = message[1];
           final success = message[2];
+          
+          if (_publishCompleters.containsKey(eventId)) {
+            _publishCompleters[eventId]!.complete(success);
+            _publishCompleters.remove(eventId);
+          }
+          
           if (!success) {
             final errorMsg = message.length > 3 ? message[3] : 'Erreur inconnue';
             for (var listener in _onErrorListeners) {

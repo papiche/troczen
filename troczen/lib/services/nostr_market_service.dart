@@ -113,7 +113,7 @@ class NostrMarketService {
   /// Publie une P3 chiffrée sur Nostr (kind 30303)
   Future<bool> publishP3({
     required String bonId,
-    required String p2Hex,
+    required String issuerNsecHex,
     required String p3Hex,
     required String seedMarket,
     required String issuerNpub,
@@ -133,23 +133,18 @@ class NostrMarketService {
       final now = DateTime.now();
       final p3Encrypted = await _cryptoService.encryptP3WithSeed(p3Hex, seedMarket, now);
 
-      // 2. Reconstruire sk_B ÉPHÉMÈRE
-      final p2Bytes = Uint8List.fromList(HEX.decode(p2Hex));
-      final p3Bytes = Uint8List.fromList(HEX.decode(p3Hex));
-      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-      
-      // 3. Enregistrer la pubkey du bon
-      final registered = await ensurePubkeyRegistered(bonId);
+      // 2. Enregistrer la pubkey de l'émetteur (si nécessaire)
+      final registered = await ensurePubkeyRegistered(issuerNpub);
       if (!registered) {
         Logger.warn('NostrMarket', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
       }
 
-      // 4. Créer l'event Nostr
+      // 3. Créer l'event Nostr
       final expiry = now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
       
       final event = {
         'kind': 30303,
-        'pubkey': bonId,
+        'pubkey': issuerNpub,
         'created_at': now.millisecondsSinceEpoch ~/ 1000,
         'tags': [
           ['d', 'zen-$bonId'],
@@ -159,7 +154,7 @@ class NostrMarketService {
           ['value', value.toString()],
           ['issuer', issuerNpub],
           ['category', category ?? 'generic'],
-          ['expiry', expiry.toString()],
+          ['expiration', expiry.toString()],
           ['rarity', rarity ?? 'common'],
           ['p3_cipher', p3Encrypted['ciphertext']],
           ['p3_nonce', p3Encrypted['nonce']],
@@ -173,22 +168,19 @@ class NostrMarketService {
         }),
       };
 
-      // 5. Calculer l'ID et signer
+      // 4. Calculer l'ID et signer avec la clé de l'émetteur
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
+      final issuerNsecBytes = Uint8List.fromList(HEX.decode(issuerNsecHex));
+      final signature = _cryptoService.signMessageBytes(eventId, issuerNsecBytes);
       event['sig'] = signature;
       
-      // 6. Nettoyage sécurité
-      _cryptoService.secureZeroiseBytes(nsecBonBytes);
-      _cryptoService.secureZeroiseBytes(p2Bytes);
-      _cryptoService.secureZeroiseBytes(p3Bytes);
+      // 5. Nettoyage sécurité
+      _cryptoService.secureZeroiseBytes(issuerNsecBytes);
 
       // 7. Envoyer au relais
       final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-
-      return true;
+      return await _connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication P3: $e');
       return false;

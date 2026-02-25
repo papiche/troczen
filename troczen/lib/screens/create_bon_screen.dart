@@ -282,10 +282,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           _cryptoService.secureZeroiseBytes(p2Bytes);
           _cryptoService.secureZeroiseBytes(p3Bytes);
 
-          // Publication P3 chiffrée - AVEC P2 pour signature par le bon
+          // Publication P3 chiffrée - AVEC la clé de l'émetteur pour signature
           final published = await nostrService.publishP3(
             bonId: bonNpubHex,
-            p2Hex: p2,  // ✅ Pour reconstruction sk_B éphémère
+            issuerNsecHex: widget.user.nsec,
             p3Hex: p3,
             seedMarket: _selectedMarket!.seedMarket,
             issuerNpub: widget.user.npub,

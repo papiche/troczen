@@ -157,7 +157,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           // 2. Republier P3
           await nostrService.publishP3(
             bonId: widget.bon.bonId,
-            p2Hex: widget.bon.p2!,
+            issuerNsecHex: widget.user.nsec,
             p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
             seedMarket: market.seedMarket,
             issuerNpub: widget.user.npub,

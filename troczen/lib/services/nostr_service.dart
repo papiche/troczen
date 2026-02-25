@@ -138,7 +138,7 @@ class NostrService {
   
   Future<bool> publishP3({
     required String bonId,
-    required String p2Hex,
+    required String issuerNsecHex,
     required String p3Hex,
     required String seedMarket,
     required String issuerNpub,
@@ -149,7 +149,7 @@ class NostrService {
     String? wish,
   }) => _market.publishP3(
     bonId: bonId,
-    p2Hex: p2Hex,
+    issuerNsecHex: issuerNsecHex,
     p3Hex: p3Hex,
     seedMarket: seedMarket,
     issuerNpub: issuerNpub,
@@ -551,9 +551,7 @@ class NostrService {
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
       final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-
-      return true;
+      return await _connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication transfert: $e');
       return false;
@@ -584,7 +582,7 @@ class NostrService {
         'pubkey': bonId,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         'tags': [
-          ['e', bonId],
+          ['a', '30303:$bonId:zen-$bonId'],
           ['t', _normalizeMarketTag(marketName)],
           ['market', marketName],
           ['reason', reason],
@@ -598,9 +596,7 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-
-      return true;
+      return await _connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication burn: $e');
       return false;
@@ -709,9 +705,7 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-
-      return true;
+      return await _connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication contacts: $e');
       return false;
@@ -821,9 +815,7 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-
-      return true;
+      return await _connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication relay list: $e');
       return false;
