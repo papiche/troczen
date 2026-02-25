@@ -383,9 +383,13 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       );
     }
 
-    // Trier les bons par date de création (plus récent en premier)
+    // Trier les bons : Bon Zéro (valeur 0.0) en premier, puis par date de création (plus récent en premier)
     final sortedBons = List<Bon>.from(filteredBons)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      ..sort((a, b) {
+        if (a.value == 0.0 && b.value != 0.0) return -1;
+        if (b.value == 0.0 && a.value != 0.0) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     // Vue grille
     if (_isGridView) {

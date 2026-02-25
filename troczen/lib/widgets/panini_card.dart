@@ -233,6 +233,32 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
                           left: 12,
                           child: widget.statusChip!,
                         ),
+
+                      // Indication de transfert possible (P2 possédé)
+                      if (widget.bon.p2 != null && widget.bon.status == BonStatus.active && !widget.bon.isExpired && !isBackVisible)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.send,
+                              size: 16,
+                              color: Color(0xFFFFB347),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

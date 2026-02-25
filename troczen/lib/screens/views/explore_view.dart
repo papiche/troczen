@@ -10,6 +10,7 @@ import '../../services/crypto_service.dart';
 import '../../services/logger_service.dart';
 import '../market_screen.dart';
 import '../create_bon_screen.dart';
+import '../mirror_offer_screen.dart';
 
 /// ExploreView — Bons émis (P1) + Marché
 /// Vue de l'émetteur avec deux sous-onglets
@@ -483,6 +484,23 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                   ),
                 ),
               ),
+              if (bon.p2 != null && bon.status == BonStatus.active && !bon.isExpired) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _giveBon(bon),
+                    icon: const Icon(Icons.send, size: 16),
+                    label: const Text('Donner'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB347),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -532,6 +550,18 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         ),
       ),
     );
+  }
+
+  void _giveBon(Bon bon) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MirrorOfferScreen(
+          user: widget.user,
+          bon: bon,
+        ),
+      ),
+    ).then((_) => _loadData());
   }
 
   // ============================================================
