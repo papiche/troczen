@@ -8,6 +8,7 @@ import '../../services/nostr_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/image_compression_service.dart';
 import '../../services/logger_service.dart';
+import '../../models/user.dart';
 import 'onboarding_flow.dart';
 
 /// Étape 4: Création du Profil Nostr+Ğ1
@@ -729,6 +730,28 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
       profileImagePath: _selectedProfileImage?.path,
       bannerImagePath: _selectedBannerImage?.path,
     );
+    
+    // Mettre à jour l'utilisateur dans le StorageService
+    final storageService = StorageService();
+    final user = await storageService.getUser();
+    if (user != null) {
+      final updatedUser = User(
+        npub: user.npub,
+        nsec: user.nsec,
+        displayName: _displayNameController.text.trim(),
+        createdAt: user.createdAt,
+        website: user.website,
+        g1pub: user.g1pub,
+        about: _aboutController.text.trim().isEmpty ? null : _aboutController.text.trim(),
+        picture: pictureUrl,
+        banner: _base64Banner,
+        picture64: pictureUrl,
+        banner64: _base64Banner,
+        relayUrl: state.relayUrl,
+        activityTags: _selectedTags,
+      );
+      await storageService.saveUser(updatedUser);
+    }
     
     Logger.log('OnboardingProfile', 'Profil configuré avec base64: ${pictureUrl != null ? "${pictureUrl.length} chars" : "null"}');
     

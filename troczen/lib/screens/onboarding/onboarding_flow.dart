@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/onboarding_state.dart';
+import 'onboarding_account_screen.dart';
 import 'onboarding_seed_screen.dart';
 import 'onboarding_advanced_screen.dart';
 import 'onboarding_nostr_sync_screen.dart';
@@ -8,7 +9,7 @@ import 'onboarding_profile_screen.dart';
 import 'onboarding_mode_selection_screen.dart';
 import 'onboarding_complete_screen.dart';
 
-/// Flow d'onboarding avec PageView à 6 étapes
+/// Flow d'onboarding avec PageView à 7 étapes
 /// ✅ Ajout de l'étape 5 : Sélection du mode d'utilisation (Progressive Disclosure)
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key});
@@ -29,9 +30,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
   
   void _nextPage() {
-    if (_currentPage < 5) { // ✅ 6 étapes au total (index 0-5)
-      // Après l'étape 3 (index 2), marquer que la seed est générée
-      if (_currentPage == 2) {
+    if (_currentPage < 6) { // ✅ 7 étapes au total (index 0-6)
+      // Après l'étape 4 (index 3), marquer que la seed est générée
+      if (_currentPage == 3) {
         setState(() => _seedGenerated = true);
       }
       
@@ -84,23 +85,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       setState(() => _currentPage = index);
                     },
                     children: [
-                      OnboardingSeedScreen(onNext: _nextPage), // Étape 1
-                      OnboardingAdvancedScreen( // Étape 2
+                      OnboardingAccountScreen(onNext: _nextPage), // Étape 1
+                      OnboardingSeedScreen(onNext: _nextPage), // Étape 2
+                      OnboardingAdvancedScreen( // Étape 3
                         onNext: _nextPage,
                         onBack: _previousPage,
                       ),
-                      OnboardingNostrSyncScreen( // Étape 3
+                      OnboardingNostrSyncScreen( // Étape 4
                         onNext: _nextPage,
                         onBack: _seedGenerated ? null : _previousPage,
                       ),
-                      OnboardingProfileScreen( // Étape 4
+                      OnboardingProfileScreen( // Étape 5
                         onNext: _nextPage,
                         onBack: null, // Pas de retour après seed générée
                       ),
-                      OnboardingModeSelectionScreen( // ✅ Étape 5 : Choix du mode
+                      OnboardingModeSelectionScreen( // ✅ Étape 6 : Choix du mode
                         onModeSelected: _nextPage,
                       ),
-                      const OnboardingCompleteScreen(), // Étape 6
+                      const OnboardingCompleteScreen(), // Étape 7
                     ],
                   ),
                 ),
@@ -118,14 +120,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       child: Column(
         children: [
           Row(
-            children: List.generate(6, (index) { // ✅ 6 étapes
+            children: List.generate(7, (index) { // ✅ 7 étapes
               final isActive = index == _currentPage;
               final isCompleted = index < _currentPage;
               
               return Expanded(
                 child: Container(
                   height: 4,
-                  margin: EdgeInsets.only(right: index < 5 ? 8 : 0), // ✅ 6 étapes
+                  margin: EdgeInsets.only(right: index < 6 ? 8 : 0), // ✅ 7 étapes
                   decoration: BoxDecoration(
                     color: isCompleted
                         ? const Color(0xFFFFB347)
@@ -140,7 +142,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Étape ${_currentPage + 1} sur 6', // ✅ 6 étapes
+            'Étape ${_currentPage + 1} sur 7', // ✅ 7 étapes
             style: TextStyle(
               color: Colors.grey[400],
               fontSize: 12,
