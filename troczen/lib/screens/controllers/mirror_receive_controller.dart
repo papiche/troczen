@@ -20,14 +20,14 @@ import '../../services/audit_trail_service.dart';
 class MirrorReceiveController extends ChangeNotifier {
   final User user;
 
-  final _qrService = QRService();
-  final _cryptoService = CryptoService();
-  final _storageService = StorageService();
-  final _auditService = AuditTrailService();
-  final _uuid = const Uuid();
+  final QRService _qrService;
+  final CryptoService _cryptoService;
+  final StorageService _storageService;
+  final AuditTrailService _auditService;
+  final Uuid _uuid;
 
   MobileScannerController? scannerController;
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioPlayer _audioPlayer;
 
   Uint8List? ackQrData;
   bool isProcessingOffer = false;
@@ -37,7 +37,20 @@ class MirrorReceiveController extends ChangeNotifier {
   bool permissionGranted = false;
   bool isCheckingPermission = true;
 
-  MirrorReceiveController({required this.user}) {
+  MirrorReceiveController({
+    required this.user,
+    QRService? qrService,
+    CryptoService? cryptoService,
+    StorageService? storageService,
+    AuditTrailService? auditService,
+    AudioPlayer? audioPlayer,
+    Uuid? uuid,
+  })  : _qrService = qrService ?? QRService(),
+        _cryptoService = cryptoService ?? CryptoService(),
+        _storageService = storageService ?? StorageService(),
+        _auditService = auditService ?? AuditTrailService(),
+        _audioPlayer = audioPlayer ?? AudioPlayer(),
+        _uuid = uuid ?? const Uuid() {
     _checkCameraPermission();
   }
 
