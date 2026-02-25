@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'logger_service.dart';
 
 /// Service de traçabilité des échanges pour conformité fiscale et RGPD
 /// Journal local SQLite des transferts avec anonymisation optionnelle
@@ -370,6 +371,18 @@ class AuditTrailService {
   Future<void> vacuum() async {
     final db = await database;
     await db.execute('VACUUM');
+  }
+
+  /// Exécute la maintenance automatique de la base de données
+  /// Supprime les données anciennes et défragmente la base
+  Future<void> runMaintenance({int daysOld = 365}) async {
+    try {
+      await deleteOldData(daysOld: daysOld);
+      await vacuum();
+      Logger.info('AuditTrailService', 'Maintenance de la base de données terminée');
+    } catch (e) {
+      Logger.error('AuditTrailService', 'Erreur lors de la maintenance', e);
+    }
   }
 
   /// Générer rapport mensuel

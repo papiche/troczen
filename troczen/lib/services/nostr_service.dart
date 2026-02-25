@@ -186,10 +186,10 @@ class NostrService {
     cardType: cardType,
   );
   
-  Future<void> subscribeToMarket(String marketName, {int? since}) =>
+  Future<String?> subscribeToMarket(String marketName, {int? since}) =>
     _market.subscribeToMarket(marketName, since: since);
   
-  Future<void> subscribeToMarkets(List<String> marketNames, {int? since}) =>
+  Future<String?> subscribeToMarkets(List<String> marketNames, {int? since}) =>
     _market.subscribeToMarkets(marketNames, since: since);
   
   Future<int> syncMarketP3s(Market market) async {
@@ -236,9 +236,22 @@ class NostrService {
     };
 
     final marketNames = markets.map((m) => m.name).toList();
-    await subscribeToMarkets(marketNames);
+    final lastSyncDate = await _storageService.getLastP3Sync();
+    final since = lastSyncDate != null ? lastSyncDate.millisecondsSinceEpoch ~/ 1000 : null;
+    
+    final subscriptionId = await subscribeToMarkets(marketNames, since: since);
+    
+    if (subscriptionId == null) {
+      return 0;
+    }
 
-    Timer(const Duration(seconds: 8), () async {
+    Timer? fallbackTimer;
+    
+    void finishSync() async {
+      fallbackTimer?.cancel();
+      _connection.removeHandler(subscriptionId);
+      _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+      
       await flushBatch();
       _market.onP3Received = originalCallback;
       
@@ -253,10 +266,24 @@ class NostrService {
         Logger.error('NostrService', 'Erreur vérification DU', e);
       }
       
-      completer.complete(syncedCount);
+      if (!completer.isCompleted) {
+        completer.complete(syncedCount);
+      }
+    }
+
+    _connection.registerHandler(subscriptionId, (message) {
+      if (message[0] == 'EOSE') {
+        Logger.info('NostrService', 'EOSE reçu pour la sync multi-marchés');
+        finishSync();
+      }
     });
 
-    return completer.future;
+    fallbackTimer = Timer(const Duration(seconds: 15), () {
+      Logger.warn('NostrService', 'Timeout de secours atteint pour la sync multi-marchés');
+      finishSync();
+    });
+
+    return await completer.future;
   }
   
   void enableAutoSync({Duration? interval, Market? initialMarket}) =>

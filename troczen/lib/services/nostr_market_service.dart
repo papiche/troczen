@@ -283,23 +283,23 @@ class NostrMarketService {
   // ============================================================
   
   /// S'abonne aux events kind 30303 d'un marché
-  Future<void> subscribeToMarket(String marketName, {int? since}) async {
-    await subscribeToMarkets([marketName], since: since);
+  Future<String?> subscribeToMarket(String marketName, {int? since}) async {
+    return await subscribeToMarkets([marketName], since: since);
   }
 
   /// S'abonne aux events kind 30303 de plusieurs marchés
-  Future<void> subscribeToMarkets(List<String> marketNames, {int? since}) async {
+  Future<String?> subscribeToMarkets(List<String> marketNames, {int? since}) async {
     if (!_connection.isConnected) {
       onError?.call('Non connecté au relais');
-      return;
+      return null;
     }
 
     if (marketNames.isEmpty) {
       Logger.warn('NostrMarket', 'Aucun marché à surveiller');
-      return;
+      return null;
     }
 
-    final subscriptionId = 'zen-multi-${marketNames.length}';
+    final subscriptionId = 'zen-multi-${marketNames.length}-${DateTime.now().millisecondsSinceEpoch}';
     final marketTags = marketNames.map((m) => _normalizeMarketTag(m)).toList();
     
     final filters = <String, dynamic>{
@@ -319,6 +319,7 @@ class NostrMarketService {
 
     _connection.sendMessage(request);
     Logger.log('NostrMarket', 'Abonné à ${marketNames.length} marché(s): ${marketNames.join(", ")}');
+    return subscriptionId;
   }
   
   /// Synchronise tous les P3 d'un marché avec insertion en lot
@@ -365,16 +366,30 @@ class NostrMarketService {
         }
       };
 
-      await subscribeToMarket(market.name);
+      final lastSyncDate = await _storageService.getLastP3Sync();
+      final since = lastSyncDate != null ? lastSyncDate.millisecondsSinceEpoch ~/ 1000 : null;
+      
+      final subscriptionId = await subscribeToMarket(market.name, since: since);
+      
+      if (subscriptionId == null) {
+        _isSyncing = false;
+        return 0;
+      }
 
       final estimatedSize = market.merchantCount ?? 100;
-      final timeoutSeconds = (5 + (estimatedSize ~/ 20)).clamp(5, 30);
+      final timeoutSeconds = (15 + (estimatedSize ~/ 10)).clamp(15, 60);
       final timeout = Duration(seconds: timeoutSeconds);
       
       Logger.info('NostrMarket',
-          'Sync démarrée avec timeout de ${timeout.inSeconds}s');
+          'Sync démarrée avec timeout de secours de ${timeout.inSeconds}s');
 
-      Timer(timeout, () async {
+      Timer? fallbackTimer;
+      
+      void finishSync() async {
+        fallbackTimer?.cancel();
+        _connection.removeHandler(subscriptionId);
+        _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+        
         await flushBatch();
         
         onP3Received = originalCallback;
@@ -393,10 +408,24 @@ class NostrMarketService {
           Logger.info('NostrMarket', 'Impossible de vérifier la cohérence: $e');
         }
         
-        completer.complete(syncedCount);
+        if (!completer.isCompleted) {
+          completer.complete(syncedCount);
+        }
+      }
+
+      _connection.registerHandler(subscriptionId, (message) {
+        if (message[0] == 'EOSE') {
+          Logger.info('NostrMarket', 'EOSE reçu pour la sync');
+          finishSync();
+        }
       });
 
-      return completer.future;
+      fallbackTimer = Timer(timeout, () {
+        Logger.warn('NostrMarket', 'Timeout de secours atteint pour la sync');
+        finishSync();
+      });
+
+      return await completer.future;
     } finally {
       _isSyncing = false;
     }

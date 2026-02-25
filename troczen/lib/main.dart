@@ -5,6 +5,8 @@ import 'services/crypto_service.dart';
 import 'services/storage_service.dart';
 import 'services/nostr_service.dart';
 import 'services/logger_service.dart';
+import 'services/audit_trail_service.dart';
+import 'services/cache_database_service.dart';
 import 'package:provider/provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding/onboarding_flow.dart';
@@ -74,6 +76,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _checkExistingUser() async {
+    // Exécuter la maintenance des bases de données (nettoyage, VACUUM)
+    try {
+      await AuditTrailService().runMaintenance();
+      await CacheDatabaseService().runMaintenance();
+    } catch (e) {
+      Logger.error('Main', 'Erreur lors de la maintenance', e);
+    }
+
     // ✅ WAL: Récupération après crash - annuler les verrous expirés
     // Cette opération doit être faite au démarrage avant toute autre chose
     final recoveredCount = await _storageService.recoverFromCrash();

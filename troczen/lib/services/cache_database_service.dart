@@ -405,6 +405,33 @@ class CacheDatabaseService {
     await db.delete(_n2CacheTable);
   }
 
+  /// Exécute la maintenance automatique de la base de données
+  /// Supprime les données anciennes et défragmente la base
+  Future<void> runMaintenance({int daysOld = 30}) async {
+    try {
+      final db = await database;
+      final cutoffDate = DateTime.now().subtract(Duration(days: daysOld));
+      
+      // Supprimer les P3 expirés
+      await db.delete(
+        _p3CacheTable,
+        where: 'updated_at < ?',
+        whereArgs: [cutoffDate.millisecondsSinceEpoch],
+      );
+      
+      // Supprimer les bons du marché expirés
+      await db.delete(
+        _marketBonsTable,
+        where: 'updated_at < ?',
+        whereArgs: [cutoffDate.millisecondsSinceEpoch],
+      );
+      
+      await db.execute('VACUUM');
+    } catch (e) {
+      // Ignorer les erreurs de maintenance
+    }
+  }
+
   /// Obtenir la taille de la base de cache
   Future<int> getDatabaseSize() async {
     final documentsDirectory = await getApplicationDocumentsDirectory();

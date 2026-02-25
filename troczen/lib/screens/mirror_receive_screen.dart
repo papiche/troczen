@@ -1,20 +1,8 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:hex/hex.dart';
-import 'package:uuid/uuid.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:crypto/crypto.dart';
 import '../models/user.dart';
-import '../models/bon.dart';
-import '../models/qr_payload_v2.dart';
 import '../services/qr_service.dart';
-import '../services/crypto_service.dart';
-import '../services/storage_service.dart';
-import '../services/audit_trail_service.dart';
+import 'controllers/mirror_receive_controller.dart';
 
 /// Écran "Mode Miroir" pour le Receveur (Bob)
 /// Haut: Affiche le QR Code de l'ACK (QR2) une fois généré
@@ -29,272 +17,37 @@ class MirrorReceiveScreen extends StatefulWidget {
 }
 
 class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
+  late MirrorReceiveController _controller;
   final _qrService = QRService();
-  final _cryptoService = CryptoService();
-  final _storageService = StorageService();
-  final _auditService = AuditTrailService();
-  final _uuid = const Uuid();
-
-  MobileScannerController? _scannerController;
-  
-  Uint8List? _ackQrData;
-  bool _isProcessingOffer = false;
-  bool _isSuccess = false;
-  String _statusMessage = 'Scannez le QR du donneur';
-  
-  bool _permissionGranted = false;
-  bool _isCheckingPermission = true;
-  
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    _checkCameraPermission();
+    _controller = MirrorReceiveController(user: widget.user);
+    _controller.addListener(_onControllerUpdate);
   }
 
   @override
   void dispose() {
-    _scannerController?.dispose();
-    _audioPlayer.dispose();
+    _controller.removeListener(_onControllerUpdate);
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _checkCameraPermission() async {
-    final status = await Permission.camera.status;
-    if (status.isGranted) {
-      _initScanner();
-      setState(() {
-        _permissionGranted = true;
-        _isCheckingPermission = false;
-      });
-    } else {
-      final result = await Permission.camera.request();
-      if (result.isGranted) {
-        _initScanner();
-        setState(() {
-          _permissionGranted = true;
-          _isCheckingPermission = false;
-        });
-      } else {
-        setState(() {
-          _permissionGranted = false;
-          _isCheckingPermission = false;
-        });
-      }
-    }
-  }
-
-  void _initScanner() {
-    _scannerController = MobileScannerController(
-      facing: CameraFacing.front, // ✅ CRUCIAL: Caméra frontale pour le mode miroir face-à-face
-      formats: [BarcodeFormat.qrCode],
-      detectionSpeed: DetectionSpeed.noDuplicates,
-    );
-  }
-
-  Future<void> _handleOfferScan(BarcodeCapture capture) async {
-    if (_isProcessingOffer || _isSuccess || _ackQrData != null) return;
-    
-    final barcode = capture.barcodes.first;
-    final base64String = barcode.rawValue;
-    if (base64String == null) return;
-
-    setState(() {
-      _isProcessingOffer = true;
-      _statusMessage = 'Traitement du bon...';
-    });
-
-    try {
-      final decodedBytes = base64Decode(base64String);
-      final qrV2Payload = _qrService.decodeQr(decodedBytes);
-      
-      if (qrV2Payload == null) {
-        throw Exception('Format QR invalide ou obsolète (V1)');
-      }
-
-      await _processOffer(qrV2Payload);
-
-    } catch (e) {
-      setState(() {
-        _isProcessingOffer = false;
-        _statusMessage = 'Erreur: $e';
-      });
-    }
-  }
-
-  Future<void> _processOffer(QrPayloadV2 payload) async {
-    try {
-      // ✅ OPTIMISATION: Récupérer directement les bytes P3
-      final p3Bytes = await _storageService.getP3FromCacheBytes(payload.bonId);
-      if (p3Bytes == null) throw Exception('Part P3 non trouvée. Synchronisez le marché.');
-
-      // ✅ OPTIMISATION: Utiliser decryptP2Bytes pour éviter les conversions hex
-      final encryptedP2WithTag = Uint8List.fromList([...payload.encryptedP2, ...payload.p2Tag]);
-      final p2Bytes = await _cryptoService.decryptP2Bytes(
-        encryptedP2WithTag,
-        payload.p2Nonce,
-        p3Bytes,
-      );
-      
-      // Convertir en hex uniquement pour le stockage (nécessaire pour le modèle Bon)
-      final p2 = HEX.encode(p2Bytes);
-
-      final market = await _storageService.getMarket();
-      final marketName = market?.name ?? 'Marché Local';
-
-      final existingBon = await _storageService.getBonById(payload.bonId);
-      
-      // ✅ Récupérer l'expiration depuis le cache du marché (kind 30303)
-      // Le protocole v6 stipule que expires_at est IMMUTABLE - la monnaie fondante continue
-      // de s'appliquer après chaque transfert (force la vélocité, évite la thésaurisation)
-      DateTime? expiresAtFromMarket;
-      final marketBonData = await _storageService.getMarketBonById(payload.bonId);
-      if (marketBonData != null && marketBonData['expiresAt'] != null) {
-        try {
-          expiresAtFromMarket = DateTime.parse(marketBonData['expiresAt'] as String);
-        } catch (e) {
-          debugPrint('Erreur parsing expiresAt: $e');
-        }
-      }
-      
-      final bon = existingBon ?? Bon(
-        bonId: payload.bonId,
-        value: payload.value,
-        issuerName: payload.issuerName,
-        issuerNpub: payload.issuerNpub,
-        p2: p2,
-        p3: null,
-        status: BonStatus.active,
-        createdAt: payload.emittedAt,
-        marketName: marketName,
-        // ✅ CORRECTION PROTOCOLE v6: Le expires_at est IMMUTABLE
-        // Récupéré depuis l'événement kind 30303 (P3) du marché
-        expiresAt: expiresAtFromMarket,
-      );
-
-      final updatedBon = existingBon != null
-          ? existingBon.copyWith(
-              status: BonStatus.active,
-              p2: p2,
-              // ✅ CORRECTION: Préserver l'expiration existante (ou utiliser celle du marché)
-              expiresAt: existingBon.expiresAt ?? expiresAtFromMarket,
-            )
-          : bon;
-      await _storageService.saveBon(updatedBon);
-
-      await _logReceptionToAuditTrail(
-        bonId: payload.bonId,
-        value: payload.value,
-        issuerNpub: payload.issuerNpub,
-        issuerName: payload.issuerName,
-        status: 'received',
-      );
-
-      // ✅ OPTIMISATION: Générer l'ACK avec les méthodes binaires
-      final bonP2Bytes = updatedBon.p2Bytes;
-      final bonP3Bytes = await _storageService.getP3FromCacheBytes(updatedBon.bonId);
-      
-      if (bonP2Bytes == null || bonP3Bytes == null) throw Exception('Erreur parts P2/P3');
-      
-      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, bonP2Bytes, bonP3Bytes);
-      
-      // ✅ CORRECTION BIP-340: Le challenge de 16 octets doit être hashé en SHA256
-      // pour obtenir un message de 32 octets requis par Schnorr/BIP-340
-      // ⚠️ NOTE D'ARCHITECTURE: Asymétrie de signature
-      // Ici (Receveur), on signe uniquement le challenge (16 octets) hashé en SHA256.
-      // Dans MirrorOfferScreen (Donneur), on signe un gros blob composite hashé en SHA256.
-      // Cette asymétrie est voulue : le donneur prouve l'intégrité de tout le payload,
-      // tandis que le receveur prouve juste qu'il a pu déchiffrer le challenge.
-      final challengeHash = sha256.convert(payload.challenge).bytes;
-      final challengeHashBytes = Uint8List.fromList(challengeHash);
-      
-      // ✅ OPTIMISATION: Signer directement en bytes (message de 32 octets)
-      final signatureBytes = _cryptoService.signMessageBytesDirect(challengeHashBytes, nsecBonBytes);
-      
-      _cryptoService.secureZeroiseBytes(nsecBonBytes);
-      _cryptoService.secureZeroiseBytes(bonP2Bytes);
-      _cryptoService.secureZeroiseBytes(bonP3Bytes);
-      
-      // Nettoyer aussi les bytes intermédiaires
-      _cryptoService.secureZeroiseBytes(p2Bytes);
-      _cryptoService.secureZeroiseBytes(p3Bytes);
-
-      // ✅ OPTIMISATION: Utiliser encodeAckBytes
-      final bonIdBytes = Uint8List.fromList(HEX.decode(updatedBon.bonId));
-      final ackBytes = _qrService.encodeAckBytes(
-        bonId: bonIdBytes,
-        signature: signatureBytes,
-      );
-
-      // ✅ VIBRATION ET SON MAGIQUES (1ère étape: offre reçue)
-      HapticFeedback.mediumImpact();
-      _audioPlayer.play(AssetSource('sounds/tap.mp3'));
-
-      setState(() {
-        _ackQrData = ackBytes;
-        _isProcessingOffer = false;
-        _statusMessage = 'Montrez ce QR au donneur';
-      });
-
-      // On considère que c'est un succès pour le receveur une fois l'ACK généré
-      // Le donneur validera de son côté
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          // ✅ VIBRATION ET SON MAGIQUES (2ème étape: succès final)
-          HapticFeedback.heavyImpact();
-          _audioPlayer.play(AssetSource('sounds/bowl.mp3'));
-          setState(() {
-            _isSuccess = true;
-          });
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) Navigator.pop(context);
-          });
-        }
-      });
-
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<void> _logReceptionToAuditTrail({
-    required String bonId,
-    required double value,
-    required String issuerNpub,
-    required String issuerName,
-    required String status,
-  }) async {
-    try {
-      final market = await _storageService.getMarket();
-      await _auditService.logTransfer(
-        id: _uuid.v4(),
-        timestamp: DateTime.now(),
-        senderName: issuerName,
-        senderNpub: issuerNpub,
-        receiverName: widget.user.displayName,
-        receiverNpub: widget.user.npub,
-        amount: value,
-        bonId: bonId,
-        method: 'QR_MIRROR',
-        status: status,
-        marketName: market?.name,
-      );
-    } catch (e) {
-      debugPrint('Erreur logging: $e');
-    }
+  void _onControllerUpdate() {
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isSuccess ? Colors.green : Colors.black,
+      backgroundColor: _controller.isSuccess ? Colors.green : Colors.black,
       appBar: AppBar(
         title: const Text('Recevoir (Mode Miroir)'),
-        backgroundColor: _isSuccess ? Colors.green[700] : const Color(0xFF1E1E1E),
+        backgroundColor: _controller.isSuccess ? Colors.green[700] : const Color(0xFF1E1E1E),
         elevation: 0,
       ),
-      body: _isSuccess ? _buildSuccessView() : _buildMirrorView(),
+      body: _controller.isSuccess ? _buildSuccessView() : _buildMirrorView(),
     );
   }
 
@@ -323,17 +76,17 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
           flex: 1,
           child: Container(
             width: double.infinity,
-            color: _ackQrData != null ? Colors.white : const Color(0xFF121212),
+            color: _controller.ackQrData != null ? Colors.white : const Color(0xFF121212),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_ackQrData != null) ...[
+                if (_controller.ackQrData != null) ...[
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
                       color: Colors.white,
                     ),
-                    child: _qrService.buildQrWidget(_ackQrData!, size: 240),
+                    child: _qrService.buildQrWidget(_controller.ackQrData!, size: 240),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -361,7 +114,7 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
         // Séparateur
         Container(
           height: 4,
-          color: _ackQrData != null ? Colors.green : Colors.orange,
+          color: _controller.ackQrData != null ? Colors.green : Colors.orange,
         ),
 
         // Moitié BAS : La caméra pour scanner l'offre
@@ -369,25 +122,27 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
           flex: 1,
           child: Stack(
             children: [
-              if (_isCheckingPermission)
+              if (_controller.isCheckingPermission)
                 const Center(child: CircularProgressIndicator())
-              else if (!_permissionGranted)
+              else if (!_controller.permissionGranted)
                 const Center(child: Text('Caméra requise', style: TextStyle(color: Colors.white)))
-              else if (_scannerController != null && _ackQrData == null)
+              else if (_controller.scannerController != null && _controller.ackQrData == null)
                 MobileScanner(
-                  controller: _scannerController!,
-                  onDetect: _handleOfferScan,
+                  controller: _controller.scannerController!,
+                  onDetect: (capture) => _controller.handleOfferScan(capture, () {
+                    if (mounted) Navigator.pop(context);
+                  }),
                 )
-              else if (_ackQrData != null)
+              else if (_controller.ackQrData != null)
                 Container(color: Colors.black87, child: const Center(child: Text('Scan terminé', style: TextStyle(color: Colors.white)))),
               
               // Overlay sombre pour ne pas polluer la détection de l'autre téléphone avec la lumière de l'écran
-              if (_ackQrData == null)
+              if (_controller.ackQrData == null)
                 Container(
                   color: Colors.black.withValues(alpha: 0.6),
                 ),
               
-              if (_ackQrData == null)
+              if (_controller.ackQrData == null)
                 Center(
                   child: Container(
                     width: 200,
@@ -411,7 +166,7 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      _statusMessage,
+                      _controller.statusMessage,
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
