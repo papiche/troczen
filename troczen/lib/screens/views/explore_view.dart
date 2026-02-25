@@ -1015,11 +1015,11 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     
     try {
       if (await nostrService.connect(relayUrl)) {
-        final success = await nostrService.publishSkillReaction(
+        final success = await nostrService.publishSkillReview(
           myNpub: widget.user.npub,
           myNsec: widget.user.nsec,
-          artisanNpub: artisanNpub,
-          eventId: cred.eventId!,
+          targetNpub: artisanNpub,
+          permitEventId: cred.eventId!,
           isPositive: isPositive,
         );
         

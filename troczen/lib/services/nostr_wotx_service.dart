@@ -443,6 +443,47 @@ class NostrWoTxService {
   // SKILL REACTION (Kind 7)
   // ============================================================
   
+  /// Publie un avis client (👍 / 👎) sur une compétence (kind 7)
+  Future<bool> publishSkillReview({
+    required String myNpub,
+    required String myNsec,
+    required String targetNpub,
+    required String permitEventId,
+    required bool isPositive,
+  }) async {
+    if (!_connection.isConnected) return false;
+    
+    try {
+      final tags = <List<String>>[
+        ['e', permitEventId],
+        ['p', targetNpub],
+        ['t', 'wotx-review'],
+        ['k', '30500'],
+      ];
+      
+      final event = {
+        'kind': 7,
+        'pubkey': myNpub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': tags,
+        'content': isPositive ? '+' : '-',
+      };
+
+      final id = _calculateEventId(event);
+      event['id'] = id;
+      event['sig'] = _cryptoService.signMessage(id, myNsec);
+
+      final success = await _connection.sendEventAndWait(id, jsonEncode(['EVENT', event]));
+      if (success) {
+        Logger.success('NostrWoTx', 'Avis publié pour $targetNpub');
+      }
+      return success;
+    } catch (e) {
+      Logger.error('NostrWoTx', 'Erreur publishSkillReview', e);
+      return false;
+    }
+  }
+
   /// Publie une réaction (👍 / 👎) à une compétence (kind 7)
   Future<bool> publishSkillReaction({
     required String myNpub,

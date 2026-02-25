@@ -504,11 +504,11 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
 
       final connected = await _nostrService.connect(market.relayUrl!);
       if (connected) {
-        final success = await _nostrService.publishSkillReaction(
+        final success = await _nostrService.publishSkillReview(
           myNpub: user.npub,
           myNsec: user.nsec,
-          artisanNpub: artisanNpub,
-          eventId: cred.eventId!,
+          targetNpub: artisanNpub,
+          permitEventId: cred.eventId!,
           isPositive: isPositive,
         );
         

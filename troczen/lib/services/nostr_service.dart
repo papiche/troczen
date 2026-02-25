@@ -342,6 +342,20 @@ class NostrService {
   Future<List<Map<String, dynamic>>> fetchMyAttestations(String myNpub) =>
     _wotx.fetchMyAttestations(myNpub);
   
+  Future<bool> publishSkillReview({
+    required String myNpub,
+    required String myNsec,
+    required String targetNpub,
+    required String permitEventId,
+    required bool isPositive,
+  }) => _wotx.publishSkillReview(
+    myNpub: myNpub,
+    myNsec: myNsec,
+    targetNpub: targetNpub,
+    permitEventId: permitEventId,
+    isPositive: isPositive,
+  );
+
   Future<bool> publishSkillReaction({
     required String myNpub,
     required String myNsec,

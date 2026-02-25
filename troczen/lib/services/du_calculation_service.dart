@@ -245,7 +245,16 @@ class DuCalculationService {
       }
 
       // 3. Récupérer les follows réciproques via Nostr
-      final mutuals = myContacts;
+      List<String> mutuals = [];
+      if (market.relayUrl != null && await _nostrService.connect(market.relayUrl!)) {
+        final followers = await _nostrService.fetchFollowers(user.npub);
+        mutuals = myContacts.where((npub) => followers.contains(npub)).toList();
+        await _nostrService.disconnect();
+      } else {
+        // Fallback si pas de connexion: on utilise les contacts locaux
+        mutuals = myContacts;
+      }
+      
       if (mutuals.length < _minMutualFollows) {
         Logger.log('DuCalculationService', 'Pas assez de liens réciproques (${mutuals.length}/$_minMutualFollows)');
         return false;

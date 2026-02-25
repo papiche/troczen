@@ -1370,6 +1370,11 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
         // Vérifier si c'est un npub valide
         String npub = result;
         
+        // Gérer le préfixe nostr:
+        if (npub.startsWith('nostr:')) {
+          npub = npub.substring(6);
+        }
+        
         // Convertir en format hex si nécessaire
         if (npub.startsWith('npub1')) {
           try {
