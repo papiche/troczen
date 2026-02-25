@@ -892,13 +892,13 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                 ),
                 
                 // ✅ WOTX2: Afficher les badges de compétences
-                if (skillBadges.isNotEmpty) ...[
+                if (profile.skillCredentials != null && profile.skillCredentials!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 4,
                     runSpacing: 4,
                     alignment: WrapAlignment.center,
-                    children: skillBadges.take(3).map((badge) => _buildSkillBadge(badge)).toList(),
+                    children: profile.skillCredentials!.take(3).map((cred) => _buildSkillBadgeWithReaction(cred, profile.npub)).toList(),
                   ),
                 ],
                 
@@ -964,12 +964,10 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     );
   }
   
-  /// ✅ WOTX2: Construit un badge de compétence individuel
-  Widget _buildSkillBadge(String badgeText) {
-    // Extraire le niveau du texte (ex: "maraîchage X2" → niveau 2)
-    final levelMatch = RegExp(r'X(\d+)$').firstMatch(badgeText);
-    final level = levelMatch != null ? int.parse(levelMatch.group(1)!) : 1;
-    final color = _getLevelColor(level);
+  /// ✅ WOTX2: Construit un badge de compétence individuel avec boutons de réaction
+  Widget _buildSkillBadgeWithReaction(SkillCredential cred, String artisanNpub) {
+    final color = _getLevelColor(cred.level);
+    final badgeText = '${cred.skillTag} ${cred.badgeLabel}';
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -978,15 +976,75 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
       ),
-      child: Text(
-        badgeText,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            badgeText,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          if (cred.eventId != null) ...[
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: () => _reactToSkill(cred, artisanNpub, true),
+              child: const Icon(Icons.thumb_up, size: 12, color: Colors.green),
+            ),
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: () => _reactToSkill(cred, artisanNpub, false),
+              child: const Icon(Icons.thumb_down, size: 12, color: Colors.red),
+            ),
+          ],
+        ],
       ),
     );
+  }
+
+  Future<void> _reactToSkill(SkillCredential cred, String artisanNpub, bool isPositive) async {
+    if (cred.eventId == null) return;
+    
+    final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+    final nostrService = NostrService(
+      cryptoService: CryptoService(),
+      storageService: _storageService,
+    );
+    
+    try {
+      if (await nostrService.connect(relayUrl)) {
+        final success = await nostrService.publishSkillReaction(
+          myNpub: widget.user.npub,
+          myNsec: widget.user.nsec,
+          artisanNpub: artisanNpub,
+          eventId: cred.eventId!,
+          isPositive: isPositive,
+        );
+        
+        await nostrService.disconnect();
+        
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isPositive ? '✅ Avis positif envoyé !' : '✅ Avis négatif envoyé !'),
+              backgroundColor: isPositive ? Colors.green : Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('ExploreView', 'Erreur réaction compétence', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
   
   /// ✅ WOTX2: Couleur selon le niveau de credential
@@ -1062,6 +1120,26 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    
+                    // ✅ WOTX2: Afficher les badges de compétences avec boutons de réaction
+                    if (profile.skillCredentials != null && profile.skillCredentials!.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Compétences vérifiées',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: profile.skillCredentials!.map((cred) => _buildSkillBadgeWithReaction(cred, profile.npub)).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),

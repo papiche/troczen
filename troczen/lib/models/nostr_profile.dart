@@ -45,6 +45,7 @@ class SkillCredential {
   final DateTime? issuedAt;
   final DateTime? expiresAt;
   final bool verified;
+  final String? eventId; // ID de l'événement Kind 30503
 
   SkillCredential({
     required this.permitId,
@@ -54,6 +55,7 @@ class SkillCredential {
     this.issuedAt,
     this.expiresAt,
     this.verified = true,
+    this.eventId,
   });
 
   /// Extrait le niveau depuis le permitId (ex: "PERMIT_MARAICHAGE_X2" → 2)
@@ -87,6 +89,7 @@ class SkillCredential {
           ? DateTime.fromMillisecondsSinceEpoch((event['created_at'] as int) * 1000)
           : null,
       verified: true,
+      eventId: event['id'],
     );
   }
 
@@ -174,6 +177,7 @@ class NostrProfile {
           'skill_tag': c.skillTag,
           'level': c.level,
           'badge': c.badgeLabel,
+          if (c.eventId != null) 'event_id': c.eventId,
         }).toList(),
     };
   }
@@ -187,6 +191,7 @@ class NostrProfile {
             permitId: c['permit_id'] ?? '',
             skillTag: c['skill_tag'] ?? '',
             level: c['level'] ?? 1,
+            eventId: c['event_id'],
           ))
           .toList();
     }

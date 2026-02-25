@@ -16,6 +16,7 @@ class CacheDatabaseService {
   static const String _p3CacheTable = 'p3_cache';
   static const String _marketBonsTable = 'market_bons';
   static const String _syncMetadataTable = 'sync_metadata';
+  static const String _n2CacheTable = 'n2_cache';
 
   /// Initialiser la base de données de cache
   Future<Database> get database async {
@@ -84,6 +85,18 @@ class CacheDatabaseService {
         value TEXT NOT NULL
       )
     ''');
+
+    // Table pour le cache N2 (Amis d'Amis)
+    await db.execute('''
+      CREATE TABLE $_n2CacheTable (
+        npub TEXT NOT NULL,
+        via_n1_npub TEXT NOT NULL,
+        PRIMARY KEY (npub, via_n1_npub)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_n2_npub ON $_n2CacheTable(npub)',
+    );
   }
 
   // ============================================================
@@ -328,6 +341,57 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES N2 CACHE
+  // ============================================================
+
+  /// Sauvegarder un contact N2
+  Future<void> saveN2Contact(String npub, String viaN1Npub) async {
+    final db = await database;
+    await db.insert(
+      _n2CacheTable,
+      {
+        'npub': npub,
+        'via_n1_npub': viaN1Npub,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// Sauvegarder un lot de contacts N2
+  Future<void> saveN2ContactsBatch(List<Map<String, String>> contacts) async {
+    if (contacts.isEmpty) return;
+    
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final contact in contacts) {
+        await txn.insert(
+          _n2CacheTable,
+          contact,
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    });
+  }
+
+  /// Vérifier si un npub est dans le réseau N2
+  Future<bool> isN2Contact(String npub) async {
+    final db = await database;
+    final results = await db.query(
+      _n2CacheTable,
+      where: 'npub = ?',
+      whereArgs: [npub],
+      limit: 1,
+    );
+    return results.isNotEmpty;
+  }
+
+  /// Vider le cache N2
+  Future<void> clearN2Cache() async {
+    final db = await database;
+    await db.delete(_n2CacheTable);
+  }
+
+  // ============================================================
   // MÉTHODES DE GESTION
   // ============================================================
 
@@ -338,6 +402,7 @@ class CacheDatabaseService {
     await db.delete(_p3CacheTable);
     await db.delete(_marketBonsTable);
     await db.delete(_syncMetadataTable);
+    await db.delete(_n2CacheTable);
   }
 
   /// Obtenir la taille de la base de cache

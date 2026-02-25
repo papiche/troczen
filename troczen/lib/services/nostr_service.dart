@@ -342,6 +342,20 @@ class NostrService {
   Future<List<Map<String, dynamic>>> fetchMyAttestations(String myNpub) =>
     _wotx.fetchMyAttestations(myNpub);
   
+  Future<bool> publishSkillReaction({
+    required String myNpub,
+    required String myNsec,
+    required String artisanNpub,
+    required String eventId,
+    required bool isPositive,
+  }) => _wotx.publishSkillReaction(
+    myNpub: myNpub,
+    myNsec: myNsec,
+    artisanNpub: artisanNpub,
+    eventId: eventId,
+    isPositive: isPositive,
+  );
+  
   Future<List<String>> fetchActivityTagsFromProfiles({int limit = 100}) =>
     _wotx.fetchActivityTagsFromProfiles(limit: limit);
   
@@ -712,6 +726,121 @@ class NostrService {
     }
   }
   
+  /// Récupère les followers (ceux qui m'ont dans leur kind 3)
+  Future<List<String>> fetchFollowers(String myNpub) async {
+    if (!_connection.isConnected) return [];
+
+    try {
+      final completer = Completer<List<String>>();
+      final followers = <String>{};
+      final subscriptionId = 'followers_${DateTime.now().millisecondsSinceEpoch}';
+      
+      _connection.registerHandler(subscriptionId, (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>;
+            followers.add(event['pubkey'].toString());
+          } else if (message[0] == 'EOSE') {
+            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            _connection.removeHandler(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(followers.toList());
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing followers', e);
+        }
+      });
+
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'kinds': [3],
+          '#p': [myNpub],
+        }
+      ]);
+      
+      _connection.sendMessage(request);
+      
+      Timer(const Duration(seconds: 5), () {
+        _connection.removeHandler(subscriptionId);
+        if (!completer.isCompleted) {
+          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(followers.toList());
+        }
+      });
+      
+      return await completer.future;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération followers', e);
+      return [];
+    }
+  }
+
+  /// Récupère les listes de contacts de plusieurs npubs
+  Future<Map<String, List<String>>> fetchMultipleContactLists(List<String> npubs) async {
+    if (!_connection.isConnected || npubs.isEmpty) return {};
+
+    try {
+      final completer = Completer<Map<String, List<String>>>();
+      final result = <String, List<String>>{};
+      final subscriptionId = 'multi_contacts_${DateTime.now().millisecondsSinceEpoch}';
+      
+      _connection.registerHandler(subscriptionId, (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>;
+            final pubkey = event['pubkey'].toString();
+            final tags = event['tags'] as List?;
+            
+            if (tags != null) {
+              final contacts = <String>[];
+              for (final tag in tags) {
+                if (tag is List && tag.isNotEmpty && tag[0] == 'p' && tag.length > 1) {
+                  contacts.add(tag[1].toString());
+                }
+              }
+              result[pubkey] = contacts;
+            }
+          } else if (message[0] == 'EOSE') {
+            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            _connection.removeHandler(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(result);
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing multi contacts', e);
+        }
+      });
+
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'authors': npubs,
+          'kinds': [3],
+        }
+      ]);
+      
+      _connection.sendMessage(request);
+      
+      Timer(const Duration(seconds: 5), () {
+        _connection.removeHandler(subscriptionId);
+        if (!completer.isCompleted) {
+          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(result);
+        }
+      });
+      
+      return await completer.future;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération multi contacts', e);
+      return {};
+    }
+  }
+
   /// Récupère une liste de contacts (kind 3)
   Future<List<String>> fetchContactList(String npub) async {
     if (!_connection.isConnected) {

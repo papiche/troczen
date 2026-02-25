@@ -5,6 +5,7 @@ import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/logger_service.dart';
 import '../services/image_compression_service.dart';
+import '../models/nostr_profile.dart';
 
 class BonJourneyScreen extends StatefulWidget {
   final Bon bon;
@@ -22,6 +23,7 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
 
   bool _isLoading = true;
   List<Map<String, dynamic>> _transfers = [];
+  NostrProfile? _issuerProfile;
   String? _error;
 
   @override
@@ -57,9 +59,13 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
       // Trier par date (du plus ancien au plus récent)
       transfers.sort((a, b) => (a['created_at'] as int).compareTo(b['created_at'] as int));
 
+      // Récupérer le profil de l'émetteur pour afficher ses compétences
+      final issuerProfile = await _nostrService.fetchUserProfile(widget.bon.issuerNpub);
+
       if (mounted) {
         setState(() {
           _transfers = transfers;
+          _issuerProfile = issuerProfile;
           _isLoading = false;
         });
       }
@@ -203,6 +209,23 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
                           shadows: [Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1))],
                         ),
                       ),
+                      if (_issuerProfile?.skillCredentials != null && _issuerProfile!.skillCredentials!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Compétences vérifiées',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _issuerProfile!.skillCredentials!.map((cred) => _buildSkillBadgeWithReaction(cred, widget.bon.issuerNpub)).toList(),
+                        ),
+                      ],
                       if (widget.bon.wish != null && widget.bon.wish!.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         Container(
@@ -418,5 +441,96 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} à ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// ✅ WOTX2: Construit un badge de compétence individuel avec boutons de réaction
+  Widget _buildSkillBadgeWithReaction(SkillCredential cred, String artisanNpub) {
+    final color = _getLevelColor(cred.level);
+    final badgeText = '${cred.skillTag} ${cred.badgeLabel}';
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            badgeText,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          if (cred.eventId != null) ...[
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _reactToSkill(cred, artisanNpub, true),
+              child: const Icon(Icons.thumb_up, size: 14, color: Colors.green),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _reactToSkill(cred, artisanNpub, false),
+              child: const Icon(Icons.thumb_down, size: 14, color: Colors.red),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _getLevelColor(int level) {
+    switch (level) {
+      case 1: return const Color(0xFF4CAF50); // Vert
+      case 2: return const Color(0xFF2196F3); // Bleu
+      case 3: return const Color(0xFF9C27B0); // Violet
+      default: return const Color(0xFF9E9E9E); // Gris
+    }
+  }
+
+  Future<void> _reactToSkill(SkillCredential cred, String artisanNpub, bool isPositive) async {
+    if (cred.eventId == null) return;
+    
+    try {
+      final user = await _storageService.getUser();
+      if (user == null) return;
+
+      final market = await _storageService.getMarket();
+      if (market == null || market.relayUrl == null) return;
+
+      final connected = await _nostrService.connect(market.relayUrl!);
+      if (connected) {
+        final success = await _nostrService.publishSkillReaction(
+          myNpub: user.npub,
+          myNsec: user.nsec,
+          artisanNpub: artisanNpub,
+          eventId: cred.eventId!,
+          isPositive: isPositive,
+        );
+        
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isPositive ? '✅ Avis positif envoyé !' : '✅ Avis négatif envoyé !'),
+              backgroundColor: isPositive ? Colors.green : Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('BonJourneyScreen', 'Erreur réaction compétence', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

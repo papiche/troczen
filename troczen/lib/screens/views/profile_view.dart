@@ -6,13 +6,16 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../models/user.dart';
 import '../../services/image_compression_service.dart';
 import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/logger_service.dart';
+import '../../services/nostr_service.dart';
 import '../user_profile_screen.dart';
+import '../trust_web_screen.dart';
 
 /// ProfileView — Mon Profil
 /// Affichage et édition du profil utilisateur
@@ -313,11 +316,92 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // Bouton Mon QR-ID
+                  ElevatedButton.icon(
+                    onPressed: () => _showMyQrId(),
+                    icon: const Icon(Icons.qr_code, size: 20),
+                    label: const Text('Mon QR-ID'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB347),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showMyQrId() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Row(
+          children: const [
+            Icon(Icons.qr_code_2, color: Color(0xFFFFB347)),
+            SizedBox(width: 12),
+            Text(
+              'Mon QR-ID Nostr',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: QrImageView(
+                data: 'nostr:${_currentUser!.npubBech32}',
+                version: QrVersions.auto,
+                size: 280,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _currentUser!.displayName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Faites scanner ce code pour\nêtre ajouté aux contacts',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
       ),
     );
   }
@@ -330,36 +414,48 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
         final progress = (contactsCount / 5).clamp(0.0, 1.0);
         final isUnlocked = contactsCount >= 5;
 
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isUnlocked ? Colors.green : const Color(0xFFFFB347).withValues(alpha: 0.3),
-              width: 2,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    isUnlocked ? Icons.check_circle : Icons.handshake,
-                    color: isUnlocked ? Colors.green : const Color(0xFFFFB347),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Toile de confiance',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TrustWebScreen(user: _currentUser!),
               ),
+            ).then((_) => _loadUserProfile());
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isUnlocked ? Colors.green : const Color(0xFFFFB347).withValues(alpha: 0.3),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isUnlocked ? Icons.check_circle : Icons.handshake,
+                      color: isUnlocked ? Colors.green : const Color(0xFFFFB347),
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Toile de confiance',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.white54),
+                  ],
+                ),
               const SizedBox(height: 16),
               
               Text(
@@ -429,6 +525,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
               ],
             ],
           ),
+        ),
         );
       },
     );
@@ -1294,6 +1391,30 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
         final storageService = StorageService();
         await storageService.addContact(npub);
         
+        // Publier la liste de contacts sur Nostr (Kind 3)
+        try {
+          final user = await storageService.getUser();
+          final market = await storageService.getMarket();
+          if (user != null && market?.relayUrl != null) {
+            final contacts = await storageService.getContacts();
+            final nostrService = NostrService(
+              cryptoService: CryptoService(),
+              storageService: storageService,
+            );
+            
+            if (await nostrService.connect(market!.relayUrl!)) {
+              await nostrService.publishContactList(
+                npub: user.npub,
+                nsec: user.nsec,
+                contactsNpubs: contacts,
+              );
+              await nostrService.disconnect();
+            }
+          }
+        } catch (e) {
+          Logger.error('ProfileView', 'Erreur publication Kind 3', e);
+        }
+        
         // Recharger le profil pour mettre à jour la jauge
         await _loadUserProfile();
         
@@ -1418,39 +1539,28 @@ class _MobileScannerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Import dynamique
-    try {
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFFFB347), width: 3),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Builder(
-          builder: (context) {
-            // Note: mobile_scanner est déjà dans les dépendances
-            // Retourner un placeholder pour l'instant
-            return Container(
-              color: Colors.black,
-              child: const Center(
-                child: Text(
-                  'Scanner QR\n(implémentation mobile_scanner)',
-                  style: TextStyle(color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    } catch (e) {
-      return Center(
-        child: Text(
-          'Erreur: $e',
-          style: const TextStyle(color: Colors.red),
-        ),
-      );
-    }
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFB347), width: 3),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: MobileScanner(
+        onDetect: (capture) {
+          final List<Barcode> barcodes = capture.barcodes;
+          for (final barcode in barcodes) {
+            if (barcode.rawValue != null) {
+              String code = barcode.rawValue!;
+              if (code.startsWith('nostr:')) {
+                code = code.substring(6);
+              }
+              Navigator.pop(context, code);
+              break;
+            }
+          }
+        },
+      ),
+    );
   }
 }
 
