@@ -68,10 +68,10 @@ class OfflineFirstImage extends StatelessWidget {
       );
     }
     
-    // Si l'URL est un data URI Base64, l'afficher directement
-    if (url != null && ImageCompressionService.isBase64DataUri(url)) {
+    // 2. Tenter le fallbackBase64 (picture64)
+    if (fallbackBase64 != null && ImageCompressionService.isBase64DataUri(fallbackBase64)) {
       return ImageCompressionService.buildImage(
-        uri: url,
+        uri: fallbackBase64,
         width: width,
         height: height,
         fit: fit,
@@ -79,7 +79,7 @@ class OfflineFirstImage extends StatelessWidget {
       );
     }
     
-    // Sinon, utiliser CachedNetworkImage (avec son propre cache)
+    // 3. Tenter l'URL réseau (url)
     return _buildNetworkImage();
   }
 
@@ -122,16 +122,6 @@ class OfflineFirstImage extends StatelessWidget {
       maxWidthDiskCache: (width * 4).toInt(),
       placeholder: (context, url) => _buildLoadingPlaceholder(),
       errorWidget: (context, url, error) {
-        // Si le réseau échoue et qu'on a un fallback Base64, on l'utilise
-        if (fallbackBase64 != null && ImageCompressionService.isBase64DataUri(fallbackBase64)) {
-          return ImageCompressionService.buildImage(
-            uri: fallbackBase64,
-            width: width,
-            height: height,
-            fit: fit,
-            errorWidget: _buildDefaultIcon(),
-          );
-        }
         return _buildDefaultIcon();
       },
     );

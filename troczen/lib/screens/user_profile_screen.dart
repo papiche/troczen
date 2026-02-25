@@ -239,8 +239,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ? _aboutController.text.trim()
             : widget.user.about,
         // ✅ NOUVEAU: Sauvegarder les URLs des images
-        picture: finalPictureUrl ?? _base64Picture ?? widget.user.picture,
-        banner: finalBannerUrl ?? _base64Banner ?? widget.user.banner,
+        picture: finalPictureUrl ?? widget.user.picture,
+        banner: finalBannerUrl ?? widget.user.banner,
         picture64: _base64Picture ?? widget.user.picture64,
         banner64: _base64Banner ?? widget.user.banner64,
       );

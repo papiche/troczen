@@ -174,8 +174,8 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             issuerName: _titleController.text,
             wish: _descriptionController.text,
             cardType: _selectedCategory,
-            picture: finalPictureUrl ?? _base64Image ?? widget.bon.picture,
-            logoUrl: finalPictureUrl ?? _base64Image ?? widget.bon.logoUrl, // Pour compatibilité
+            picture: finalPictureUrl ?? widget.bon.picture,
+            logoUrl: finalPictureUrl ?? widget.bon.logoUrl, // Pour compatibilité
             picture64: _base64Image ?? widget.bon.picture64,
           );
           await _storage.saveBon(updatedBon);

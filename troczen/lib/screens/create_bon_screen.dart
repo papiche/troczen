@@ -249,8 +249,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         rarity: isBootstrap ? 'bootstrap' : 'common',
         cardType: isBootstrap ? 'bootstrap' : 'DU',
         wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
-        picture: imageUrl ?? imageBase64,
-        logoUrl: imageUrl ?? imageBase64,
+        picture: imageUrl,
+        logoUrl: imageUrl,
         picture64: imageBase64,
       );
 
