@@ -4,15 +4,18 @@ import 'package:troczen/models/user.dart';
 import 'package:troczen/models/bon.dart';
 import 'package:troczen/models/market.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'test_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setupTestEnvironment();
   
   late StorageService storageService;
 
   setUp(() async {
     FlutterSecureStorage.setMockInitialValues({});
     storageService = StorageService();
+    await storageService.clearAllData(); // Ensure clean state
   });
 
   group('StorageService - User Management', () {
@@ -292,7 +295,7 @@ void main() {
       // Note: saveP3ToCache skippé car nécessite SQLite
 
       // Tout effacer
-      await storageService.clearAll();
+      await storageService.clearAllData();
 
       // Vérifier
       expect(await storageService.getUser(), isNull);

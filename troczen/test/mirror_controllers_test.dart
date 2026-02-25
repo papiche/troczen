@@ -11,6 +11,8 @@ import 'package:troczen/services/audit_trail_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:hex/hex.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'test_helper.dart';
 
 // --- Fakes ---
 
@@ -168,8 +170,10 @@ class FakeAudioPlayer extends AudioPlayer {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setupTestEnvironment();
 
   setUpAll(() {
+    FlutterSecureStorage.setMockInitialValues({});
     // Mock permission_handler platform channel
     const MethodChannel('flutter.baseflow.com/permissions/methods')
         .setMockMethodCallHandler((MethodCall methodCall) async {
