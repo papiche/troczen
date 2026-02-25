@@ -87,8 +87,8 @@ class DuCalculationService {
   // Durée de vie d'un bon DU (Monnaie fondante)
   static const int _duExpirationDays = 28;
   
-  // DU initial au lancement du marché (100 ẐEN/jour)
-  static const double _initialDuValue = 100.0;
+  // DU initial au lancement du marché (10 ẐEN/jour)
+  static const double _initialDuValue = 10.0;
 
   DuCalculationService({
     required StorageService storageService,
@@ -231,7 +231,7 @@ class DuCalculationService {
   }
 
   /// Récupère la valeur actuelle du DU global
-  /// Au lancement du marché, DU(0) = 100 ẐEN/jour
+  /// Au lancement du marché, DU(0) = 10 ẐEN/jour
   Future<double> getCurrentGlobalDu() async {
     // Récupérer la dernière valeur générée
     final lastDu = await _storageService.getLastDuValue();
@@ -240,7 +240,7 @@ class DuCalculationService {
     }
     
     // Si c'est la première fois, on retourne la valeur initiale
-    return _initialDuValue; // 100 ẐEN au lancement
+    return _initialDuValue; // 10 ẐEN au lancement
   }
 
   /// Génère un bon de bootstrap pour un nouvel utilisateur
