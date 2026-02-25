@@ -598,7 +598,7 @@ class NostrMarketService {
             case 'rarity':
               rarity = tag[1].toString();
               break;
-            case 'expiry':
+            case 'expiration':
               expiryTimestamp = int.tryParse(tag[1].toString());
               break;
             case 'wish':
