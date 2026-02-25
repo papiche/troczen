@@ -1,8 +1,6 @@
 import 'dart:typed_data';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:hex/hex.dart';
 import '../models/bon.dart';
 import '../models/user.dart';

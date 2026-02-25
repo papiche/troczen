@@ -436,6 +436,18 @@ class NostrMarketService {
     try {
       if (event['kind'] != 30303) return;
 
+      // Vérifier cryptographiquement l'événement
+      final calculatedId = _calculateEventId(event);
+      if (event['id'] != calculatedId) {
+        Logger.error('NostrMarket', 'Event ID falsifié rejeté');
+        return;
+      }
+
+      if (!_cryptoService.verifySignature(calculatedId, event['sig'], event['pubkey'])) {
+        Logger.error('NostrMarket', 'Signature invalide détectée et rejetée');
+        return;
+      }
+
       final tags = event['tags'] as List;
       String? bonId;
       String? p3Cipher;

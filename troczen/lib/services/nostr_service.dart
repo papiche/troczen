@@ -493,8 +493,13 @@ class NostrService {
   
   /// Récupère l'historique des transferts d'un bon (kind 1)
   Future<List<Map<String, dynamic>>> fetchBonTransfers(String bonId) async {
-    if (!_connection.isConnected) {
-      Logger.error('NostrService', 'Non connecté');
+    return fetchBonsTransfers([bonId]);
+  }
+
+  /// Récupère l'historique des transferts pour plusieurs bons (kind 1)
+  Future<List<Map<String, dynamic>>> fetchBonsTransfers(List<String> bonIds) async {
+    if (!_connection.isConnected || bonIds.isEmpty) {
+      if (bonIds.isNotEmpty) Logger.error('NostrService', 'Non connecté');
       return [];
     }
 
@@ -508,7 +513,14 @@ class NostrService {
         try {
           if (message[0] == 'EVENT' && message.length >= 3) {
             final event = message[2] as Map<String, dynamic>;
-            transfers.add(event);
+            
+            // Vérifier cryptographiquement l'événement
+            final calculatedId = _calculateEventId(event);
+            if (event['id'] == calculatedId && _cryptoService.verifySignature(calculatedId, event['sig'], event['pubkey'])) {
+              transfers.add(event);
+            } else {
+              Logger.error('NostrService', 'Transfert invalide ignoré');
+            }
           } else if (message[0] == 'EOSE') {
             _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
             _connection.removeHandler(subscriptionId);
@@ -526,7 +538,7 @@ class NostrService {
         subscriptionId,
         {
           'kinds': [NostrConstants.kindText],
-          '#bon': [bonId],
+          '#bon': bonIds,
         }
       ]);
       

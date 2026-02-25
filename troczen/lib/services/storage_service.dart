@@ -245,11 +245,38 @@ class StorageService {
     });
   }
 
-  /// ✅ WAL: Récupération après crash
+  /// ✅ WAL: Réconciliation des états via Kind 1 au démarrage
   /// À appeler au démarrage de l'application
-  /// Annule tous les verrous expirés (transferts interrompus par crash)
-  /// Retourne le nombre de verrous annulés
-  Future<int> recoverFromCrash() async {
+  /// Vérifie la vérité du réseau pour les bons actifs ou verrouillés
+  /// Retourne le nombre de bons mis à jour
+  Future<int> reconcileBonsState(dynamic nostrService, {Function(Bon)? onGhostTransferDetected}) async {
+    // 1. Récupérer les bons sans verrouiller pour l'analyse
+    final bonsToAnalyze = await _getBonsInternal();
+    final bonsToCheck = bonsToAnalyze.where((b) =>
+      b.status == BonStatus.active || b.status == BonStatus.lockedForTransfer
+    ).toList();
+    
+    if (bonsToCheck.isEmpty) return 0;
+
+    // 2. Requêter les Kind 1 pour tous ces bons
+    final bonIds = bonsToCheck.map((b) => b.bonId).toList();
+    final transfers = await nostrService.fetchBonsTransfers(bonIds);
+    
+    // Grouper les transferts par bonId
+    final transfersByBonId = <String, List<Map<String, dynamic>>>{};
+    for (final t in transfers) {
+      final tags = t['tags'] as List?;
+      if (tags != null) {
+        for (final tag in tags) {
+          if (tag is List && tag.isNotEmpty && tag[0] == 'bon' && tag.length > 1) {
+            final bonId = tag[1].toString();
+            transfersByBonId.putIfAbsent(bonId, () => []).add(t);
+          }
+        }
+      }
+    }
+
+    // 3. Appliquer les modifications avec verrou
     return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
       int recoveredCount = 0;
@@ -257,23 +284,43 @@ class StorageService {
       for (int i = 0; i < bons.length; i++) {
         final bon = bons[i];
         
-        // Chercher les bons verrouillés avec verrou expiré
-        if (bon.status == BonStatus.lockedForTransfer && bon.isTransferLockExpired) {
-          // Remettre le bon en état actif
-          bons[i] = bon.copyWith(
-            status: BonStatus.active,
-            transferLockTimestamp: null,
-            transferLockChallenge: null,
-            transferLockTtlSeconds: null,
-          );
-          recoveredCount++;
-          Logger.info('StorageService', 'Récupération crash: bon ${bon.bonId} remis en état actif');
+        if (bon.status == BonStatus.active || bon.status == BonStatus.lockedForTransfer) {
+          final bonTransfers = transfersByBonId[bon.bonId] ?? [];
+          
+          if (bonTransfers.isNotEmpty) {
+            // Cas A et B : Un transfert a eu lieu sur le réseau !
+            bons[i] = bon.copyWith(
+              status: BonStatus.spent,
+              p2: null,
+              transferLockTimestamp: null,
+              transferLockChallenge: null,
+              transferLockTtlSeconds: null,
+            );
+            recoveredCount++;
+            Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} marqué comme dépensé (Kind 1 trouvé)');
+          } else if (bon.status == BonStatus.lockedForTransfer && bon.isTransferLockExpired) {
+            // Cas C : Le Fantôme Hors-Ligne
+            if (onGhostTransferDetected != null) {
+              // On délègue la décision à l'UI
+              onGhostTransferDetected(bon);
+            } else {
+              // Par défaut, on le remet actif si pas de callback
+              bons[i] = bon.copyWith(
+                status: BonStatus.active,
+                transferLockTimestamp: null,
+                transferLockChallenge: null,
+                transferLockTtlSeconds: null,
+              );
+              recoveredCount++;
+              Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} remis en état actif (verrou expiré, pas de Kind 1)');
+            }
+          }
         }
       }
       
       if (recoveredCount > 0) {
         await _saveBons(bons);
-        Logger.success('StorageService', 'Récupération crash: $recoveredCount bon(s) récupéré(s)');
+        Logger.success('StorageService', 'Réconciliation: $recoveredCount bon(s) mis à jour');
       }
       
       return recoveredCount;
@@ -293,20 +340,40 @@ class StorageService {
   }
 
   /// Récupère tous les bons (version interne sans verrou)
+  /// ✅ MIGRATION: Utilise SQLite au lieu de FlutterSecureStorage
   Future<List<Bon>> _getBonsInternal() async {
-    final data = await _secureStorage.read(key: _bonsKey);
-    if (data == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(data);
-    return jsonList.map((json) => Bon.fromJson(json)).toList();
+    try {
+      final localBonsData = await _cacheService.getLocalBons();
+      if (localBonsData.isEmpty) {
+        // Migration depuis l'ancien stockage si nécessaire
+        final oldData = await _secureStorage.read(key: _bonsKey);
+        if (oldData != null) {
+          final List<dynamic> jsonList = jsonDecode(oldData);
+          final oldBons = jsonList.map((json) => Bon.fromJson(json)).toList();
+          if (oldBons.isNotEmpty) {
+            await _cacheService.saveLocalBonsBatch(oldBons.map((b) => b.toJson()).toList());
+            await _secureStorage.delete(key: _bonsKey); // Nettoyer l'ancien stockage
+            return oldBons;
+          }
+        }
+        return [];
+      }
+      return localBonsData.map((json) => Bon.fromJson(json)).toList();
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur _getBonsInternal', e);
+      return [];
+    }
   }
 
   /// Sauvegarde la liste complète des bons
+  /// ✅ MIGRATION: Utilise SQLite au lieu de FlutterSecureStorage
   Future<void> _saveBons(List<Bon> bons) async {
-    await _secureStorage.write(
-      key: _bonsKey,
-      value: jsonEncode(bons.map((b) => b.toJson()).toList()),
-    );
+    try {
+      await _cacheService.clearLocalBons(); // Vider avant de remplacer
+      await _cacheService.saveLocalBonsBatch(bons.map((b) => b.toJson()).toList());
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur _saveBons', e);
+    }
   }
 
   // ============================================================

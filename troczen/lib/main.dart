@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/user.dart';
 import 'models/nostr_profile.dart';
+import 'models/bon.dart';
 import 'services/crypto_service.dart';
 import 'services/storage_service.dart';
 import 'services/nostr_service.dart';
@@ -84,11 +85,77 @@ class _LoginScreenState extends State<LoginScreen> {
       Logger.error('Main', 'Erreur lors de la maintenance', e);
     }
 
-    // ✅ WAL: Récupération après crash - annuler les verrous expirés
+    // ✅ WAL: Réconciliation des états via Kind 1 au démarrage
     // Cette opération doit être faite au démarrage avant toute autre chose
-    final recoveredCount = await _storageService.recoverFromCrash();
+    final nostrService = NostrService(
+      cryptoService: _cryptoService,
+      storageService: _storageService,
+    );
+    
+    final market = await _storageService.getMarket();
+    if (market != null && market.relayUrl != null) {
+      await nostrService.connect(market.relayUrl!);
+    } else {
+      await nostrService.connect('wss://relay.copylaradio.com');
+    }
+
+    final recoveredCount = await _storageService.reconcileBonsState(
+      nostrService,
+      onGhostTransferDetected: (bon) async {
+        if (!mounted) return;
+        
+        // Demander à l'utilisateur ce qu'il s'est passé
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            title: const Text('Transfert interrompu', style: TextStyle(color: Colors.white)),
+            content: Text(
+              'Un transfert de ${bon.value} ẐEN a été interrompu.\n\nL\'avez-vous finalisé avec le receveur ?',
+              style: const TextStyle(color: Colors.white),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Non, annulé', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFB347)),
+                child: const Text('Oui, finalisé', style: TextStyle(color: Colors.black)),
+              ),
+            ],
+          ),
+        );
+        
+        if (result == true) {
+          // Marquer comme dépensé
+          final updatedBon = bon.copyWith(
+            status: BonStatus.spent,
+            p2: null,
+            transferLockTimestamp: null,
+            transferLockChallenge: null,
+            transferLockTtlSeconds: null,
+          );
+          await _storageService.saveBon(updatedBon);
+        } else {
+          // Remettre actif
+          final updatedBon = bon.copyWith(
+            status: BonStatus.active,
+            transferLockTimestamp: null,
+            transferLockChallenge: null,
+            transferLockTtlSeconds: null,
+          );
+          await _storageService.saveBon(updatedBon);
+        }
+      }
+    );
+    
+    await nostrService.disconnect();
+
     if (recoveredCount > 0) {
-      Logger.info('Main', 'Récupération crash: $recoveredCount bon(s) récupéré(s)');
+      Logger.info('Main', 'Réconciliation: $recoveredCount bon(s) mis à jour');
     }
     
     // Vérifier d'abord si c'est un premier lancement

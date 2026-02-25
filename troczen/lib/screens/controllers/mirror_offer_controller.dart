@@ -62,6 +62,8 @@ class MirrorOfferController extends ChangeNotifier {
 
   @override
   void dispose() {
+    // Si l'utilisateur quitte sans succès, on libère le verrou
+    if (!isSuccess) _storageService.cancelTransferLock(bon.bonId);
     scannerController?.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -159,6 +161,9 @@ class MirrorOfferController extends ChangeNotifier {
         signature: signatureBytes,
       );
 
+      // AVANT de mettre qrData à jour pour afficher le QR
+      await _storageService.lockBonForTransfer(bon.bonId, challenge: currentChallenge);
+
       qrData = qrBytes;
       isGenerating = false;
       statusMessage = 'Placez les téléphones face à face';
@@ -203,8 +208,9 @@ class MirrorOfferController extends ChangeNotifier {
 
       if (!isValid) throw Exception('Signature invalide');
 
-      final updatedBon = bon.copyWith(p2: null, status: BonStatus.spent);
-      await _storageService.saveBon(updatedBon);
+      // Remplacer l'enregistrement manuel par la fonction sécurisée
+      final success = await _storageService.confirmTransferAndRemoveP2(bon.bonId, currentChallenge);
+      if (!success) throw Exception('État du bon corrompu');
 
       HapticFeedback.heavyImpact();
       _audioPlayer.play(AssetSource('sounds/bowl.mp3'));

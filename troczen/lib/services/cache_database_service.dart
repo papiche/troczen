@@ -17,6 +17,7 @@ class CacheDatabaseService {
   static const String _marketBonsTable = 'market_bons';
   static const String _syncMetadataTable = 'sync_metadata';
   static const String _n2CacheTable = 'n2_cache';
+  static const String _localWalletBonsTable = 'local_wallet_bons';
 
   /// Initialiser la base de données de cache
   Future<Database> get database async {
@@ -97,6 +98,87 @@ class CacheDatabaseService {
     await db.execute(
       'CREATE INDEX idx_n2_npub ON $_n2CacheTable(npub)',
     );
+
+    // Table pour les bons du portefeuille local
+    await db.execute('''
+      CREATE TABLE $_localWalletBonsTable (
+        bon_id TEXT PRIMARY KEY,
+        raw_data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  // ============================================================
+  // MÉTHODES LOCAL WALLET BONS
+  // ============================================================
+
+  /// Sauvegarder un bon dans le portefeuille local
+  Future<void> saveLocalBon(Map<String, dynamic> bonData) async {
+    final db = await database;
+    final bonId = bonData['bonId'] as String?;
+    if (bonId == null) return;
+
+    await db.insert(
+      _localWalletBonsTable,
+      {
+        'bon_id': bonId,
+        'raw_data': jsonEncode(bonData),
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Sauvegarder une liste de bons dans le portefeuille local
+  Future<void> saveLocalBonsBatch(List<Map<String, dynamic>> bons) async {
+    if (bons.isEmpty) return;
+    
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    
+    await db.transaction((txn) async {
+      for (final bonData in bons) {
+        final bonId = bonData['bonId'] as String?;
+        if (bonId == null) continue;
+
+        await txn.insert(
+          _localWalletBonsTable,
+          {
+            'bon_id': bonId,
+            'raw_data': jsonEncode(bonData),
+            'updated_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  /// Récupérer tous les bons du portefeuille local
+  Future<List<Map<String, dynamic>>> getLocalBons() async {
+    final db = await database;
+    final results = await db.query(_localWalletBonsTable);
+    
+    return results.map((row) {
+      return jsonDecode(row['raw_data'] as String) as Map<String, dynamic>;
+    }).toList();
+  }
+
+  /// Supprimer un bon du portefeuille local
+  Future<void> deleteLocalBon(String bonId) async {
+    final db = await database;
+    await db.delete(
+      _localWalletBonsTable,
+      where: 'bon_id = ?',
+      whereArgs: [bonId],
+    );
+  }
+
+  /// Vider le portefeuille local
+  Future<void> clearLocalBons() async {
+    final db = await database;
+    await db.delete(_localWalletBonsTable);
   }
 
   // ============================================================
@@ -403,6 +485,7 @@ class CacheDatabaseService {
     await db.delete(_marketBonsTable);
     await db.delete(_syncMetadataTable);
     await db.delete(_n2CacheTable);
+    await db.delete(_localWalletBonsTable);
   }
 
   /// Exécute la maintenance automatique de la base de données

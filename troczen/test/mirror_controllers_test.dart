@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:troczen/models/user.dart';
 import 'package:troczen/models/bon.dart';
@@ -10,8 +9,6 @@ import 'package:troczen/services/crypto_service.dart';
 import 'package:troczen/services/storage_service.dart';
 import 'package:troczen/services/audit_trail_service.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:uuid/uuid.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:hex/hex.dart';
 import 'package:flutter/services.dart';
 
