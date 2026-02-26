@@ -455,13 +455,28 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
                 ),
               const SizedBox(height: 16),
               
-              Text(
-                '$contactsCount / 5 liens réciproques',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Text(
+                    '$contactsCount / 5 liens réciproques',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Un lien est réciproque quand vous avez scanné le profil de l\'autre ET qu\'il a scanné le vôtre.',
+                    triggerMode: TooltipTriggerMode.tap,
+                    showDuration: const Duration(seconds: 5),
+                    child: const Icon(
+                      Icons.info_outline,
+                      color: Colors.white54,
+                      size: 18,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               
