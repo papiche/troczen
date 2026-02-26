@@ -944,12 +944,49 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
             ],
           ),
         ),
-        if (!sensitive)
-          IconButton(
-            icon: const Icon(Icons.copy, size: 20),
-            color: const Color(0xFFFFB347),
-            onPressed: () => _copyToClipboard(value),
-          ),
+        IconButton(
+          icon: const Icon(Icons.copy, size: 20),
+          color: sensitive ? Colors.orange : const Color(0xFFFFB347),
+          tooltip: sensitive ? 'Copier (Attention: Clé privée)' : 'Copier',
+          onPressed: () {
+            if (sensitive) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E1E1E),
+                  title: const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Text('Attention', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                  content: const Text(
+                    'Vous êtes sur le point de copier votre clé privée (nsec). '
+                    'Ne la partagez jamais avec personne. '
+                    'Voulez-vous continuer ?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Annuler', style: TextStyle(color: Colors.white54)),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _copyToClipboard(value);
+                      },
+                      child: const Text('Copier', style: TextStyle(color: Colors.orange)),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              _copyToClipboard(value);
+            }
+          },
+        ),
       ],
     );
   }
