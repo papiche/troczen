@@ -21,7 +21,8 @@ class NostrMarketService {
   final StorageService _storageService;
   final ImageCacheService _imageCache = ImageCacheService();
   
-  // Sync automatique
+  final duService = DuCalculationService();
+          syncMarketP3s(_lastSyncedMarket!, duService);
   Timer? _backgroundSyncTimer;
   bool _autoSyncEnabled = false;
   Duration _autoSyncInterval = const Duration(minutes: 5);
@@ -771,7 +772,8 @@ class NostrMarketService {
     
     _backgroundSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
       if (_connection.isConnected && _lastSyncedMarket != null) {
-        // Note: besoin du DuService pour la sync complète
+        final duService = DuCalculationService();
+        syncMarketP3s(_lastSyncedMarket!, duService);
       }
     });
   }
@@ -795,7 +797,8 @@ class NostrMarketService {
     if (_autoSyncEnabled && _backgroundSyncTimer == null) {
       _backgroundSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
         if (_connection.isConnected && _lastSyncedMarket != null && !_connection.isAppInBackground) {
-          // Sync automatique
+          final duService = DuCalculationService();
+          syncMarketP3s(_lastSyncedMarket!, duService);
         }
       });
     }
