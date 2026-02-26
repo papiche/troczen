@@ -44,8 +44,6 @@ class _MainShellState extends State<MainShell> {
   final _storageService = StorageService();
   final _cryptoService = CryptoService();
   late final NostrService _nostrService;
-  bool _isSyncing = false;
-  
   @override
   void initState() {
     super.initState();
@@ -500,16 +498,6 @@ class _MainShellState extends State<MainShell> {
     setState(() {});
   }
 
-  Future<void> _exportDashboardData() async {
-    // TODO: Implémenter l'export des données du dashboard
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Export des données TODO...'),
-        backgroundColor: Color(0xFF0A7EA4),
-      ),
-    );
-  }
-
   // ===== ACTIONS DRAWER =====
   
   void _navigateToSettings() {
@@ -551,176 +539,6 @@ class _MainShellState extends State<MainShell> {
       ),
     );
   }
-
-  Future<void> _exportMarketSeed() async {
-    Navigator.pop(context); // Fermer le drawer
-    
-    final market = await _storageService.getMarket();
-    if (market == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aucun marché configuré'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Seed du marché', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                market.seedMarket,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontFamily: 'monospace',
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Partagez ce code pour permettre à d\'autres utilisateurs de rejoindre votre marché.',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _syncNostr() async {
-    if (_isSyncing) return;
-    
-    setState(() => _isSyncing = true);
-    
-    try {
-      final market = await _storageService.getMarket();
-      
-      if (market == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aucun marché configuré pour synchroniser'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-      
-      // ✅ CORRECTION: Réutiliser l'instance existante au lieu d'en créer une nouvelle
-      final connected = await _nostrService.connect(
-        market.relayUrl ?? AppConfig.defaultRelayUrl,
-      );
-      
-      if (!connected) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Impossible de se connecter au relais ${market.relayUrl}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      
-      final syncedCount = await _nostrService.syncMarketP3s(market);
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✅ $syncedCount P3 synchronisés'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
-      // ✅ Pas besoin de déconnecter - on garde la connexion pour l'auto-sync
-      // await _nostrService.disconnect();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Erreur de synchronisation: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSyncing = false);
-      }
-    }
-  }
-
-  Future<void> _clearP3Cache() async {
-    Navigator.pop(context); // Fermer le drawer
-    
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Vider le cache P3', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Êtes-vous sûr de vouloir supprimer toutes les P3 locales ? Cette action est irréversible.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true || !mounted) return;
-
-    try {
-      await _storageService.clearP3Cache();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Cache P3 vidé avec succès'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Erreur: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
 
   void _showAboutDialog() {
     Navigator.pop(context); // Fermer le drawer

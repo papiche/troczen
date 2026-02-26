@@ -8,7 +8,6 @@ import '../../services/storage_service.dart';
 import '../../services/nostr_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/logger_service.dart';
-import '../market_screen.dart';
 import '../create_bon_screen.dart';
 import '../mirror_offer_screen.dart';
 
@@ -27,10 +26,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   final _storageService = StorageService();
   late TabController _tabController;
   
-  // ✅ NOUVEAU: Support multi-marchés
-  List<Market> _markets = [];
-  Market? _selectedMarket;  // Marché sélectionné pour le filtre (null = tous)
-  String _filterMode = 'all';  // 'all', 'active', ou nom du marché
+  Market? _selectedMarket;
   
   List<Bon> _myIssuedBons = [];
   List<NostrProfile> _marketProfiles = [];
@@ -61,8 +57,6 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     setState(() => _isLoading = true);
     
     try {
-      // ✅ NOUVEAU: Charger tous les marchés
-      final markets = await _storageService.getMarkets();
       final activeMarket = await _storageService.getActiveMarket();
       
       final allBons = await _storageService.getBons();
@@ -76,7 +70,6 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       final profiles = <NostrProfile>[];
       
       setState(() {
-        _markets = markets;
         _selectedMarket = activeMarket;
         _myIssuedBons = myBons;
         _marketProfiles = profiles;
@@ -571,18 +564,10 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   Widget _buildMarketTab() {
     return RefreshIndicator(
       onRefresh: _loadData,
-      child: _markets.isEmpty
+      child: _selectedMarket == null
           ? _buildNoMarketState()
           : CustomScrollView(
               slivers: [
-                // ✅ NOUVEAU: Filtres de marché
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _buildMarketFilter(),
-                  ),
-                ),
-                
                 // En-tête du marché
                 SliverToBoxAdapter(
                   child: Padding(
@@ -657,86 +642,8 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
               color: Colors.grey[500],
             ),
           ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => _navigateToMarketConfig(),
-            icon: const Icon(Icons.add),
-            label: const Text('Rejoindre un marché'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFB347),
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
         ],
       ),
-    );
-  }
-
-  /// ✅ NOUVEAU: Filtres de marché avec ChoiceChip
-  Widget _buildMarketFilter() {
-    if (_markets.length <= 1) return const SizedBox.shrink();
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Filtrer par marché',
-          style: TextStyle(color: Colors.grey[400], fontSize: 12),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // Option "Tous"
-              ChoiceChip(
-                label: const Text('Tous'),
-                selected: _filterMode == 'all',
-                selectedColor: Colors.orange,
-                backgroundColor: const Color(0xFF2A2A2A),
-                labelStyle: TextStyle(
-                  color: _filterMode == 'all' ? Colors.black : Colors.white,
-                ),
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() {
-                      _filterMode = 'all';
-                      _selectedMarket = null;
-                    });
-                  }
-                },
-              ),
-              // Un chip par marché
-              ..._markets.map((market) => ChoiceChip(
-                label: Text(market.displayName),
-                selected: _filterMode == market.name,
-                selectedColor: Colors.orange,
-                backgroundColor: const Color(0xFF2A2A2A),
-                labelStyle: TextStyle(
-                  color: _filterMode == market.name ? Colors.black : Colors.white,
-                ),
-                avatar: market.isExpired
-                    ? const Icon(Icons.warning, size: 16, color: Colors.red)
-                    : null,
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() {
-                      _filterMode = market.name;
-                      _selectedMarket = market;
-                    });
-                  }
-                },
-              )),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -856,9 +763,6 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   }
 
   Widget _buildProfileCard(NostrProfile profile) {
-    // ✅ WOTX2: Récupérer les badges de compétences
-    final skillBadges = profile.getSkillBadges();
-    
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
@@ -1211,15 +1115,6 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         backgroundColor: const Color(0xFF0A7EA4),
       ),
     );
-  }
-
-  void _navigateToMarketConfig() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MarketScreen(user: widget.user),
-      ),
-    ).then((_) => _loadData());
   }
 
   void _navigateToCreateBon() {
@@ -1763,11 +1658,6 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   String _extractMotivation(String? content) {
     if (content == null) return 'Pas de motivation indiquée';
     try {
-      final json = Map<String, dynamic>.from(
-        Map<String, dynamic>.from(
-          {}..addAll({'raw': content}),
-        ),
-      );
       // Essayer de parser le JSON
       if (content.startsWith('{')) {
         final decoded = Map<String, dynamic>.from(

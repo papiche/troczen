@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
 import '../../models/user.dart';
-import 'onboarding_flow.dart';
 
 /// Étape 1: Création du compte utilisateur
 class OnboardingAccountScreen extends StatefulWidget {
@@ -142,6 +140,9 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
       );
       
       await storageService.saveUser(user);
+      
+      // Initialisation silencieuse du marché global
+      await storageService.initializeDefaultMarket(name: 'Marché Global Ğ1');
       
       setState(() => _isCreatingAccount = false);
       

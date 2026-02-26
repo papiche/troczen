@@ -31,8 +31,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   final _apiService = ApiService();
   
   bool _isCreating = false;
-  List<Market> _markets = [];  // ✅ NOUVEAU: Liste des marchés disponibles
-  Market? _selectedMarket;     // ✅ NOUVEAU: Marché sélectionné pour l'émission
+  Market? _selectedMarket;     // Marché actif pour l'émission
   Color _selectedColor = Colors.blue; // Couleur par défaut
   File? _selectedImage;
   bool _isUploading = false;
@@ -97,14 +96,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     }
   }
 
-  /// ✅ NOUVEAU: Charge la liste des marchés et sélectionne l'actif par défaut
+  /// Charge le marché actif par défaut
   Future<void> _loadMarkets() async {
-    final markets = await _storageService.getMarkets();
     final activeMarket = await _storageService.getActiveMarket();
     
     setState(() {
-      _markets = markets;
-      _selectedMarket = activeMarket ?? (markets.isNotEmpty ? markets.first : null);
+      _selectedMarket = activeMarket;
     });
   }
 
@@ -183,7 +180,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     if (!_formKey.currentState!.validate()) return;
     
     if (_selectedMarket == null || _selectedMarket!.isExpired) {
-      _showError('Aucun marché configuré ou clé expirée.\nAllez dans Mes marchés pour rejoindre un marché.');
+      _showError('Erreur: Aucun marché actif ou marché expiré.');
       return;
     }
 
@@ -856,69 +853,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
               const SizedBox(height: 24),
 
-              // ✅ NOUVEAU: Sélecteur de marché
-              if (_markets.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E1E),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Marché d\'émission',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<Market>(
-                        initialValue: _selectedMarket,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        dropdownColor: const Color(0xFF2A2A2A),
-                        style: const TextStyle(color: Colors.white),
-                        items: _markets.map((market) {
-                          return DropdownMenuItem(
-                            value: market,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.store,
-                                  size: 18,
-                                  color: market.isExpired ? Colors.red : Colors.orange,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    market.displayName,
-                                    style: TextStyle(
-                                      color: market.isExpired ? Colors.red : Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                if (market.isExpired)
-                                  Text(
-                                    '(Expiré)',
-                                    style: TextStyle(color: Colors.red[300], fontSize: 12),
-                                  ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (market) {
-                          setState(() => _selectedMarket = market);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-              
               if (_selectedMarket == null || _selectedMarket!.isExpired)
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -933,7 +867,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Rejoignez d\'abord un marché dans "Mes marchés"',
+                          'Erreur: Aucun marché actif ou marché expiré.',
                           style: TextStyle(color: Colors.grey[300]),
                         ),
                       ),
@@ -941,7 +875,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   ),
                 ),
 
-              const SizedBox(height: 24),
+              if (_selectedMarket == null || _selectedMarket!.isExpired)
+                const SizedBox(height: 24),
 
               ElevatedButton(
                 onPressed: _isCreating ? null : _createBon,

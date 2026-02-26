@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
@@ -21,10 +20,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _marketNameController = TextEditingController();
-  final _seedMarketController = TextEditingController();
   final _relayUrlController = TextEditingController();
-  final _validUntilController = TextEditingController();
 
   final _storageService = StorageService();
 
@@ -50,24 +46,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _currentMarket = market;
       _currentMode = mode;
-      _marketNameController.text = market.name;
-      _seedMarketController.text = market.seedMarket;
       _relayUrlController.text = market.relayUrl ?? AppConfig.defaultRelayUrl;
-      _validUntilController.text = market.validUntil.toIso8601String().split('T').first;
       _isLoading = false;
     });
   }
 
   Future<void> _saveSettings() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_currentMarket == null) return;
 
     setState(() => _isSaving = true);
 
     try {
-      final market = Market(
-        name: _marketNameController.text.trim(),
-        seedMarket: _seedMarketController.text.trim(),
-        validUntil: DateTime.parse(_validUntilController.text.trim()),
+      final market = _currentMarket!.copyWith(
         relayUrl: _relayUrlController.text.trim().isNotEmpty
             ? _relayUrlController.text.trim()
             : null,
@@ -99,21 +90,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _generateNewKey() async {
-    final random = Random.secure();
-    final randomBytes = List<int>.generate(32, (i) => random.nextInt(256));
-    final hexKey = randomBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    setState(() {
-      _seedMarketController.text = hexKey;
-    });
-  }
-
   @override
   void dispose() {
-    _marketNameController.dispose();
-    _seedMarketController.dispose();
     _relayUrlController.dispose();
-    _validUntilController.dispose();
     super.dispose();
   }
 
@@ -154,56 +133,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
               
               const Text(
-                'Configuration du Marché',
+                'Réseau',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _marketNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nom du marché',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer un nom';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _seedMarketController,
-                      decoration: const InputDecoration(
-                        labelText: 'Graine du marché (seed_market)',
-                        border: OutlineInputBorder(),
-                        hintText: '32 bytes en hex',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'La clé est requise';
-                        }
-                        if (value.length != 64) {
-                          return 'La clé doit faire 64 caractères hex (32 bytes)';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _generateNewKey,
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Générer une nouvelle clé',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Clé symétrique utilisée pour chiffrer les P3. Gardez-la secrète.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -217,34 +148,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               const Text(
                 'Relais utilisé pour synchroniser les P3. Laissez vide pour utiliser le relais par défaut.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _validUntilController,
-                decoration: const InputDecoration(
-                  labelText: 'Date d\'expiration',
-                  border: OutlineInputBorder(),
-                  hintText: 'YYYY-MM-DD',
-                ),
-                readOnly: true,
-                onTap: () async {
-                  final selectedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now().add(const Duration(days: 365)),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 3650)),
-                  );
-                  if (selectedDate != null) {
-                    setState(() {
-                      _validUntilController.text = selectedDate.toIso8601String().split('T').first;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Date jusqu\'à laquelle la clé est valide. Après cette date, les nouveaux bons ne pourront plus être créés.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 32),
@@ -323,16 +226,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 label: const Text('📤 Partager l\'application'),
               ),
               const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () {
-                  // TODO: Réinitialiser le marché
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                child: const Text('Réinitialiser le marché'),
-              ),
-              
               // Indicateur Marché Global (seed à zéro = transparence publique)
               if (_currentMarket?.seedMarket == ('0' * 64)) ...[
                 const SizedBox(height: 24),

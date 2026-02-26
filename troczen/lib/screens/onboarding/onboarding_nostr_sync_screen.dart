@@ -91,13 +91,13 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       final List<Map<String, String>> receivedP3s = [];
       
       // Configurer le callback pour recevoir les P3
-      int _uiUpdateCounter = 0;
+      int uiUpdateCounter = 0;
       nostrService.onP3Received = (bonId, p3Hex) async {
         receivedP3s.add({'bonId': bonId, 'p3': p3Hex});
-        _uiUpdateCounter++;
+        uiUpdateCounter++;
         
         // Rafraîchir l'UI uniquement tous les 20 bons reçus
-        if (_uiUpdateCounter % 20 == 0) {
+        if (uiUpdateCounter % 20 == 0) {
           if (!mounted) return;
           setState(() {
             _p3Count = receivedP3s.length;

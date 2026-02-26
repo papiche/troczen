@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../models/user.dart';
 import '../../models/bon.dart';
-import '../../models/market.dart';
 import '../../services/storage_service.dart';
 import '../../services/logger_service.dart';
 
@@ -28,10 +27,6 @@ class _DashboardViewState extends State<DashboardView>
   final _storageService = StorageService();
   
   late TabController _tabController;
-  
-  // ✅ NOUVEAU: Support multi-marchés
-  List<Market> _markets = [];
-  String _filterMode = 'all';  // 'all' ou nom du marché
   
   DashboardMetrics? _metrics;
   List<Bon> _localBons = [];  // Bons du wallet local
@@ -59,22 +54,19 @@ class _DashboardViewState extends State<DashboardView>
     setState(() => _isLoading = true);
     
     try {
-      // ✅ NOUVEAU: Charger les marchés en parallèle
       final results = await Future.wait([
         _storageService.getBons(),  // Wallet local
         _storageService.getMarketBonsData(),  // Marché global (kind 30303)
-        _storageService.getMarkets(),  // ✅ NOUVEAU: Liste des marchés
       ]);
       
       _localBons = results[0] as List<Bon>;
       _marketBons = results[1] as List<Map<String, dynamic>>;
-      _markets = results[2] as List<Market>;
       
       Logger.log('DashboardView',
-          'Données chargées: ${_localBons.length} bons locaux, ${_marketBons.length} bons marché, ${_markets.length} marchés');
+          'Données chargées: ${_localBons.length} bons locaux, ${_marketBons.length} bons marché');
       
-      // Calculer les métriques depuis le marché global (filtré si nécessaire)
-      final metrics = _calculateMetricsFromMarket(_getFilteredMarketBons(), _getFilteredLocalBons());
+      // Calculer les métriques depuis le marché global
+      final metrics = _calculateMetricsFromMarket(_marketBons, _localBons);
       
       setState(() {
         _metrics = metrics;
@@ -86,18 +78,6 @@ class _DashboardViewState extends State<DashboardView>
     }
   }
   
-  /// ✅ NOUVEAU: Filtre les bons du marché selon le marché sélectionné
-  List<Map<String, dynamic>> _getFilteredMarketBons() {
-    if (_filterMode == 'all') return _marketBons;
-    return _marketBons.where((b) => b['marketName'] == _filterMode).toList();
-  }
-  
-  /// ✅ NOUVEAU: Filtre les bons locaux selon le marché sélectionné
-  List<Bon> _getFilteredLocalBons() {
-    if (_filterMode == 'all') return _localBons;
-    return _localBons.where((b) => b.marketName == _filterMode).toList();
-  }
-
   /// ✅ CORRECTION: Calcule les métriques depuis les données du marché global
   DashboardMetrics _calculateMetricsFromMarket(
     List<Map<String, dynamic>> marketBons,
@@ -229,19 +209,6 @@ class _DashboardViewState extends State<DashboardView>
               ? _buildEmptyState()
               : Column(
                   children: [
-                    // ✅ NOUVEAU: Filtres de marché
-                    if (_markets.length > 1)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
-                          border: Border(
-                            bottom: BorderSide(color: Colors.grey[800]!),
-                          ),
-                        ),
-                        child: _buildMarketFilter(),
-                      ),
-                    
                     // Contenu des onglets
                     Expanded(
                       child: TabBarView(
@@ -258,64 +225,6 @@ class _DashboardViewState extends State<DashboardView>
     );
   }
   
-  /// ✅ NOUVEAU: Filtres de marché avec ChoiceChip
-  Widget _buildMarketFilter() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Filtrer par marché',
-          style: TextStyle(color: Colors.grey[400], fontSize: 12),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // Option "Tous"
-              ChoiceChip(
-                label: const Text('Tous les marchés'),
-                selected: _filterMode == 'all',
-                selectedColor: Colors.orange,
-                backgroundColor: const Color(0xFF2A2A2A),
-                labelStyle: TextStyle(
-                  color: _filterMode == 'all' ? Colors.black : Colors.white,
-                ),
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _filterMode = 'all');
-                    _loadMetrics();
-                  }
-                },
-              ),
-              // Un chip par marché
-              ..._markets.map((market) => ChoiceChip(
-                label: Text(market.displayName),
-                selected: _filterMode == market.name,
-                selectedColor: Colors.orange,
-                backgroundColor: const Color(0xFF2A2A2A),
-                labelStyle: TextStyle(
-                  color: _filterMode == market.name ? Colors.black : Colors.white,
-                ),
-                avatar: market.isExpired
-                    ? const Icon(Icons.warning, size: 16, color: Colors.red)
-                    : null,
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _filterMode = market.name);
-                    _loadMetrics();
-                  }
-                },
-              )),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildEmptyState() {
     return Center(
       child: Column(

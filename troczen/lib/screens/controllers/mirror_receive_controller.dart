@@ -121,7 +121,7 @@ class MirrorReceiveController extends ChangeNotifier {
   Future<void> _processOffer(QrPayloadV2 payload, VoidCallback onSuccess) async {
     try {
       final p3Bytes = await _storageService.getP3FromCacheBytes(payload.bonId);
-      if (p3Bytes == null) throw Exception('Part P3 non trouvée. Synchronisez le marché.');
+      if (p3Bytes == null) throw Exception('Bon introuvable localement. Connectez-vous à Internet et rafraîchissez votre wallet (⟳) pour synchroniser le marché, puis réessayez.');
 
       final encryptedP2WithTag = Uint8List.fromList([...payload.encryptedP2, ...payload.p2Tag]);
       final p2Bytes = await _cryptoService.decryptP2Bytes(
