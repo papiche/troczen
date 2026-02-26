@@ -21,6 +21,7 @@ class CacheDatabaseService {
   static const String _n2CacheTable = 'n2_cache';
   static const String _localWalletBonsTable = 'local_wallet_bons';
   static const String _followersCacheTable = 'followers_cache';
+  static const String _skillAttestationsTable = 'skill_attestations';
 
   // Stream pour notifier les insertions (Vigilance Alchimiste)
   final _insertionsController = StreamController<Map<String, dynamic>>.broadcast();
@@ -144,6 +145,27 @@ class CacheDatabaseService {
         updated_at INTEGER NOT NULL
       )
     ''');
+
+    // Table pour les attestations de savoir-faire (kind 30502)
+    await db.execute('''
+      CREATE TABLE $_skillAttestationsTable (
+        event_id TEXT PRIMARY KEY,
+        attester_npub TEXT NOT NULL,
+        subject_npub TEXT NOT NULL,
+        skill TEXT NOT NULL,
+        permit_id TEXT,
+        seed_market TEXT,
+        motivation TEXT,
+        created_at INTEGER NOT NULL,
+        raw_data TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_skill_subject ON $_skillAttestationsTable(subject_npub)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_skill_attester ON $_skillAttestationsTable(attester_npub)',
+    );
   }
 
   // ============================================================
@@ -957,14 +979,61 @@ class CacheDatabaseService {
 
   /// Sauvegarder une attestation de savoir-faire
   Future<void> saveSkillAttestation(Map<String, dynamic> attestationData) async {
-    // final db = await database;
-    // TODO: Ajouter la logique d'insertion dans une table dédiée si nécessaire
+    final db = await database;
+    final eventId = attestationData['id'] as String?;
+    if (eventId == null) return;
+
+    await db.insert(
+      _skillAttestationsTable,
+      {
+        'event_id': eventId,
+        'attester_npub': attestationData['pubkey'],
+        'subject_npub': attestationData['subject_npub'] ?? '',
+        'skill': attestationData['skill'] ?? 'Savoir-faire',
+        'permit_id': attestationData['permit_id'],
+        'seed_market': attestationData['seed_market'],
+        'motivation': attestationData['motivation'],
+        'created_at': attestationData['created_at'] ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'raw_data': jsonEncode(attestationData),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
 
     // 📢 Émettre le signal pour le NotificationService
     _insertionsController.add({
       'type': 'n30502_attestation',
       'data': attestationData,
     });
+  }
+
+  /// Récupérer les attestations reçues par un utilisateur
+  Future<List<Map<String, dynamic>>> getSkillAttestationsForSubject(String subjectNpub) async {
+    final db = await database;
+    final results = await db.query(
+      _skillAttestationsTable,
+      where: 'subject_npub = ?',
+      whereArgs: [subjectNpub],
+      orderBy: 'created_at DESC',
+    );
+    
+    return results.map((row) {
+      return jsonDecode(row['raw_data'] as String) as Map<String, dynamic>;
+    }).toList();
+  }
+
+  /// Récupérer les attestations émises par un utilisateur
+  Future<List<Map<String, dynamic>>> getSkillAttestationsByAttester(String attesterNpub) async {
+    final db = await database;
+    final results = await db.query(
+      _skillAttestationsTable,
+      where: 'attester_npub = ?',
+      whereArgs: [attesterNpub],
+      orderBy: 'created_at DESC',
+    );
+    
+    return results.map((row) {
+      return jsonDecode(row['raw_data'] as String) as Map<String, dynamic>;
+    }).toList();
   }
 
   // ============================================================
@@ -1033,6 +1102,7 @@ class CacheDatabaseService {
     await db.delete(_n2CacheTable);
     await db.delete(_localWalletBonsTable);
     await db.delete(_followersCacheTable);
+    await db.delete(_skillAttestationsTable);
   }
 
   /// Exécute la maintenance automatique de la base de données
