@@ -144,7 +144,7 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
       await storageService.saveUser(user);
       
       // Initialisation silencieuse du marché global
-      final market = await storageService.initializeDefaultMarket(name: 'Marché Global Ğ1');
+      final market = await storageService.initializeDefaultMarket(name: 'Marché Libre');
       
       // ---> Enregistrement de la seed de zéros pour la suite du flux
       if (mounted) {

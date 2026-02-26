@@ -22,11 +22,11 @@ class BonCardHeader extends StatelessWidget {
     required this.color,
   });
 
-  /// Vérifie si le bon appartient au Marché Global Ğ1 (seed à zéro)
+  /// Vérifie si le bon appartient au Marché Libre (seed à zéro)
   /// Dans ce cas, on affiche l'équivalence 1 ẐEN ≈ 0.1 Ğ1
   bool _isGlobalMarket(String marketName) {
     final upperName = marketName.toUpperCase();
-    return upperName == 'MARCHÉ GLOBAL Ğ1' ||
+    return upperName == 'MARCHÉ LIBRE' ||
            upperName == 'MARCHÉ GLOBAL G1' ||
            upperName == 'HACKATHON';
   }

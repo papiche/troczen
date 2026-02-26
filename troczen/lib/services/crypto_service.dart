@@ -51,9 +51,9 @@ class EncryptP2Result {
 class CryptoService {
   final Random _secureRandom = Random.secure();
   
-  /// ✅ MARCHÉ GLOBAL Ğ1: Seed constante (32 octets à zéro) - UPLANET ORIGIN
+  /// ✅ MARCHÉ LIBRE: Seed constante (32 octets à zéro) - UPLANET ORIGIN
   /// 0000000000000000000000000000000000000000000000000000000000000000
-  /// Utilisée pour le Marché Global Ğ1 (transparence totale et auditabilité publique)
+  /// Utilisée pour le Marché Libre (transparence totale et auditabilité publique)
   /// Ce n'est PAS une faille de sécurité, c'est une FEATURE : tout le monde peut auditer
   /// les transactions (comme une blockchain publique). Équivalence : 1 ẐEN ≈ 0.1 Ğ1
   ///

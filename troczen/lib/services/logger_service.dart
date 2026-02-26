@@ -4,9 +4,9 @@ import 'storage_service.dart';
 import 'feedback_service.dart';
 
 /// Service de log centralisé qui conditionne l'affichage des logs
-/// au mode DEBUG (Marché Global Ğ1) ou au mode debug Flutter.
+/// au mode DEBUG (Marché Libre) ou au mode debug Flutter.
 ///
-/// En Marché Global Ğ1 (transparence publique):
+/// En Marché Libre (transparence publique):
 /// - Les logs sont stockés en mémoire pour export ultérieur
 /// - Un accès facile aux logs est disponible via getLogs() et exportLogs()
 /// - Les logs peuvent être transmis via /api/feedback pour soumission d'issues
@@ -26,7 +26,7 @@ class Logger {
   /// Taille maximale du buffer de logs en production (en nombre d'entrées)
   static const int _maxBufferSizeProd = 200;
 
-  /// Vérifie si le mode Marché Global Ğ1 est actif (seed à zéro = transparence)
+  /// Vérifie si le mode Marché Libre est actif (seed à zéro = transparence)
   /// Doit être appelé au démarrage de l'application ou dans les vues principales
   static Future<void> checkDebugMode() async {
     if (_initialized) return;
@@ -35,16 +35,16 @@ class Logger {
       final market = await _storage.getMarket();
       final marketName = market?.name.toUpperCase() ?? '';
       // Le mode debug est activé pour le Marché Global (transparence publique)
-      _isDebugMode = marketName == 'MARCHÉ GLOBAL Ğ1' ||
+      _isDebugMode = marketName == 'MARCHÉ LIBRE' ||
                      marketName == 'MARCHÉ GLOBAL G1' ||
                      marketName == 'HACKATHON' ||
                      market?.seedMarket == ('0' * 64);
       _initialized = true;
       
       if (_isDebugMode) {
-        debugPrint('🌐 MODE DEBUG ACTIVÉ (Marché Global Ğ1 - Transparence publique) 🌐');
+        debugPrint('🌐 MODE DEBUG ACTIVÉ (Marché Libre - Transparence publique) 🌐');
         debugPrint('📋 Les logs sont stockés en mémoire et peuvent être exportés');
-        _addLog('SYSTEM', 'Marché Global Ğ1 activé - Logs en mémoire activés (Transparence)', 'info');
+        _addLog('SYSTEM', 'Marché Libre activé - Logs en mémoire activés (Transparence)', 'info');
       }
     } catch (e) {
       // En cas d'erreur, on reste en mode non-debug
@@ -141,7 +141,7 @@ ${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémenta
 ```
 
 ---
-*Soumis depuis le Marché Global Ğ1 de TrocZen*
+*Soumis depuis le Marché Libre de TrocZen*
 ''';
 
       // Utiliser le FeedbackService existant

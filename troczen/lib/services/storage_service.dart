@@ -906,7 +906,7 @@ class StorageService {
   /// Initialise un marché par défaut si aucun n'existe
   ///
   /// Deux types de marchés :
-  /// - **MARCHÉ GLOBAL Ğ1** : Seed à zéro = Transparence publique et auditabilité totale
+  /// - **MARCHÉ LIBRE** : Seed à zéro = Transparence publique et auditabilité totale
   ///   (équivalence 1 ẐEN = 0.1 Ğ1 pour ancrage cognitif)
   /// - **MARCHÉ LOCAL** : Seed aléatoire sécurisée pour écosystème privé/fermé
   Future<Market> initializeDefaultMarket({String? name}) async {
@@ -914,8 +914,8 @@ class StorageService {
     if (existing != null) return existing;
 
     // Déterminer le nom du marché
-    final marketName = name ?? 'Marché Global Ğ1';
-    final isGlobalMarket = marketName.toUpperCase() == 'MARCHÉ GLOBAL Ğ1' ||
+    final marketName = name ?? 'Marché Libre';
+    final isGlobalMarket = marketName.toUpperCase() == 'MARCHÉ LIBRE' ||
                            marketName.toUpperCase() == 'HACKATHON';
 
     String seedHex;
@@ -926,7 +926,7 @@ class StorageService {
       // Tout le monde peut auditer le graphe des transactions (comme une blockchain publique)
       // Ancrage cognitif : 1 ẐEN ≈ 0.1 Ğ1 sur ce marché
       seedHex = '0' * 64; // 32 octets à zéro
-      Logger.info('StorageService', '🌐 Marché Global Ğ1 activé (Transparence publique)');
+      Logger.info('StorageService', '🌐 Marché Libre activé (Transparence publique)');
     } else {
       // ✅ MARCHÉ LOCAL : Graine aléatoire sécurisée pour écosystème privé
       // Idéal pour un village, une communauté, un réseau de confiance fermé
@@ -947,7 +947,7 @@ class StorageService {
     await saveMarket(defaultMarket);
     
     if (isGlobalMarket) {
-      Logger.success('StorageService', '🌐 Marché Global Ğ1 créé (Transparence publique, 1 ẐEN ≈ 0.1 Ğ1)');
+      Logger.success('StorageService', '🌐 Marché Libre créé (Transparence publique, 1 ẐEN ≈ 0.1 Ğ1)');
     } else {
       Logger.success('StorageService', '🏘️ Marché local "$marketName" créé avec seed sécurisée');
     }

@@ -17,7 +17,7 @@ import 'services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialiser le logger et vérifier le mode Marché Global Ğ1 (transparence publique)
+  // Initialiser le logger et vérifier le mode Marché Libre (transparence publique)
   await Logger.checkDebugMode();
   
   final storageService = StorageService();
