@@ -1,10 +1,11 @@
  import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../utils/bon_extensions.dart';
-import '../../services/image_compression_service.dart';
-
-/// Widget d'image avec support offline-first.
+ import 'package:flutter/material.dart';
+ import 'package:cached_network_image/cached_network_image.dart';
+ import '../../utils/bon_extensions.dart';
+ import '../../services/image_compression_service.dart';
+ import '../../services/image_memory_cache.dart';
+ 
+ /// Widget d'image avec support offline-first.
 /// 
 /// Priorise l'utilisation d'images locales en cache,
 /// avec fallback sur CachedNetworkImage pour le réseau.
@@ -68,8 +69,21 @@ class OfflineFirstImage extends StatelessWidget {
       );
     }
     
-    // 2. Tenter le fallbackBase64 (picture64)
+    // 2. Tenter le fallbackBase64 (picture64) via le cache mémoire
     if (fallbackBase64 != null && ImageCompressionService.isBase64DataUri(fallbackBase64)) {
+      // On utilise l'URL ou le fallbackBase64 comme clé de cache
+      final cachedImage = ImageMemoryCache.get(url ?? fallbackBase64, fallbackBase64);
+      if (cachedImage != null) {
+        return Image(
+          image: cachedImage,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) => _buildDefaultIcon(),
+        );
+      }
+      
+      // Fallback si le cache échoue
       return ImageCompressionService.buildImage(
         uri: fallbackBase64,
         width: width,
