@@ -445,7 +445,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     String label;
     IconData icon;
 
-    if (bon.isExpired) {
+    if (bon.isExpired || bon.status == BonStatus.expired) {
       backgroundColor = Colors.red.withValues(alpha: 0.9);
       textColor = Colors.white;
       label = 'Expiré';

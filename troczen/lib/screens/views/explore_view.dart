@@ -477,7 +477,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                   ),
                 ),
               ),
-              if (bon.p2 != null && bon.status == BonStatus.active && !bon.isExpired) ...[
+              if (bon.p2 != null && bon.status == BonStatus.active && !bon.isExpired && bon.status != BonStatus.expired) ...[
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(

@@ -810,22 +810,26 @@ class StorageService {
   }
 
   /// Nettoie les bons expirés du wallet local
-  /// Supprime définitivement les bons dont la date d'expiration est dépassée
+  /// Marque les bons expirés avec le statut BonStatus.expired au lieu de les supprimer
   Future<int> cleanupExpiredBons() async {
     return await _bonsLock.synchronized(() async {
       final bons = await _getBonsInternal();
-      final initialCount = bons.length;
+      int expiredCount = 0;
       
-      // Garder uniquement les bons non expirés
-      bons.removeWhere((b) => b.isExpired);
-      
-      final removedCount = initialCount - bons.length;
-      if (removedCount > 0) {
-        await _saveBons(bons);
-        Logger.log('StorageService', 'Nettoyage: $removedCount bons expirés supprimés');
+      for (int i = 0; i < bons.length; i++) {
+        final bon = bons[i];
+        if (bon.isExpired && bon.status != BonStatus.expired) {
+          bons[i] = bon.copyWith(status: BonStatus.expired);
+          expiredCount++;
+        }
       }
       
-      return removedCount;
+      if (expiredCount > 0) {
+        await _saveBons(bons);
+        Logger.log('StorageService', 'Nettoyage: $expiredCount bons marqués comme expirés');
+      }
+      
+      return expiredCount;
     });
   }
 

@@ -80,7 +80,7 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
       if (bon.status == BonStatus.active && !bon.isExpired) {
         _activeBonsCount++;
         _totalBalance += bon.value;
-      } else if (bon.isExpired) {
+      } else if (bon.isExpired || bon.status == BonStatus.expired) {
         _expiredBonsCount++;
       } else if (bon.status == BonStatus.spent) {
         _spentBonsCount++;
@@ -423,7 +423,7 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
 
   Widget _buildTransactionItem(Bon bon) {
     final isIssuer = bon.issuerNpub == widget.user.npub;
-    final isExpired = bon.isExpired;
+    final isExpired = bon.isExpired || bon.status == BonStatus.expired;
     final isSpent = bon.status == BonStatus.spent;
     
     Color statusColor;
