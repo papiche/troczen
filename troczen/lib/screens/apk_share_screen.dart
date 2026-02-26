@@ -119,12 +119,6 @@ class _ApkShareScreenState extends State<ApkShareScreen> {
                       color: Color(0xFF0A7EA4),
                     ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Scannez le QR Code ci-dessous avec l\'appareil photo de votre téléphone pour télécharger et installer TrocZen.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14),
-                  ),
                 ],
               ),
             ),
@@ -371,14 +365,14 @@ class _ApkShareScreenState extends State<ApkShareScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.orange),
+              Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
               SizedBox(width: 8),
               Text(
                 'Instructions',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange,
+                  color: Color(0xFF0A7EA4),
                 ),
               ),
             ],
@@ -386,7 +380,7 @@ class _ApkShareScreenState extends State<ApkShareScreen> {
           const SizedBox(height: 12),
           const Text(
             'Pour le destinataire:',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 8),
           _buildInstructionStep('1', 'Ouvrez l\'appareil photo du téléphone'),
@@ -406,7 +400,7 @@ class _ApkShareScreenState extends State<ApkShareScreen> {
             'L\'installation depuis des sources inconnues doit être autorisée sur l\'appareil destinataire.',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade700,
+              color: Colors.black87,
             ),
           ),
         ],

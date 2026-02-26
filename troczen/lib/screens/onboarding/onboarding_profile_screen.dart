@@ -739,8 +739,8 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
         website: user.website,
         g1pub: user.g1pub,
         about: _aboutController.text.trim().isEmpty ? null : _aboutController.text.trim(),
-        picture: pictureUrl,
-        banner: _base64Banner,
+        picture: null, // Sera mis à jour avec l'URL IPFS en arrière-plan
+        banner: null,  // Sera mis à jour avec l'URL IPFS en arrière-plan
         picture64: pictureUrl,
         banner64: _base64Banner,
         relayUrl: state.relayUrl,

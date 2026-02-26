@@ -755,6 +755,8 @@ class NostrService {
                 about: contentJson['about'] as String?,
                 picture: contentJson['picture'] as String?,
                 banner: contentJson['banner'] as String?,
+                picture64: contentJson['picture64'] as String?,
+                banner64: contentJson['banner64'] as String?,
                 website: contentJson['website'] as String?,
               );
               if (!completer.isCompleted) {

@@ -158,6 +158,14 @@ class MirrorReceiveController extends ChangeNotifier {
         createdAt: payload.emittedAt,
         marketName: marketName,
         expiresAt: expiresAtFromMarket,
+        picture: marketBonData?['picture'] as String?,
+        banner: marketBonData?['banner'] as String?,
+        picture64: marketBonData?['picture64'] as String?,
+        banner64: marketBonData?['banner64'] as String?,
+        logoUrl: marketBonData?['picture'] as String?,
+        wish: marketBonData?['wish'] as String?,
+        rarity: marketBonData?['rarity'] as String? ?? 'common',
+        cardType: marketBonData?['category'] as String? ?? 'generic',
       );
 
       final updatedBon = existingBon != null
@@ -165,6 +173,12 @@ class MirrorReceiveController extends ChangeNotifier {
               status: BonStatus.active,
               p2: p2,
               expiresAt: existingBon.expiresAt ?? expiresAtFromMarket,
+              picture: existingBon.picture ?? marketBonData?['picture'] as String?,
+              banner: existingBon.banner ?? marketBonData?['banner'] as String?,
+              picture64: existingBon.picture64 ?? marketBonData?['picture64'] as String?,
+              banner64: existingBon.banner64 ?? marketBonData?['banner64'] as String?,
+              logoUrl: existingBon.logoUrl ?? marketBonData?['picture'] as String?,
+              wish: existingBon.wish ?? marketBonData?['wish'] as String?,
             )
           : bon;
       await _storageService.saveBon(updatedBon);

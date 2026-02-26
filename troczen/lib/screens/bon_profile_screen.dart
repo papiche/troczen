@@ -149,7 +149,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               picture: finalPictureUrl,
               banner: finalPictureUrl,
               picture64: _base64Image ?? widget.bon.picture64,
-              banner64: _base64Image ?? widget.bon.picture64, // Utilise picture64 comme fallback pour banner64
+              banner64: _base64Image ?? widget.bon.banner64 ?? widget.bon.picture64, // Utilise picture64 comme fallback pour banner64
             );
             
             _crypto.secureZeroiseBytes(nsecBonBytes);
@@ -180,8 +180,10 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             wish: _descriptionController.text,
             cardType: _selectedCategory,
             picture: finalPictureUrl ?? widget.bon.picture,
+            banner: finalPictureUrl ?? widget.bon.banner,
             logoUrl: finalPictureUrl ?? widget.bon.logoUrl, // Pour compatibilité
             picture64: _base64Image ?? widget.bon.picture64,
+            banner64: _base64Image ?? widget.bon.banner64,
           );
           await _storage.saveBon(updatedBon);
         }

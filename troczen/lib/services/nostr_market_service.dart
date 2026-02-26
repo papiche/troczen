@@ -655,6 +655,8 @@ class NostrMarketService {
 
       String? pictureUrl;
       String? bannerUrl;
+      String? picture64;
+      String? banner64;
       try {
         final content = event['content'];
         if (content != null && content is String) {
@@ -677,6 +679,9 @@ class NostrMarketService {
               type: 'banner'
             );
           }
+          
+          picture64 = contentJson['picture64'] as String?;
+          banner64 = contentJson['banner64'] as String?;
         }
       } catch (e) {
         Logger.error('NostrMarket', 'Erreur parsing content bon', e);
@@ -697,6 +702,8 @@ class NostrMarketService {
         'status': 'active',
         'picture': pictureUrl,
         'banner': bannerUrl,
+        'picture64': picture64,
+        'banner64': banner64,
         'p3Hex': p3Hex,
         'eventTimestamp': eventTimestamp,
         'wish': wish,
