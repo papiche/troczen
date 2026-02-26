@@ -84,8 +84,17 @@ class NotificationService {
             data: data,
           ));
         }
+      } else if (type == 'n30502_attestation') {
+        final skill = data['skill'] ?? 'Savoir-faire';
+        final from = data['attestor_name'] ?? 'Un pair';
+        
+        addNotification(MarketNotification(
+          type: NotificationType.expertise,
+          message: '🛡️ Nouvelle attestation : $from a validé la compétence [$skill].',
+          timestamp: DateTime.now(),
+          data: data,
+        ));
       }
-      // TODO: Ajouter la détection des attestations (Expertise) si on écoute les Kind 30502
     } catch (e) {
       Logger.error('NotificationService', 'Erreur traitement insertion', e);
     }

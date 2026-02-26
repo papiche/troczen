@@ -7,6 +7,8 @@ import '../services/storage_service.dart';
 import '../services/logger_service.dart';
 import 'logs_screen.dart';
 import 'apk_share_screen.dart';
+import 'package:share_plus/share_plus.dart';
+import '../services/audit_trail_service.dart';
 
 /// Écran de paramètres pour configurer le marché, relais, etc.
 class SettingsScreen extends StatefulWidget {
@@ -200,12 +202,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
               
               ElevatedButton(
-                onPressed: () {
-                  // TODO: Exporter les données
+                onPressed: () async {
+                  try {
+                    final auditService = AuditTrailService();
+                    // On génère le fichier CSV (logique déjà dans le service)
+                    final file = await auditService.exportToCsv();
+                    
+                    // On ouvre la fenêtre de partage du téléphone
+                    await Share.shareXFiles([XFile(file.path)], text: 'Audit des échanges TrocZen');
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ Export CSV généré'), backgroundColor: Colors.green),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('❌ Erreur export: $e'), backgroundColor: Colors.red),
+                    );
+                  }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0A7EA4),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A7EA4)),
                 child: const Text('Exporter les données (CSV)'),
               ),
               const SizedBox(height: 8),
@@ -243,8 +258,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Expanded(
                         child: Text(
                           '🌐 Marché Global Public\n'
-                          'Les transactions de ce marché sont totalement transparentes et auditables par tous.\n'
-                          'Équivalence : 1 ẐEN ≈ 0.1 Ğ1',
+                          'Les transactions de ce marché sont totalement transparentes et auditables par tous.',
                           style: TextStyle(fontSize: 12, color: Colors.white),
                         ),
                       ),

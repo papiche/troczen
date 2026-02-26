@@ -15,8 +15,13 @@ import '../services/image_compression_service.dart';
 
 class CreateBonScreen extends StatefulWidget {
   final User user;
+  final NostrProfile? initialReceiverProfile;
 
-  const CreateBonScreen({super.key, required this.user});
+  const CreateBonScreen({
+    super.key,
+    required this.user,
+    this.initialReceiverProfile,
+  });
 
   @override
   State<CreateBonScreen> createState() => _CreateBonScreenState();
@@ -55,6 +60,11 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     _issuerNameController.text = widget.user.displayName;
     // Valeur par défaut: website du profil utilisateur
     _websiteController.text = widget.user.website ?? '';
+    
+    if (widget.initialReceiverProfile != null) {
+      _wishController.text = 'Pour ${widget.initialReceiverProfile!.name}';
+    }
+    
     _loadMarkets();
     _loadSuggestedTags();
     _loadAvailableDu();
@@ -582,7 +592,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
               TextFormField(
                 controller: _issuerNameController,
-                style: const TextStyle(color: Colors.white),
+                readOnly: widget.initialReceiverProfile != null,
+                style: TextStyle(
+                  color: widget.initialReceiverProfile != null ? Colors.grey : Colors.white,
+                ),
                 decoration: InputDecoration(
                   labelText: 'Nom de l\'émetteur',
                   labelStyle: TextStyle(color: Colors.grey[400]),

@@ -952,6 +952,22 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES SKILL ATTESTATION (KIND 30502)
+  // ============================================================
+
+  /// Sauvegarder une attestation de savoir-faire
+  Future<void> saveSkillAttestation(Map<String, dynamic> attestationData) async {
+    // final db = await database;
+    // TODO: Ajouter la logique d'insertion dans une table dédiée si nécessaire
+
+    // 📢 Émettre le signal pour le NotificationService
+    _insertionsController.add({
+      'type': 'n30502_attestation',
+      'data': attestationData,
+    });
+  }
+
+  // ============================================================
   // MÉTHODES FOLLOWERS CACHE
   // ============================================================
 

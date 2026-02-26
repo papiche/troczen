@@ -1108,13 +1108,15 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   }
 
   void _createBonForMerchant(NostrProfile profile) {
-    // TODO: Implémenter la création de bon pour un commerçant
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Créer un bon pour ${profile.name}'),
-        backgroundColor: const Color(0xFF0A7EA4),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateBonScreen(
+          user: widget.user,
+          initialReceiverProfile: profile,
+        ),
       ),
-    );
+    ).then((_) => _loadData());
   }
 
   void _navigateToCreateBon() {
