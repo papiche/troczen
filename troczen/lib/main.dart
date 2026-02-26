@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding/onboarding_flow.dart';
 import 'providers/app_mode_provider.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,11 +20,29 @@ void main() async {
   // Initialiser le logger et vérifier le mode Marché Global Ğ1 (transparence publique)
   await Logger.checkDebugMode();
   
+  final storageService = StorageService();
+  final cryptoService = CryptoService();
+  final nostrService = NostrService(
+    cryptoService: cryptoService,
+    storageService: storageService,
+  );
+  
+  NotificationService().init(storageService);
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => AppModeProvider(StorageService()),
+          create: (_) => AppModeProvider(storageService),
+        ),
+        Provider<StorageService>.value(
+          value: storageService,
+        ),
+        Provider<CryptoService>.value(
+          value: cryptoService,
+        ),
+        Provider<NostrService>.value(
+          value: nostrService,
         ),
       ],
       child: const TrocZenApp(),

@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:archive/archive.dart';
 import '../../models/user.dart';
 import '../../services/storage_service.dart';
 import '../../services/logger_service.dart';
@@ -9,6 +14,7 @@ import '../../services/cache_database_service.dart';
 import '../../widgets/alchimiste/metric_card.dart';
 import '../../widgets/alchimiste/time_filter_bar.dart';
 import 'circuits_graph_view.dart';
+import '../../services/notification_service.dart';
 
 /// DashboardView — Données économiques du marché
 /// ✅ Intégration TimeFilterBar & MetricCards pour le mode Alchimiste
@@ -41,7 +47,7 @@ class _DashboardViewState extends State<DashboardView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadMetrics();
   }
 
@@ -107,6 +113,15 @@ class _DashboardViewState extends State<DashboardView>
         return ((current - previous) / previous) * 100;
       }
 
+      // Calcul de la vélocité
+      double velocity = 0.0;
+      if (currentAgg.count > 0) {
+        velocity = currentAgg.transfersCount / currentAgg.count;
+      }
+
+      // TODO: Calcul de l'indice de confiance global (nécessite les profils Nostr)
+      double globalTrustIndex = 0.0;
+
       setState(() {
         _metrics = DashboardMetrics(
           totalVolume: currentAgg.totalVolume,
@@ -120,6 +135,8 @@ class _DashboardViewState extends State<DashboardView>
           totalMarketBons: totalMarketBons,
           series: currentAgg.series,
           topIssuers: topIssuers,
+          velocity: velocity,
+          globalTrustIndex: globalTrustIndex,
         );
         _isLoading = false;
       });
@@ -150,6 +167,53 @@ class _DashboardViewState extends State<DashboardView>
             tooltip: 'Circuits du Marché',
           ),
           IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _exportMarketReport,
+            tooltip: 'Exporter Rapport de Marché',
+          ),
+          StreamBuilder<List<MarketNotification>>(
+            stream: NotificationService().notificationsStream,
+            builder: (context, snapshot) {
+              final notifications = snapshot.data ?? [];
+              final unreadCount = notifications.length; // Simplification: on compte tout comme non lu
+              
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () => _showNotificationsDialog(context, notifications),
+                    tooltip: 'Signaux Alchimiques',
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMetrics,
             tooltip: 'Actualiser',
@@ -160,10 +224,12 @@ class _DashboardViewState extends State<DashboardView>
           indicatorColor: const Color(0xFFFFB347),
           labelColor: const Color(0xFFFFB347),
           unselectedLabelColor: Colors.white70,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Vue d\'ensemble'),
             Tab(text: 'Graphiques'),
             Tab(text: 'Top émetteurs'),
+            Tab(text: 'Journal'),
           ],
         ),
       ),
@@ -193,6 +259,7 @@ class _DashboardViewState extends State<DashboardView>
                             _buildOverviewTab(),
                             _buildChartsTab(),
                             _buildTopIssuersTab(),
+                            _buildJournalTab(),
                           ],
                         ),
                 ),
@@ -262,6 +329,18 @@ class _DashboardViewState extends State<DashboardView>
               icon: Icons.timeline,
               color: const Color(0xFFF59E0B),
             ),
+            MetricCard(
+              label: 'Vélocité (V)',
+              value: _metrics!.velocity.toStringAsFixed(2),
+              icon: Icons.speed,
+              color: Colors.purpleAccent,
+            ),
+            MetricCard(
+              label: 'Confiance Globale',
+              value: '${(_metrics!.globalTrustIndex * 100).toStringAsFixed(0)}%',
+              icon: Icons.verified_user,
+              color: Colors.blueAccent,
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -270,6 +349,153 @@ class _DashboardViewState extends State<DashboardView>
         _buildTotalHistoryInfo(),
       ],
     );
+  }
+
+  void _showNotificationsDialog(BuildContext context, List<MarketNotification> notifications) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Signaux Alchimiques', style: TextStyle(color: Colors.white)),
+              IconButton(
+                icon: const Icon(Icons.clear_all, color: Colors.grey),
+                onPressed: () {
+                  NotificationService().clearNotifications();
+                  Navigator.pop(context);
+                },
+                tooltip: 'Tout effacer',
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: notifications.isEmpty
+                ? const Center(child: Text('Aucun signal pour le moment.', style: TextStyle(color: Colors.white54)))
+                : ListView.builder(
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final notif = notifications[index];
+                      IconData icon;
+                      Color color;
+                      
+                      switch (notif.type) {
+                        case NotificationType.loop:
+                          icon = Icons.loop;
+                          color = Colors.greenAccent;
+                          break;
+                        case NotificationType.bootstrap:
+                          icon = Icons.eco;
+                          color = Colors.purpleAccent;
+                          break;
+                        case NotificationType.expertise:
+                          icon = Icons.verified_user;
+                          color = Colors.blueAccent;
+                          break;
+                        case NotificationType.volume:
+                          icon = Icons.warning_amber_rounded;
+                          color = Colors.orangeAccent;
+                          break;
+                      }
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: color.withValues(alpha: 0.2),
+                          child: Icon(icon, color: color),
+                        ),
+                        title: Text(notif.message, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        subtitle: Text(
+                          DateFormat('dd/MM/yyyy HH:mm').format(notif.timestamp),
+                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fermer', style: TextStyle(color: Color(0xFFFFB347))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _exportMarketReport() async {
+    if (_metrics == null) return;
+
+    try {
+      setState(() => _isLoading = true);
+
+      final archive = Archive();
+
+      // 1. market_summary.json
+      final summary = {
+        'totalVolume': _metrics!.totalVolume,
+        'activeMerchants': _metrics!.activeMerchants,
+        'newBonsCount': _metrics!.newBonsCount,
+        'spentVolume': _metrics!.spentVolume,
+        'velocity': _metrics!.velocity,
+        'globalTrustIndex': _metrics!.globalTrustIndex,
+        'totalMarketBons': _metrics!.totalMarketBons,
+        'generatedAt': DateTime.now().toIso8601String(),
+      };
+      final summaryBytes = utf8.encode(jsonEncode(summary));
+      archive.addFile(ArchiveFile('market_summary.json', summaryBytes.length, summaryBytes));
+
+      // 2. ledger.csv
+      final edges = await _storageService.getTransferSummary();
+      final ledgerBuffer = StringBuffer();
+      ledgerBuffer.writeln('from_npub,to_npub,total_value,transfer_count,is_loop');
+      for (final edge in edges) {
+        ledgerBuffer.writeln('${edge.fromNpub},${edge.toNpub},${edge.totalValue},${edge.transferCount},${edge.isLoop}');
+      }
+      final ledgerBytes = utf8.encode(ledgerBuffer.toString());
+      archive.addFile(ArchiveFile('ledger.csv', ledgerBytes.length, ledgerBytes));
+
+      // 3. trust_graph.csv
+      final n2Contacts = await _storageService.getN2Contacts();
+      final trustBuffer = StringBuffer();
+      trustBuffer.writeln('from_npub,to_npub');
+      for (final contact in n2Contacts) {
+        trustBuffer.writeln('${contact['via_n1_npub']},${contact['npub']}');
+      }
+      final trustBytes = utf8.encode(trustBuffer.toString());
+      archive.addFile(ArchiveFile('trust_graph.csv', trustBytes.length, trustBytes));
+
+      // Créer le ZIP
+      final zipEncoder = ZipEncoder();
+      final zipData = zipEncoder.encode(archive);
+
+      final tempDir = await getTemporaryDirectory();
+      final zipFile = File('${tempDir.path}/market_report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.zip');
+      await zipFile.writeAsBytes(zipData);
+
+      if (mounted) {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(zipFile.path)],
+            text: 'Rapport de Marché TrocZen',
+            subject: 'Export Marché TrocZen',
+          ),
+        );
+      }
+    } catch (e) {
+      Logger.error('DashboardView', 'Erreur export rapport', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'export : $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Widget _buildVolumeHero() {
@@ -580,6 +806,154 @@ class _DashboardViewState extends State<DashboardView>
       },
     );
   }
+
+  // ============================================================
+  // ONGLET 4 : JOURNAL D'AUDIT
+  // ============================================================
+  
+  double _minAmountFilter = 0.0;
+  String _rarityFilter = 'Toutes';
+
+  Widget _buildJournalTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<double>(
+                  initialValue: _minAmountFilter,
+                  decoration: const InputDecoration(
+                    labelText: 'Montant Min',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  items: const [
+                    DropdownMenuItem(value: 0.0, child: Text('> 0 ẐEN')),
+                    DropdownMenuItem(value: 10.0, child: Text('> 10 ẐEN')),
+                    DropdownMenuItem(value: 50.0, child: Text('> 50 ẐEN')),
+                    DropdownMenuItem(value: 100.0, child: Text('> 100 ẐEN')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _minAmountFilter = value);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _rarityFilter,
+                  decoration: const InputDecoration(
+                    labelText: 'Rareté',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  items: const [
+                    DropdownMenuItem(value: 'Toutes', child: Text('Toutes')),
+                    DropdownMenuItem(value: 'common', child: Text('Commune')),
+                    DropdownMenuItem(value: 'rare', child: Text('Rare')),
+                    DropdownMenuItem(value: 'epic', child: Text('Épique')),
+                    DropdownMenuItem(value: 'legendary', child: Text('Légendaire')),
+                    DropdownMenuItem(value: 'bootstrap', child: Text('Bootstrap')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _rarityFilter = value);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _storageService.getMarketBonsData(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: Color(0xFFFFB347)));
+              }
+              
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(
+                  child: Text('Aucun événement dans le journal', style: TextStyle(color: Colors.white54)),
+                );
+              }
+
+              var events = snapshot.data!;
+              
+              // Appliquer les filtres
+              events = events.where((e) {
+                final value = (e['value'] as num?)?.toDouble() ?? 0.0;
+                final rarity = e['rarity'] as String? ?? 'common';
+                
+                if (value < _minAmountFilter) return false;
+                if (_rarityFilter != 'Toutes' && rarity != _rarityFilter) return false;
+                
+                return true;
+              }).toList();
+
+              if (events.isEmpty) {
+                return const Center(
+                  child: Text('Aucun événement ne correspond aux filtres', style: TextStyle(color: Colors.white54)),
+                );
+              }
+
+              // Trier par date décroissante
+              events.sort((a, b) {
+                final dateA = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final dateB = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return dateB.compareTo(dateA);
+              });
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: events.length,
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final isBurn = event['status'] == 'burned';
+                  final value = (event['value'] as num?)?.toDouble() ?? 0.0;
+                  final date = DateTime.tryParse(event['createdAt'] ?? '') ?? DateTime.now();
+                  final rarity = event['rarity'] as String? ?? 'common';
+                  
+                  return Card(
+                    color: const Color(0xFF1E1E1E),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(
+                        isBurn ? Icons.local_fire_department : Icons.swap_horiz,
+                        color: isBurn ? Colors.redAccent : Colors.greenAccent,
+                      ),
+                      title: Text(
+                        isBurn ? 'Destruction de Bon' : 'Émission de Bon',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        '${DateFormat('dd/MM/yyyy HH:mm').format(date)} • $rarity',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      trailing: Text(
+                        '${value.toStringAsFixed(0)} Ẑ',
+                        style: TextStyle(
+                          color: isBurn ? Colors.redAccent : Colors.greenAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Modèle de métriques étendu pour le Dashboard Alchimiste
@@ -595,6 +969,8 @@ class DashboardMetrics {
   final int totalMarketBons;
   final List<TimeSeriesPoint> series;
   final List<IssuerStats> topIssuers;
+  final double velocity;
+  final double globalTrustIndex;
 
   DashboardMetrics({
     required this.totalVolume,
@@ -608,5 +984,7 @@ class DashboardMetrics {
     required this.totalMarketBons,
     required this.series,
     required this.topIssuers,
+    this.velocity = 0.0,
+    this.globalTrustIndex = 0.0,
   });
 }

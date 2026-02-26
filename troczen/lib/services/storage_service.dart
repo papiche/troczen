@@ -33,6 +33,8 @@ class StorageService {
   // ✅ SÉPARÉ de l'audit trail pour indépendance du cycle de vie
   final CacheDatabaseService _cacheService = CacheDatabaseService();
 
+  Stream<Map<String, dynamic>> get cacheInsertionsStream => _cacheService.insertionsStream;
+
   // Clés de stockage (uniquement pour les petites données sensibles)
   static const String _userKey = 'user';
   static const String _bonsKey = 'bons';

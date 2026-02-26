@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:sqflite/sqflite.dart';
@@ -20,6 +21,10 @@ class CacheDatabaseService {
   static const String _n2CacheTable = 'n2_cache';
   static const String _localWalletBonsTable = 'local_wallet_bons';
   static const String _followersCacheTable = 'followers_cache';
+
+  // Stream pour notifier les insertions (Vigilance Alchimiste)
+  final _insertionsController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get insertionsStream => _insertionsController.stream;
 
   /// Initialiser la base de données de cache
   Future<Database> get database async {
@@ -324,6 +329,11 @@ class CacheDatabaseService {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    
+    _insertionsController.add({
+      'type': 'market_bon',
+      'data': bonData,
+    });
   }
 
   /// Sauvegarder un lot de données du marché (batch)
@@ -477,6 +487,11 @@ class CacheDatabaseService {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    
+    _insertionsController.add({
+      'type': 'market_transfer',
+      'data': transferData,
+    });
   }
 
   /// Sauvegarder un lot de transferts du marché
@@ -854,6 +869,11 @@ class CacheDatabaseService {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    
+    _insertionsController.add({
+      'type': 'n2_contact',
+      'data': {'npub': npub, 'via_n1_npub': viaN1Npub},
+    });
   }
 
   /// Sauvegarder un lot de contacts N2
