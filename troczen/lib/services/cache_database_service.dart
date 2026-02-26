@@ -41,9 +41,46 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await _createAllTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Ajouter les tables manquantes pour la version 2
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_localWalletBonsTable (
+              bon_id TEXT PRIMARY KEY,
+              raw_data TEXT NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_followersCacheTable (
+              npub TEXT PRIMARY KEY,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_skillAttestationsTable (
+              event_id TEXT PRIMARY KEY,
+              attester_npub TEXT NOT NULL,
+              subject_npub TEXT NOT NULL,
+              skill TEXT NOT NULL,
+              permit_id TEXT,
+              seed_market TEXT,
+              motivation TEXT,
+              created_at INTEGER NOT NULL,
+              raw_data TEXT NOT NULL
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_skill_subject ON $_skillAttestationsTable(subject_npub)',
+          );
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_skill_attester ON $_skillAttestationsTable(attester_npub)',
+          );
+        }
       },
     );
   }
