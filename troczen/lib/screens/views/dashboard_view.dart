@@ -710,6 +710,8 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   void _showBonsForDate(DateTime date) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
@@ -725,10 +727,48 @@ class _DashboardViewState extends State<DashboardView>
               Text('Activité du ${DateFormat('dd/MM/yyyy').format(date)}',
                   style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              const Expanded(
-                child: Center(
-                  child: Text('Liste des bons concernés (à implémenter avec une requête spécifique)',
-                      style: TextStyle(color: Colors.white54)),
+              Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _storageService.getBonsForDate(dateStr),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFFFFB347)));
+                    }
+                    
+                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(
+                        child: Text('Aucun bon créé à cette date', style: TextStyle(color: Colors.white54)),
+                      );
+                    }
+
+                    final bons = snapshot.data!;
+                    
+                    return ListView.builder(
+                      itemCount: bons.length,
+                      itemBuilder: (context, index) {
+                        final bon = bons[index];
+                        final value = (bon['value'] as num?)?.toDouble() ?? 0.0;
+                        final issuerName = bon['issuerName'] as String? ?? 'Anonyme';
+                        final rarity = bon['rarity'] as String? ?? 'common';
+                        
+                        return Card(
+                          color: const Color(0xFF2A2A2A),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: const Icon(Icons.confirmation_number, color: Color(0xFFFFB347)),
+                            title: Text(
+                              '${value.toStringAsFixed(0)} Ẑ',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              'Émis par: $issuerName • $rarity',
+                              style: const TextStyle(color: Colors.white54, fontSize: 12),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],

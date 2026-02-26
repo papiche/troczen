@@ -726,6 +726,11 @@ class StorageService {
     return await _cacheService.getMarketBonById(bonId);
   }
 
+  /// Récupère les bons créés à une date précise (Y-M-D)
+  Future<List<Map<String, dynamic>>> getBonsForDate(String dateStr) async {
+    return await _cacheService.getBonsForDate(dateStr);
+  }
+
   /// Calcule les métriques du tableau de bord pour une période donnée via SQL
   Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
     return await _cacheService.getDashboardMetricsForPeriod(start, end);

@@ -717,6 +717,37 @@ class CacheDatabaseService {
     return result.map((row) => row['issuer_npub'] as String).toList();
   }
 
+  /// Récupère les bons créés à une date précise (Y-M-D)
+  Future<List<Map<String, dynamic>>> getBonsForDate(String dateStr) async {
+    final db = await database;
+    final results = await db.query(
+      _marketBonsTable,
+      where: 'substr(created_at, 1, 10) = ?',
+      whereArgs: [dateStr],
+      orderBy: 'created_at DESC',
+    );
+    
+    return results.map((row) {
+      final rawData = row['raw_data'] as String?;
+      if (rawData != null) {
+        return jsonDecode(rawData) as Map<String, dynamic>;
+      }
+      return {
+        'bonId': row['bon_id'],
+        'issuerNpub': row['issuer_npub'],
+        'issuerName': row['issuer_name'],
+        'value': row['value'],
+        'rarity': row['rarity'],
+        'status': row['status'],
+        'createdAt': row['created_at'],
+        'expiresAt': row['expires_at'],
+        'description': row['description'],
+        'imageUrl': row['image_url'],
+        'tags': row['tags'] != null ? jsonDecode(row['tags'] as String) : null,
+      };
+    }).toList();
+  }
+
   /// Calcule les métriques du tableau de bord pour une période donnée via SQL
   Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
     final db = await database;
