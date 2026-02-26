@@ -739,32 +739,9 @@ class StorageService {
     return await _cacheService.getTopIssuers(start, end);
   }
 
-  /// Construit le graphe de circulation (Alchimiste)
-  Future<Graph> buildCircuitsGraph({int? limitDays}) async {
-    final edges = await _cacheService.getTransferSummary(limitDays: limitDays);
-    final graph = Graph()..isTree = false;
-    
-    final nodes = <String, Node>{};
-    
-    Node getNode(String npub) {
-      if (!nodes.containsKey(npub)) {
-        nodes[npub] = Node.Id(npub);
-      }
-      return nodes[npub]!;
-    }
-    
-    for (final edge in edges) {
-      final fromNode = getNode(edge.fromNpub);
-      final toNode = getNode(edge.toNpub);
-      
-      final paint = Paint()
-        ..strokeWidth = max(1.0, edge.totalValue / 10.0)
-        ..color = edge.isLoop ? Colors.greenAccent : Colors.grey;
-        
-      graph.addEdge(fromNode, toNode, paint: paint);
-    }
-    
-    return graph;
+  /// Récupère le résumé des transferts pour le graphe de circulation
+  Future<List<TransferEdge>> getTransferSummary({int? limitDays}) async {
+    return await _cacheService.getTransferSummary(limitDays: limitDays);
   }
 
   /// Obtenir le nombre total de bons sur le marché
