@@ -7,6 +7,7 @@ import '../../services/storage_service.dart';
 import '../../services/nostr_service.dart';
 import '../../services/cache_database_service.dart';
 import '../../models/nostr_profile.dart';
+import "../public_profile_screen.dart";
 
 enum GraphMode { flux, wotx }
 
@@ -577,7 +578,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
             _buildCertificationSection(),
             OutlinedButton.icon(
               onPressed: () {
-                // TODO: Naviguer vers le profil complet
+                if (_selectedNpub != null) { Navigator.push(context, MaterialPageRoute(builder: (context) => PublicProfileScreen(npub: _selectedNpub!))); }
               },
               icon: const Icon(Icons.person_search, size: 18),
               label: const Text('Voir profil complet'),
