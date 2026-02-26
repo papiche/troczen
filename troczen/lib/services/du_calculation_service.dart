@@ -398,7 +398,12 @@ class DuCalculationService {
     final nsecHex = keys['privateKeyHex']!;
     
     // Convertir en Uint8List et utiliser shamirSplitBytes
-    final nsecBytes = Uint8List.fromList(HEX.decode(nsecHex));
+    Uint8List nsecBytes;
+    try {
+      nsecBytes = Uint8List.fromList(HEX.decode(nsecHex));
+    } catch (e) {
+      throw Exception('Clé privée invalide (non hexadécimale)');
+    }
     final parts = _cryptoService.shamirSplitBytes(nsecBytes);
     
     // Nettoyer la clé privée originale immédiatement
@@ -436,10 +441,17 @@ class DuCalculationService {
 
     // Publier le profil du bon (Kind 0)
     try {
+      Uint8List p2Bytes, p3Bytes;
+      try {
+        p2Bytes = Uint8List.fromList(HEX.decode(p2Hex));
+        p3Bytes = Uint8List.fromList(HEX.decode(p3Hex));
+      } catch (e) {
+        throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
+      }
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(
         null,
-        Uint8List.fromList(HEX.decode(p2Hex)),
-        Uint8List.fromList(HEX.decode(p3Hex))
+        p2Bytes,
+        p3Bytes
       );
       final nsecBonHex = HEX.encode(nsecBonBytes);
       

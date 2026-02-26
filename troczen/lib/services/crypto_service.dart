@@ -259,7 +259,12 @@ class CryptoService {
   /// - 'publicKeyHex': clé publique en hexadécimal (32 bytes)
   Map<String, String> deriveMarketIdentity(String seedMarketHex) {
     // 1. Décoder la seed du marché
-    final seedBytes = HEX.decode(seedMarketHex);
+    List<int> seedBytes;
+    try {
+      seedBytes = HEX.decode(seedMarketHex);
+    } catch (e) {
+      throw ArgumentError('seedMarketHex n\'est pas un hexadécimal valide');
+    }
     if (seedBytes.length != 32) {
       throw ArgumentError('seedMarketHex doit faire 32 octets (64 caractères hex)');
     }
@@ -289,14 +294,22 @@ class CryptoService {
   
   /// Encode une clé privée hexadécimale en format nsec1... (NIP-19)
   String encodeNsec(String privateKeyHex) {
-    final bytes = HEX.decode(privateKeyHex);
-    return _encodeBech32('nsec', bytes);
+    try {
+      final bytes = HEX.decode(privateKeyHex);
+      return _encodeBech32('nsec', bytes);
+    } catch (e) {
+      throw ArgumentError('privateKeyHex n\'est pas un hexadécimal valide');
+    }
   }
   
   /// Encode une clé publique hexadécimale en format npub1... (NIP-19)
   String encodeNpub(String publicKeyHex) {
-    final bytes = HEX.decode(publicKeyHex);
-    return _encodeBech32('npub', bytes);
+    try {
+      final bytes = HEX.decode(publicKeyHex);
+      return _encodeBech32('npub', bytes);
+    } catch (e) {
+      throw ArgumentError('publicKeyHex n\'est pas un hexadécimal valide');
+    }
   }
   
   /// Décode une clé privée nsec1... en hexadécimal
@@ -585,8 +598,13 @@ class CryptoService {
 
   /// Chiffre P2 avec K_P2 = SHA256(P3)
   Future<Map<String, String>> encryptP2(String p2Hex, String p3Hex) async {
-    final p2Bytes = HEX.decode(p2Hex);
-    final p3Bytes = HEX.decode(p3Hex);
+    List<int> p2Bytes, p3Bytes;
+    try {
+      p2Bytes = HEX.decode(p2Hex);
+      p3Bytes = HEX.decode(p3Hex);
+    } catch (e) {
+      throw ArgumentError('p2Hex ou p3Hex n\'est pas un hexadécimal valide');
+    }
     
     // K_P2 = SHA256(P3)
     final kP2 = sha256.convert(p3Bytes).bytes;
@@ -616,9 +634,14 @@ class CryptoService {
 
   /// Déchiffre P2 avec K_P2 = SHA256(P3)
   Future<String> decryptP2(String ciphertextHex, String nonceHex, String p3Hex) async {
-    final ciphertext = HEX.decode(ciphertextHex);
-    final nonce = HEX.decode(nonceHex);
-    final p3Bytes = HEX.decode(p3Hex);
+    List<int> ciphertext, nonce, p3Bytes;
+    try {
+      ciphertext = HEX.decode(ciphertextHex);
+      nonce = HEX.decode(nonceHex);
+      p3Bytes = HEX.decode(p3Hex);
+    } catch (e) {
+      throw ArgumentError('Paramètres hexadécimaux invalides');
+    }
     
     // K_P2 = SHA256(P3)
     final kP2 = sha256.convert(p3Bytes).bytes;
@@ -642,8 +665,13 @@ class CryptoService {
   /// En mode HACKATHON, la clé K_day est prévisible (dérivée d'une seed à zéro)
   /// mais le chiffrement reste AES-GCM standard - seul le décodage est facilité
   Future<Map<String, String>> encryptP3(String p3Hex, String kDayHex) async {
-    final p3Bytes = HEX.decode(p3Hex);
-    final kDayBytes = HEX.decode(kDayHex);
+    List<int> p3Bytes, kDayBytes;
+    try {
+      p3Bytes = HEX.decode(p3Hex);
+      kDayBytes = HEX.decode(kDayHex);
+    } catch (e) {
+      throw ArgumentError('Paramètres hexadécimaux invalides');
+    }
     
     // ✅ Toujours utiliser AES-GCM (même en mode HACKATHON)
     // La sécurité réduite en mode HACKATHON vient uniquement de la clé prévisible
@@ -673,9 +701,14 @@ class CryptoService {
   /// En mode HACKATHON, la clé K_day est prévisible (dérivée d'une seed à zéro)
   /// mais le déchiffrement reste AES-GCM standard
   Future<String> decryptP3(String ciphertextHex, String nonceHex, String kDayHex) async {
-    final ciphertext = HEX.decode(ciphertextHex);
-    final nonce = HEX.decode(nonceHex);
-    final kDayBytes = HEX.decode(kDayHex);
+    List<int> ciphertext, nonce, kDayBytes;
+    try {
+      ciphertext = HEX.decode(ciphertextHex);
+      nonce = HEX.decode(nonceHex);
+      kDayBytes = HEX.decode(kDayHex);
+    } catch (e) {
+      throw ArgumentError('Paramètres hexadécimaux invalides');
+    }
     
     // ✅ Toujours utiliser AES-GCM (même en mode HACKATHON)
     // La sécurité réduite en mode HACKATHON vient uniquement de la clé prévisible
@@ -933,7 +966,12 @@ class CryptoService {
   /// ✅ Calcule la clé de chiffrement quotidienne à partir de la graine du marché
   /// Utilise HMAC-SHA256(seed, "YYYY-MM-DD") comme spécifié dans le whitepaper
   String getDailyMarketKey(String seedHex, DateTime date) {
-    final seedBytes = HEX.decode(seedHex);
+    List<int> seedBytes;
+    try {
+      seedBytes = HEX.decode(seedHex);
+    } catch (e) {
+      throw ArgumentError('seedHex n\'est pas un hexadécimal valide');
+    }
     final dateStr = '${date.year.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final dateBytes = utf8.encode(dateStr);
     
@@ -1150,7 +1188,12 @@ class CryptoService {
   /// Dérive un mot de passe WiFi depuis la seed du marché
   /// Utilise SHA256 et encode en Base64 pour un mot de passe sécurisé
   String deriveWifiPassword(String seedMarketHex) {
-    final seedBytes = HEX.decode(seedMarketHex);
+    List<int> seedBytes;
+    try {
+      seedBytes = HEX.decode(seedMarketHex);
+    } catch (e) {
+      throw ArgumentError('seedMarketHex n\'est pas un hexadécimal valide');
+    }
     final hash = sha256.convert(seedBytes);
     // Prendre les 16 premiers octets et encoder en base64 pour un mot de passe lisible
     final passwordBytes = hash.bytes.sublist(0, 16);

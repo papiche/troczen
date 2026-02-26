@@ -45,7 +45,12 @@ class BurnService {
       }
 
       // 2. Convertir P1 en Uint8List
-      final p1Bytes = Uint8List.fromList(HEX.decode(p1));
+      Uint8List p1Bytes;
+      try {
+        p1Bytes = Uint8List.fromList(HEX.decode(p1));
+      } catch (e) {
+        throw Exception('P1 invalide (non hexadécimal)');
+      }
 
       // 3. ✅ SÉCURITÉ: Reconstruire sk_B temporairement en Uint8List (P1 + P3)
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes);

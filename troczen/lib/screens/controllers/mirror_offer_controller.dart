@@ -119,7 +119,12 @@ class MirrorOfferController extends ChangeNotifier {
       
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
       
-      final bonIdBytes = Uint8List.fromList(HEX.decode(bon.bonId));
+      Uint8List bonIdBytes;
+      try {
+        bonIdBytes = Uint8List.fromList(HEX.decode(bon.bonId));
+      } catch (e) {
+        throw Exception('ID de bon invalide (non hexadécimal)');
+      }
       final timestampBytes = ByteData(4);
       timestampBytes.setUint32(0, timestamp, Endian.big);
       
@@ -148,7 +153,12 @@ class MirrorOfferController extends ChangeNotifier {
           ? ciphertext.sublist(32, 48)
           : Uint8List(16);
 
-      final issuerNpubBytes = Uint8List.fromList(HEX.decode(bon.issuerNpub));
+      Uint8List issuerNpubBytes;
+      try {
+        issuerNpubBytes = Uint8List.fromList(HEX.decode(bon.issuerNpub));
+      } catch (e) {
+        throw Exception('Clé publique émetteur invalide (non hexadécimale)');
+      }
       final qrBytes = _qrService.encodeQrV2Bytes(
         bonId: bonIdBytes,
         valueInCentimes: (bon.value * 100).round(),
@@ -196,7 +206,12 @@ class MirrorOfferController extends ChangeNotifier {
         throw Exception('QR code incorrect');
       }
 
-      final challengeBytes = Uint8List.fromList(HEX.decode(currentChallenge));
+      Uint8List challengeBytes;
+      try {
+        challengeBytes = Uint8List.fromList(HEX.decode(currentChallenge));
+      } catch (e) {
+        throw Exception('Challenge invalide (non hexadécimal)');
+      }
       final challengeHash = sha256.convert(challengeBytes);
       final challengeHashHex = challengeHash.toString();
       

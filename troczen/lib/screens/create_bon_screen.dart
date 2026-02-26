@@ -208,7 +208,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final bonNpubHex = bonKeys['publicKeyHex']!;   // Format hex pour les identifiants
 
       // 2. Découper en 3 parts avec SSSS (utilise le format bytes)
-      final bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
+      Uint8List bonNsecBytes;
+      try {
+        bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
+      } catch (e) {
+        throw Exception('Clé privée du bon invalide (non hexadécimale)');
+      }
       final partsBytes = _cryptoService.shamirSplitBytes(bonNsecBytes);
       final p1 = HEX.encode(partsBytes[0]); // Ancre (reste chez l'émetteur)
       final p2 = HEX.encode(partsBytes[1]); // Voyageur (part active)
@@ -276,8 +281,13 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           // Note: npub et nsec sont en format hex pour les opérations Nostr
           
           // ✅ SÉCURITÉ: Utiliser shamirCombineBytesDirect avec Uint8List
-          final p2Bytes = Uint8List.fromList(HEX.decode(p2));
-          final p3Bytes = Uint8List.fromList(HEX.decode(p3));
+          Uint8List p2Bytes, p3Bytes;
+          try {
+            p2Bytes = Uint8List.fromList(HEX.decode(p2));
+            p3Bytes = Uint8List.fromList(HEX.decode(p3));
+          } catch (e) {
+            throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
+          }
           final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
           final nsecHex = HEX.encode(nsecBonBytes);
           

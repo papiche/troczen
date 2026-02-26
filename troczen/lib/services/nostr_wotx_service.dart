@@ -129,7 +129,13 @@ class NostrWoTxService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
@@ -231,7 +237,13 @@ class NostrWoTxService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      event['sig'] = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      event['sig'] = _cryptoService.signMessageBytes(eventId, nsecBytes);
 
       final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
       if (success) {
@@ -367,7 +379,13 @@ class NostrWoTxService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      event['sig'] = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(myNsec)));
+      Uint8List myNsecBytes;
+      try {
+        myNsecBytes = Uint8List.fromList(HEX.decode(myNsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      event['sig'] = _cryptoService.signMessageBytes(eventId, myNsecBytes);
 
       final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
       if (success) {
@@ -472,7 +490,13 @@ class NostrWoTxService {
 
       final id = _calculateEventId(event);
       event['id'] = id;
-      event['sig'] = _cryptoService.signMessageBytes(id, Uint8List.fromList(HEX.decode(myNsec)));
+      Uint8List myNsecBytes;
+      try {
+        myNsecBytes = Uint8List.fromList(HEX.decode(myNsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      event['sig'] = _cryptoService.signMessageBytes(id, myNsecBytes);
 
       final success = await _connection.sendEventAndWait(id, jsonEncode(['EVENT', event]));
       if (success) {
@@ -513,7 +537,13 @@ class NostrWoTxService {
 
       final id = _calculateEventId(event);
       event['id'] = id;
-      event['sig'] = _cryptoService.signMessageBytes(id, Uint8List.fromList(HEX.decode(myNsec)));
+      Uint8List myNsecBytes;
+      try {
+        myNsecBytes = Uint8List.fromList(HEX.decode(myNsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      event['sig'] = _cryptoService.signMessageBytes(id, myNsecBytes);
 
       final success = await _connection.sendEventAndWait(id, jsonEncode(['EVENT', event]));
       if (success) {

@@ -527,7 +527,13 @@ class NostrService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
@@ -630,8 +636,13 @@ class NostrService {
     }
 
     try {
-      final p2Bytes = Uint8List.fromList(HEX.decode(bonP2));
-      final p3Bytes = Uint8List.fromList(HEX.decode(bonP3));
+      Uint8List p2Bytes, p3Bytes;
+      try {
+        p2Bytes = Uint8List.fromList(HEX.decode(bonP2));
+        p3Bytes = Uint8List.fromList(HEX.decode(bonP3));
+      } catch (e) {
+        throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
+      }
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
 
       final content = {
@@ -818,7 +829,13 @@ class NostrService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
@@ -1043,7 +1060,13 @@ class NostrService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);

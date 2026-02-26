@@ -59,15 +59,24 @@ class NfcService {
 
     try {
       // ✅ CORRECTION P0-A: Utiliser encodeQrV2Bytes (240 octets)
+      Uint8List bonIdBytes, p2EncryptedBytes, nonceBytes, challengeBytes;
+      try {
+        bonIdBytes = Uint8List.fromList(HEX.decode(bonId));
+        p2EncryptedBytes = Uint8List.fromList(HEX.decode(p2Encrypted));
+        nonceBytes = Uint8List.fromList(HEX.decode(nonce));
+        challengeBytes = Uint8List.fromList(HEX.decode(challenge));
+      } catch (e) {
+        throw Exception('Paramètres hexadécimaux invalides');
+      }
       final offerBytes = _qrService.encodeQrV2Bytes(
-        bonId: Uint8List.fromList(HEX.decode(bonId)),
+        bonId: bonIdBytes,
         valueInCentimes: 0, // Dummy value pour le mock NFC
         issuerNpub: Uint8List(32), // Dummy npub pour le mock NFC
         issuerName: "NFC Mock", // Dummy name pour le mock NFC
-        encryptedP2: Uint8List.fromList(HEX.decode(p2Encrypted)),
-        p2Nonce: Uint8List.fromList(HEX.decode(nonce)),
+        encryptedP2: p2EncryptedBytes,
+        p2Nonce: nonceBytes,
         p2Tag: Uint8List(16), // Dummy tag pour le mock NFC
-        challenge: Uint8List.fromList(HEX.decode(challenge)),
+        challenge: challengeBytes,
         signature: Uint8List(64), // Dummy signature (zéros) pour le mock NFC
       );
 
@@ -153,9 +162,16 @@ class NfcService {
 
     try {
       // ✅ OPTIMISATION: Encoder l'ACK en binaire directement avec Uint8List
+      Uint8List bonIdBytes, signatureBytes;
+      try {
+        bonIdBytes = Uint8List.fromList(HEX.decode(bonId));
+        signatureBytes = Uint8List.fromList(HEX.decode(signature));
+      } catch (e) {
+        throw Exception('Paramètres hexadécimaux invalides');
+      }
       final ackBytes = _qrService.encodeAckBytes(
-        bonId: Uint8List.fromList(HEX.decode(bonId)),
-        signature: Uint8List.fromList(HEX.decode(signature)),
+        bonId: bonIdBytes,
+        signature: signatureBytes,
         status: status,
       );
 

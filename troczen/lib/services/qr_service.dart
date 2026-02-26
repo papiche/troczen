@@ -42,9 +42,16 @@ class QRService {
     required String signatureHex,
     int status = 0x01, // 0x01 = RECEIVED
   }) {
+    Uint8List bonIdBytes, signatureBytes;
+    try {
+      bonIdBytes = Uint8List.fromList(HEX.decode(bonIdHex));
+      signatureBytes = Uint8List.fromList(HEX.decode(signatureHex));
+    } catch (e) {
+      throw Exception('Paramètres hexadécimaux invalides');
+    }
     return encodeAckBytes(
-      bonId: Uint8List.fromList(HEX.decode(bonIdHex)),
-      signature: Uint8List.fromList(HEX.decode(signatureHex)),
+      bonId: bonIdBytes,
+      signature: signatureBytes,
       status: status,
     );
   }
@@ -198,12 +205,20 @@ class QRService {
     required Uint8List challenge,
     required Uint8List signature,
   }) {
+    Uint8List bonIdBytes, issuerNpubBytes, encryptedP2Bytes;
+    try {
+      bonIdBytes = Uint8List.fromList(HEX.decode(bon.bonId));
+      issuerNpubBytes = Uint8List.fromList(HEX.decode(bon.issuerNpub));
+      encryptedP2Bytes = Uint8List.fromList(HEX.decode(encryptedP2Hex));
+    } catch (e) {
+      throw Exception('Paramètres hexadécimaux invalides');
+    }
     return encodeQrV2Bytes(
-      bonId: Uint8List.fromList(HEX.decode(bon.bonId)),
+      bonId: bonIdBytes,
       valueInCentimes: (bon.value * 100).round(),
-      issuerNpub: Uint8List.fromList(HEX.decode(bon.issuerNpub)),
+      issuerNpub: issuerNpubBytes,
       issuerName: bon.issuerName,
-      encryptedP2: Uint8List.fromList(HEX.decode(encryptedP2Hex)),
+      encryptedP2: encryptedP2Bytes,
       p2Nonce: p2Nonce,
       p2Tag: p2Tag,
       challenge: challenge,
@@ -540,7 +555,12 @@ class QRService {
     }
     
     // Seed (32 octets binaires)
-    final seedBytes = HEX.decode(seedMarket);
+    List<int> seedBytes;
+    try {
+      seedBytes = HEX.decode(seedMarket);
+    } catch (e) {
+      throw Exception('seedMarket invalide (non hexadécimal)');
+    }
     for (int i = 0; i < 32; i++) {
       buffer.setUint8(offset++, seedBytes[i]);
     }
