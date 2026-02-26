@@ -113,29 +113,33 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     });
   }
 
-  String? _base64Image;
+  String? _base64Logo;
+  File? _selectedLogo;
+  
+  String? _base64Banner;
+  File? _selectedBanner;
 
-  /// Sélectionner une image pour le bon
-  Future<void> _selectImage() async {
+  /// Sélectionner un logo pour le bon
+  Future<void> _selectLogo() async {
     final imageService = ImageCompressionService();
     
     setState(() => _isUploading = true);
     
     try {
-      final result = await imageService.pickBannerWithOriginal();
+      final result = await imageService.pickAvatarWithOriginal();
           
       if (result != null) {
         setState(() {
-          _base64Image = result.base64DataUri;
-          _selectedImage = File(result.originalPath);
+          _base64Logo = result.base64DataUri;
+          _selectedLogo = File(result.originalPath);
         });
       }
     } catch (e) {
-      debugPrint('Erreur sélection image: $e');
+      debugPrint('Erreur sélection logo: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            content: Text('Erreur lors de la sélection du logo: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -147,9 +151,41 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     }
   }
 
-  /// Uploader l'image du bon vers IPFS
-  Future<Map<String, String?>> _uploadImage() async {
-    if (_selectedImage == null) return {'url': null, 'base64': _base64Image};
+  /// Sélectionner une bannière pour le bon
+  Future<void> _selectBanner() async {
+    final imageService = ImageCompressionService();
+    
+    setState(() => _isUploading = true);
+    
+    try {
+      final result = await imageService.pickBannerWithOriginal();
+          
+      if (result != null) {
+        setState(() {
+          _base64Banner = result.base64DataUri;
+          _selectedBanner = File(result.originalPath);
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur sélection bannière: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection de la bannière: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  /// Uploader une image vers IPFS
+  Future<Map<String, String?>> _uploadImage(File? file, String? base64, String type) async {
+    if (file == null) return {'url': null, 'base64': base64};
     
     setState(() => _isUploading = true);
     
@@ -159,8 +195,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     try {
       final result = await _apiService.uploadImage(
         npub: widget.user.npub,
-        imageFile: _selectedImage!,
-        type: 'logo',
+        imageFile: file,
+        type: type,
       );
       
       if (result != null) {
@@ -172,7 +208,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       setState(() => _isUploading = false);
     }
     
-    return {'url': ipfsUrl, 'base64': _base64Image};
+    return {'url': ipfsUrl, 'base64': base64};
   }
 
   @override
@@ -223,13 +259,21 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       // 3. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
       await _storageService.saveP3ToCache(bonNpubHex, p3);
 
-      // 4. ✅ Uploader l'image du bon (si sélectionnée) AVANT la création de l'objet Bon
-      String? imageUrl;
-      String? imageBase64;
-      if (_selectedImage != null) {
-        final imageResult = await _uploadImage();
-        imageUrl = imageResult['url'];
-        imageBase64 = imageResult['base64'];
+      // 4. ✅ Uploader les images du bon (si sélectionnées) AVANT la création de l'objet Bon
+      String? logoUrl;
+      String? logoBase64;
+      if (_selectedLogo != null) {
+        final logoResult = await _uploadImage(_selectedLogo, _base64Logo, 'logo');
+        logoUrl = logoResult['url'];
+        logoBase64 = logoResult['base64'];
+      }
+
+      String? bannerUrl;
+      String? bannerBase64;
+      if (_selectedBanner != null) {
+        final bannerResult = await _uploadImage(_selectedBanner, _base64Banner, 'banner');
+        bannerUrl = bannerResult['url'];
+        bannerBase64 = bannerResult['base64'];
       }
 
       // 5. Créer le bon
@@ -260,11 +304,11 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         rarity: isBootstrap ? 'bootstrap' : 'common',
         cardType: isBootstrap ? 'bootstrap' : 'DU',
         wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
-        picture: imageUrl,
-        banner: imageUrl,
-        logoUrl: imageUrl,
-        picture64: imageBase64,
-        banner64: imageBase64,
+        picture: logoUrl,
+        banner: bannerUrl,
+        logoUrl: logoUrl,
+        picture64: logoBase64,
+        banner64: bannerBase64,
       );
 
       // 6. Sauvegarder le bon
@@ -301,10 +345,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
             about: _wishController.text.trim().isNotEmpty
                 ? _wishController.text.trim()
                 : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
-            picture: imageUrl,
-            banner: imageUrl,  // Utilise la même image pour le bandeau
-            picture64: imageBase64,
-            banner64: imageBase64,
+            picture: logoUrl,
+            banner: bannerUrl,
+            picture64: logoBase64,
+            banner64: bannerBase64,
             website: _websiteController.text.trim().isNotEmpty
                 ? _websiteController.text.trim()
                 : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
@@ -412,12 +456,12 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white, width: 8),
-                  // ✅ NOUVEAU: Si une image est sélectionnée, l'afficher en fond
-                  image: _selectedImage != null || _base64Image != null 
+                  // ✅ NOUVEAU: Si une bannière est sélectionnée, l'afficher en fond
+                  image: _selectedBanner != null || _base64Banner != null
                       ? DecorationImage(
-                          image: _selectedImage != null 
-                              ? FileImage(_selectedImage!) as ImageProvider
-                              : MemoryImage(ImageCompressionService.extractBytesFromDataUri(_base64Image!)!),
+                          image: _selectedBanner != null
+                              ? FileImage(_selectedBanner!) as ImageProvider
+                              : MemoryImage(ImageCompressionService.extractBytesFromDataUri(_base64Banner!)!),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(
                             Colors.white.withValues(alpha: 0.5), // Éclaircir l'image pour la lisibilité
@@ -467,11 +511,20 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.star,
-                                size: 48,
-                                color: Color(0xFFFFB347),
-                              ),
+                              if (_selectedLogo != null || _base64Logo != null)
+                                CircleAvatar(
+                                  radius: 32,
+                                  backgroundColor: Colors.white,
+                                  backgroundImage: _selectedLogo != null
+                                      ? FileImage(_selectedLogo!) as ImageProvider
+                                      : MemoryImage(ImageCompressionService.extractBytesFromDataUri(_base64Logo!)!),
+                                )
+                              else
+                                const Icon(
+                                  Icons.star,
+                                  size: 48,
+                                  color: Color(0xFFFFB347),
+                                ),
                               const SizedBox(height: 8),
                               Text(
                                 _issuerNameController.text.isEmpty
@@ -604,7 +657,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   color: widget.initialReceiverProfile != null ? Colors.grey : Colors.white,
                 ),
                 decoration: InputDecoration(
-                  labelText: 'Nom de l\'émetteur',
+                  labelText: 'Bon pour',
                   labelStyle: TextStyle(color: Colors.grey[400]),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey[700]!),
@@ -624,45 +677,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   return null;
                 },
                 onChanged: (_) => setState(() {}),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ✅ Section Couleur (pour personnalisation visuelle UI uniquement)
-              Text(
-                'Couleur de la carte',
-                style: TextStyle(
-                  color: Colors.grey[300],
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Wrap(
-                spacing: 8,
-                children: [
-                  Colors.blue, Colors.red, Colors.green, Colors.purple, Colors.orange, Colors.pink,
-                  Colors.teal, Colors.indigo, Colors.amber, Colors.lime
-                ].map((color) => GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedColor = color;
-                    });
-                  },
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: _selectedColor == color
-                          ? Border.all(color: Colors.white, width: 3)
-                          : null,
-                    ),
-                  ),
-                )).toList(),
               ),
 
               const SizedBox(height: 24),
@@ -765,9 +779,9 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
               const SizedBox(height: 24),
 
-              // Section Image du bon
+              // Section Images du bon
               Text(
-                'Image du bon (optionnel)',
+                'Images du bon (optionnel)',
                 style: TextStyle(
                   color: Colors.grey[300],
                   fontSize: 18,
@@ -776,24 +790,25 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
               ),
               const SizedBox(height: 12),
 
+              // Logo
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isUploading ? null : _selectImage,
+                      onPressed: _isUploading ? null : _selectLogo,
                       icon: const Icon(Icons.image),
-                      label: Text(_selectedImage != null
-                          ? 'Changer l\'image'
-                          : 'Sélectionner une image'),
+                      label: Text(_selectedLogo != null
+                          ? 'Changer l\'icône'
+                          : 'Icône / Logo (Carré)'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0A7EA4),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  if (_selectedImage != null)
+                  if (_selectedLogo != null)
                     const SizedBox(width: 12),
-                  if (_selectedImage != null)
+                  if (_selectedLogo != null)
                     Container(
                       width: 60,
                       height: 60,
@@ -801,9 +816,46 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                         color: const Color(0xFF2A2A2A),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey[700]!),
+                        image: DecorationImage(
+                          image: FileImage(_selectedLogo!),
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.image, color: Colors.white70),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Bannière
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUploading ? null : _selectBanner,
+                      icon: const Icon(Icons.panorama),
+                      label: Text(_selectedBanner != null
+                          ? 'Changer la bannière'
+                          : 'Visuel du Bon / Bannière (Paysage)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0A7EA4),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  if (_selectedBanner != null)
+                    const SizedBox(width: 12),
+                  if (_selectedBanner != null)
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[700]!),
+                        image: DecorationImage(
+                          image: FileImage(_selectedBanner!),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                 ],
