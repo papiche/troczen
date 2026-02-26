@@ -78,14 +78,18 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           cryptoService: _cryptoService,
           storageService: _storageService,
         );
-        if (await nostrService.connect(market.relayUrl!)) {
-          final tags = await nostrService.fetchActivityTagsFromProfiles(limit: 50);
-          if (mounted) {
-            setState(() {
-              _suggestedTags = tags.take(10).toList(); // Garder les 10 premiers
-            });
+        try {
+          if (await nostrService.connect(market.relayUrl!)) {
+            final tags = await nostrService.fetchActivityTagsFromProfiles(limit: 50);
+            if (mounted) {
+              setState(() {
+                _suggestedTags = tags.take(10).toList(); // Garder les 10 premiers
+              });
+            }
+            await nostrService.disconnect();
           }
-          await nostrService.disconnect();
+        } finally {
+          nostrService.dispose();
         }
       }
     } catch (e) {
@@ -326,6 +330,8 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       } catch (e) {
         debugPrint('⚠️ Erreur publication Nostr: $e');
         // Non bloquant
+      } finally {
+        nostrService.dispose();
       }
 
       if (!mounted) return;

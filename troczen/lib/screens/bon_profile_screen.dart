@@ -128,46 +128,50 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             }
           }
 
-          final nostrService = NostrService(cryptoService: _crypto, storageService: _storage);
-          await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
-          
-          final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-          final nsecHex = HEX.encode(nsecBonBytes);
-          
           // Ne pas mettre de base64 dans picture/banner (NIP-01)
           String? finalPictureUrl = ipfsUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
 
-          // 1. Publication Kind 0
-          await nostrService.publishUserProfile(
-            npub: widget.bon.bonId,
-            nsec: nsecHex,
-            name: _titleController.text,
-            displayName: _titleController.text,
-            about: _descriptionController.text,
-            picture: finalPictureUrl,
-            banner: finalPictureUrl,
-            picture64: _base64Image ?? widget.bon.picture64,
-            banner64: _base64Image ?? widget.bon.picture64, // Utilise picture64 comme fallback pour banner64
-          );
-          
-          _crypto.secureZeroiseBytes(nsecBonBytes);
-          _crypto.secureZeroiseBytes(p2Bytes);
-          _crypto.secureZeroiseBytes(p3Bytes);
+          final nostrService = NostrService(cryptoService: _crypto, storageService: _storage);
+          try {
+            await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
+            
+            final nsecBonBytes = _crypto.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+            final nsecHex = HEX.encode(nsecBonBytes);
+            
+            // 1. Publication Kind 0
+            await nostrService.publishUserProfile(
+              npub: widget.bon.bonId,
+              nsec: nsecHex,
+              name: _titleController.text,
+              displayName: _titleController.text,
+              about: _descriptionController.text,
+              picture: finalPictureUrl,
+              banner: finalPictureUrl,
+              picture64: _base64Image ?? widget.bon.picture64,
+              banner64: _base64Image ?? widget.bon.picture64, // Utilise picture64 comme fallback pour banner64
+            );
+            
+            _crypto.secureZeroiseBytes(nsecBonBytes);
+            _crypto.secureZeroiseBytes(p2Bytes);
+            _crypto.secureZeroiseBytes(p3Bytes);
 
-          // 2. Republier P3
-          await nostrService.publishP3(
-            bonId: widget.bon.bonId,
-            issuerNsecHex: widget.user.nsec,
-            p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
-            seedMarket: market.seedMarket,
-            issuerNpub: widget.user.npub,
-            marketName: market.name,
-            value: widget.bon.value,
-            category: _selectedCategory,
-            rarity: widget.bon.rarity,
-            wish: _descriptionController.text, // Sauvegarde du vœu sur le réseau
-          );
-          await nostrService.disconnect();
+            // 2. Republier P3
+            await nostrService.publishP3(
+              bonId: widget.bon.bonId,
+              issuerNsecHex: widget.user.nsec,
+              p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
+              seedMarket: market.seedMarket,
+              issuerNpub: widget.user.npub,
+              marketName: market.name,
+              value: widget.bon.value,
+              category: _selectedCategory,
+              rarity: widget.bon.rarity,
+              wish: _descriptionController.text, // Sauvegarde du vœu sur le réseau
+            );
+            await nostrService.disconnect();
+          } finally {
+            nostrService.dispose();
+          }
 
           // 🔥 3. SAUVEGARDE LOCALE (Ce qu'il manquait !)
           final updatedBon = widget.bon.copyWith(
