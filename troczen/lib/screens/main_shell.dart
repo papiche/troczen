@@ -16,9 +16,11 @@ import 'settings_screen.dart';
 import 'logs_screen.dart';
 import 'feedback_screen.dart';
 import 'apk_share_screen.dart';
+import 'package:intl/intl.dart';
 import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
 import '../services/logger_service.dart';
+import '../services/notification_service.dart';
 
 /// MainShell — Architecture de navigation principale adaptative
 ///
@@ -95,6 +97,60 @@ class _MainShellState extends State<MainShell> {
           ),
         ),
         actions: [
+          // Notifications
+          StreamBuilder<List<MarketNotification>>(
+            stream: NotificationService().notificationsStream,
+            builder: (context, snapshot) {
+              final notifications = snapshot.data ?? [];
+              final unreadCount = notifications.length;
+              
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.notifications, color: Color(0xFFFFB347)),
+                      onPressed: () {
+                        Scaffold.of(context).openEndDrawer();
+                      },
+                      tooltip: 'Notifications',
+                    ),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Builder(
+                        builder: (context) => GestureDetector(
+                          onTap: () {
+                            Scaffold.of(context).openEndDrawer();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           // Badge de mode utilisateur
           Container(
             margin: const EdgeInsets.only(right: 12),
@@ -128,6 +184,7 @@ class _MainShellState extends State<MainShell> {
       ),
       floatingActionButton: _buildMainFAB(appMode),
       drawer: _buildSettingsDrawer(appMode),
+      endDrawer: _buildNotificationDrawer(),
     );
   }
   
@@ -462,6 +519,105 @@ class _MainShellState extends State<MainShell> {
                     onTap: () => _showAboutDialog(),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Drawer — Notifications
+  Widget _buildNotificationDrawer() {
+    return Drawer(
+      backgroundColor: const Color(0xFF1E1E1E),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // En-tête
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.white24)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Notifications',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear_all, color: Colors.grey),
+                    onPressed: () {
+                      NotificationService().clearNotifications();
+                      Navigator.pop(context);
+                    },
+                    tooltip: 'Tout effacer',
+                  ),
+                ],
+              ),
+            ),
+            
+            Expanded(
+              child: StreamBuilder<List<MarketNotification>>(
+                stream: NotificationService().notificationsStream,
+                builder: (context, snapshot) {
+                  final notifications = snapshot.data ?? [];
+                  
+                  if (notifications.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Aucune notification pour le moment.',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final notif = notifications[index];
+                      IconData icon;
+                      Color color;
+                      
+                      switch (notif.type) {
+                        case NotificationType.loop:
+                          icon = Icons.loop;
+                          color = Colors.greenAccent;
+                          break;
+                        case NotificationType.bootstrap:
+                          icon = Icons.eco;
+                          color = Colors.purpleAccent;
+                          break;
+                        case NotificationType.expertise:
+                          icon = Icons.verified_user;
+                          color = Colors.blueAccent;
+                          break;
+                        case NotificationType.volume:
+                          icon = Icons.warning_amber_rounded;
+                          color = Colors.orangeAccent;
+                          break;
+                      }
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: color.withValues(alpha: 0.2),
+                          child: Icon(icon, color: color),
+                        ),
+                        title: Text(notif.message, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        subtitle: Text(
+                          DateFormat('dd/MM/yyyy HH:mm').format(notif.timestamp),
+                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],

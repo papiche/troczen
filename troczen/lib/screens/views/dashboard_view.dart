@@ -14,7 +14,6 @@ import '../../services/cache_database_service.dart';
 import '../../widgets/alchimiste/metric_card.dart';
 import '../../widgets/alchimiste/time_filter_bar.dart';
 import 'circuits_graph_view.dart';
-import '../../services/notification_service.dart';
 
 /// DashboardView — Données économiques du marché
 /// ✅ Intégration TimeFilterBar & MetricCards pour le mode Alchimiste
@@ -171,48 +170,6 @@ class _DashboardViewState extends State<DashboardView>
             onPressed: _exportMarketReport,
             tooltip: 'Exporter Rapport de Marché',
           ),
-          StreamBuilder<List<MarketNotification>>(
-            stream: NotificationService().notificationsStream,
-            builder: (context, snapshot) {
-              final notifications = snapshot.data ?? [];
-              final unreadCount = notifications.length; // Simplification: on compte tout comme non lu
-              
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: () => _showNotificationsDialog(context, notifications),
-                    tooltip: 'Signaux Alchimiques',
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMetrics,
@@ -348,82 +305,6 @@ class _DashboardViewState extends State<DashboardView>
         // Info sur le total historique
         _buildTotalHistoryInfo(),
       ],
-    );
-  }
-
-  void _showNotificationsDialog(BuildContext context, List<MarketNotification> notifications) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Signaux Alchimiques', style: TextStyle(color: Colors.white)),
-              IconButton(
-                icon: const Icon(Icons.clear_all, color: Colors.grey),
-                onPressed: () {
-                  NotificationService().clearNotifications();
-                  Navigator.pop(context);
-                },
-                tooltip: 'Tout effacer',
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 400,
-            child: notifications.isEmpty
-                ? const Center(child: Text('Aucun signal pour le moment.', style: TextStyle(color: Colors.white54)))
-                : ListView.builder(
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
-                      final notif = notifications[index];
-                      IconData icon;
-                      Color color;
-                      
-                      switch (notif.type) {
-                        case NotificationType.loop:
-                          icon = Icons.loop;
-                          color = Colors.greenAccent;
-                          break;
-                        case NotificationType.bootstrap:
-                          icon = Icons.eco;
-                          color = Colors.purpleAccent;
-                          break;
-                        case NotificationType.expertise:
-                          icon = Icons.verified_user;
-                          color = Colors.blueAccent;
-                          break;
-                        case NotificationType.volume:
-                          icon = Icons.warning_amber_rounded;
-                          color = Colors.orangeAccent;
-                          break;
-                      }
-
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: color.withValues(alpha: 0.2),
-                          child: Icon(icon, color: color),
-                        ),
-                        title: Text(notif.message, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                        subtitle: Text(
-                          DateFormat('dd/MM/yyyy HH:mm').format(notif.timestamp),
-                          style: const TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Fermer', style: TextStyle(color: Color(0xFFFFB347))),
-            ),
-          ],
-        );
-      },
     );
   }
 
