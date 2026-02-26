@@ -1084,6 +1084,11 @@ class StorageService {
     return await _cacheService.isN2Contact(npub);
   }
 
+  /// Récupère tous les contacts N2
+  Future<List<Map<String, String>>> getN2Contacts() async {
+    return await _cacheService.getN2Contacts();
+  }
+
   /// Vide le cache N2
   Future<void> clearN2Cache() async {
     await _cacheService.clearN2Cache();

@@ -8,6 +8,8 @@ import '../../services/nostr_service.dart';
 import '../../services/cache_database_service.dart';
 import '../../models/nostr_profile.dart';
 
+enum GraphMode { flux, wotx }
+
 class CircuitsGraphView extends StatefulWidget {
   const CircuitsGraphView({super.key});
 
@@ -20,7 +22,9 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
   List<TransferEdge> _allEdges = [];
   List<String> _bootstrapUsers = [];
   List<String> _contacts = [];
+  List<Map<String, dynamic>> _pendingRequests = [];
   String? _selectedNpub;
+  GraphMode _currentMode = GraphMode.flux;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -51,6 +55,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
 
   void _loadData() {
     final storageService = Provider.of<StorageService>(context, listen: false);
+    final nostrService = Provider.of<NostrService>(context, listen: false);
     
     storageService.getBootstrapUsers().then((users) {
       if (mounted) setState(() => _bootstrapUsers = users);
@@ -60,15 +65,68 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
       if (mounted) setState(() => _contacts = contacts);
     });
 
-    _edgesFuture = storageService.getTransferSummary().then((edges) async {
-      if (edges.length > 200) {
-        final limitedEdges = await storageService.getTransferSummary(limitDays: 30);
-        _allEdges = limitedEdges;
-        return limitedEdges;
+    storageService.getUser().then((user) async {
+      if (user != null) {
+        final myProfile = await nostrService.fetchUserProfile(user.npub);
+        final mySkills = myProfile?.skillCredentials?.map((c) => c.skillTag).toList() ?? [];
+        if (mySkills.isNotEmpty) {
+          final requests = await nostrService.fetchPendingSkillRequests(
+            mySkills: mySkills,
+            myNpub: user.npub,
+          );
+          if (mounted) setState(() => _pendingRequests = requests);
+        }
       }
-      _allEdges = edges;
-      return edges;
     });
+
+    if (_currentMode == GraphMode.flux) {
+      _edgesFuture = storageService.getTransferSummary().then((edges) async {
+        if (edges.length > 200) {
+          final limitedEdges = await storageService.getTransferSummary(limitDays: 30);
+          _allEdges = limitedEdges;
+          return limitedEdges;
+        }
+        _allEdges = edges;
+        return edges;
+      });
+    } else {
+      _edgesFuture = _loadWoTxEdges();
+    }
+  }
+
+  Future<List<TransferEdge>> _loadWoTxEdges() async {
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final user = await storageService.getUser();
+    if (user == null) return [];
+
+    final edges = <TransferEdge>[];
+    
+    // N1 contacts
+    final contacts = await storageService.getContacts();
+    for (final contact in contacts) {
+      edges.add(TransferEdge(
+        fromNpub: user.npub,
+        toNpub: contact,
+        totalValue: 1.0,
+        transferCount: 1,
+        isLoop: false,
+      ));
+    }
+
+    // N2 contacts
+    final n2Contacts = await storageService.getN2Contacts();
+    for (final n2 in n2Contacts) {
+      edges.add(TransferEdge(
+        fromNpub: n2['via_n1_npub']!,
+        toNpub: n2['npub']!,
+        totalValue: 1.0,
+        transferCount: 1,
+        isLoop: false,
+      ));
+    }
+
+    _allEdges = edges;
+    return edges;
   }
 
   Graph _buildGraph(List<TransferEdge> edges) {
@@ -80,6 +138,16 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
         nodes[npub] = Node.Id(npub);
       }
       return nodes[npub]!;
+    }
+
+    final mutualLinks = <String>{};
+    if (_currentMode == GraphMode.wotx) {
+      for (final edge in edges) {
+        final reverseExists = edges.any((e) => e.fromNpub == edge.toNpub && e.toNpub == edge.fromNpub);
+        if (reverseExists) {
+          mutualLinks.add('${edge.fromNpub}-${edge.toNpub}');
+        }
+      }
     }
 
     for (final edge in edges) {
@@ -97,21 +165,32 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
         }
       }
 
-      bool isBootstrapEdge = _bootstrapUsers.contains(edge.fromNpub) || _bootstrapUsers.contains(edge.toNpub);
+      final paint = Paint();
 
-      final paint = Paint()
-        ..strokeWidth = isFocused ? max(2.0, edge.totalValue / 5.0) : max(1.0, edge.totalValue / 10.0)
-        ..color = isDimmed
-            ? Colors.grey.withValues(alpha: 0.05)
-            : (isFocused
-                ? (edge.isLoop ? Colors.greenAccent : Colors.orange)
-                : (edge.isLoop ? Colors.greenAccent : Colors.grey));
-      
-      // Si c'est un lien bootstrap, on pourrait le dessiner en pointillés,
-      // mais graphview ne supporte pas nativement les pointillés via Paint.
-      // On peut utiliser une couleur légèrement différente pour l'arête.
-      if (isBootstrapEdge && !isFocused && !isDimmed) {
-        paint.color = Colors.purpleAccent.withValues(alpha: 0.5);
+      if (_currentMode == GraphMode.flux) {
+        bool isBootstrapEdge = _bootstrapUsers.contains(edge.fromNpub) || _bootstrapUsers.contains(edge.toNpub);
+
+        paint
+          ..strokeWidth = isFocused ? max(2.0, edge.totalValue / 5.0) : max(1.0, edge.totalValue / 10.0)
+          ..color = isDimmed
+              ? Colors.grey.withValues(alpha: 0.05)
+              : (isFocused
+                  ? (edge.isLoop ? Colors.greenAccent : Colors.orange)
+                  : (edge.isLoop ? Colors.greenAccent : Colors.grey));
+        
+        if (isBootstrapEdge && !isFocused && !isDimmed) {
+          paint.color = Colors.purpleAccent.withValues(alpha: 0.5);
+        }
+      } else {
+        // Mode WoTx
+        final isMutual = mutualLinks.contains('${edge.fromNpub}-${edge.toNpub}');
+        paint
+          ..strokeWidth = isFocused ? 3.0 : 1.0
+          ..color = isDimmed
+              ? Colors.grey.withValues(alpha: 0.05)
+              : (isFocused
+                  ? Colors.orange
+                  : (isMutual ? Colors.greenAccent : Colors.grey));
       }
       
       graph.addEdge(fromNode, toNode, paint: paint);
@@ -122,9 +201,48 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    double cohesionIndex = 0.0;
+    if (_currentMode == GraphMode.wotx && _allEdges.isNotEmpty) {
+      int mutualCount = 0;
+      for (final edge in _allEdges) {
+        final reverseExists = _allEdges.any((e) => e.fromNpub == edge.toNpub && e.toNpub == edge.fromNpub);
+        if (reverseExists) mutualCount++;
+      }
+      cohesionIndex = mutualCount / _allEdges.length;
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Circuits du Marché'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownButton<GraphMode>(
+              value: _currentMode,
+              dropdownColor: const Color(0xFF1E1E1E),
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              underline: const SizedBox(),
+              isDense: true,
+              items: const [
+                DropdownMenuItem(value: GraphMode.flux, child: Text('Flux ẐEN')),
+                DropdownMenuItem(value: GraphMode.wotx, child: Text('Toile de Confiance')),
+              ],
+              onChanged: (mode) {
+                if (mode != null && mode != _currentMode) {
+                  setState(() {
+                    _currentMode = mode;
+                    _selectedNpub = null;
+                    _loadData();
+                  });
+                }
+              },
+            ),
+            if (_currentMode == GraphMode.wotx)
+              Text(
+                'Indice de Cohésion : ${(cohesionIndex * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(fontSize: 10, color: Colors.greenAccent),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -260,6 +378,24 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
             final imageUrl = profile?.picture;
             final name = profile?.name ?? 'Anonyme';
 
+            int maxLevel = 0;
+            if (profile?.skillCredentials != null) {
+              for (final cred in profile!.skillCredentials!) {
+                if (cred.level > maxLevel) {
+                  maxLevel = cred.level;
+                }
+              }
+            }
+            
+            Color? auraColor;
+            if (maxLevel == 1) {
+              auraColor = Colors.green;
+            } else if (maxLevel == 2) {
+              auraColor = Colors.blue;
+            } else if (maxLevel == 3) {
+              auraColor = Colors.amber; // Doré pour X3
+            }
+
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -277,10 +413,10 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
                             border: Border.all(
                               color: _selectedNpub == npub
                                   ? Colors.orange
-                                  : (isBootstrap ? Colors.purpleAccent : Colors.greenAccent),
+                                  : (auraColor ?? (isBootstrap ? Colors.purpleAccent : Colors.greenAccent)),
                               width: _selectedNpub == npub
                                   ? 3
-                                  : (shouldPulse ? _pulseAnimation.value : 2),
+                                  : (shouldPulse ? _pulseAnimation.value : (auraColor != null ? 3 : 2)),
                             ),
                             boxShadow: _selectedNpub == npub ? [
                               BoxShadow(
@@ -294,7 +430,13 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
                                 blurRadius: _pulseAnimation.value * 2,
                                 spreadRadius: _pulseAnimation.value / 2,
                               )
-                            ] : null),
+                            ] : (auraColor != null ? [
+                              BoxShadow(
+                                color: auraColor.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              )
+                            ] : null)),
                           ),
                           child: ClipOval(
                             child: imageUrl != null && imageUrl.isNotEmpty
@@ -333,6 +475,27 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (profile?.skillCredentials != null && profile!.skillCredentials!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: profile.skillCredentials!.take(3).map((cred) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey.shade800,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${cred.skillTag} X${cred.level}',
+                            style: const TextStyle(fontSize: 8, color: Colors.white),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
               ],
             );
           },
@@ -411,6 +574,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
                   ],
                 ),
               ),
+            _buildCertificationSection(),
             OutlinedButton.icon(
               onPressed: () {
                 // TODO: Naviguer vers le profil complet
@@ -426,6 +590,102 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
         ),
       ),
     );
+  }
+
+  Widget _buildCertificationSection() {
+    if (_selectedNpub == null) return const SizedBox();
+
+    final userRequests = _pendingRequests.where((r) => r['pubkey'] == _selectedNpub).toList();
+    if (userRequests.isEmpty) return const SizedBox();
+
+    return Column(
+      children: userRequests.map((req) {
+        final tags = req['tags'] as List;
+        String? skill;
+        String? permitId;
+        for (final tag in tags) {
+          if (tag is List && tag.isNotEmpty) {
+            if (tag[0] == 't' && tag.length > 1) skill = tag[1].toString();
+            if (tag[0] == 'a' && tag.length > 1) permitId = tag[1].toString();
+          }
+        }
+
+        if (skill == null || permitId == null) return const SizedBox();
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Demande de certification : $skill',
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => _certifySkill(req['id'], _selectedNpub!, permitId!),
+                icon: const Icon(Icons.verified_user),
+                label: const Text('Certifier ce savoir-faire'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<void> _certifySkill(String requestId, String requesterNpub, String permitId) async {
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final nostrService = Provider.of<NostrService>(context, listen: false);
+
+    try {
+      final user = await storageService.getUser();
+      final market = await storageService.getActiveMarket();
+      if (user == null || market == null) throw Exception('Utilisateur ou marché non trouvé');
+
+      final success = await nostrService.publishSkillAttestation(
+        myNpub: user.npub,
+        myNsec: user.nsec,
+        requestId: requestId,
+        requesterNpub: requesterNpub,
+        permitId: permitId,
+        seedMarket: market.seedMarket,
+      );
+
+      if (success) {
+        HapticFeedback.heavyImpact();
+        if (mounted) {
+          setState(() {
+            _pendingRequests.removeWhere((r) => r['id'] == requestId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Savoir-faire certifié avec succès ! 🛡️'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la certification : $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _followUser(String npub) async {

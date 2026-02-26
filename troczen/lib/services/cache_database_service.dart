@@ -884,6 +884,16 @@ class CacheDatabaseService {
     return results.isNotEmpty;
   }
 
+  /// Récupérer tous les contacts N2
+  Future<List<Map<String, String>>> getN2Contacts() async {
+    final db = await database;
+    final results = await db.query(_n2CacheTable);
+    return results.map((row) => {
+      'npub': row['npub'] as String,
+      'via_n1_npub': row['via_n1_npub'] as String,
+    }).toList();
+  }
+
   /// Vider le cache N2
   Future<void> clearN2Cache() async {
     final db = await database;
