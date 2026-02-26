@@ -744,6 +744,11 @@ class StorageService {
     return await _cacheService.getTransferSummary(limitDays: limitDays);
   }
 
+  /// Récupère la liste des utilisateurs en phase de Bootstrap
+  Future<List<String>> getBootstrapUsers() async {
+    return await _cacheService.getBootstrapUsers();
+  }
+
   /// Obtenir le nombre total de bons sur le marché
   Future<int> getMarketBonsCount() async {
     return await _cacheService.getMarketBonsCount();

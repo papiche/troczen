@@ -690,6 +690,18 @@ class CacheDatabaseService {
     return issuers;
   }
 
+  /// Récupère la liste des utilisateurs en phase de Bootstrap (ayant émis un Bon Zéro)
+  Future<List<String>> getBootstrapUsers() async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT DISTINCT issuer_npub
+      FROM $_marketBonsTable
+      WHERE value = 0 OR rarity = 'bootstrap'
+      AND issuer_npub IS NOT NULL
+    ''');
+    return result.map((row) => row['issuer_npub'] as String).toList();
+  }
+
   /// Calcule les métriques du tableau de bord pour une période donnée via SQL
   Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
     final db = await database;

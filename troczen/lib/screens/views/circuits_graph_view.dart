@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:graphview/GraphView.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
@@ -14,10 +15,15 @@ class CircuitsGraphView extends StatefulWidget {
   State<CircuitsGraphView> createState() => _CircuitsGraphViewState();
 }
 
-class _CircuitsGraphViewState extends State<CircuitsGraphView> {
+class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTickerProviderStateMixin {
   late Future<List<TransferEdge>> _edgesFuture;
   List<TransferEdge> _allEdges = [];
+  List<String> _bootstrapUsers = [];
+  List<String> _contacts = [];
   String? _selectedNpub;
+
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   final SugiyamaConfiguration _configuration = SugiyamaConfiguration()
     ..nodeSeparation = 50
@@ -27,11 +33,33 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
   @override
   void initState() {
     super.initState();
-    _loadEdges();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 2.0, end: 6.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _loadData();
   }
 
-  void _loadEdges() {
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _loadData() {
     final storageService = Provider.of<StorageService>(context, listen: false);
+    
+    storageService.getBootstrapUsers().then((users) {
+      if (mounted) setState(() => _bootstrapUsers = users);
+    });
+    
+    storageService.getContacts().then((contacts) {
+      if (mounted) setState(() => _contacts = contacts);
+    });
+
     _edgesFuture = storageService.getTransferSummary().then((edges) async {
       if (edges.length > 200) {
         final limitedEdges = await storageService.getTransferSummary(limitDays: 30);
@@ -69,6 +97,8 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
         }
       }
 
+      bool isBootstrapEdge = _bootstrapUsers.contains(edge.fromNpub) || _bootstrapUsers.contains(edge.toNpub);
+
       final paint = Paint()
         ..strokeWidth = isFocused ? max(2.0, edge.totalValue / 5.0) : max(1.0, edge.totalValue / 10.0)
         ..color = isDimmed
@@ -76,6 +106,13 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
             : (isFocused
                 ? (edge.isLoop ? Colors.greenAccent : Colors.orange)
                 : (edge.isLoop ? Colors.greenAccent : Colors.grey));
+      
+      // Si c'est un lien bootstrap, on pourrait le dessiner en pointillés,
+      // mais graphview ne supporte pas nativement les pointillés via Paint.
+      // On peut utiliser une couleur légèrement différente pour l'arête.
+      if (isBootstrapEdge && !isFocused && !isDimmed) {
+        paint.color = Colors.purpleAccent.withValues(alpha: 0.5);
+      }
       
       graph.addEdge(fromNode, toNode, paint: paint);
     }
@@ -94,7 +131,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
             onPressed: () {
               setState(() {
                 _selectedNpub = null;
-                _loadEdges();
+                _loadData();
               });
             },
           ),
@@ -203,6 +240,10 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
       }
     }
 
+    final isBootstrap = _bootstrapUsers.contains(npub);
+    final isFollowed = _contacts.contains(npub);
+    final shouldPulse = isBootstrap && !isFollowed;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -222,32 +263,65 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _selectedNpub == npub ? Colors.orange : Colors.greenAccent, 
-                      width: _selectedNpub == npub ? 3 : 2
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _selectedNpub == npub
+                                  ? Colors.orange
+                                  : (isBootstrap ? Colors.purpleAccent : Colors.greenAccent),
+                              width: _selectedNpub == npub
+                                  ? 3
+                                  : (shouldPulse ? _pulseAnimation.value : 2),
+                            ),
+                            boxShadow: _selectedNpub == npub ? [
+                              BoxShadow(
+                                color: Colors.orange.withValues(alpha: 0.5),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              )
+                            ] : (shouldPulse ? [
+                              BoxShadow(
+                                color: Colors.purpleAccent.withValues(alpha: 0.5),
+                                blurRadius: _pulseAnimation.value * 2,
+                                spreadRadius: _pulseAnimation.value / 2,
+                              )
+                            ] : null),
+                          ),
+                          child: ClipOval(
+                            child: imageUrl != null && imageUrl.isNotEmpty
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                                  )
+                                : const Icon(Icons.person),
+                          ),
+                        );
+                      },
                     ),
-                    boxShadow: _selectedNpub == npub ? [
-                      BoxShadow(
-                        color: Colors.orange.withValues(alpha: 0.5),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      )
-                    ] : null,
-                  ),
-                  child: ClipOval(
-                    child: imageUrl != null && imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.person),
-                          )
-                        : const Icon(Icons.person),
-                  ),
+                    if (isBootstrap)
+                      Positioned(
+                        top: -5,
+                        right: -5,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text('🌱', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -308,6 +382,35 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
               ],
             ),
             const SizedBox(height: 12),
+            if (_bootstrapUsers.contains(_selectedNpub) && !_contacts.contains(_selectedNpub))
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purpleAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.5)),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      '🌱 Nouvel arrivant : suivez-le pour l\'aider à débloquer son Dividende Universel.',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: () => _followUser(_selectedNpub!),
+                      icon: const Icon(Icons.handshake),
+                      label: const Text('Tisser le lien'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purpleAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             OutlinedButton.icon(
               onPressed: () {
                 // TODO: Naviguer vers le profil complet
@@ -323,6 +426,48 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> {
         ),
       ),
     );
+  }
+
+  Future<void> _followUser(String npub) async {
+    final storageService = Provider.of<StorageService>(context, listen: false);
+    final nostrService = Provider.of<NostrService>(context, listen: false);
+
+    try {
+      final user = await storageService.getUser();
+      if (user == null) throw Exception('Utilisateur non trouvé');
+
+      await storageService.addContact(npub);
+      final contacts = await storageService.getContacts();
+      await nostrService.publishContactList(
+        npub: user.npub,
+        nsec: user.nsec,
+        contactsNpubs: contacts,
+      );
+      
+      HapticFeedback.heavyImpact();
+      // TODO: Jouer un son de clochette
+      
+      if (mounted) {
+        setState(() {
+          _contacts = contacts;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lien tissé avec succès ! 🌱'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du suivi : $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildStatColumn(String label, String value, Color color) {
