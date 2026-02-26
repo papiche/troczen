@@ -201,27 +201,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 8),
               ],
               
-              ElevatedButton(
-                onPressed: () async {
-                  try {
-                    final auditService = AuditTrailService();
-                    // On génère le fichier CSV (logique déjà dans le service)
-                    final file = await auditService.exportToCsv();
-                    
-                    // On ouvre la fenêtre de partage du téléphone
-                    await Share.shareXFiles([XFile(file.path)], text: 'Audit des échanges TrocZen');
-                    
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ Export CSV généré'), backgroundColor: Colors.green),
-                    );
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ Erreur export: $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A7EA4)),
-                child: const Text('Exporter les données (CSV)'),
+              ElevatedButton.icon(
+                onPressed: _isSaving ? null : _exportAuditData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0A7EA4),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.file_download),
+                label: const Text('Exporter les données (CSV)'),
               ),
               const SizedBox(height: 8),
               
@@ -413,6 +400,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _exportAuditData() async {
+    // 1. Demander la période à l'utilisateur
+    final period = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Exporter l\'audit', style: TextStyle(color: Colors.white)),
+        content: const Text('Quelle période souhaitez-vous exporter ?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, 7), child: const Text('7 jours')),
+          TextButton(onPressed: () => Navigator.pop(context, 30), child: const Text('30 jours')),
+          TextButton(onPressed: () => Navigator.pop(context, 0), child: const Text('Tout')),
+        ],
+      ),
+    );
+
+    if (period == null) return;
+
+    setState(() => _isSaving = true); // Réutiliser le flag de chargement
+
+    try {
+      final auditService = AuditTrailService();
+      DateTime? start;
+      if (period > 0) {
+        start = DateTime.now().subtract(Duration(days: period));
+      }
+
+      // 2. Générer le fichier CSV
+      final file = await auditService.exportToCsv(start: start, end: DateTime.now());
+
+      // 3. Partager le fichier via le système
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Audit TrocZen - ${widget.user.displayName}',
+        text: 'Export des transactions TrocZen (période: ${period == 0 ? "Totale" : "$period jours"})',
+      );
+      
+      Logger.success('Settings', 'Export CSV réussi');
+    } catch (e) {
+      Logger.error('Settings', 'Échec export CSV', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur d\'export: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 }
