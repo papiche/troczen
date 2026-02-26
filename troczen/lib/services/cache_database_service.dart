@@ -588,6 +588,44 @@ class CacheDatabaseService {
     );
   }
 
+  /// Récupère un résumé des transferts pour le graphe de circulation
+  Future<List<TransferEdge>> getTransferSummary({int? limitDays}) async {
+    final db = await database;
+    
+    String timeFilter = '';
+    List<dynamic> args = [];
+    
+    if (limitDays != null) {
+      final cutoff = DateTime.now().subtract(Duration(days: limitDays)).millisecondsSinceEpoch ~/ 1000;
+      timeFilter = 'WHERE t.timestamp >= ?';
+      args.add(cutoff);
+    }
+
+    // On joint avec market_bons pour connaître l'émetteur original
+    final result = await db.rawQuery('''
+      SELECT
+        t.from_npub,
+        t.to_npub,
+        SUM(t.value) as total_value,
+        COUNT(*) as transfer_count,
+        MAX(CASE WHEN t.to_npub = b.issuer_npub THEN 1 ELSE 0 END) as is_loop
+      FROM $_marketTransfersTable t
+      LEFT JOIN $_marketBonsTable b ON t.bon_id = b.bon_id
+      $timeFilter
+      GROUP BY t.from_npub, t.to_npub
+    ''', args);
+
+    return result.map((row) {
+      return TransferEdge(
+        fromNpub: row['from_npub'] as String,
+        toNpub: row['to_npub'] as String,
+        totalValue: (row['total_value'] as num).toDouble(),
+        transferCount: row['transfer_count'] as int,
+        isLoop: (row['is_loop'] as int) == 1,
+      );
+    }).toList();
+  }
+
   /// Récupère les statistiques par émetteur
   Future<List<IssuerStats>> getTopIssuers(DateTime start, DateTime end) async {
     final db = await database;
@@ -1003,5 +1041,21 @@ class IssuerStats {
     required this.totalEmitted,
     required this.avgTransfers,
     this.activitySeries = const [],
+  });
+}
+
+class TransferEdge {
+  final String fromNpub;
+  final String toNpub;
+  final double totalValue;
+  final int transferCount;
+  final bool isLoop;
+
+  TransferEdge({
+    required this.fromNpub,
+    required this.toNpub,
+    required this.totalValue,
+    required this.transferCount,
+    required this.isLoop,
   });
 }

@@ -8,6 +8,7 @@ import '../../services/cache_database_service.dart';
 // Import des nouveaux widgets Alchimiste
 import '../../widgets/alchimiste/metric_card.dart';
 import '../../widgets/alchimiste/time_filter_bar.dart';
+import 'circuits_graph_view.dart';
 
 /// DashboardView — Données économiques du marché
 /// ✅ Intégration TimeFilterBar & MetricCards pour le mode Alchimiste
@@ -138,6 +139,16 @@ class _DashboardViewState extends State<DashboardView>
         backgroundColor: const Color(0xFF1E1E1E),
         title: const Text('Dashboard Alchimiste'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.hub),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CircuitsGraphView()),
+              );
+            },
+            tooltip: 'Circuits du Marché',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMetrics,
