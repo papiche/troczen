@@ -47,10 +47,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    _nostrService = NostrService(
-      cryptoService: _cryptoService,
-      storageService: _storageService,
-    );
+    _nostrService = context.read<NostrService>();
     _initAutoSync();
   }
 

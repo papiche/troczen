@@ -16,6 +16,7 @@ import '../../services/logger_service.dart';
 import '../../services/nostr_service.dart';
 import '../user_profile_screen.dart';
 import '../trust_web_screen.dart';
+import 'package:provider/provider.dart';
 
 /// ProfileView — Mon Profil
 /// Affichage et édition du profil utilisateur
@@ -1232,10 +1233,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           final market = await storageService.getMarket();
           if (user != null && market?.relayUrl != null) {
             final contacts = await storageService.getContacts();
-            final nostrService = NostrService(
-              cryptoService: CryptoService(),
-              storageService: storageService,
-            );
+            final nostrService = context.read<NostrService>();
             
             if (await nostrService.connect(market!.relayUrl!)) {
               await nostrService.publishContactList(

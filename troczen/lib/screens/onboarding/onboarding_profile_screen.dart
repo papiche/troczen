@@ -79,7 +79,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     try {
       final storageService = StorageService();
       final cryptoService = CryptoService();
-      final nostrService = NostrService(cryptoService: cryptoService, storageService: storageService);
+      final nostrService = context.read<NostrService>();
       
       if (await nostrService.connect(state.relayUrl)) {
         // 1. Lire les Kind 30500
@@ -142,7 +142,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     // ✅ SÉCURITÉ: Récupérer la seed du marché pour le chiffrement
     final seedMarket = state.seedMarket;
     if (user != null && state.relayUrl.isNotEmpty && seedMarket != null) {
-      final nostrService = NostrService(cryptoService: CryptoService(), storageService: storageService);
+      final nostrService = context.read<NostrService>();
       if (await nostrService.connect(state.relayUrl)) {
         await nostrService.publishSkillPermit(
           npub: user.npub,

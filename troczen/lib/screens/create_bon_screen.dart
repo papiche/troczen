@@ -12,6 +12,7 @@ import '../services/nostr_service.dart';
 import '../services/api_service.dart';
 import '../services/du_calculation_service.dart';
 import '../services/image_compression_service.dart';
+import 'package:provider/provider.dart';
 
 class CreateBonScreen extends StatefulWidget {
   final User user;
@@ -83,10 +84,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     try {
       final market = await _storageService.getMarket();
       if (market != null && market.relayUrl != null) {
-        final nostrService = NostrService(
-          cryptoService: _cryptoService,
-          storageService: _storageService,
-        );
+        final nostrService = context.read<NostrService>();
         try {
           if (await nostrService.connect(market.relayUrl!)) {
             final tags = await nostrService.fetchActivityTagsFromProfiles(limit: 50);
@@ -230,10 +228,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       }
 
       // 5. Créer le bon
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
+      final nostrService = context.read<NostrService>();
       final duService = DuCalculationService(
         storageService: _storageService,
         nostrService: nostrService,

@@ -5,6 +5,7 @@ import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
 import '../services/cache_database_service.dart';
+import 'package:provider/provider.dart';
 
 class TrustWebScreen extends StatefulWidget {
   final User user;
@@ -34,10 +35,7 @@ class _TrustWebScreenState extends State<TrustWebScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _nostrService = NostrService(
-      cryptoService: CryptoService(),
-      storageService: _storageService,
-    );
+    _nostrService = context.read<NostrService>();
     _loadNetwork();
   }
 

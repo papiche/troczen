@@ -17,6 +17,7 @@ import '../../services/crypto_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../services/nostr_service.dart';
+import 'package:provider/provider.dart';
 
 class MirrorOfferController extends ChangeNotifier {
   final User user;
@@ -241,10 +242,7 @@ class MirrorOfferController extends ChangeNotifier {
       final p3 = await _storageService.getP3FromCache(bon.bonId);
       if (p3 == null) return;
 
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
+      final nostrService = NostrService(cryptoService: _cryptoService, storageService: _storageService);
 
       final connected = await nostrService.connect(market.relayUrl!);
       if (connected) {

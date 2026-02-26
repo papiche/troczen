@@ -9,6 +9,7 @@ import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/image_compression_service.dart';
 import 'feedback_screen.dart';
+import 'package:provider/provider.dart';
 
 /// Écran de gestion du profil utilisateur
 /// Permet à l'utilisateur de modifier son profil et d'uploader des images
@@ -78,10 +79,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       final market = await _storageService.getMarket();
       if (market?.relayUrl != null) {
-        final nostrService = NostrService(
-          cryptoService: _cryptoService,
-          storageService: _storageService,
-        );
+        final nostrService = context.read<NostrService>();
         
         final connected = await nostrService.connect(market!.relayUrl!);
         if (connected) {
@@ -177,10 +175,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       final market = await _storageService.getMarket();
       final relayUrl = market?.relayUrl ?? NostrConstants.defaultRelay;
       
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
+      final nostrService = context.read<NostrService>();
 
       final connected = await nostrService.connect(relayUrl);
       

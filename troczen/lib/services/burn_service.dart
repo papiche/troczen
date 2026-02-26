@@ -6,6 +6,7 @@ import 'storage_service.dart';
 import 'logger_service.dart';
 import '../models/bon.dart';
 import '../models/nostr_profile.dart';
+import 'package:provider/provider.dart';
 
 /// ✅ Service de Révélation/Circuit de bons
 ///
@@ -58,10 +59,7 @@ class BurnService {
           'Révélation circuit: ${bon.bonId} | ${bon.value}ẐEN | $hopCount hops | $ageDays jours');
 
       // 5. Publier les events sur Nostr
-      final nostrService = NostrService(
-        cryptoService: _cryptoService,
-        storageService: _storageService,
-      );
+      final nostrService = NostrService(cryptoService: _cryptoService, storageService: _storageService);
 
       final market = await _storageService.getMarket();
       final relayUrl = market?.relayUrl ?? NostrConstants.defaultRelay;

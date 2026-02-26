@@ -64,10 +64,7 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       
       final cryptoService = CryptoService();
       final storageService = StorageService();
-      final nostrService = NostrService(
-        cryptoService: cryptoService,
-        storageService: storageService,
-      );
+      final nostrService = context.read<NostrService>();
       
       final connected = await nostrService.connect(relayUrl);
       

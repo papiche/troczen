@@ -9,6 +9,7 @@ import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/image_compression_service.dart';
+import 'package:provider/provider.dart';
 
 /// Écran de gestion du profil d'un bon
 /// Permet à l'émetteur (détenteur P1) de modifier les métadonnées
@@ -131,7 +132,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           // Ne pas mettre de base64 dans picture/banner (NIP-01)
           String? finalPictureUrl = ipfsUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
 
-          final nostrService = NostrService(cryptoService: _crypto, storageService: _storage);
+          final nostrService = context.read<NostrService>();
           try {
             await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
             

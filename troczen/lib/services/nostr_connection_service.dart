@@ -17,6 +17,7 @@ class NostrConnectionService {
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   bool _isConnected = false;
+  bool _isConnecting = false;
   String? _currentRelayUrl;
   
   // Gestion de la reconnexion avec backoff exponentiel
@@ -80,11 +81,23 @@ class NostrConnectionService {
   
   /// Connexion au relais Nostr
   Future<bool> connect(String relayUrl) async {
+    if (_isConnecting) {
+      Logger.log('NostrConnection', 'Connexion déjà en cours vers $relayUrl');
+      // Attendre que la connexion en cours se termine
+      int retries = 0;
+      while (_isConnecting && retries < 50) { // Max 5 secondes d'attente
+        await Future.delayed(const Duration(milliseconds: 100));
+        retries++;
+      }
+      return _isConnected && _currentRelayUrl == relayUrl;
+    }
+
     try {
       if (_isConnected && _currentRelayUrl == relayUrl) {
         return true;
       }
 
+      _isConnecting = true;
       await disconnect();
 
       final uri = Uri.parse(relayUrl);
@@ -115,6 +128,7 @@ class NostrConnectionService {
       );
 
       _isConnected = true;
+      _isConnecting = false;
       _reconnectAttempts = 0;
       for (var listener in _onConnectionChangeListeners) {
         listener(true);
@@ -123,6 +137,7 @@ class NostrConnectionService {
       return true;
     } catch (e) {
       _isConnected = false;
+      _isConnecting = false;
       for (var listener in _onErrorListeners) {
         listener('Connexion impossible: $e');
       }

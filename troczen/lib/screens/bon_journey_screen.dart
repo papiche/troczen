@@ -6,6 +6,7 @@ import '../services/storage_service.dart';
 import '../services/logger_service.dart';
 import '../services/image_compression_service.dart';
 import '../models/nostr_profile.dart';
+import 'package:provider/provider.dart';
 
 class BonJourneyScreen extends StatefulWidget {
   final Bon bon;
@@ -29,10 +30,7 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
   @override
   void initState() {
     super.initState();
-    _nostrService = NostrService(
-      cryptoService: _cryptoService,
-      storageService: _storageService,
-    );
+    _nostrService = context.read<NostrService>();
     _loadJourney();
   }
 

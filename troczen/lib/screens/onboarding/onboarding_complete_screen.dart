@@ -292,10 +292,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
         
         // 2. Republier le profil sur Nostr avec les nouvelles URLs
         try {
-          final nostrService = NostrService(
-            cryptoService: cryptoService,
-            storageService: storageService,
-          );
+          final nostrService = context.read<NostrService>();
           
           if (await nostrService.connect(state.relayUrl)) {
             await nostrService.publishUserProfile(
@@ -337,10 +334,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     // Lancer la publication en arrière-plan sans attendre
     Future(() async {
       try {
-        final bgNostrService = NostrService(
-          cryptoService: cryptoService,
-          storageService: storageService,
-        );
+        final bgNostrService = context.read<NostrService>();
         
         if (await bgNostrService.connect(relayUrl)) {
           int successCount = 0;
@@ -400,10 +394,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       
       // 3. Publier le profil sur Nostr (avec Base64 initial)
       try {
-        final nostrService = NostrService(
-          cryptoService: cryptoService,
-          storageService: storageService,
-        );
+        final nostrService = context.read<NostrService>();
         
         await nostrService.connect(state.relayUrl);
         

@@ -3,6 +3,7 @@ import '../models/nostr_profile.dart';
 import '../services/nostr_service.dart';
 import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
+import 'package:provider/provider.dart';
 
 class PublicProfileScreen extends StatefulWidget {
   final String npub;
@@ -33,10 +34,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     try {
       final storageService = StorageService();
       final cryptoService = CryptoService();
-      final nostrService = NostrService(
-        cryptoService: cryptoService,
-        storageService: storageService,
-      );
+      final nostrService = context.read<NostrService>();
 
       final market = await storageService.getMarket();
       if (market?.relayUrl != null) {

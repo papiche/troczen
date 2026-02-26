@@ -10,6 +10,7 @@ import '../../services/crypto_service.dart';
 import '../../services/logger_service.dart';
 import '../create_bon_screen.dart';
 import '../mirror_offer_screen.dart';
+import 'package:provider/provider.dart';
 
 /// ExploreView — Bons émis (P1) + Marché
 /// Vue de l'émetteur avec deux sous-onglets
@@ -942,10 +943,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     if (cred.eventId == null) return;
     
     final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
-    final nostrService = NostrService(
-      cryptoService: CryptoService(),
-      storageService: _storageService,
-    );
+    final nostrService = context.read<NostrService>();
     
     try {
       if (await nostrService.connect(relayUrl)) {
@@ -1313,10 +1311,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     setState(() => _isLoadingRequests = true);
     
     try {
-      final nostrService = NostrService(
-        cryptoService: CryptoService(),
-        storageService: _storageService,
-      );
+      final nostrService = context.read<NostrService>();
       
       if (await nostrService.connect(relayUrl)) {
         final requests = await nostrService.fetchPendingSkillRequests(
@@ -1349,10 +1344,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       final market = await _storageService.getMarket();
       final seedMarket = market?.seedMarket ?? '';
       
-      final nostrService = NostrService(
-        cryptoService: CryptoService(),
-        storageService: _storageService,
-      );
+      final nostrService = context.read<NostrService>();
       
       if (await nostrService.connect(relayUrl)) {
         final success = await nostrService.publishSkillAttestation(
@@ -1733,10 +1725,7 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
       }
 
       // Publier la mise à jour sur Nostr (Kind 30303)
-      final nostrService = NostrService(
-        cryptoService: CryptoService(),
-        storageService: _storageService,
-      );
+      final nostrService = context.read<NostrService>();
 
       final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
       
