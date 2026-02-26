@@ -143,6 +143,28 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                   ),
                 ),
                 
+                // Bouton Créer un bon
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _navigateToCreateBon(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Créer un nouveau bon'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB347),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                
                 // Graphe d'évolution
                 SliverToBoxAdapter(
                   child: Padding(

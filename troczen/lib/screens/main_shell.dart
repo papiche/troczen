@@ -348,14 +348,10 @@ class _MainShellState extends State<MainShell> {
           backgroundColor: const Color(0xFFFFB347),
         );
       
-      case 1: // Explorer - ✅ Déplacé: Créer un bon
-        return FloatingActionButton.extended(
-          onPressed: () => _navigateToCreateBon(),
-          heroTag: 'create_bon',
-          icon: const Icon(Icons.add),
-          label: const Text('Créer un bon'),
-          backgroundColor: const Color(0xFFFFB347),
-        );
+      case 1: // Explorer
+        // Le bouton "Créer un bon" a été déplacé dans la vue ExploreView
+        // pour ne pas cacher le contenu en bas de l'écran
+        return null;
       
       case 2: // Dashboard (Simple ou Avancé)
         // Masqué tant que non implémenté

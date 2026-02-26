@@ -41,7 +41,7 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createAllTables(db);
       },
@@ -79,6 +79,25 @@ class CacheDatabaseService {
           );
           await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_skill_attester ON $_skillAttestationsTable(attester_npub)',
+          );
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_marketTransfersTable (
+              event_id TEXT PRIMARY KEY,
+              bon_id TEXT NOT NULL,
+              from_npub TEXT NOT NULL,
+              to_npub TEXT NOT NULL,
+              value REAL NOT NULL,
+              timestamp INTEGER NOT NULL,
+              market_tag TEXT
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_mt_bon_id ON $_marketTransfersTable(bon_id)',
+          );
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_mt_timestamp ON $_marketTransfersTable(timestamp)',
           );
         }
       },
