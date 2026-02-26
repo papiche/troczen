@@ -1464,9 +1464,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'En validant les compétences de vos pairs, vous augmentez la qualité de votre réseau local. '
-                          'Plus votre réseau est compétent, plus le multiplicateur de votre Dividende Universel (Alpha) '
-                          'sera élevé lors du prochain calcul de la TrocZen Box.',
+                          'En validant les compétences de vos amis, vous augmentez la qualité de votre réseau local. ',
                           style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],

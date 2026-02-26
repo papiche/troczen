@@ -159,6 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: _isSaving ? null : _saveSettings,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFB347),
+                    foregroundColor: Colors.black87,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _isSaving
@@ -193,6 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   icon: const Icon(Icons.bug_report),
@@ -205,6 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: _isSaving ? null : _exportAuditData,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0A7EA4),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 icon: const Icon(Icons.file_download),
@@ -222,6 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFB347),
+                  foregroundColor: Colors.black87,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 icon: const Icon(Icons.share),

@@ -695,7 +695,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
               Icon(Icons.key, color: Color(0xFFFFB347)),
               SizedBox(width: 8),
               Text(
-                'Clés cryptographiques',
+                'Mes Clés',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -733,7 +733,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Ne partagez jamais votre clé privée',
+                    'Copiez dans NOSTR Connect...',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.orange,
@@ -1017,12 +1017,12 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           () => _navigateToEditProfile(),
         ),
         const SizedBox(height: 12),
-        _buildActionButton(
-          'Exporter mes données',
-          Icons.download,
-          const Color(0xFF0A7EA4),
-          () => _exportUserData(),
-        ),
+        // _buildActionButton(
+        //   'Exporter mes données',
+        //   Icons.download,
+        //   const Color(0xFF0A7EA4),
+        //   () => _exportUserData(),
+        // ),
       ],
     );
   }
