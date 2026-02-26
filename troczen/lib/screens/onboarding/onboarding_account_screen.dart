@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
 import '../../models/user.dart';
+import 'onboarding_flow.dart'; 
 
 /// Étape 1: Création du compte utilisateur
 class OnboardingAccountScreen extends StatefulWidget {
@@ -136,13 +138,20 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
         createdAt: DateTime.now(),
         website: null,
         g1pub: g1pub,
-        activityTags: [],
+        activityTags:[],
       );
       
       await storageService.saveUser(user);
       
       // Initialisation silencieuse du marché global
-      await storageService.initializeDefaultMarket(name: 'Marché Global Ğ1');
+      final market = await storageService.initializeDefaultMarket(name: 'Marché Global Ğ1');
+      
+      // ---> Enregistrement de la seed de zéros pour la suite du flux
+      if (mounted) {
+        final notifier = context.read<OnboardingNotifier>();
+        notifier.setSeedMarket(market.seedMarket, 'mode000');
+        notifier.updateState(notifier.state.copyWith(marketName: market.name));
+      }
       
       setState(() => _isCreatingAccount = false);
       
@@ -166,7 +175,7 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
             'Impossible de créer le compte: $e',
             style: const TextStyle(color: Colors.white),
           ),
-          actions: [
+          actions:[
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('OK'),
