@@ -382,7 +382,7 @@ void main() {
             List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
           );
           final challenge = HEX.encode(challengeBytes);
-          final signature = cryptoService.signMessage(challenge, nsec);
+          final signature = cryptoService.signMessageBytes(challenge, Uint8List.fromList(HEX.decode(cryptoService.decodeNsec(nsec))));
 
           final isValid = cryptoService.verifySignature(challenge, signature, bonId);
           expect(isValid, isTrue, reason: 'La signature doit être valide');
@@ -510,7 +510,7 @@ void main() {
           );
           final challenge = HEX.encode(challengeBytes);
 
-          final signature = cryptoService.signMessage(challenge, nsec);
+          final signature = cryptoService.signMessageBytes(challenge, Uint8List.fromList(HEX.decode(cryptoService.decodeNsec(nsec))));
 
           // Signature valide
           expect(cryptoService.verifySignature(challenge, signature, pubKey), isTrue);

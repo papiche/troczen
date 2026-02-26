@@ -17,7 +17,6 @@ import '../../services/crypto_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../services/nostr_service.dart';
-import 'package:provider/provider.dart';
 
 class MirrorOfferController extends ChangeNotifier {
   final User user;

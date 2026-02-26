@@ -5,7 +5,6 @@ import '../models/user.dart';
 import '../models/nostr_profile.dart';
 import '../services/api_service.dart';
 import '../services/nostr_service.dart';
-import '../services/crypto_service.dart';
 import '../services/storage_service.dart';
 import '../services/image_compression_service.dart';
 import 'feedback_screen.dart';
@@ -37,7 +36,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _relaysController = TextEditingController();
   
   final _apiService = ApiService();
-  final _cryptoService = CryptoService();
   final _storageService = StorageService();
   
   String? _base64Picture;

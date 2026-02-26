@@ -695,41 +695,11 @@ class CryptoService {
 
   /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) via bibliothèque éprouvée
   /// Utilise bip340 qui implémente correctement le nonce déterministe BIP-340
-  /// Accepte la clé privée en format hex ou nsec1... (Bech32)
-  /// ⚠️ NOTE: Cette méthode utilise des Strings immuables qui restent en mémoire.
-  /// Préférez signMessageBytes() pour une meilleure sécurité mémoire.
-  String signMessage(String messageHex, String privateKey) {
-    // Détecter si c'est du Bech32 (nsec1...) ou de l'hex
-    String privateKeyHex;
-    if (privateKey.startsWith('nsec1')) {
-      privateKeyHex = decodeNsec(privateKey);
-    } else {
-      privateKeyHex = privateKey;
-    }
-    
-    // ✅ SÉCURITÉ: Validation de la clé privée
-    if (privateKeyHex.length != 64) {
-      throw ArgumentError('Clé privée invalide: doit faire 32 octets (64 chars hex)');
-    }
-    
-    // ✅ SÉCURITÉ: Utilisation de bip340 (bibliothèque éprouvée)
-    // Cette bibliothèque implémente correctement:
-    // - Nonce déterministe BIP-340 avec taggedHash
-    // - Normalisation BIP-340 (y pair)
-    // - Protection contre les attaques timing
-    try {
-      // Générer auxRand sécurisé (32 octets aléatoires)
-      // BIP-340 utilise auxRand pour éviter les attaques par canal auxiliaire
-      final auxRandBytes = Uint8List.fromList(
-        List.generate(32, (_) => _secureRandom.nextInt(256))
-      );
-      final auxRandHex = HEX.encode(auxRandBytes);
-      
-      final signature = bip340.sign(privateKeyHex, messageHex, auxRandHex);
-      return signature;
-    } catch (e) {
-      throw ArgumentError('Erreur lors de la signature: $e');
-    }
+  /// Accepte la clé privée en format Uint8List
+  /// ⚠️ NOTE: Cette méthode est dépréciée, utilisez signMessageBytes()
+  @Deprecated('Utilisez signMessageBytes à la place')
+  String signMessage(String messageHex, Uint8List privateKeyBytes) {
+    return signMessageBytes(messageHex, privateKeyBytes);
   }
 
   /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) en utilisant Uint8List

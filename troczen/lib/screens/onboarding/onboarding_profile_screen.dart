@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../config/app_config.dart';
 import '../../services/storage_service.dart';
 import '../../services/nostr_service.dart';
@@ -35,7 +34,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   
   final List<String> _selectedTags = [];
   final List<String> _dynamicTags = [];
-  final ImagePicker _imagePicker = ImagePicker();
   
   File? _selectedProfileImage;
   bool _loadingDynamicTags = false;
@@ -46,8 +44,6 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
   String? _base64Banner;
   
   /// URL IPFS une fois l'upload terminé (optionnel, en arrière-plan)
-  String? _ipfsAvatarUrl;
-  String? _ipfsBannerUrl;
   
   File? _selectedBannerImage;
   

@@ -18,7 +18,6 @@ import 'feedback_screen.dart';
 import 'apk_share_screen.dart';
 import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
-import '../services/crypto_service.dart';
 import '../services/logger_service.dart';
 
 /// MainShell — Architecture de navigation principale adaptative
@@ -42,7 +41,6 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentTab = 0;
   final _storageService = StorageService();
-  final _cryptoService = CryptoService();
   late final NostrService _nostrService;
   @override
   void initState() {

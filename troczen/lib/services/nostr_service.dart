@@ -527,7 +527,7 @@ class NostrService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessage(eventId, nsec);
+      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
@@ -818,7 +818,7 @@ class NostrService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessage(eventId, nsec);
+      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
@@ -1043,7 +1043,7 @@ class NostrService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessage(eventId, nsec);
+      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);

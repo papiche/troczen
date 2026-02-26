@@ -1,3 +1,4 @@
+import "dart:typed_data";
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
@@ -128,7 +129,7 @@ class NostrWoTxService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      final signature = _cryptoService.signMessage(eventId, nsec);
+      final signature = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
@@ -230,7 +231,7 @@ class NostrWoTxService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      event['sig'] = _cryptoService.signMessage(eventId, nsec);
+      event['sig'] = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(nsec)));
 
       final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
       if (success) {
@@ -366,7 +367,7 @@ class NostrWoTxService {
 
       final eventId = _calculateEventId(event);
       event['id'] = eventId;
-      event['sig'] = _cryptoService.signMessage(eventId, myNsec);
+      event['sig'] = _cryptoService.signMessageBytes(eventId, Uint8List.fromList(HEX.decode(myNsec)));
 
       final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
       if (success) {
@@ -471,7 +472,7 @@ class NostrWoTxService {
 
       final id = _calculateEventId(event);
       event['id'] = id;
-      event['sig'] = _cryptoService.signMessage(id, myNsec);
+      event['sig'] = _cryptoService.signMessageBytes(id, Uint8List.fromList(HEX.decode(myNsec)));
 
       final success = await _connection.sendEventAndWait(id, jsonEncode(['EVENT', event]));
       if (success) {
@@ -512,7 +513,7 @@ class NostrWoTxService {
 
       final id = _calculateEventId(event);
       event['id'] = id;
-      event['sig'] = _cryptoService.signMessage(id, myNsec);
+      event['sig'] = _cryptoService.signMessageBytes(id, Uint8List.fromList(HEX.decode(myNsec)));
 
       final success = await _connection.sendEventAndWait(id, jsonEncode(['EVENT', event]));
       if (success) {

@@ -6,7 +6,6 @@ import 'storage_service.dart';
 import 'logger_service.dart';
 import '../models/bon.dart';
 import '../models/nostr_profile.dart';
-import 'package:provider/provider.dart';
 
 /// ✅ Service de Révélation/Circuit de bons
 ///

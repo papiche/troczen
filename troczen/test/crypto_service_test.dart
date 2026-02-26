@@ -113,7 +113,7 @@ void main() {
       final message = HEX.encode(Uint8List.fromList('Hello World'.codeUnits)); // Message en Hex
       
       // Signer avec la clé hex
-      final signature = cryptoService.signMessage(message, keys['privateKeyHex']!);
+      final signature = cryptoService.signMessageBytes(message, Uint8List.fromList(HEX.decode(keys['privateKeyHex']!)));
       expect(signature.length, equals(128)); // 64 bytes hex
       
       // Vérifier avec la clé hex
@@ -121,7 +121,7 @@ void main() {
       expect(isValid, isTrue);
       
       // Vérifier que ça fonctionne aussi avec les formats Bech32
-      final signatureFromNsec = cryptoService.signMessage(message, keys['nsec']!);
+      final signatureFromNsec = cryptoService.signMessageBytes(message, Uint8List.fromList(HEX.decode(cryptoService.decodeNsec(keys['nsec']!))));
       final isValidNpub = cryptoService.verifySignature(message, signatureFromNsec, keys['npub']!);
       expect(isValidNpub, isTrue);
     });
