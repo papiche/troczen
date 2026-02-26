@@ -12,7 +12,7 @@ class ImageResult {
   ImageResult({required this.originalPath, required this.base64DataUri});
 }
 
-/// ✅ v2.0.1: Service de compression d'images pour Nostr
+/// ✅ v2.0.2: Service de compression d'images pour Nostr
 /// 
 /// Compresse les images en JPEG ultra-léger (< 4 Ko) pour les
 /// encoder en Base64 directement dans les événements Nostr (Kind 0).
@@ -21,13 +21,13 @@ class ImageResult {
 /// 
 /// Spécifications:
 /// - Format: JPEG (compression efficace)
-/// - Taille max: 50x50 pixels pour avatar/logo
-/// - Taille max: 150x50 pixels pour bannière
+/// - Taille max: 80x80 pixels pour avatar/logo
+/// - Taille max: 200x100 pixels pour bannière
 /// - Poids max: 4 Ko (4096 bytes) encodé Base64
 class ImageCompressionService {
-  static const int maxAvatarSize = 50;        // 50x50 pixels
-  static const int maxBannerWidth = 150;      // 150 pixels de large
-  static const int maxBannerHeight = 50;      // 50 pixels de haut
+  static const int maxAvatarSize = 80;        // Carré: 80x80 pixels
+  static const int maxBannerWidth = 200;      // Paysage: 200 pixels de large
+  static const int maxBannerHeight = 100;     // Paysage: 100 pixels de haut (Ratio 2:1)
   static const int maxEncodedSize = 4096;     // 4 Ko max en Base64
   
   final ImagePicker _picker = ImagePicker();
@@ -46,18 +46,34 @@ class ImageCompressionService {
       
       if (decodedImage == null) return null;
       
-      final resizedImage = img.copyResize(
+      img.Image resizedImage = img.copyResize(
         decodedImage,
         width: maxAvatarSize,
         height: maxAvatarSize,
         maintainAspect: true,
       );
       
-      var compressedBytes = img.encodeJpg(resizedImage, quality: 70);
-      if (compressedBytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService', 'Troncature bannière: ${compressedBytes.length} -> $maxEncodedSize bytes');
-        compressedBytes = compressedBytes.sublist(0, maxEncodedSize);
+      int currentQuality = 80;
+      List<int> compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
+
+      // 1. Boucle de compression dynamique (baisse de qualité)
+      while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
+        currentQuality -= 10;
+        compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
       }
+
+      // 2. Sécurité finale si c'est toujours trop lourd (baisse de résolution)
+      if (compressedBytes.length > maxEncodedSize) {
+        Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
+        resizedImage = img.copyResize(
+          resizedImage, 
+          width: resizedImage.width ~/ 2, 
+          height: resizedImage.height ~/ 2,
+          maintainAspect: true,
+        );
+        compressedBytes = img.encodeJpg(resizedImage, quality: 30);
+      }
+
       final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
       
       return ImageResult(
@@ -84,18 +100,34 @@ class ImageCompressionService {
       
       if (decodedImage == null) return null;
       
-      final resizedImage = img.copyResize(
+      img.Image resizedImage = img.copyResize(
         decodedImage,
         width: maxBannerWidth,
         height: maxBannerHeight,
         maintainAspect: true,
       );
       
-      var compressedBytes = img.encodeJpg(resizedImage, quality: 70);
-      if (compressedBytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService', 'Troncature avatar: ${compressedBytes.length} -> $maxEncodedSize bytes');
-        compressedBytes = compressedBytes.sublist(0, maxEncodedSize);
+      int currentQuality = 80;
+      List<int> compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
+
+      // 1. Boucle de compression dynamique (baisse de qualité)
+      while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
+        currentQuality -= 10;
+        compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
       }
+
+      // 2. Sécurité finale si c'est toujours trop lourd (baisse de résolution)
+      if (compressedBytes.length > maxEncodedSize) {
+        Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
+        resizedImage = img.copyResize(
+          resizedImage, 
+          width: resizedImage.width ~/ 2, 
+          height: resizedImage.height ~/ 2,
+          maintainAspect: true,
+        );
+        compressedBytes = img.encodeJpg(resizedImage, quality: 30);
+      }
+
       final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
       
       return ImageResult(
@@ -116,18 +148,36 @@ class ImageCompressionService {
         source: ImageSource.gallery,
         maxWidth: maxAvatarSize.toDouble(),
         maxHeight: maxAvatarSize.toDouble(),
-        imageQuality: 70,  // Qualité JPEG 70%
       );
       
       if (image == null) return null;
       
       var bytes = await image.readAsBytes();
       
-      // Vérifier la taille
       if (bytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService',
-            'Attention: image avatar > 4 Ko: ${bytes.length} bytes. Troncature à $maxEncodedSize bytes.');
-        bytes = bytes.sublist(0, maxEncodedSize);
+        final decodedImage = img.decodeImage(bytes);
+        if (decodedImage == null) return null;
+
+        int currentQuality = 80;
+        var compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
+
+        while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
+          currentQuality -= 10;
+          compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
+        }
+
+        if (compressedBytes.length > maxEncodedSize) {
+          Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
+          final smallerImage = img.copyResize(
+            decodedImage, 
+            width: decodedImage.width ~/ 2, 
+            height: decodedImage.height ~/ 2,
+            maintainAspect: true,
+          );
+          compressedBytes = img.encodeJpg(smallerImage, quality: 30);
+        }
+        
+        bytes = Uint8List.fromList(compressedBytes);
       }
       
       return _encodeAsDataUri(bytes);
@@ -145,18 +195,36 @@ class ImageCompressionService {
         source: ImageSource.gallery,
         maxWidth: maxBannerWidth.toDouble(),
         maxHeight: maxBannerHeight.toDouble(),
-        imageQuality: 70,  // Qualité JPEG 70%
       );
       
       if (image == null) return null;
       
       var bytes = await image.readAsBytes();
       
-      // Vérifier la taille
       if (bytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService',
-            'Attention: image bannière > 4 Ko: ${bytes.length} bytes. Troncature à $maxEncodedSize bytes.');
-        bytes = bytes.sublist(0, maxEncodedSize);
+        final decodedImage = img.decodeImage(bytes);
+        if (decodedImage == null) return null;
+
+        int currentQuality = 80;
+        var compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
+
+        while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
+          currentQuality -= 10;
+          compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
+        }
+
+        if (compressedBytes.length > maxEncodedSize) {
+          Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
+          final smallerImage = img.copyResize(
+            decodedImage, 
+            width: decodedImage.width ~/ 2, 
+            height: decodedImage.height ~/ 2,
+            maintainAspect: true,
+          );
+          compressedBytes = img.encodeJpg(smallerImage, quality: 30);
+        }
+        
+        bytes = Uint8List.fromList(compressedBytes);
       }
       
       return _encodeAsDataUri(bytes);
@@ -175,6 +243,7 @@ class ImageCompressionService {
   /// Vérifie si une chaîne est un data URI Base64
   static bool isBase64DataUri(String? uri) {
     if (uri == null || uri.isEmpty) return false;
+    // Permet d'accepter potentiellement du webp si jamais ça évolue un jour
     return uri.startsWith('data:image/');
   }
   
