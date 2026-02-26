@@ -26,6 +26,8 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
   List<Map<String, dynamic>> _pendingRequests = [];
   String? _selectedNpub;
   GraphMode _currentMode = GraphMode.flux;
+  
+  final Map<String, NostrProfile?> _profileCache = {};
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -342,10 +344,18 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
     );
   }
 
+  Future<NostrProfile?> _getCachedProfile(String npub) async {
+    if (_profileCache.containsKey(npub)) {
+      return _profileCache[npub];
+    }
+    final nostrService = Provider.of<NostrService>(context, listen: false);
+    final profile = await nostrService.fetchUserProfile(npub);
+    _profileCache[npub] = profile;
+    return profile;
+  }
+
   Widget _buildNodeWidget(String? npub) {
     if (npub == null) return const SizedBox();
-
-    final nostrService = Provider.of<NostrService>(context, listen: false);
     
     bool isDimmed = false;
     if (_selectedNpub != null && _selectedNpub != npub) {
@@ -373,7 +383,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
         duration: const Duration(milliseconds: 300),
         opacity: isDimmed ? 0.2 : 1.0,
         child: FutureBuilder<NostrProfile?>(
-          future: nostrService.fetchUserProfile(npub),
+          future: _getCachedProfile(npub),
           builder: (context, snapshot) {
             final profile = snapshot.data;
             final imageUrl = profile?.picture;
