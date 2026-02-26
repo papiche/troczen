@@ -498,31 +498,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             const SizedBox(height: 16),
             
-            TextFormField(
-              controller: _nip05Controller,
-              decoration: const InputDecoration(
-                labelText: 'NIP-05',
-                hintText: 'nom@domaine.com',
-                border: OutlineInputBorder(),
-                labelStyle: TextStyle(color: Colors.white70),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
+            // TextFormField(
+            //   controller: _nip05Controller,
+            //   decoration: const InputDecoration(
+            //     labelText: 'NIP-05',
+            //     hintText: 'nom@domaine.com',
+            //     border: OutlineInputBorder(),
+            //     labelStyle: TextStyle(color: Colors.white70),
+            //   ),
+            //   style: const TextStyle(color: Colors.white),
+            // ),
             
-            const SizedBox(height: 16),
+            // const SizedBox(height: 16),
             
-            TextFormField(
-              controller: _lud16Controller,
-              decoration: const InputDecoration(
-                labelText: 'Lightning Address',
-                hintText: 'user@domaine.com',
-                border: OutlineInputBorder(),
-                labelStyle: TextStyle(color: Colors.white70),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
+            // TextFormField(
+            //   controller: _lud16Controller,
+            //   decoration: const InputDecoration(
+            //     labelText: 'Lightning Address',
+            //     hintText: 'user@domaine.com',
+            //     border: OutlineInputBorder(),
+            //     labelStyle: TextStyle(color: Colors.white70),
+            //   ),
+            //   style: const TextStyle(color: Colors.white),
+            // ),
             
-            const SizedBox(height: 16),
+            // const SizedBox(height: 16),
             
             TextFormField(
               controller: _websiteController,
