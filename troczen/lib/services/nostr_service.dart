@@ -1072,7 +1072,7 @@ class NostrService {
           final kind = event['kind'];
           if (kind == 0) {
             _handleMetadataEvent(event);
-          } else if (kind == 30303) {
+          } else if (kind == 30303 || kind == 1) {
             _market.handleP3Event(event);
           }
         }

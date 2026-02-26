@@ -15,6 +15,7 @@ class CacheDatabaseService {
   // Tables du cache
   static const String _p3CacheTable = 'p3_cache';
   static const String _marketBonsTable = 'market_bons';
+  static const String _marketTransfersTable = 'market_transfers';
   static const String _syncMetadataTable = 'sync_metadata';
   static const String _n2CacheTable = 'n2_cache';
   static const String _localWalletBonsTable = 'local_wallet_bons';
@@ -78,6 +79,28 @@ class CacheDatabaseService {
     );
     await db.execute(
       'CREATE INDEX idx_market_status ON $_marketBonsTable(status)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_market_bons_created_at ON $_marketBonsTable(created_at)',
+    );
+
+    // Table pour les transferts du marché (kind 1)
+    await db.execute('''
+      CREATE TABLE $_marketTransfersTable (
+        event_id TEXT PRIMARY KEY,
+        bon_id TEXT NOT NULL,
+        from_npub TEXT NOT NULL,
+        to_npub TEXT NOT NULL,
+        value REAL NOT NULL,
+        timestamp INTEGER NOT NULL,
+        market_tag TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_mt_bon_id ON $_marketTransfersTable(bon_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_mt_timestamp ON $_marketTransfersTable(timestamp)',
     );
 
     // Table pour les métadonnées de synchronisation
@@ -431,6 +454,204 @@ class CacheDatabaseService {
     return result.first['count'] as int;
   }
 
+  // ============================================================
+  // MÉTHODES MARKET TRANSFERS (KIND 1)
+  // ============================================================
+
+  /// Sauvegarder un transfert du marché
+  Future<void> saveMarketTransfer(Map<String, dynamic> transferData) async {
+    final db = await database;
+    final eventId = transferData['event_id'] as String?;
+    if (eventId == null) return;
+
+    await db.insert(
+      _marketTransfersTable,
+      {
+        'event_id': eventId,
+        'bon_id': transferData['bon_id'],
+        'from_npub': transferData['from_npub'],
+        'to_npub': transferData['to_npub'],
+        'value': transferData['value'],
+        'timestamp': transferData['timestamp'],
+        'market_tag': transferData['market_tag'],
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Sauvegarder un lot de transferts du marché
+  Future<void> saveMarketTransfersBatch(List<Map<String, dynamic>> transfers) async {
+    if (transfers.isEmpty) return;
+    
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final transferData in transfers) {
+        final eventId = transferData['event_id'] as String?;
+        if (eventId == null) continue;
+
+        await txn.insert(
+          _marketTransfersTable,
+          {
+            'event_id': eventId,
+            'bon_id': transferData['bon_id'],
+            'from_npub': transferData['from_npub'],
+            'to_npub': transferData['to_npub'],
+            'value': transferData['value'],
+            'timestamp': transferData['timestamp'],
+            'market_tag': transferData['market_tag'],
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  // ============================================================
+  // MÉTHODES D'AGRÉGATION (ALCHIMISTE)
+  // ============================================================
+
+  /// Récupère les métriques agrégées pour une période donnée
+  Future<AggregatedMetrics> getAggregatedMetrics(DateTime start, DateTime end, {String? groupBy}) async {
+    final db = await database;
+    final startStr = start.toIso8601String();
+    final endStr = end.toIso8601String();
+    
+    // 1. Calcul des totaux (Volume, Nombre de bons, Émetteurs uniques)
+    final summaryResult = await db.rawQuery('''
+      SELECT
+        SUM(value) as total_volume,
+        COUNT(*) as total_count,
+        COUNT(DISTINCT issuer_npub) as unique_issuers
+      FROM $_marketBonsTable
+      WHERE created_at BETWEEN ? AND ?
+      AND (status = 'active' OR status IS NULL)
+    ''', [startStr, endStr]);
+
+    final summary = summaryResult.first;
+
+    // 2. Calcul de la série temporelle (pour les graphiques)
+    // groupBy peut être '%Y-%m-%d' (jour), '%Y-%W' (semaine) ou '%Y-%m' (mois)
+    final groupFormat = groupBy ?? '%Y-%m-%d';
+    
+    final seriesResult = await db.rawQuery('''
+      SELECT
+        strftime('$groupFormat', created_at) as period,
+        SUM(value) as volume
+      FROM $_marketBonsTable
+      WHERE created_at BETWEEN ? AND ?
+      AND (status = 'active' OR status IS NULL)
+      GROUP BY period
+      ORDER BY period ASC
+    ''', [startStr, endStr]);
+
+    final series = seriesResult.map((row) {
+      final periodStr = row['period'] as String?;
+      DateTime date = DateTime.now();
+      if (periodStr != null) {
+        try {
+          if (groupFormat == '%Y-%m-%d') {
+            date = DateTime.parse(periodStr);
+          } else if (groupFormat == '%Y-%m') {
+            date = DateTime.parse('$periodStr-01');
+          } else {
+            // Fallback pour semaine ou autre
+            date = DateTime.parse(periodStr);
+          }
+        } catch (e) {
+          // Ignorer l'erreur de parsing
+        }
+      }
+      return TimeSeriesPoint(
+        date,
+        (row['volume'] as num?)?.toDouble() ?? 0.0,
+      );
+    }).toList();
+
+    // 3. Calcul des transferts (kind 1)
+    final transfersResult = await db.rawQuery('''
+      SELECT
+        SUM(value) as total_transfers_volume,
+        COUNT(*) as total_transfers_count
+      FROM $_marketTransfersTable
+      WHERE timestamp BETWEEN ? AND ?
+    ''', [start.millisecondsSinceEpoch ~/ 1000, end.millisecondsSinceEpoch ~/ 1000]);
+    
+    final transfersSummary = transfersResult.first;
+
+    return AggregatedMetrics(
+      totalVolume: (summary['total_volume'] as num?)?.toDouble() ?? 0.0,
+      count: (summary['total_count'] as int?) ?? 0,
+      uniqueIssuers: (summary['unique_issuers'] as int?) ?? 0,
+      transfersVolume: (transfersSummary['total_transfers_volume'] as num?)?.toDouble() ?? 0.0,
+      transfersCount: (transfersSummary['total_transfers_count'] as int?) ?? 0,
+      series: series,
+    );
+  }
+
+  /// Récupère les statistiques par émetteur
+  Future<List<IssuerStats>> getTopIssuers(DateTime start, DateTime end) async {
+    final db = await database;
+    final startStr = start.toIso8601String();
+    final endStr = end.toIso8601String();
+
+    final result = await db.rawQuery('''
+      SELECT
+        b.issuer_npub,
+        b.issuer_name,
+        SUM(b.value) as total_emitted,
+        COUNT(b.bon_id) as bons_count,
+        (
+          SELECT COUNT(*)
+          FROM $_marketTransfersTable t
+          WHERE t.bon_id = b.bon_id
+          AND t.timestamp BETWEEN ? AND ?
+        ) as transfers_count
+      FROM $_marketBonsTable b
+      WHERE b.created_at BETWEEN ? AND ?
+      AND b.issuer_npub IS NOT NULL
+      GROUP BY b.issuer_npub, b.issuer_name
+      ORDER BY total_emitted DESC
+      LIMIT 50
+    ''', [start.millisecondsSinceEpoch ~/ 1000, end.millisecondsSinceEpoch ~/ 1000, startStr, endStr]);
+
+    final issuers = result.map((row) {
+      final bonsCount = (row['bons_count'] as int?) ?? 1;
+      final transfersCount = (row['transfers_count'] as int?) ?? 0;
+      return IssuerStats(
+        npub: row['issuer_npub'] as String? ?? 'Inconnu',
+        name: row['issuer_name'] as String? ?? 'Anonyme',
+        totalEmitted: (row['total_emitted'] as num?)?.toDouble() ?? 0.0,
+        avgTransfers: bonsCount > 0 ? transfersCount / bonsCount : 0.0,
+      );
+    }).toList();
+
+    // Fetch activity series for each issuer
+    for (int i = 0; i < issuers.length; i++) {
+      final issuer = issuers[i];
+      final seriesResult = await db.rawQuery('''
+        SELECT
+          strftime('%Y-%m-%d', created_at) as period,
+          SUM(value) as volume
+        FROM $_marketBonsTable
+        WHERE issuer_npub = ?
+        AND created_at BETWEEN ? AND ?
+        GROUP BY period
+        ORDER BY period ASC
+      ''', [issuer.npub, startStr, endStr]);
+
+      final series = seriesResult.map((row) => (row['volume'] as num?)?.toDouble() ?? 0.0).toList();
+      issuers[i] = IssuerStats(
+        npub: issuer.npub,
+        name: issuer.name,
+        totalEmitted: issuer.totalEmitted,
+        avgTransfers: issuer.avgTransfers,
+        activitySeries: series.isEmpty ? [0.0] : series,
+      );
+    }
+
+    return issuers;
+  }
+
   /// Calcule les métriques du tableau de bord pour une période donnée via SQL
   Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
     final db = await database;
@@ -680,6 +901,7 @@ class CacheDatabaseService {
     final db = await database;
     await db.delete(_p3CacheTable);
     await db.delete(_marketBonsTable);
+    await db.delete(_marketTransfersTable);
     await db.delete(_syncMetadataTable);
     await db.delete(_n2CacheTable);
     await db.delete(_localWalletBonsTable);
@@ -707,6 +929,13 @@ class CacheDatabaseService {
         whereArgs: [cutoffDate.millisecondsSinceEpoch],
       );
       
+      // Supprimer les transferts expirés
+      await db.delete(
+        _marketTransfersTable,
+        where: 'timestamp < ?',
+        whereArgs: [cutoffDate.millisecondsSinceEpoch ~/ 1000],
+      );
+      
       await db.execute('VACUUM');
     } catch (e) {
       // Ignorer les erreurs de maintenance
@@ -731,4 +960,48 @@ class CacheDatabaseService {
       _database = null;
     }
   }
+}
+
+// ============================================================
+// MODÈLES DE DONNÉES POUR L'AGRÉGATION
+// ============================================================
+
+class AggregatedMetrics {
+  final double totalVolume;
+  final int count;
+  final int uniqueIssuers;
+  final double transfersVolume;
+  final int transfersCount;
+  final List<TimeSeriesPoint> series;
+
+  AggregatedMetrics({
+    required this.totalVolume,
+    required this.count,
+    required this.uniqueIssuers,
+    required this.transfersVolume,
+    required this.transfersCount,
+    this.series = const [],
+  });
+}
+
+class TimeSeriesPoint {
+  final DateTime date;
+  final double value;
+  TimeSeriesPoint(this.date, this.value);
+}
+
+class IssuerStats {
+  final String npub;
+  final String name;
+  final double totalEmitted;
+  final double avgTransfers;
+  final List<double> activitySeries;
+
+  IssuerStats({
+    required this.npub,
+    required this.name,
+    required this.totalEmitted,
+    required this.avgTransfers,
+    this.activitySeries = const [],
+  });
 }

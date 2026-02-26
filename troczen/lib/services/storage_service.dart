@@ -687,6 +687,27 @@ class StorageService {
     }
   }
 
+  /// Sauvegarde un transfert du marché (kind 1)
+  Future<void> saveMarketTransfer(Map<String, dynamic> transferData) async {
+    try {
+      await _cacheService.saveMarketTransfer(transferData);
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur saveMarketTransfer', e);
+    }
+  }
+
+  /// Sauvegarde un lot de transferts du marché (kind 1)
+  Future<void> saveMarketTransfersBatch(List<Map<String, dynamic>> transfers) async {
+    if (transfers.isEmpty) return;
+    try {
+      await _cacheService.saveMarketTransfersBatch(transfers);
+      Logger.success('StorageService', '${transfers.length} transferts marché sauvegardés en lot (SQLite)');
+    } catch (e) {
+      Logger.error('StorageService', 'Erreur saveMarketTransfersBatch', e);
+      rethrow;
+    }
+  }
+
   /// ✅ CORRECTION: Récupère les données économiques du marché global
   /// Retourne les métadonnées de tous les bons publiés sur le marché (kind 30303)
   /// Utilisé par le Dashboard pour afficher la santé économique du marché
@@ -704,6 +725,16 @@ class StorageService {
   /// Calcule les métriques du tableau de bord pour une période donnée via SQL
   Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
     return await _cacheService.getDashboardMetricsForPeriod(start, end);
+  }
+
+  /// Récupère les métriques agrégées pour une période donnée (Alchimiste)
+  Future<AggregatedMetrics> getAggregatedMetrics(DateTime start, DateTime end, {String? groupBy}) async {
+    return await _cacheService.getAggregatedMetrics(start, end, groupBy: groupBy);
+  }
+
+  /// Récupère les statistiques par émetteur (Alchimiste)
+  Future<List<IssuerStats>> getTopIssuers(DateTime start, DateTime end) async {
+    return await _cacheService.getTopIssuers(start, end);
   }
 
   /// Obtenir le nombre total de bons sur le marché

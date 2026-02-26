@@ -373,7 +373,7 @@ class NostrMarketService {
     final marketTags = marketNames.map((m) => _normalizeMarketTag(m)).toList();
     
     final filters = <String, dynamic>{
-      'kinds': [30303],
+      'kinds': [1, 30303],
       '#t': marketTags,
     };
 
@@ -539,9 +539,14 @@ class NostrMarketService {
     }
   }
   
-  /// Traite un event Nostr reçu (Kind 30303 - Bons)
+  /// Traite un event Nostr reçu (Kind 30303 - Bons, Kind 1 - Transferts)
   Future<void> handleP3Event(Map<String, dynamic> event) async {
     try {
+      if (event['kind'] == 1) {
+        await _handleKind1Event(event);
+        return;
+      }
+
       if (event['kind'] != 30303) return;
 
       // Vérifier cryptographiquement l'événement
@@ -697,6 +702,57 @@ class NostrMarketService {
     }
   }
   
+  Future<void> _handleKind1Event(Map<String, dynamic> event) async {
+    try {
+      final tags = event['tags'] as List;
+      String? bonId;
+      String? toNpub;
+      String? marketTag;
+      double value = 0.0;
+
+      for (final tag in tags) {
+        if (tag is List && tag.isNotEmpty) {
+          if (tag[0] == 'bon' && tag.length > 1) {
+            bonId = tag[1].toString();
+          } else if (tag[0] == 'p' && tag.length > 1) {
+            toNpub = tag[1].toString();
+          } else if (tag[0] == 't' && tag.length > 1) {
+            marketTag = tag[1].toString();
+          } else if (tag[0] == 'value' && tag.length > 1) {
+            value = double.tryParse(tag[1].toString()) ?? 0.0;
+          }
+        }
+      }
+
+      if (bonId == null || toNpub == null) return;
+
+      // Si la valeur n'est pas dans les tags, on essaie de la parser depuis le contenu
+      if (value == 0.0) {
+        try {
+          final content = event['content'] as String;
+          final match = RegExp(r'Valeur:\s*([\d.]+)').firstMatch(content);
+          if (match != null) {
+            value = double.tryParse(match.group(1)!) ?? 0.0;
+          }
+        } catch (_) {}
+      }
+
+      final transferData = {
+        'event_id': event['id'],
+        'bon_id': bonId,
+        'from_npub': event['pubkey'],
+        'to_npub': toNpub,
+        'value': value,
+        'timestamp': event['created_at'],
+        'market_tag': marketTag,
+      };
+
+      await _storageService.saveMarketTransfer(transferData);
+    } catch (e) {
+      Logger.error('NostrMarket', 'Erreur traitement kind 1', e);
+    }
+  }
+
   // ============================================================
   // SYNC AUTOMATIQUE
   // ============================================================

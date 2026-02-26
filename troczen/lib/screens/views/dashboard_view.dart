@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../models/user.dart';
-import '../../models/bon.dart';
 import '../../services/storage_service.dart';
 import '../../services/logger_service.dart';
+import '../../services/cache_database_service.dart';
 // Import des nouveaux widgets Alchimiste
 import '../../widgets/alchimiste/metric_card.dart';
 import '../../widgets/alchimiste/time_filter_bar.dart';
@@ -86,8 +88,14 @@ class _DashboardViewState extends State<DashboardView>
       final endPrevious = startCurrent;
 
       // Fetch metrics via SQL
-      final currentMetrics = await _storageService.getDashboardMetricsForPeriod(startCurrent, endCurrent);
-      final previousMetrics = await _storageService.getDashboardMetricsForPeriod(startPrevious, endPrevious);
+      String groupBy = '%Y-%m-%d';
+      if (duration.inDays > 60) {
+        groupBy = '%Y-%m';
+      }
+
+      final currentAgg = await _storageService.getAggregatedMetrics(startCurrent, endCurrent, groupBy: groupBy);
+      final previousAgg = await _storageService.getAggregatedMetrics(startPrevious, endPrevious, groupBy: groupBy);
+      final topIssuers = await _storageService.getTopIssuers(startCurrent, endCurrent);
       final totalMarketBons = await _storageService.getMarketBonsCount();
 
       if (!mounted) return;
@@ -98,28 +106,19 @@ class _DashboardViewState extends State<DashboardView>
         return ((current - previous) / previous) * 100;
       }
 
-      final totalVolume = currentMetrics['totalVolume'] as double;
-      final prevVolume = previousMetrics['totalVolume'] as double;
-      
-      final activeMerchants = currentMetrics['activeMerchants'] as int;
-      final prevMerchants = previousMetrics['activeMerchants'] as int;
-
-      final newBonsCount = currentMetrics['newBonsCount'] as int;
-      final prevBonsCount = previousMetrics['newBonsCount'] as int;
-
-      final spentVolume = currentMetrics['spentVolume'] as double;
-
       setState(() {
         _metrics = DashboardMetrics(
-          totalVolume: totalVolume,
-          volumeTrend: calcTrend(totalVolume, prevVolume),
-          activeMerchants: activeMerchants,
-          merchantsTrend: calcTrend(activeMerchants.toDouble(), prevMerchants.toDouble()),
-          newBonsCount: newBonsCount,
-          newBonsTrend: calcTrend(newBonsCount.toDouble(), prevBonsCount.toDouble()),
-          spentVolume: spentVolume,
-          dailyAverage: totalVolume / (duration.inDays > 0 ? duration.inDays : 1),
+          totalVolume: currentAgg.totalVolume,
+          volumeTrend: calcTrend(currentAgg.totalVolume, previousAgg.totalVolume),
+          activeMerchants: currentAgg.uniqueIssuers,
+          merchantsTrend: calcTrend(currentAgg.uniqueIssuers.toDouble(), previousAgg.uniqueIssuers.toDouble()),
+          newBonsCount: currentAgg.count,
+          newBonsTrend: calcTrend(currentAgg.count.toDouble(), previousAgg.count.toDouble()),
+          spentVolume: currentAgg.transfersVolume,
+          dailyAverage: currentAgg.totalVolume / (duration.inDays > 0 ? duration.inDays : 1),
           totalMarketBons: totalMarketBons,
+          series: currentAgg.series,
+          topIssuers: topIssuers,
         );
         _isLoading = false;
       });
@@ -347,32 +346,158 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   // ============================================================
-  // ONGLET 2 : GRAPHIQUES (emplacements pour implémentation future)
+  // ONGLET 2 : GRAPHIQUES
   // ============================================================
   
   Widget _buildChartsTab() {
+    if (_metrics!.series.isEmpty) {
+      return const Center(
+        child: Text('Pas assez de données pour afficher un graphique', style: TextStyle(color: Colors.white54)),
+      );
+    }
+
+    final spots = _metrics!.series.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), e.value.value);
+    }).toList();
+
+    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) * 1.2;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildPlaceholderChart('Graphique d\'évolution temporel'),
-        const SizedBox(height: 24),
-        _buildPlaceholderChart('Répartition par statut'),
+        Container(
+          height: 300,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Évolution du Volume', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              Expanded(
+                child: LineChart(
+                  LineChartData(
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) => FlLine(color: Colors.white10, strokeWidth: 1),
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          getTitlesWidget: (value, meta) {
+                            if (value.toInt() >= 0 && value.toInt() < _metrics!.series.length) {
+                              final date = _metrics!.series[value.toInt()].date;
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(DateFormat('dd/MM').format(date), style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                              );
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          getTitlesWidget: (value, meta) {
+                            return Text('${value.toInt()} Ẑ', style: const TextStyle(color: Colors.white54, fontSize: 10));
+                          },
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    minX: 0,
+                    maxX: (_metrics!.series.length - 1).toDouble(),
+                    minY: 0,
+                    maxY: maxY == 0 ? 10 : maxY,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        color: const Color(0xFFFFB347),
+                        barWidth: 3,
+                        isStrokeCapRound: true,
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                            radius: 4,
+                            color: const Color(0xFFFFB347),
+                            strokeWidth: 2,
+                            strokeColor: const Color(0xFF1E1E1E),
+                          ),
+                        ),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: const Color(0xFFFFB347).withValues(alpha: 0.2),
+                        ),
+                      ),
+                    ],
+                    lineTouchData: LineTouchData(
+                      touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                        if (event is FlTapUpEvent && touchResponse != null && touchResponse.lineBarSpots != null) {
+                          final index = touchResponse.lineBarSpots!.first.spotIndex;
+                          _showBonsForDate(_metrics!.series[index].date);
+                        }
+                      },
+                      touchTooltipData: LineTouchTooltipData(
+                        getTooltipColor: (touchedSpot) => Colors.blueGrey.shade900,
+                        getTooltipItems: (touchedSpots) {
+                          return touchedSpots.map((spot) {
+                            return LineTooltipItem(
+                              '${spot.y.toStringAsFixed(1)} Ẑ',
+                              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            );
+                          }).toList();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildPlaceholderChart(String title) {
-    return Container(
-      height: 250,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
+  void _showBonsForDate(DateTime date) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Center(
-        child: Text(title, style: const TextStyle(color: Colors.white54)),
-      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Activité du ${DateFormat('dd/MM/yyyy').format(date)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              const Expanded(
+                child: Center(
+                  child: Text('Liste des bons concernés (à implémenter avec une requête spécifique)',
+                      style: TextStyle(color: Colors.white54)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -381,9 +506,67 @@ class _DashboardViewState extends State<DashboardView>
   // ============================================================
   
   Widget _buildTopIssuersTab() {
-    return const Center(
-      child: Text('Classement des émetteurs (en attente)', 
-          style: TextStyle(color: Colors.white54))
+    if (_metrics!.topIssuers.isEmpty) {
+      return const Center(
+        child: Text('Aucun émetteur pour cette période', style: TextStyle(color: Colors.white54)),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _metrics!.topIssuers.length,
+      itemBuilder: (context, index) {
+        final issuer = _metrics!.topIssuers[index];
+        return Card(
+          color: const Color(0xFF1E1E1E),
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFFFB347).withValues(alpha: 0.2),
+              child: Text('${index + 1}', style: const TextStyle(color: Color(0xFFFFB347), fontWeight: FontWeight.bold)),
+            ),
+            title: Text(issuer.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Moy. transferts: ${issuer.avgTransfers.toStringAsFixed(1)}', style: const TextStyle(color: Colors.white54)),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 20,
+                  width: 100,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(show: false),
+                      titlesData: FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: issuer.activitySeries.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
+                          isCurved: true,
+                          color: const Color(0xFFFFB347),
+                          barWidth: 2,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(show: false),
+                          belowBarData: BarAreaData(show: false),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${issuer.totalEmitted.toStringAsFixed(0)} Ẑ', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text('Volume émis', style: TextStyle(color: Colors.white38, fontSize: 10)),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -399,6 +582,8 @@ class DashboardMetrics {
   final double spentVolume;
   final double dailyAverage;
   final int totalMarketBons;
+  final List<TimeSeriesPoint> series;
+  final List<IssuerStats> topIssuers;
 
   DashboardMetrics({
     required this.totalVolume,
@@ -410,5 +595,7 @@ class DashboardMetrics {
     required this.spentVolume,
     required this.dailyAverage,
     required this.totalMarketBons,
+    required this.series,
+    required this.topIssuers,
   });
 }
