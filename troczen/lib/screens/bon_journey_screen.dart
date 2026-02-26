@@ -150,11 +150,11 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
             child: Stack(
               children: [
                 // Background (Banner or Gradient)
-                if (widget.bon.picture != null || widget.bon.picture64 != null)
+                if (widget.bon.banner != null || widget.bon.banner64 != null)
                   Positioned.fill(
                     child: ImageCompressionService.buildImage(
-                      uri: widget.bon.picture,
-                      fallbackUri: widget.bon.picture64,
+                      uri: widget.bon.banner,
+                      fallbackUri: widget.bon.banner64,
                       fit: BoxFit.cover,
                     ),
                   )

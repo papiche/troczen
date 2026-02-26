@@ -448,18 +448,46 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildCardBackground(Color color, String rarity) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: CardGradientHelper.getGradient(color, rarity, widget.bon.isExpired),
-        border: Border.all(
-          color: widget.bon.isRare 
-              ? RarityHelper.getColor(rarity) 
-              : Colors.white,
-          width: widget.bon.isRare ? 3 : 8,
+Widget _buildCardBackground(Color color, String rarity) {
+    // Si on a une bannière, on rend le dégradé de la carte à 30% d'opacité
+    // Sinon, on garde l'opacité à 100% (alpha = 1.0)
+    final hasBanner = widget.bon.banner != null || widget.bon.banner64 != null;
+    final gradientColor = color.withValues(alpha: hasBanner ? 0.3 : 1.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children:[
+        // 1. L'image de bannière en fond (si disponible)
+        if (hasBanner)
+          Opacity(
+            opacity: 0.5, // 50% d'opacité pour que le texte par dessus reste bien lisible
+            child: OfflineFirstImage(
+              url: widget.bon.banner,
+              localPath: null, // Géré automatiquement par le cache si URL fournie
+              fallbackBase64: widget.bon.banner64,
+              width: double.infinity,
+              height: double.infinity,
+              color: color,
+              rarity: rarity,
+              isPending: false,
+              fit: BoxFit.cover, // Important : remplit tout le fond
+            ),
+          ),
+
+        // 2. Le dégradé coloré et la bordure par dessus
+        Container(
+          decoration: BoxDecoration(
+            gradient: CardGradientHelper.getGradient(gradientColor, rarity, widget.bon.isExpired),
+            border: Border.all(
+              color: widget.bon.isRare 
+                  ? RarityHelper.getColor(rarity) 
+                  : Colors.white,
+              width: widget.bon.isRare ? 3 : 8,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      ],
     );
   }
 }

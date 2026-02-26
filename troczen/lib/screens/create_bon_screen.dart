@@ -395,6 +395,19 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white, width: 8),
+                  // ✅ NOUVEAU: Si une image est sélectionnée, l'afficher en fond
+                  image: _selectedImage != null || _base64Image != null 
+                      ? DecorationImage(
+                          image: _selectedImage != null 
+                              ? FileImage(_selectedImage!) as ImageProvider
+                              : MemoryImage(ImageCompressionService.extractBytesFromDataUri(_base64Image!)!),
+                          fit: BoxFit.cover,
+                          colorFilter: ColorFilter.mode(
+                            Colors.white.withValues(alpha: 0.5), // Éclaircir l'image pour la lisibilité
+                            BlendMode.lighten,
+                          ),
+                        )
+                      : null,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.2),

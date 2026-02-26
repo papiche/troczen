@@ -6,7 +6,7 @@ import 'offline_first_image.dart';
 /// Corps de la carte Panini affichant l'image, le nom et les informations de transfert.
 ///
 /// Note: Selon les standards NIP nostr, le champ `picture` est utilisé
-/// pour l'image du profil. Il n'y a pas de distinction entre logo et avatar.
+/// pour l'image du profil (le logo circulaire). La bannière est gérée en fond de carte.
 ///
 /// Exemple d'utilisation:
 /// ```dart
@@ -42,52 +42,88 @@ class BonCardBody extends StatelessWidget {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12),
+        // On rend le fond un peu plus transparent pour laisser voir la bannière en dessous
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: color.withValues(alpha: 0.3),
-            width: 2,
+            color: color.withValues(alpha: 0.4),
+            width: 1.5,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Image du profil - OFFLINE-FIRST (picture selon NIP nostr)
+          children:[
+            // Image du profil (Avatar circulaire bien net) - OFFLINE-FIRST
             if (pictureUrl != null && pictureUrl.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: OfflineFirstImage(
-                  url: pictureUrl,
-                  localPath: localPicturePath,
-                  fallbackBase64: bon.picture64,
-                  width: 60,
-                  height: 60,
-                  color: color,
-                  rarity: rarity,
-                  isPending: isPending,
-                  fit: BoxFit.cover,
-                  isChecking: isCheckingCache,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2.5),
+                  boxShadow:[
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: OfflineFirstImage(
+                    url: pictureUrl,
+                    localPath: localPicturePath,
+                    fallbackBase64: bon.picture64,
+                    width: 64,
+                    height: 64,
+                    color: color,
+                    rarity: rarity,
+                    isPending: isPending,
+                    fit: BoxFit.cover,
+                    isChecking: isCheckingCache,
+                  ),
                 ),
               )
             else
-              Icon(
-                RarityHelper.getDefaultIcon(rarity),
-                size: 48,
-                color: color.withValues(alpha: isPending ? 0.3 : 1.0),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.8),
+                  border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+                ),
+                child: Center(
+                  child: Icon(
+                    RarityHelper.getDefaultIcon(rarity),
+                    size: 36,
+                    color: color.withValues(alpha: isPending ? 0.3 : 1.0),
+                  ),
+                ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             
             // Nom de l'émetteur
-            Text(
-              bon.issuerName,
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                bon.issuerName,
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[900],
+                  // Ombre légère pour garantir la lisibilité sur fond de bannière
+                  shadows:[
+                    Shadow(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
             ),
 
             // Compteur de passages (si disponible)
@@ -101,7 +137,7 @@ class BonCardBody extends StatelessWidget {
 
   Widget _buildTransferCount() {
     return const Padding(
-      padding: EdgeInsets.only(top: 4),
+      padding: EdgeInsets.only(top: 8),
       child: _TransferCountBadge(),
     );
   }
@@ -113,24 +149,23 @@ class _TransferCountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Note: Le transferCount est passé via le Bon parent
-    // Ce widget est simplifié pour l'affichage statique
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.2),
+        color: Colors.blue.shade50.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.swap_horiz, size: 12, color: Colors.blue),
-          SizedBox(width: 4),
+        children:[
+          Icon(Icons.swap_horiz, size: 14, color: Colors.blue.shade700),
+          const SizedBox(width: 4),
           Text(
             'passages',
             style: TextStyle(
-              fontSize: 10,
-              color: Colors.blue,
+              fontSize: 11,
+              color: Colors.blue.shade700,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -167,72 +202,107 @@ class BonCardBodyWithTransfers extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: color.withValues(alpha: 0.3),
-            width: 2,
+            color: color.withValues(alpha: 0.4),
+            width: 1.5,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Image du profil - OFFLINE-FIRST (picture selon NIP nostr)
+          children:[
+            // Image du profil (Avatar circulaire bien net) - OFFLINE-FIRST
             if (pictureUrl != null && pictureUrl.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: OfflineFirstImage(
-                  url: pictureUrl,
-                  localPath: localPicturePath,
-                  fallbackBase64: bon.picture64,
-                  width: 60,
-                  height: 60,
-                  color: color,
-                  rarity: rarity,
-                  isPending: isPending,
-                  fit: BoxFit.cover,
-                  isChecking: isCheckingCache,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2.5),
+                  boxShadow:[
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: OfflineFirstImage(
+                    url: pictureUrl,
+                    localPath: localPicturePath,
+                    fallbackBase64: bon.picture64,
+                    width: 64,
+                    height: 64,
+                    color: color,
+                    rarity: rarity,
+                    isPending: isPending,
+                    fit: BoxFit.cover,
+                    isChecking: isCheckingCache,
+                  ),
                 ),
               )
             else
-              Icon(
-                RarityHelper.getDefaultIcon(rarity),
-                size: 48,
-                color: color.withValues(alpha: isPending ? 0.3 : 1.0),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.8),
+                  border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+                ),
+                child: Center(
+                  child: Icon(
+                    RarityHelper.getDefaultIcon(rarity),
+                    size: 36,
+                    color: color.withValues(alpha: isPending ? 0.3 : 1.0),
+                  ),
+                ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             
             // Nom de l'émetteur
-            Text(
-              bon.issuerName,
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                bon.issuerName,
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[900],
+                  shadows:[
+                    Shadow(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
             ),
 
             // Compteur de passages (si disponible)
             if (bon.transferCount != null && bon.transferCount! > 0) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.2),
+                  color: Colors.blue.shade50.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.swap_horiz, size: 12, color: Colors.blue),
+                  children:[
+                    Icon(Icons.swap_horiz, size: 14, color: Colors.blue.shade700),
                     const SizedBox(width: 4),
                     Text(
                       '${bon.transferCount} passages',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.blue,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.blue.shade700,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

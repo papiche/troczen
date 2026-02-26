@@ -434,86 +434,135 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
       ),
     );
   }
+Widget _buildPreviewCard() {
+    // Vérifie si une image est disponible (nouvelle sélection, base64 généré, ou déjà existante sur le bon)
+    final hasImage = _selectedImageFile != null || 
+                      _base64Image != null || 
+                      widget.bon.banner != null || 
+                      widget.bon.banner64 != null;
 
-  Widget _buildPreviewCard() {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.white, Color(0xFFFFF8E7)],
-        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFFFB347), width: 3),
+        boxShadow:[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _categories[_selectedCategory]!['icon'] as IconData,
-                      color: const Color(0xFFFFB347),
+      // ClipRRect évite que l'image de fond ne déborde sur les bords arrondis
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13), 
+        child: Stack(
+          fit: StackFit.expand,
+          children:[
+            // 1. L'image de fond (Bannière)
+            if (hasImage)
+              Opacity(
+                opacity: 0.4, // Opacité réduite pour garder le texte lisible
+                child: _selectedImageFile != null
+                    // Si on vient de sélectionner un fichier local
+                    ? Image.file(_selectedImageFile!, fit: BoxFit.cover)
+                    // Sinon on utilise l'image en base64 ou l'URL existante
+                    : ImageCompressionService.buildImage(
+                        uri: _base64Image ?? widget.bon.banner,
+                        fallbackUri: widget.bon.banner64,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+
+            // 2. Le dégradé par-dessus
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors:[
+                    // Plus transparent si on a une image en dessous
+                    Colors.white.withValues(alpha: hasImage ? 0.8 : 1.0),
+                    const Color(0xFFFFF8E7).withValues(alpha: hasImage ? 0.8 : 1.0),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+
+            // 3. Le contenu de la carte
+            Column(
+              children:[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children:[
+                      Row(
+                        children: [
+                          Icon(
+                            _categories[_selectedCategory]!['icon'] as IconData,
+                            color: const Color(0xFFFFB347),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _selectedCategory.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[800], // Foncé pour bien contraster
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${widget.bon.value} ẐEN',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFB347).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _selectedCategory.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.bold,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children:[
+                          Icon(
+                            _categories[_selectedCategory]!['icon'] as IconData,
+                            size: 48,
+                            color: const Color(0xFFFFB347),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _titleController.text.isEmpty 
+                                ? widget.bon.issuerName 
+                                : _titleController.text,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-                Text(
-                  '${widget.bon.value} ẐEN',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
                   ),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFB347).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _categories[_selectedCategory]!['icon'] as IconData,
-                      size: 48,
-                      color: const Color(0xFFFFB347),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _titleController.text.isEmpty 
-                          ? widget.bon.issuerName 
-                          : _titleController.text,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

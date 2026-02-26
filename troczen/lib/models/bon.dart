@@ -27,6 +27,8 @@ class Bon {
   final String? logoUrl;        // URL du logo du commerçant
   final String? picture;        // URL de l'avatar de l'émetteur
   final String? picture64;      // ✅ Fallback Base64
+  final String? banner;         // ✅ URL de la bannière paysage
+  final String? banner64;       // ✅ Fallback Base64 bannière
   final int? color;             // Couleur dominante (ARGB) - Pour UI uniquement
   final int? transferCount;     // Nombre de transferts effectués
   final String? issuerNostrProfile; // URL profil Nostr du commerçant
@@ -65,6 +67,8 @@ class Bon {
     this.logoUrl,
     this.picture,
     this.picture64,
+    this.banner,
+    this.banner64,
     this.color,
     this.transferCount = 0,
     this.issuerNostrProfile,
@@ -305,6 +309,8 @@ class Bon {
     String? logoUrl,
     String? picture,
     String? picture64,
+    String? banner,
+    String? banner64,
     int? color,
     String? rarity,
     int? transferCount,
@@ -335,6 +341,8 @@ class Bon {
       logoUrl: logoUrl ?? this.logoUrl,
       picture: picture ?? this.picture,
       picture64: picture64 ?? this.picture64,
+      banner: banner ?? this.banner,
+      banner64: banner64 ?? this.banner64,
       color: color ?? this.color,
       rarity: rarity ?? this.rarity,
       transferCount: transferCount ?? this.transferCount,
@@ -368,6 +376,8 @@ class Bon {
       'logoUrl': logoUrl,
       'picture': picture,
       'picture64': picture64,
+      'banner': banner,
+      'banner64': banner64,
       'color': color,
       'rarity': rarity,
       'transferCount': transferCount,
@@ -406,6 +416,8 @@ class Bon {
       logoUrl: json['logoUrl'],
       picture: json['picture'],
       picture64: json['picture64'],
+      banner: json['banner'],
+      banner64: json['banner64'],
       color: json['color'],
       rarity: json['rarity'] ?? 'common',
       transferCount: json['transferCount'] ?? 0,
