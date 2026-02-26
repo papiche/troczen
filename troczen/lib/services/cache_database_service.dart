@@ -431,6 +431,55 @@ class CacheDatabaseService {
     return result.first['count'] as int;
   }
 
+  /// Calcule les métriques du tableau de bord pour une période donnée via SQL
+  Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
+    final db = await database;
+    final startStr = start.toIso8601String();
+    final endStr = end.toIso8601String();
+
+    // Total Volume (active or null status)
+    final volumeResult = await db.rawQuery('''
+      SELECT SUM(value) as total
+      FROM $_marketBonsTable
+      WHERE (status = 'active' OR status IS NULL)
+      AND created_at >= ? AND created_at <= ?
+    ''', [startStr, endStr]);
+    final totalVolume = (volumeResult.first['total'] as num?)?.toDouble() ?? 0.0;
+
+    // Active Merchants
+    final merchantsResult = await db.rawQuery('''
+      SELECT COUNT(DISTINCT issuer_npub) as count
+      FROM $_marketBonsTable
+      WHERE issuer_npub IS NOT NULL AND issuer_npub != ''
+      AND created_at >= ? AND created_at <= ?
+    ''', [startStr, endStr]);
+    final activeMerchants = (merchantsResult.first['count'] as int?) ?? 0;
+
+    // Spent Volume
+    final spentResult = await db.rawQuery('''
+      SELECT SUM(value) as total
+      FROM $_marketBonsTable
+      WHERE (status = 'spent' OR status = 'burned')
+      AND created_at >= ? AND created_at <= ?
+    ''', [startStr, endStr]);
+    final spentVolume = (spentResult.first['total'] as num?)?.toDouble() ?? 0.0;
+
+    // New Bons Count
+    final countResult = await db.rawQuery('''
+      SELECT COUNT(*) as count
+      FROM $_marketBonsTable
+      WHERE created_at >= ? AND created_at <= ?
+    ''', [startStr, endStr]);
+    final newBonsCount = (countResult.first['count'] as int?) ?? 0;
+
+    return {
+      'totalVolume': totalVolume,
+      'activeMerchants': activeMerchants,
+      'spentVolume': spentVolume,
+      'newBonsCount': newBonsCount,
+    };
+  }
+
   /// Calculer la masse monétaire d'un groupe d'utilisateurs (M_n1)
   Future<double> calculateMonetaryMass(List<String> npubs) async {
     if (npubs.isEmpty) return 0.0;

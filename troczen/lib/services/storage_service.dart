@@ -701,6 +701,16 @@ class StorageService {
     return await _cacheService.getMarketBonById(bonId);
   }
 
+  /// Calcule les métriques du tableau de bord pour une période donnée via SQL
+  Future<Map<String, dynamic>> getDashboardMetricsForPeriod(DateTime start, DateTime end) async {
+    return await _cacheService.getDashboardMetricsForPeriod(start, end);
+  }
+
+  /// Obtenir le nombre total de bons sur le marché
+  Future<int> getMarketBonsCount() async {
+    return await _cacheService.getMarketBonsCount();
+  }
+
   /// Calculer la masse monétaire d'un groupe d'utilisateurs (M_n1)
   Future<double> calculateMonetaryMass(List<String> npubs) async {
     return await _cacheService.calculateMonetaryMass(npubs);
