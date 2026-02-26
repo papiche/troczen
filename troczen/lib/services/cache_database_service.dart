@@ -392,6 +392,36 @@ class CacheDatabaseService {
     await db.delete(_marketBonsTable);
   }
 
+  /// Remplace atomiquement tous les bons du portefeuille local par une nouvelle liste.
+  /// Utilise une transaction SQLite pour garantir l'intégrité des données.
+  Future<void> replaceAllLocalBons(List<Map<String, dynamic>> bons) async {
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    await db.transaction((txn) async {
+      // 1. Supprimer toutes les entrées existantes
+      await txn.delete(_localWalletBonsTable);
+
+      // 2. Insérer les nouveaux bons
+      for (final bonData in bons) {
+        final bonId = bonData['bonId'] as String?;
+        if (bonId == null) {
+          // Si un bon n'a pas d'ID, on l'ignore (normalement ne devrait pas arriver)
+          continue;
+        }
+        await txn.insert(
+          _localWalletBonsTable,
+          {
+            'bon_id': bonId,
+            'raw_data': jsonEncode(bonData),
+            'updated_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   /// Obtenir le nombre de bons sur le marché
   Future<int> getMarketBonsCount() async {
     final db = await database;

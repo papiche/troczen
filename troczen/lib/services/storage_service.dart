@@ -368,13 +368,13 @@ class StorageService {
   }
 
   /// Sauvegarde la liste complète des bons
-  /// ✅ MIGRATION: Utilise SQLite au lieu de FlutterSecureStorage
   Future<void> _saveBons(List<Bon> bons) async {
     try {
-      await _cacheService.clearLocalBons(); // Vider avant de remplacer
-      await _cacheService.saveLocalBonsBatch(bons.map((b) => b.toJson()).toList());
+      final bonsJson = bons.map((b) => b.toJson()).toList();
+      await _cacheService.replaceAllLocalBons(bonsJson);
     } catch (e) {
       Logger.error('StorageService', 'Erreur _saveBons', e);
+      rethrow; // Propager l'erreur pour permettre une gestion en amont
     }
   }
 
