@@ -57,9 +57,14 @@ fi
 
 # Étape 3: Installer le service systemd
 print_info "Étape 3: Installation du service systemd"
+SERVICE_FILE_SRC="$API_DIR/troczen-api.service"
+if [ ! -f "$SERVICE_FILE_SRC" ]; then
+    print_error "Fichier de service introuvable : $SERVICE_FILE_SRC"
+    exit 1
+fi
 sudo cp "$API_DIR/troczen-api.service" "$SYSTEMD_DIR/"
-sudo sed -i "s~_APIDIR_~$API_DIR~g" "$SYSTEMD_DIR/troczen-api.service"
-sudo sed -i "s~_USER_~$CURRENT_USER~g" "$SYSTEMD_DIR/troczen-api.service"
+sudo sed -i "s|_APIDIR_|$API_DIR|g" "$SERVICE_FILE_DST"
+sudo sed -i "s|_USER_|$CURRENT_USER|g" "$SERVICE_FILE_DST"
 
 sudo systemctl daemon-reload
 print_success "Service systemd installé"
