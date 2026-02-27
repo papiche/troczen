@@ -365,38 +365,44 @@ h1 span { color: var(--zen); }
     </div>
   </div>
 
-  <!-- FORMULE & TRM -->
+  <!-- FORMULE & TRM (MISE À JOUR AVEC LA FORMULE EXACTE) -->
   <div class="section-title" style="margin-top:40px;">02 — Le DU Hyper-relativiste : La régulation par le Code</div>
 
   <div class="formula-box">
     <p style="font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; text-align: center; max-width: 700px; margin-left: auto; margin-right: auto;">
-      Pourquoi le code limite-t-il la création de ẐEN ? Pour garantir un <b>référentiel relatif</b>. On ne compte plus en quantité absolue, mais en part de la masse globale. L'algorithme hyper-relativiste garantit que la monnaie reste un bien commun, distribué symétriquement, immunisé contre l'hyperinflation et la thésaurisation.
+      Pourquoi le code limite-t-il la création de ẐEN ? Pour garantir un <b>référentiel relatif</b>. On ne compte plus en quantité absolue, mais en part de la masse globale. L'algorithme hyper-relativiste (TRM locale) assure que la monnaie reste un bien commun, distribué symétriquement en fonction de la densité réelle du réseau de confiance.
     </p>
 
     <div class="formula-main">
-      <span class="var-zen">Nouveau DU (Dividende Universel)</span>
-      &nbsp;=&nbsp;
-      <span class="var-blue">DU précédent + [ C² × Masse(N1, N2) ]</span>
-      &nbsp;×&nbsp;
-      <span class="var-amber">(1 + α Compétence)</span>
+      <span class="var-zen">DUᵢ(t+1)</span> = <span class="var-zen">DUᵢ(t)</span> + <span class="var-blue">C²</span> ×
+      <span style="font-size: 1.1em;">(</span> <span class="var-zen">Mₙ₁</span> + <span class="var-zen">Mₙ₂</span> / √<span class="var-amber">N₂</span> <span style="font-size: 1.1em;">)</span>
+      / <span style="font-size: 1.1em;">(</span> <span class="var-amber">N₁</span> + √<span class="var-amber">N₂</span> <span style="font-size: 1.1em;">)</span>
     </div>
     
     <div class="formula-legend">
       <div class="legend-item">
-        <span class="legend-var" style="color:var(--zen);">Dividende Universel</span>
-        <span class="legend-desc">Le droit de créer des ẐEN. Il se débloque uniquement lorsque vous prouvez votre existence sociale locale (min. 5 liens réciproques).</span>
+        <span class="legend-var" style="color:var(--zen);">DUᵢ(t)</span>
+        <span class="legend-desc">Dividende Universel personnel du jour précédent — la référence qui évolue avec le réseau.</span>
       </div>
       <div class="legend-item">
-        <span class="legend-var" style="color:var(--blue);">C² (Vitesse)</span>
-        <span class="legend-desc">La constante de croissance. Le code observe à quelle vitesse les bons circulent. Plus l'économie locale est vive, plus la monnaie irrigue le marché.</span>
+        <span class="legend-var" style="color:var(--blue);">C²</span>
+        <span class="legend-desc">Constante de croissance (vitesse de circulation locale). Plus l'économie est vive, plus la monnaie irrigue le marché.</span>
       </div>
       <div class="legend-item">
-        <span class="legend-var" style="color:var(--blue);">Masse (N1, N2)</span>
-        <span class="legend-desc">Le code regarde la masse monétaire de votre réseau direct (N1) et étendu (N2). Cela dilue l'avantage des "riches" et évite l'explosion exponentielle.</span>
+        <span class="legend-var" style="color:var(--zen);">Mₙ₁</span>
+        <span class="legend-desc">Masse monétaire active des contacts directs (N1) — la richesse de vos amis proches.</span>
       </div>
       <div class="legend-item">
-        <span class="legend-var" style="color:var(--gold);">α (Savoir-faire)</span>
-        <span class="legend-desc">Un multiplicateur démocratique. Vos pairs attestent de vos compétences sur Nostr, modulant organiquement votre capacité de création monétaire.</span>
+        <span class="legend-var" style="color:var(--zen);">Mₙ₂</span>
+        <span class="legend-desc">Masse monétaire active des contacts indirects (N2) — la richesse des amis d’amis, pondérée par √N₂.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--amber);">N₁</span>
+        <span class="legend-desc">Nombre de contacts directs réciproques (liens de confiance).</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--amber);">N₂</span>
+        <span class="legend-desc">Nombre de contacts indirects réciproques (amis d’amis, sans doublon).</span>
       </div>
     </div>
   </div>
