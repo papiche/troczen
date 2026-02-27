@@ -460,6 +460,36 @@ h2 em { font-style: italic; color: var(--moss); }
   margin-bottom: 60px;
 }
 
+/* ===================== RESSOURCES ===================== */
+.resources-section { background: var(--cream); }
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.resource-card {
+  background: var(--parchment);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.resource-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+.resource-card p {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+
 /* ===================== HOW IT WORKS ===================== */
 .how-section { background: var(--ink); color: var(--cream); }
 .how-section h2 { color: var(--cream); }
@@ -974,6 +1004,7 @@ footer {
   .hero { padding: 100px 24px 60px; }
   .bon-card-mini { display: none; }
   section { padding: 64px 24px; }
+  .resources-grid { grid-template-columns: 1fr; }
   .steps-grid { grid-template-columns: 1fr; gap: 2px; }
   .step:first-child { border-radius: 8px 8px 0 0; }
   .step:last-child { border-radius: 0 0 8px 8px; }
@@ -993,6 +1024,7 @@ footer {
 <nav>
   <div class="nav-logo">ẐEN<span>·</span></div>
   <ul class="nav-links">
+    <li><a href="#ressources">Ressources</a></li>
     <li><a href="#comment">Comment ça marche</a></li>
     <li><a href="#pour-qui">Pour qui</a></li>
     <li><a href="#boucles">Les boucles</a></li>
@@ -1092,6 +1124,37 @@ footer {
     </div>
   </div>
 </div>
+
+<!-- ===================== RESSOURCES ===================== -->
+<section class="resources-section" id="ressources">
+  <div class="section-inner">
+    <div class="section-label">Ressources</div>
+    <h2>Pour aller plus <em>loin</em></h2>
+    <p class="section-intro">
+      Découvrez l'histoire de la monnaie et les concepts derrière ẐEN à travers nos contenus multimédias.
+    </p>
+
+    <div class="resources-grid fade-in">
+      <div class="resource-card">
+        <h3>Des coquillages sacrés aux codes cryptographiques</h3>
+        <p>Écoutez notre podcast sur l'évolution de la monnaie.</p>
+        <audio controls style="width: 100%; margin-top: 16px; border-radius: 8px;">
+          <source src="/static/sounds/Des_coquillages_sacr%C3%A9s_aux_codes_cryptographiques.m4a" type="audio/mp4">
+          Votre navigateur ne supporte pas l'élément audio.
+        </audio>
+      </div>
+      
+      <div class="resource-card">
+        <h3>La Monnaie : du Métal au Code</h3>
+        <p>Regardez notre vidéo explicative.</p>
+        <video controls style="width: 100%; border-radius: 8px; margin-top: 16px; background: #000;">
+          <source src="/static/videos/La_Monnaie__du_M%C3%A9tal_au_Code.mp4" type="video/mp4">
+          Votre navigateur ne supporte pas l'élément vidéo.
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ===================== COMMENT ÇA MARCHE ===================== -->
 <section class="how-section" id="comment">
