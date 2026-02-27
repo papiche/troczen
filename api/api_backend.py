@@ -372,13 +372,6 @@ def boucles():
     """Schéma des boucles"""
     return render_template('zen_boucles_schema.html')
 
-
-@app.route('/simulateur')
-def simulateur():
-    """Simulateur v4"""
-    return render_template('zen_v4.html')
-
-
 @app.route('/monitor')
 def monitor():
     """Monitor Nostr"""

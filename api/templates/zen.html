@@ -492,17 +492,13 @@ footer { background: var(--card-dark-bg); color:rgba(245,240,232,0.5); padding:4
 <nav>
   <a href="/" class="nav-logo">ẐEN<span>·</span></a>
   <ul class="nav-links">
-    <li><a href="#ressources">Ressources</a></li>
-    <li><a href="#comment">Comment ça marche</a></li>
-    <li><a href="#pour-qui">Pour qui</a></li>
-    <li><a href="#boucles">Les boucles</a></li>
-    <li><a href="/boucles">Schéma</a></li>
-    <li><a href="/simulateur">Simulateur</a></li>
-    <li><a href="/monitor">Monitor</a></li>
+    <li><a href="/" class="active">Accueil</a></li>
     <li><a href="#feedback">Feedback</a></li>
     <li><a href="#financer">Soutenir</a></li>
-    <li><button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button></li>
+    <li><a href="/boucles">Schéma</a></li>
+    <li><a href="/monitor">Monitor</a></li>
   </ul>
+  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button>
 </nav>
 
 <section class="hero" id="hero">
@@ -567,13 +563,13 @@ footer { background: var(--card-dark-bg); color:rgba(245,240,232,0.5); padding:4
     <h2>Comprendre TrocZen <em>en 5 minutes</em></h2>
     <p class="section-intro">La monnaie, c'est une vieille histoire. Découvrez pourquoi les bons locaux sont une idée ancienne qui reprend tout son sens aujourd'hui.</p>
     <div class="resources-grid fade-in">
-      <div class="resource-card">
+      <!-- <div class="resource-card">
         <h3>Des coquillages au smartphone : histoire de la monnaie</h3>
         <p>Écoutez notre podcast sur l'évolution de la monnaie, des origines à aujourd'hui.</p>
         <audio controls style="width:100%;margin-top:16px;border-radius:8px;">
           <source src="/static/sounds/Des_coquillages_sacr%C3%A9s_aux_codes_cryptographiques.m4a" type="audio/mp4">
         </audio>
-      </div>
+      </div> -->
       <div class="resource-card">
         <h3>La Monnaie : du Métal au Code</h3>
         <p>Regardez notre vidéo explicative.</p>
