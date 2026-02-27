@@ -37,10 +37,10 @@ print_info "Installation du service TrocZen API"
 echo "=========================================="
 
 # Étape 1: Créer les répertoires
-print_info "Étape 1: Création des répertoires"
-mkdir -p "$API_DIR"
+print_info "Étape 1: Création $LOG_DIR "
 sudo mkdir -p "$LOG_DIR"
 sudo chown "$CURRENT_USER:$CURRENT_USER" "$LOG_DIR"
+touch $LOG_DIR/$SERVICE_NAME.log
 print_success "Répertoires créés"
 
 # Étape 2: Créer le fichier .env si nécessaire
@@ -68,7 +68,7 @@ sudo sed -i "s|_APIDIR_|$API_DIR|g" "$SERVICE_FILE_DST"
 sudo sed -i "s|_USER_|$CURRENT_USER|g" "$SERVICE_FILE_DST"
 
 sudo systemctl daemon-reload
-print_success "Service systemd installé"
+print_success "Service systemd installé ($SERVICE_FILE_DST)"
 
 # Étape 4: Activer le service au démarrage
 print_info "Étape 4: Activation du service au démarrage"
