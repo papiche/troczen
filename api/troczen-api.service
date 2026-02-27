@@ -20,24 +20,6 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=troczen-api
 
-# Security hardening
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=_APIDIR_/uploads _APIDIR_/apks _APIDIR_/profiles /var/log/troczen
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-RestrictNamespaces=true
-LockPersonality=true
-MemoryDenyWriteExecute=true
-RestrictRealtime=true
-RestrictSUIDSGID=true
-RemoveIPC=true
-PrivateMounts=true
-
 # Resource limits
 LimitNOFILE=65536
 LimitNPROC=4096
