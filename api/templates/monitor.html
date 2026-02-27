@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrocZen - Nostr Protocol Monitor</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --primary: #FFB347;
+            --secondary: #0A7EA4;
+            --text: #ffffff;
+            --muted: #b0bec5;
+            --kind-color: #4CAF50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: var(--card);
+            padding: 15px 20px;
+            border-bottom: 2px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: gray;
+        }
+
+        .dot.connected { background-color: #4CAF50; box-shadow: 0 0 10px #4CAF50; }
+        .dot.error { background-color: #F44336; }
+
+        #relay-input {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            width: 250px;
+        }
+
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .event-card {
+            background-color: var(--card);
+            border-radius: 8px;
+            border-left: 5px solid var(--muted);
+            padding: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .event-card.kind-30303 { border-left-color: var(--primary); } /* Bon */
+        .event-card.kind-30304 { border-left-color: #9C27B0; } /* Circuit */
+        .event-card.kind-30502 { border-left-color: var(--secondary); } /* Attestation */
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .kind-badge {
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .pubkey { color: var(--muted); font-family: monospace; }
+
+        .content-box {
+            background: #121212;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85em;
+            color: #d1d1d1;
+            border: 1px solid #333;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .tag {
+            font-size: 0.75em;
+            background: #263238;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #81d4fa;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .controls {
+            padding: 10px 20px;
+            background: #1a1a1a;
+            display: flex;
+            gap: 20px;
+            font-size: 0.8em;
+        }
+
+        button {
+            cursor: pointer;
+            background: var(--primary);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <span style="font-size: 1.5em;">🌻</span>
+        <h1 style="margin: 0; font-size: 1.2em;">TrocZen Monitor</h1>
+        <input type="text" id="relay-input" value="wss://relay.copylaradio.com">
+        <button onclick="reconnect()">Connecter</button>
+    </div>
+    <div class="status">
+        <span id="status-text">Déconnecté</span>
+        <div id="status-dot" class="dot"></div>
+    </div>
+</header>
+
+<div class="controls">
+    <label><input type="checkbox" id="scroll-lock" checked> Auto-scroll</label>
+    <div>
+        Filtres : 
+        <span class="tag">30303: Bons</span>
+        <span class="tag">30304: Circuits</span>
+        <span class="tag">305xx: WoTx2</span>
+    </div>
+    <button style="background: #444; color: white;" onclick="clearLogs()">Effacer</button>
+</div>
+
+<main id="event-feed">
+    <div id="initial-message" style="text-align: center; color: var(--muted); margin-top: 50px;">
+        En attente de connexion au relai...
+    </div>
+</main>
+
+<script>
+    let socket;
+    const feed = document.getElementById('event-feed');
+    const initialMessage = document.getElementById('initial-message');
+    const relayInput = document.getElementById('relay-input');
+    const statusText = document.getElementById('status-text');
+    const statusDot = document.getElementById('status-dot');
+    const scrollLock = document.getElementById('scroll-lock');
+
+    function connect() {
+        const url = relayInput.value;
+        statusText.innerText = "Connexion...";
+        statusDot.className = "dot";
+
+        socket = new WebSocket(url);
+
+        socket.onopen = () => {
+            statusText.innerText = "Connecté";
+            statusDot.className = "dot connected";
+            if (initialMessage) {
+                initialMessage.style.display = 'none';
+            }
+            subscribe();
+        };
+
+        socket.onclose = () => {
+            statusText.innerText = "Déconnecté";
+            statusDot.className = "dot";
+        };
+
+        socket.onerror = (err) => {
+            statusText.innerText = "Erreur";
+            statusDot.className = "dot error";
+        };
+
+        socket.onmessage = (msg) => {
+            const data = JSON.parse(msg.data);
+            if (data[0] === "EVENT") {
+                renderEvent(data[2]);
+            }
+        };
+    }
+
+    function subscribe() {
+        // On demande tous les Kinds liés à TrocZen
+        const sub = ["REQ", "monitor-tz", {
+            kinds: [0, 1, 3, 5, 7, 30303, 30304, 30500, 30501, 30502, 30503],
+            limit: 50
+        }];
+        socket.send(jsonEncode(sub));
+    }
+
+    function renderEvent(event) {
+        const card = document.createElement('div');
+        card.className = `event-card kind-${event.kind}`;
+        
+        const date = new Date(event.created_at * 1000).toLocaleTimeString();
+        
+        // Extraction des labels pour TrocZen
+        let typeLabel = "Event Inconnu";
+        if (event.kind === 30303) typeLabel = "📦 BON ZEN (P3)";
+        if (event.kind === 30304) typeLabel = "🎉 CIRCUIT RÉVÉLÉ";
+        if (event.kind === 30500) typeLabel = "📜 DÉF. COMPÉTENCE";
+        if (event.kind === 30501) typeLabel = "🙋 DEMANDE ATTEST.";
+        if (event.kind === 30502) typeLabel = "🛡️ ATTESTATION PAIR";
+        if (event.kind === 30503) typeLabel = "✅ CREDENTIAL (VC)";
+        if (event.kind === 1) typeLabel = "💸 TRANSFERT";
+        if (event.kind === 0) typeLabel = "👤 PROFIL";
+
+        const tagsHtml = event.tags.map(t => `<span class="tag">${t[0]}: ${t[1]}</span>`).join('');
+
+        card.innerHTML = `
+            <div class="event-header">
+                <span class="kind-badge">${typeLabel} (Kind ${event.kind})</span>
+                <span>${date}</span>
+            </div>
+            <div class="pubkey">Auteur: ${event.pubkey}</div>
+            <div class="tag-list">${tagsHtml}</div>
+            <div class="content-box">${formatContent(event.content)}</div>
+            <div style="font-size: 0.7em; color: #555; text-align: right;">ID: ${event.id}</div>
+        `;
+
+        feed.appendChild(card);
+
+        if (scrollLock.checked) {
+            feed.scrollTop = feed.scrollHeight;
+        }
+    }
+
+    function formatContent(content) {
+        try {
+            // Si c'est du JSON (cas des Kind 0 ou content TrocZen), on l'embellit
+            const obj = JSON.parse(content);
+            return JSON.stringify(obj, null, 2);
+        } catch (e) {
+            return content;
+        }
+    }
+
+    function jsonEncode(obj) {
+        return JSON.stringify(obj);
+    }
+
+    function reconnect() {
+        if (socket) socket.close();
+        connect();
+    }
+
+    function clearLogs() {
+        feed.innerHTML = "";
+        if (initialMessage) {
+            feed.appendChild(initialMessage);
+            initialMessage.style.display = 'block';
+        }
+    }
+
+    function formatErrorForLog(e) {
+        return e.message;
+    }
+
+    // Démarrage initial
+    connect();
+</script>
+
+</body>
+</html>

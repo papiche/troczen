@@ -378,6 +378,12 @@ def simulateur():
     return render_template('zen_v4.html')
 
 
+@app.route('/monitor')
+def monitor():
+    """Monitor Nostr"""
+    return render_template('monitor.html')
+
+
 @app.route('/invite/<npub>')
 def invite_page(npub):
     """Page d'invitation virale"""
