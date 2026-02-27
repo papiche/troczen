@@ -43,16 +43,8 @@ sudo mkdir -p "$LOG_DIR"
 sudo chown "$CURRENT_USER:$CURRENT_USER" "$LOG_DIR"
 print_success "Répertoires créés"
 
-# Étape 2: Configurer les permissions
-print_info "Étape 2: Configuration des permissions"
-chown -R "$CURRENT_USER:$CURRENT_USER" "$API_DIR"
-chmod -R 755 "$API_DIR"
-chmod 755 "$API_DIR/start_api.sh"
-chmod 644 "$API_DIR/troczen-api.service"
-print_success "Permissions configurées"
-
-# Étape 3: Créer le fichier .env si nécessaire
-print_info "Étape 3: Configuration de l'environnement"
+# Étape 2: Créer le fichier .env si nécessaire
+print_info "Étape 2: Configuration de l'environnement"
 if [ ! -f "$API_DIR/.env" ]; then
     print_warning "Fichier .env non trouvé, copie de .env.example"
     cp "$API_DIR/.env.example" "$API_DIR/.env"
@@ -63,8 +55,8 @@ else
     print_info "Fichier .env déjà présent"
 fi
 
-# Étape 4: Installer le service systemd
-print_info "Étape 4: Installation du service systemd"
+# Étape 3: Installer le service systemd
+print_info "Étape 3: Installation du service systemd"
 sudo cp "$API_DIR/troczen-api.service" "$SYSTEMD_DIR/"
 sudo sed -i "s~_APIDIR_~$API_DIR~g" "$SYSTEMD_DIR/troczen-api.service"
 sudo sed -i "s~_USER_~$CURRENT_USER~g" "$SYSTEMD_DIR/troczen-api.service"
@@ -72,8 +64,8 @@ sudo sed -i "s~_USER_~$CURRENT_USER~g" "$SYSTEMD_DIR/troczen-api.service"
 sudo systemctl daemon-reload
 print_success "Service systemd installé"
 
-# Étape 5: Activer le service au démarrage
-print_info "Étape 5: Activation du service au démarrage"
+# Étape 4: Activer le service au démarrage
+print_info "Étape 4: Activation du service au démarrage"
 sudo systemctl enable "$SERVICE_NAME"
 print_success "Service activé au démarrage"
 
