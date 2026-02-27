@@ -263,13 +263,19 @@ h1 span { color: var(--zen); }
 <body>
 
 <nav>
-  <a href="/" class="nav-logo">ẐEN<span>·</span></a>
-  <ul class="nav-links">
-    <li><a href="/">Accueil</a></li>
-    <li><a href="/boucles" class="active">Schéma</a></li>
-    <li><a href="/monitor">Monitor</a></li>
-  </ul>
-  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀️</button>
+  <div class="nav-left">
+    <a href="/" class="nav-logo">ẐEN<span>·</span></a>
+    <ul class="nav-links">
+      <li><a href="/">Accueil</a></li> <!-- Enlever class="active" selon la page -->
+      <li><a href="/boucles" class="active">Schéma & TRM</a></li>
+      <li><a href="/monitor">Monitor Nostr</a></li>
+      <li><a href="/#feedback">Feedback</a></li>
+      <li><a href="/#financer">Soutenir</a></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button>
+  </div>
 </nav>
 
 <div class="container">
@@ -359,22 +365,39 @@ h1 span { color: var(--zen); }
     </div>
   </div>
 
-  <!-- FORMULE -->
-  <div class="section-title" style="margin-top:40px;">02 — Comment l'activité fait grandir votre crédit local</div>
+  <!-- FORMULE & TRM -->
+  <div class="section-title" style="margin-top:40px;">02 — Le DU Hyper-relativiste : La régulation par le Code</div>
 
   <div class="formula-box">
+    <p style="font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; text-align: center; max-width: 700px; margin-left: auto; margin-right: auto;">
+      Pourquoi le code limite-t-il la création de ẐEN ? Pour garantir un <b>référentiel relatif</b>. On ne compte plus en quantité absolue, mais en part de la masse globale. L'algorithme hyper-relativiste garantit que la monnaie reste un bien commun, distribué symétriquement, immunisé contre l'hyperinflation et la thésaurisation.
+    </p>
+
     <div class="formula-main">
-      <span class="var-zen">Crédit journalier</span>
+      <span class="var-zen">Nouveau DU (Dividende Universel)</span>
       &nbsp;=&nbsp;
-      <span class="var-blue">(activité passée + échanges récents)</span>
+      <span class="var-blue">DU précédent + [ C² × Masse(N1, N2) ]</span>
       &nbsp;×&nbsp;
-      <span class="var-amber">(1 + bonus compétences reconnues)</span>
+      <span class="var-amber">(1 + α Compétence)</span>
     </div>
+    
     <div class="formula-legend">
-      <div class="legend-item"><span class="legend-var" style="color:var(--zen);">Crédit journalier</span><span class="legend-desc">Les ẐEN que vous pouvez créer chaque jour — en fonction de vos échanges réels, pas de votre argent en banque</span></div>
-      <div class="legend-item"><span class="legend-var" style="color:var(--blue);">Vitesse</span><span class="legend-desc">Plus vos bons circulent vite et reviennent rapidement, plus votre crédit augmente — le système récompense l'activité</span></div>
-      <div class="legend-item"><span class="legend-var" style="color:var(--blue);">Échanges récents</span><span class="legend-desc">La valeur totale des bons actifs autour de vous — récompense ceux qui échangent, pas ceux qui thésaurisent</span></div>
-      <div class="legend-item"><span class="legend-var" style="color:var(--gold);">Compétences</span><span class="legend-desc">Vos savoir-faire reconnus par vos pairs (maraîcher, boulanger, réparateur…) augmentent votre crédit quotidien</span></div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--zen);">Dividende Universel</span>
+        <span class="legend-desc">Le droit de créer des ẐEN. Il se débloque uniquement lorsque vous prouvez votre existence sociale locale (min. 5 liens réciproques).</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--blue);">C² (Vitesse)</span>
+        <span class="legend-desc">La constante de croissance. Le code observe à quelle vitesse les bons circulent. Plus l'économie locale est vive, plus la monnaie irrigue le marché.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--blue);">Masse (N1, N2)</span>
+        <span class="legend-desc">Le code regarde la masse monétaire de votre réseau direct (N1) et étendu (N2). Cela dilue l'avantage des "riches" et évite l'explosion exponentielle.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-var" style="color:var(--gold);">α (Savoir-faire)</span>
+        <span class="legend-desc">Un multiplicateur démocratique. Vos pairs attestent de vos compétences sur Nostr, modulant organiquement votre capacité de création monétaire.</span>
+      </div>
     </div>
   </div>
 

@@ -227,21 +227,15 @@ main {
   <div class="nav-left">
     <a href="/" class="nav-logo">ẐEN<span>·</span></a>
     <ul class="nav-links">
-      <li><a href="/">Accueil</a></li>
-      <li><a href="/boucles">Schéma</a></li>
-      <li><a href="/simulateur">Simulateur</a></li>
-      <li><a href="/monitor" class="active">Monitor</a></li>
+      <li><a href="/">Accueil</a></li> <!-- Enlever class="active" selon la page -->
+      <li><a href="/boucles">Schéma & TRM</a></li>
+      <li><a href="/monitor" class="active">Monitor Nostr</a></li>
+      <li><a href="/#feedback">Feedback</a></li>
+      <li><a href="/#financer">Soutenir</a></li>
     </ul>
-    <span class="page-title">// Activité en temps réel sur le réseau</span>
   </div>
   <div class="nav-right">
-    <input type="text" id="relay-input" value="wss://relay.copylaradio.com" title="Adresse du serveur de synchronisation">
-    <button class="btn btn-moss" onclick="reconnect()">Connecter</button>
-    <div class="status">
-      <span class="status-text" id="status-text">Déconnecté</span>
-      <div class="dot" id="status-dot"></div>
-    </div>
-    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀️</button>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button>
   </div>
 </nav>
 

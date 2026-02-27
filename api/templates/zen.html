@@ -484,21 +484,35 @@ footer { background: var(--card-dark-bg); color:rgba(245,240,232,0.5); padding:4
   .metric-item:nth-child(2) { border-right:none; }
   .legal-grid, .boucle-stats { grid-template-columns:1fr; }
   .footer-inner { flex-direction:column; align-items:flex-start; }
+
+/* === COMPARISON TABLE (empruntée au schéma) === */
+.compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 32px; }
+.compare-card { background: var(--card-dark-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; color: var(--card-dark-text); }
+.compare-card.featured { border-color: var(--moss); background: rgba(61,97,71,0.1); }
+.compare-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+.compare-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.compare-desc { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+@media (max-width: 900px) { .compare-grid { grid-template-columns: 1fr; } }
+
 }
 </style>
 </head>
 <body>
 
 <nav>
-  <a href="/" class="nav-logo">ẐEN<span>·</span></a>
-  <ul class="nav-links">
-    <li><a href="/" class="active">Accueil</a></li>
-    <li><a href="#feedback">Feedback</a></li>
-    <li><a href="#financer">Soutenir</a></li>
-    <li><a href="/boucles">Schéma</a></li>
-    <li><a href="/monitor">Monitor</a></li>
-  </ul>
-  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button>
+  <div class="nav-left">
+    <a href="/" class="nav-logo">ẐEN<span>·</span></a>
+    <ul class="nav-links">
+      <li><a href="/" class="active">Accueil</a></li> <!-- Enlever class="active" selon la page -->
+      <li><a href="/boucles">Schéma & TRM</a></li>
+      <li><a href="/monitor">Monitor Nostr</a></li>
+      <li><a href="/#feedback">Feedback</a></li>
+      <li><a href="/#financer">Soutenir</a></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button>
+  </div>
 </nav>
 
 <section class="hero" id="hero">
@@ -557,25 +571,38 @@ footer { background: var(--card-dark-bg); color:rgba(245,240,232,0.5); padding:4
   </div>
 </div>
 
-<section class="resources-section" id="ressources">
+<!-- ===================== PHILOSOPHIE & TRM ===================== -->
+<section class="trm-section" id="philosophie" style="background: var(--surface2);">
   <div class="section-inner">
-    <div class="section-label">Pour en savoir plus</div>
-    <h2>Comprendre TrocZen <em>en 5 minutes</em></h2>
-    <p class="section-intro">La monnaie, c'est une vieille histoire. Découvrez pourquoi les bons locaux sont une idée ancienne qui reprend tout son sens aujourd'hui.</p>
-    <div class="resources-grid fade-in">
-      <!-- <div class="resource-card">
-        <h3>Des coquillages au smartphone : histoire de la monnaie</h3>
-        <p>Écoutez notre podcast sur l'évolution de la monnaie, des origines à aujourd'hui.</p>
-        <audio controls style="width:100%;margin-top:16px;border-radius:8px;">
-          <source src="/static/sounds/Des_coquillages_sacr%C3%A9s_aux_codes_cryptographiques.m4a" type="audio/mp4">
-        </audio>
-      </div> -->
-      <div class="resource-card">
-        <h3>La Monnaie : du Métal au Code</h3>
-        <p>Regardez notre vidéo explicative.</p>
-        <video controls style="width:100%;border-radius:8px;margin-top:16px;background:#000;">
-          <source src="/static/videos/La_Monnaie__du_M%C3%A9tal_au_Code.mp4" type="video/mp4">
-        </video>
+    <div class="section-label">Indépendance Monétaire</div>
+    <h2>Sortir de la dette,<br>reprendre le <em>pouvoir de créer</em></h2>
+    <p class="section-intro">
+      Aujourd'hui, 90% de la monnaie (l'Euro) est une "monnaie-dette" créée par les banques via le crédit. Ce système exige une croissance perpétuelle pour rembourser les intérêts. TrocZen encode une autre voie : la Théorie Relative de la Monnaie (TRM).
+    </p>
+
+    <div class="compare-grid fade-in">
+      <div class="compare-card">
+        <span class="compare-icon">⚖️</span>
+        <div class="compare-name">Équité Spatiale et Temporelle</div>
+        <div class="compare-desc">
+          Dans TrocZen, la monnaie ne privilégie personne. Que vous arriviez aujourd'hui ou dans 10 ans, le code garantit que chaque humain crée sa part relative égale de monnaie chaque jour.
+        </div>
+      </div>
+
+      <div class="compare-card">
+        <span class="compare-icon">🤝</span>
+        <div class="compare-name">Handshake Atomique (Offline)</div>
+        <div class="compare-desc">
+          L'absence de serveur central nécessite une sécurité absolue. Le double scan QR code (Offre puis Accusé de réception) garantit qu'un bon ẐEN ne peut jamais être dépensé deux fois, même sans Internet.
+        </div>
+      </div>
+
+      <div class="compare-card featured">
+        <span class="compare-icon" style="color:var(--zen);">∞</span>
+        <div class="compare-name" style="color:var(--zen);">Démocratie Monétaire Encodée</div>
+        <div class="compare-desc">
+          Le pouvoir de créer des ẐEN n'est pas accordé par un banquier, mais gagné par vos liens réels (Toile de Confiance Nostr). Le code régule cette création pour corréler la monnaie au flux de la vie, pas à la spéculation.
+        </div>
       </div>
     </div>
   </div>
