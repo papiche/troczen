@@ -38,9 +38,6 @@ echo "=========================================="
 
 # Étape 1: Créer les répertoires
 print_info "Étape 1: Création $LOG_DIR "
-sudo mkdir -p "$LOG_DIR"
-sudo chown "$CURRENT_USER:$CURRENT_USER" "$LOG_DIR"
-touch $LOG_DIR/$SERVICE_NAME.log
 print_success "Répertoires créés"
 
 # Étape 2: Créer le fichier .env si nécessaire
@@ -89,7 +86,6 @@ echo ""
 print_info "Note: Le service utilisera le chemin dynamique:"
 echo "  - WorkingDirectory: $API_DIR"
 echo "  - EnvironmentFile: $API_DIR/.env"
-echo "  - ExecStart: $API_DIR/start_api.sh production"
 echo ""
 print_info "Commandes utiles:"
 echo "  - Démarrer: systemctl start $SERVICE_NAME"

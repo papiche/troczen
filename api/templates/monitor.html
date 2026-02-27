@@ -1,313 +1,352 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrocZen - Nostr Protocol Monitor</title>
+    <title>ẐEN — Activité du réseau en direct</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #121212;
-            --card: #1e1e1e;
-            --primary: #FFB347;
-            --secondary: #0A7EA4;
-            --text: #ffffff;
-            --muted: #b0bec5;
-            --kind-color: #4CAF50;
-        }
+/* ===================== DESIGN SYSTEM TOKENS ===================== */
+:root {
+  --radius: 6px;
+  --moss:       #3d6147;
+  --moss-light: #5a8a67;
+  --rust:       #c4521a;
+  --gold:       #d4a017;
+  --green:      #10b981;
+  --amber:      #f59e0b;
+  --red:        #ef4444;
+  --cyan:       #22d3ee;
+  --violet:     #8b5cf6;
+  --blue:       #3b82f6;
+}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+[data-theme="dark"] {
+  --bg:          #121008;
+  --bg2:         #1a1710;
+  --surface:     #1e1b12;
+  --surface2:    #252118;
+  --ink:         #f0ead8;
+  --ink-soft:    #c4b896;
+  --ink-muted:   #7a7060;
+  --border:      rgba(200,180,120,0.12);
+  --nav-bg:      rgba(18,16,8,0.92);
+  --card-bg:     #1e1b12;
+  --card-border: rgba(200,180,120,0.12);
+  --kind-default:#7a7060;
+  --tag-bg:      #1a2535;
+  --tag-text:    #81d4fa;
+  --content-bg:  #0e0c07;
+}
 
-        header {
-            background-color: var(--card);
-            padding: 15px 20px;
-            border-bottom: 2px solid var(--primary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+[data-theme="light"] {
+  --bg:          #f5f0e8;
+  --bg2:         #ede5d0;
+  --surface:     #ede5d0;
+  --surface2:    #e5dcc8;
+  --ink:         #1c1a14;
+  --ink-soft:    #4a4535;
+  --ink-muted:   #7a6d55;
+  --border:      rgba(122,92,58,0.15);
+  --nav-bg:      rgba(245,240,232,0.92);
+  --card-bg:     #ede5d0;
+  --card-border: rgba(122,92,58,0.15);
+  --kind-default:#7a6d55;
+  --tag-bg:      #dde8f0;
+  --tag-text:    #1a5a8a;
+  --content-bg:  #f5f0e8;
+}
 
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
 
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: gray;
-        }
+/* ── NAV ── */
+nav {
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
+  transition: background 0.3s;
+}
 
-        .dot.connected { background-color: #4CAF50; box-shadow: 0 0 10px #4CAF50; }
-        .dot.error { background-color: #F44336; }
+.nav-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 
-        #relay-input {
-            background: #2a2a2a;
-            border: 1px solid #444;
-            color: white;
-            padding: 8px;
-            border-radius: 5px;
-            width: 250px;
-        }
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; font-weight: 900;
+  color: var(--moss); text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.nav-logo span { color: var(--rust); }
 
-        main {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+.nav-links {
+  display: flex; gap: 16px; list-style: none; align-items: center;
+}
+.nav-links a {
+  font-size: 12px; font-weight: 500; color: var(--ink-soft);
+  text-decoration: none; letter-spacing: 0.04em; transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--moss); }
+.nav-links a.active { color: var(--moss); font-weight: 600; }
 
-        .event-card {
-            background-color: var(--card);
-            border-radius: 8px;
-            border-left: 5px solid var(--muted);
-            padding: 15px;
-            animation: slideIn 0.3s ease-out;
-        }
+.page-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--ink-muted);
+}
 
-        .event-card.kind-30303 { border-left-color: var(--primary); } /* Bon */
-        .event-card.kind-30304 { border-left-color: #9C27B0; } /* Circuit */
-        .event-card.kind-30502 { border-left-color: var(--secondary); } /* Attestation */
+#relay-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  width: 220px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  transition: border-color 0.2s;
+}
+#relay-input:focus { outline: none; border-color: var(--moss); }
 
-        .event-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 0.9em;
-        }
+.btn {
+  cursor: pointer; border: none; padding: 7px 14px;
+  border-radius: var(--radius); font-weight: 600; font-size: 12px;
+  font-family: 'DM Sans', sans-serif; transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-moss { background: var(--moss); color: #fff; }
+.btn-dim  { background: var(--surface2); color: var(--ink); border: 1px solid var(--border); }
 
-        .kind-badge {
-            background: #333;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            color: var(--primary);
-        }
+.nav-right { display: flex; align-items: center; gap: 10px; }
 
-        .pubkey { color: var(--muted); font-family: monospace; }
+.status { display: flex; align-items: center; gap: 8px; }
+.status-text { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-muted); transition: all 0.3s; }
+.dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dot.error { background: var(--red); }
 
-        .content-box {
-            background: #121212;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            white-space: pre-wrap;
-            word-break: break-all;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 0.85em;
-            color: #d1d1d1;
-            border: 1px solid #333;
-        }
+.theme-toggle {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--ink); width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 15px;
+}
+.theme-toggle:hover { background: var(--bg2); }
 
-        .tag-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
+/* ── CONTROLS BAR ── */
+.controls {
+  padding: 8px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.controls label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+#filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+#filters label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 
-        .tag {
-            font-size: 0.75em;
-            background: #263238;
-            padding: 2px 6px;
-            border-radius: 3px;
-            color: #81d4fa;
-        }
+/* ── FEED ── */
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+.event-card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  border-left: 4px solid var(--kind-default);
+  padding: 12px 14px;
+  animation: slideIn 0.25s ease-out;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
-        .controls {
-            padding: 10px 20px;
-            background: #1a1a1a;
-            display: flex;
-            gap: 20px;
-            font-size: 0.8em;
-        }
+.event-card.kind-30303 { border-left-color: var(--gold); }
+.event-card.kind-30304 { border-left-color: var(--violet); }
+.event-card.kind-30502 { border-left-color: var(--blue); }
+.event-card.kind-30500 { border-left-color: var(--cyan); }
+.event-card.kind-30501 { border-left-color: var(--green); }
+.event-card.kind-30503 { border-left-color: var(--moss-light); }
+.event-card.kind-1 { border-left-color: var(--amber); }
+.event-card.kind-0 { border-left-color: var(--rust); }
 
-        button {
-            cursor: pointer;
-            background: var(--primary);
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
+.event-header {
+  display: flex; justify-content: space-between;
+  margin-bottom: 8px; font-size: 0.82em; align-items: center; gap: 8px;
+}
+.kind-badge {
+  background: var(--surface2);
+  padding: 2px 8px; border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 600; color: var(--gold);
+}
+.event-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-muted); }
+.pubkey { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-muted); margin-bottom: 6px; }
+
+.content-box {
+  background: var(--content-bg);
+  padding: 8px 10px; border-radius: 5px; margin: 6px 0;
+  white-space: pre-wrap; word-break: break-all;
+  font-family: 'DM Mono', monospace; font-size: 11px;
+  color: var(--ink-soft); border: 1px solid var(--border);
+}
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.tag { font-size: 10px; background: var(--tag-bg); padding: 2px 6px; border-radius: 3px; color: var(--tag-text); font-family: 'DM Mono', monospace; }
+.event-id { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ink-muted); text-align: right; margin-top: 4px; }
+
+.initial-msg { text-align: center; color: var(--ink-muted); margin-top: 60px; font-family: 'DM Mono', monospace; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<header>
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <span style="font-size: 1.5em;">🌻</span>
-        <h1 style="margin: 0; font-size: 1.2em;">TrocZen Monitor</h1>
-        <input type="text" id="relay-input" value="wss://relay.copylaradio.com">
-        <button onclick="reconnect()">Connecter</button>
-    </div>
+<nav>
+  <div class="nav-left">
+    <a href="/" class="nav-logo">ẐEN<span>·</span></a>
+    <ul class="nav-links">
+      <li><a href="/">Accueil</a></li>
+      <li><a href="/boucles">Schéma</a></li>
+      <li><a href="/simulateur">Simulateur</a></li>
+      <li><a href="/monitor" class="active">Monitor</a></li>
+    </ul>
+    <span class="page-title">// Activité en temps réel sur le réseau</span>
+  </div>
+  <div class="nav-right">
+    <input type="text" id="relay-input" value="wss://relay.copylaradio.com" title="Adresse du serveur de synchronisation">
+    <button class="btn btn-moss" onclick="reconnect()">Connecter</button>
     <div class="status">
-        <span id="status-text">Déconnecté</span>
-        <div id="status-dot" class="dot"></div>
+      <span class="status-text" id="status-text">Déconnecté</span>
+      <div class="dot" id="status-dot"></div>
     </div>
-</header>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀️</button>
+  </div>
+</nav>
 
 <div class="controls">
-    <label><input type="checkbox" id="scroll-lock" checked> Auto-scroll</label>
-    <div id="filters">
-        Filtres :
-        <label><input type="checkbox" value="30303" checked> 30303: Bons</label>
-        <label><input type="checkbox" value="30304" checked> 30304: Circuits</label>
-        <label><input type="checkbox" value="30500,30501,30502,30503" checked> 305xx: WoTx2</label>
-        <label><input type="checkbox" value="0,1,3,5,7" checked> Autres (0,1,3,5,7)</label>
-    </div>
-    <button style="background: #444; color: white;" onclick="clearLogs()">Effacer</button>
+  <label><input type="checkbox" id="scroll-lock" checked> Auto-scroll</label>
+  <div id="filters">
+    Filtres :
+    <label><input type="checkbox" value="30303" checked> Bons ẐEN</label>
+    <label><input type="checkbox" value="30304" checked> Boucles révélées</label>
+    <label><input type="checkbox" value="30500,30501,30502,30503" checked> Compétences & attestations</label>
+    <label><input type="checkbox" value="0,1,3,5,7" checked> Profils & messages</label>
+  </div>
+  <button class="btn btn-dim" onclick="clearLogs()">Effacer</button>
 </div>
 
 <main id="event-feed">
-    <div id="initial-message" style="text-align: center; color: var(--muted); margin-top: 50px;">
-        En attente de connexion au relai...
-    </div>
+  <div id="initial-message" class="initial-msg">🌻 Connexion au serveur en cours... Les événements apparaîtront ici.</div>
 </main>
 
 <script>
-    let socket;
-    const feed = document.getElementById('event-feed');
-    const initialMessage = document.getElementById('initial-message');
-    const relayInput = document.getElementById('relay-input');
-    const statusText = document.getElementById('status-text');
-    const statusDot = document.getElementById('status-dot');
-    const scrollLock = document.getElementById('scroll-lock');
+/* ── THEME ── */
+function getTheme() { try { return localStorage.getItem('zen-theme') || 'dark'; } catch(e) { return 'dark'; } }
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+  try { localStorage.setItem('zen-theme', t); } catch(e) {}
+}
+function toggleTheme() { setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+setTheme(getTheme());
 
-    function connect() {
-        const url = relayInput.value;
-        statusText.innerText = "Connexion...";
-        statusDot.className = "dot";
+/* ── MONITOR ── */
+let socket;
+const feed = document.getElementById('event-feed');
+const initialMessage = document.getElementById('initial-message');
+const relayInput = document.getElementById('relay-input');
+const statusText = document.getElementById('status-text');
+const statusDot = document.getElementById('status-dot');
+const scrollLock = document.getElementById('scroll-lock');
 
-        socket = new WebSocket(url);
+function connect() {
+  const url = relayInput.value;
+  statusText.innerText = "Connexion...";
+  statusDot.className = "dot";
+  socket = new WebSocket(url);
+  socket.onopen = () => {
+    statusText.innerText = "Connecté";
+    statusDot.className = "dot connected";
+    if (initialMessage) initialMessage.style.display = 'none';
+    subscribe();
+  };
+  socket.onclose = () => { statusText.innerText = "Déconnecté"; statusDot.className = "dot"; };
+  socket.onerror = () => { statusText.innerText = "Erreur"; statusDot.className = "dot error"; };
+  socket.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+    if (data[0] === "EVENT") renderEvent(data[2]);
+  };
+}
 
-        socket.onopen = () => {
-            statusText.innerText = "Connecté";
-            statusDot.className = "dot connected";
-            if (initialMessage) {
-                initialMessage.style.display = 'none';
-            }
-            subscribe();
-        };
+function subscribe() {
+  socket.send(JSON.stringify(["REQ", "monitor-tz", { kinds:[0,1,3,5,7,30303,30304,30500,30501,30502,30503], limit:50 }]));
+}
 
-        socket.onclose = () => {
-            statusText.innerText = "Déconnecté";
-            statusDot.className = "dot";
-        };
+function renderEvent(event) {
+  const card = document.createElement('div');
+  card.className = `event-card kind-${event.kind}`;
+  const activeKinds = getActiveKinds();
+  if (!activeKinds.includes(event.kind)) card.style.display = 'none';
+  const date = new Date(event.created_at * 1000).toLocaleTimeString();
+  const labels = { 30303:'📦 BON ZEN', 30304:'🎉 BON UTILISÉ (boucle)', 30500:'📜 COMPÉTENCE DÉCLARÉE', 30501:'🙋 DEMANDE D\'ATTESTATION', 30502:'🛡️ ATTESTATION PAR UN PAIR', 30503:'✅ COMPÉTENCE VALIDÉE', 1:'💬 MESSAGE', 0:'👤 PROFIL' };
+  const typeLabel = labels[event.kind] || 'Event';
+  const tagsHtml = event.tags.map(t => `<span class="tag">${t[0]}: ${(t[1]||'').substring(0,32)}</span>`).join('');
+  card.innerHTML = `
+    <div class="event-header">
+      <span class="kind-badge">${typeLabel} · Kind ${event.kind}</span>
+      <span class="event-time">${date}</span>
+    </div>
+    <div class="pubkey">${event.pubkey}</div>
+    <div class="tag-list">${tagsHtml}</div>
+    <div class="content-box">${formatContent(event.content)}</div>
+    <div class="event-id">ID: ${event.id}</div>
+  `;
+  feed.appendChild(card);
+  if (scrollLock.checked) feed.scrollTop = feed.scrollHeight;
+}
 
-        socket.onerror = (err) => {
-            statusText.innerText = "Erreur";
-            statusDot.className = "dot error";
-        };
+function formatContent(content) {
+  try { return JSON.stringify(JSON.parse(content), null, 2); } catch(e) { return content; }
+}
 
-        socket.onmessage = (msg) => {
-            const data = JSON.parse(msg.data);
-            if (data[0] === "EVENT") {
-                renderEvent(data[2]);
-            }
-        };
-    }
+function getActiveKinds() {
+  const kinds = [];
+  document.querySelectorAll('#filters input[type=checkbox]:checked').forEach(cb => {
+    cb.value.split(',').forEach(k => kinds.push(parseInt(k)));
+  });
+  return kinds;
+}
 
-    function subscribe() {
-        // On demande tous les Kinds liés à TrocZen
-        const sub = ["REQ", "monitor-tz", {
-            kinds: [0, 1, 3, 5, 7, 30303, 30304, 30500, 30501, 30502, 30503],
-            limit: 50
-        }];
-        socket.send(jsonEncode(sub));
-    }
+function reconnect() { if (socket) socket.close(); connect(); }
+function clearLogs() {
+  feed.innerHTML = '';
+  feed.appendChild(initialMessage);
+  initialMessage.style.display = 'block';
+}
 
-    function renderEvent(event) {
-        const card = document.createElement('div');
-        card.className = `event-card kind-${event.kind}`;
-        
-        // Appliquer le filtre actuel
-        const activeKinds = getActiveKinds();
-        if (!activeKinds.includes(event.kind)) {
-            card.style.display = 'none';
-        }
-        
-        const date = new Date(event.created_at * 1000).toLocaleTimeString();
-        
-        // Extraction des labels pour TrocZen
-        let typeLabel = "Event Inconnu";
-        if (event.kind === 30303) typeLabel = "📦 BON ZEN (P3)";
-        if (event.kind === 30304) typeLabel = "🎉 CIRCUIT RÉVÉLÉ";
-        if (event.kind === 30500) typeLabel = "📜 DÉF. COMPÉTENCE";
-        if (event.kind === 30501) typeLabel = "🙋 DEMANDE ATTEST.";
-        if (event.kind === 30502) typeLabel = "🛡️ ATTESTATION PAIR";
-        if (event.kind === 30503) typeLabel = "✅ CREDENTIAL (VC)";
-        if (event.kind === 1) typeLabel = "💸 TRANSFERT";
-        if (event.kind === 0) typeLabel = "👤 PROFIL";
-
-        const tagsHtml = event.tags.map(t => `<span class="tag">${t[0]}: ${t[1]}</span>`).join('');
-
-        card.innerHTML = `
-            <div class="event-header">
-                <span class="kind-badge">${typeLabel} (Kind ${event.kind})</span>
-                <span>${date}</span>
-            </div>
-            <div class="pubkey">Auteur: ${event.pubkey}</div>
-            <div class="tag-list">${tagsHtml}</div>
-            <div class="content-box">${formatContent(event.content)}</div>
-            <div style="font-size: 0.7em; color: #555; text-align: right;">ID: ${event.id}</div>
-        `;
-
-        feed.appendChild(card);
-
-        if (scrollLock.checked) {
-            feed.scrollTop = feed.scrollHeight;
-        }
-    }
-
-    function formatContent(content) {
-        try {
-            // Si c'est du JSON (cas des Kind 0 ou content TrocZen), on l'embellit
-            const obj = JSON.parse(content);
-            return JSON.stringify(obj, null, 2);
-        } catch (e) {
-            return content;
-        }
-    }
-
-    function jsonEncode(obj) {
-        return JSON.stringify(obj);
-    }
-
-    function reconnect() {
-        if (socket) socket.close();
-        connect();
-    }
-
-    function clearLogs() {
-        feed.innerHTML = "";
-        if (initialMessage) {
-            feed.appendChild(initialMessage);
-            initialMessage.style.display = 'block';
-        }
-    }
-
-    function formatErrorForLog(e) {
-        return e.message;
-    }
-
-    // Démarrage initial
-    connect();
+connect();
 </script>
 
 </body>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,21 +9,70 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-/* ===================== TOKENS ===================== */
+/* ===================== DESIGN SYSTEM TOKENS ===================== */
 :root {
-  --cream:   #f5f0e8;
-  --parchment: #ede5d0;
-  --ink:     #1c1a14;
-  --ink-soft: #4a4535;
-  --soil:    #7a5c3a;
-  --moss:    #3d6147;
+  --radius: 6px;
+  /* Brand colors — same in both themes */
+  --moss:       #3d6147;
   --moss-light: #5a8a67;
-  --moss-pale: #d4e8d9;
-  --rust:    #c4521a;
-  --gold:    #d4a017;
-  --gold-pale: #f5e8c0;
-  --border:  rgba(122,92,58,0.15);
-  --radius:  6px;
+  --moss-pale:  #d4e8d9;
+  --rust:       #c4521a;
+  --gold:       #d4a017;
+  --gold-pale:  #f5e8c0;
+  --green:      #10b981;
+  --amber:      #f59e0b;
+  --red:        #ef4444;
+  --cyan:       #22d3ee;
+  --violet:     #8b5cf6;
+}
+
+/* ── LIGHT THEME ── */
+[data-theme="light"] {
+  --bg:          #f5f0e8;
+  --bg2:         #ede5d0;
+  --surface:     #ede5d0;
+  --surface2:    #f5f0e8;
+  --ink:         #1c1a14;
+  --ink-soft:    #4a4535;
+  --ink-muted:   #7a6d55;
+  --border:      rgba(122,92,58,0.15);
+  --nav-bg:      rgba(245,240,232,0.88);
+  --card-dark-bg:#1c1a14;
+  --card-dark-text:#f5f0e8;
+  --step-bg:     rgba(28,26,20,0.03);
+  --step-border: rgba(28,26,20,0.06);
+  --step-num:    rgba(28,26,20,0.04);
+  --boucle-bg:   rgba(28,26,20,0.03);
+  --boucle-border:rgba(28,26,20,0.07);
+  --hop-text:    rgba(28,26,20,0.4);
+  --hop-bg:      rgba(28,26,20,0.04);
+  --metric-bg:   #f5f0e8;
+  --metric-border:rgba(122,92,58,0.15);
+  --toggle-icon: "☀️";
+}
+
+/* ── DARK THEME ── */
+[data-theme="dark"] {
+  --bg:          #121008;
+  --bg2:         #1a1710;
+  --surface:     #1e1b12;
+  --surface2:    #252118;
+  --ink:         #f0ead8;
+  --ink-soft:    #c4b896;
+  --ink-muted:   #7a7060;
+  --border:      rgba(200,180,120,0.12);
+  --nav-bg:      rgba(18,16,8,0.88);
+  --card-dark-bg:#0c0b08;
+  --card-dark-text:#f0ead8;
+  --step-bg:     rgba(255,255,255,0.03);
+  --step-border: rgba(255,255,255,0.07);
+  --step-num:    rgba(255,255,255,0.03);
+  --boucle-bg:   rgba(255,255,255,0.03);
+  --boucle-border:rgba(255,255,255,0.07);
+  --hop-text:    rgba(240,234,216,0.35);
+  --hop-bg:      rgba(255,255,255,0.03);
+  --metric-bg:   #121008;
+  --metric-border:rgba(200,180,120,0.12);
 }
 
 /* ===================== RESET ===================== */
@@ -32,10 +81,11 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: var(--cream);
+  background: var(--bg);
   color: var(--ink);
   line-height: 1.6;
   overflow-x: hidden;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* ===================== GRAIN ===================== */
@@ -56,10 +106,11 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 40px;
-  background: rgba(245,240,232,0.85);
+  padding: 16px 32px;
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  transition: background 0.3s;
 }
 
 .nav-logo {
@@ -68,26 +119,40 @@ nav {
   font-weight: 900;
   color: var(--moss);
   letter-spacing: -0.01em;
+  text-decoration: none;
 }
-
 .nav-logo span { color: var(--rust); }
 
 .nav-links {
   display: flex;
-  gap: 32px;
+  gap: 24px;
   list-style: none;
+  align-items: center;
 }
-
 .nav-links a {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--ink-soft);
   text-decoration: none;
   letter-spacing: 0.04em;
   transition: color 0.2s;
 }
-
 .nav-links a:hover { color: var(--moss); }
+.nav-links a.active { color: var(--moss); font-weight: 600; }
+
+.theme-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover { background: var(--bg2); }
 
 /* ===================== HERO ===================== */
 .hero {
@@ -98,13 +163,7 @@ nav {
   overflow: hidden;
   padding: 120px 40px 80px;
 }
-
-/* Animated background — travelling nodes */
-.hero-canvas {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
+.hero-canvas { position: absolute; inset: 0; z-index: 0; }
 
 .travel-node {
   position: absolute;
@@ -114,7 +173,6 @@ nav {
   opacity: 0;
   animation: travel var(--dur, 8s) var(--delay, 0s) ease-in-out infinite;
 }
-
 .travel-line {
   position: absolute;
   height: 1px;
@@ -123,906 +181,316 @@ nav {
   animation: travelLine var(--dur, 8s) var(--delay, 0s) ease-in-out infinite;
   transform-origin: left center;
 }
-
 @keyframes travel {
-  0% { opacity: 0; transform: scale(0.5); }
-  10% { opacity: 0.7; transform: scale(1); }
-  45% { opacity: 0.7; }
-  55% { opacity: 0; transform: scale(0.5); }
-  100% { opacity: 0; }
+  0% { opacity:0; transform:scale(0.5); }
+  10% { opacity:0.7; transform:scale(1); }
+  45% { opacity:0.7; }
+  55% { opacity:0; transform:scale(0.5); }
+  100% { opacity:0; }
 }
-
 @keyframes travelLine {
-  0% { opacity: 0; width: 0; }
-  10% { opacity: 0.4; }
-  50% { opacity: 0.4; width: var(--w, 200px); }
-  60% { opacity: 0; width: var(--w, 200px); }
-  100% { opacity: 0; }
+  0% { opacity:0; width:0; }
+  10% { opacity:0.4; }
+  50% { opacity:0.4; width:var(--w, 200px); }
+  60% { opacity:0; width:var(--w, 200px); }
+  100% { opacity:0; }
 }
 
 .hero-inner {
-  position: relative;
-  z-index: 1;
-  max-width: 1100px;
-  margin: 0 auto;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  align-items: center;
+  position: relative; z-index: 1;
+  max-width: 1100px; margin: 0 auto; width: 100%;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 80px; align-items: center;
 }
-
-.hero-text { }
 
 .hero-eyebrow {
   font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--moss);
+  font-size: 11px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--moss);
   margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: flex; align-items: center; gap: 10px;
 }
-
-.hero-eyebrow::before {
-  content: '';
-  width: 28px; height: 1px;
-  background: var(--moss);
-  display: block;
-}
+.hero-eyebrow::before { content:''; width:28px; height:1px; background:var(--moss); display:block; }
 
 h1 {
   font-family: 'Playfair Display', serif;
   font-size: clamp(42px, 6vw, 72px);
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  margin-bottom: 28px;
+  font-weight: 900; line-height: 1.05;
+  letter-spacing: -0.02em; color: var(--ink); margin-bottom: 28px;
 }
-
-h1 em {
-  font-style: italic;
-  color: var(--moss);
-}
+h1 em { font-style: italic; color: var(--moss); }
 
 .hero-sub {
-  font-size: 17px;
-  font-weight: 300;
-  color: var(--ink-soft);
-  max-width: 440px;
-  margin-bottom: 40px;
-  line-height: 1.7;
+  font-size: 17px; font-weight: 300; color: var(--ink-soft);
+  max-width: 440px; margin-bottom: 40px; line-height: 1.7;
 }
 
-.hero-cta-row {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
+.hero-cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
 
 .btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--moss);
-  color: #fff;
-  padding: 14px 28px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-  letter-spacing: 0.02em;
-  transition: background 0.2s, transform 0.15s;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--moss); color: #fff;
+  padding: 14px 28px; border-radius: var(--radius);
+  font-size: 14px; font-weight: 500; text-decoration: none;
+  letter-spacing: 0.02em; transition: background 0.2s, transform 0.15s;
+  border: none; cursor: pointer; font-family: inherit;
 }
-
 .btn-primary:hover { background: var(--moss-light); transform: translateY(-1px); }
 
 .btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  color: var(--soil);
-  padding: 14px 28px;
-  border-radius: var(--radius);
-  border: 1px solid var(--soil);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-  letter-spacing: 0.02em;
-  transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: transparent; color: var(--ink-muted);
+  padding: 14px 28px; border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 14px; font-weight: 500; text-decoration: none;
+  letter-spacing: 0.02em; transition: all 0.2s;
 }
+[data-theme="light"] .btn-secondary:hover { background: var(--gold-pale); border-color: var(--gold); }
+[data-theme="dark"] .btn-secondary:hover { background: var(--surface2); border-color: var(--ink-muted); }
 
-.btn-secondary:hover { background: var(--gold-pale); border-color: var(--gold); }
-
-/* Hero card (visual) */
-.hero-card-area {
-  position: relative;
-}
+/* Hero card */
+.hero-card-area { position: relative; }
 
 .bon-card {
-  background: var(--ink);
-  border-radius: 16px;
-  padding: 32px;
-  color: var(--cream);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 32px 80px rgba(28,26,20,0.2), 0 0 0 1px rgba(255,255,255,0.05);
+  background: var(--card-dark-bg);
+  border-radius: 16px; padding: 32px;
+  color: var(--card-dark-text);
+  position: relative; overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);
   animation: cardFloat 6s ease-in-out infinite;
 }
-
 @keyframes cardFloat {
-  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  0%,100% { transform: translateY(0) rotate(-1deg); }
   50% { transform: translateY(-8px) rotate(-1deg); }
 }
-
 .bon-card::before {
-  content: '';
-  position: absolute;
-  top: -40px; right: -40px;
-  width: 180px; height: 180px;
-  border-radius: 50%;
+  content: ''; position: absolute; top:-40px; right:-40px;
+  width:180px; height:180px; border-radius:50%;
   background: radial-gradient(circle, rgba(90,138,103,0.25) 0%, transparent 70%);
 }
 
 .bon-card-tag {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--moss-light);
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--moss-light); margin-bottom: 24px;
+  display: flex; align-items: center; gap: 8px;
 }
-
 .bon-card-tag::before {
-  content: '';
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--moss-light);
-  box-shadow: 0 0 8px var(--moss-light);
+  content:''; width:6px; height:6px; border-radius:50%;
+  background: var(--moss-light); box-shadow: 0 0 8px var(--moss-light);
   animation: pulse 2s ease infinite;
 }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.8);} }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
-}
+.bon-card-value { font-family:'Playfair Display',serif; font-size:56px; font-weight:900; line-height:1; margin-bottom:4px; }
+.bon-card-value span { font-size:24px; color:var(--moss-light); margin-left:6px; }
+.bon-card-issuer { font-size:13px; color:rgba(245,240,232,0.5); margin-bottom:32px; font-style:italic; }
 
-.bon-card-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 56px;
-  font-weight: 900;
-  line-height: 1;
-  margin-bottom: 4px;
-}
+.bon-card-journey { border-top:1px solid rgba(255,255,255,0.08); padding-top:20px; }
+.bon-card-journey-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.15em; text-transform:uppercase; color:rgba(245,240,232,0.4); margin-bottom:14px; }
+.journey-hops { display:flex; align-items:center; gap:0; }
+.hop { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:14px; background:rgba(255,255,255,0.05); }
+.hop.active { border-color:var(--moss-light); background:rgba(90,138,103,0.15); box-shadow:0 0 12px rgba(90,138,103,0.3); }
+.hop-line { width:20px; height:1px; background:rgba(255,255,255,0.1); }
+.hop-line.active { background:var(--moss-light); }
+.bon-card-meta { margin-top:16px; display:flex; gap:16px; flex-wrap:wrap; }
+.meta-chip { font-family:'DM Mono',monospace; font-size:10px; color:rgba(245,240,232,0.5); background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.08); }
+.meta-chip.green { color:var(--moss-light); border-color:rgba(90,138,103,0.3); }
 
-.bon-card-value span { font-size: 24px; color: var(--moss-light); margin-left: 6px; }
-
-.bon-card-issuer {
-  font-size: 13px;
-  color: rgba(245,240,232,0.5);
-  margin-bottom: 32px;
-  font-style: italic;
-}
-
-.bon-card-journey {
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding-top: 20px;
-}
-
-.bon-card-journey-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(245,240,232,0.4);
-  margin-bottom: 14px;
-}
-
-.journey-hops {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-.hop {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  background: rgba(255,255,255,0.05);
-  position: relative;
-}
-
-.hop.active {
-  border-color: var(--moss-light);
-  background: rgba(90,138,103,0.15);
-  box-shadow: 0 0 12px rgba(90,138,103,0.3);
-}
-
-.hop-line {
-  width: 20px; height: 1px;
-  background: rgba(255,255,255,0.1);
-}
-
-.hop-line.active { background: var(--moss-light); }
-
-.bon-card-meta {
-  margin-top: 16px;
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.meta-chip {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  color: rgba(245,240,232,0.5);
-  background: rgba(255,255,255,0.05);
-  padding: 4px 10px;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.meta-chip.green { color: var(--moss-light); border-color: rgba(90,138,103,0.3); }
-
-/* Floating smaller cards */
 .bon-card-mini {
-  position: absolute;
-  background: var(--parchment);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 18px;
-  font-size: 12px;
-  box-shadow: 0 8px 24px rgba(28,26,20,0.1);
+  position:absolute; background:var(--bg2);
+  border:1px solid var(--border); border-radius:10px;
+  padding:14px 18px; font-size:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.15);
 }
+.bon-card-mini.card-a { top:-24px; right:-24px; animation:floatA 5s ease-in-out infinite; transform:rotate(4deg); }
+.bon-card-mini.card-b { bottom:-20px; left:-20px; animation:floatB 6s ease-in-out infinite; transform:rotate(-3deg); }
+@keyframes floatA { 0%,100%{transform:rotate(4deg) translateY(0);}50%{transform:rotate(4deg) translateY(-6px);} }
+@keyframes floatB { 0%,100%{transform:rotate(-3deg) translateY(0);}50%{transform:rotate(-3deg) translateY(5px);} }
+.mini-emoji { font-size:20px; margin-bottom:4px; }
+.mini-label { font-family:'DM Mono',monospace; font-size:9px; color:var(--ink-soft); letter-spacing:0.1em; }
+.mini-value { font-family:'Playfair Display',serif; font-weight:700; font-size:16px; color:var(--ink); }
 
-.bon-card-mini.card-a {
-  top: -24px; right: -24px;
-  animation: floatA 5s ease-in-out infinite;
-  transform: rotate(4deg);
-}
-
-.bon-card-mini.card-b {
-  bottom: -20px; left: -20px;
-  animation: floatB 6s ease-in-out infinite;
-  transform: rotate(-3deg);
-}
-
-@keyframes floatA {
-  0%,100% { transform: rotate(4deg) translateY(0); }
-  50% { transform: rotate(4deg) translateY(-6px); }
-}
-@keyframes floatB {
-  0%,100% { transform: rotate(-3deg) translateY(0); }
-  50% { transform: rotate(-3deg) translateY(5px); }
-}
-
-.mini-emoji { font-size: 20px; margin-bottom: 4px; }
-.mini-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ink-soft); letter-spacing: 0.1em; }
-.mini-value { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; color: var(--ink); }
-
-/* ===================== SECTIONS COMMUNES ===================== */
-section {
-  padding: 100px 40px;
-}
-
-.section-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-}
+/* ===================== SECTIONS ===================== */
+section { padding: 100px 40px; }
+.section-inner { max-width: 1100px; margin: 0 auto; }
 
 .section-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--moss);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--moss); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
 }
-
-.section-label::before {
-  content: '';
-  width: 24px; height: 1px;
-  background: var(--moss);
-}
+.section-label::before { content:''; width:24px; height:1px; background:var(--moss); }
 
 h2 {
   font-family: 'Playfair Display', serif;
-  font-size: clamp(32px, 4vw, 52px);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin-bottom: 20px;
-  color: var(--ink);
+  font-size: clamp(32px, 4vw, 52px); font-weight: 800;
+  line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px; color: var(--ink);
 }
+h2 em { font-style:italic; color:var(--moss); }
 
-h2 em { font-style: italic; color: var(--moss); }
+.section-intro { font-size:17px; font-weight:300; color:var(--ink-soft); max-width:540px; line-height:1.7; margin-bottom:60px; }
 
-.section-intro {
-  font-size: 17px;
-  font-weight: 300;
-  color: var(--ink-soft);
-  max-width: 540px;
-  line-height: 1.7;
-  margin-bottom: 60px;
-}
+/* ===================== METRICS ===================== */
+.metrics-section { background:var(--surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.metrics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0; }
+.metric-item { padding:40px 32px; border-right:1px solid var(--border); text-align:center; }
+.metric-item:last-child { border-right:none; }
+.metric-number { font-family:'Playfair Display',serif; font-size:48px; font-weight:900; line-height:1; color:var(--ink); margin-bottom:8px; }
+.metric-number span { color:var(--moss); }
+.metric-desc { font-size:13px; color:var(--ink-soft); line-height:1.5; font-weight:300; }
 
-/* ===================== RESSOURCES ===================== */
-.resources-section { background: var(--cream); }
-
-.resources-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-.resource-card {
-  background: var(--parchment);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 32px;
-}
-
-.resource-card h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 22px;
-  font-weight: 800;
-  margin-bottom: 12px;
-  color: var(--ink);
-}
-
-.resource-card p {
-  font-size: 14px;
-  color: var(--ink-soft);
-  margin-bottom: 20px;
-}
+/* ===================== RESOURCES ===================== */
+.resources-section { background:var(--bg); }
+.resources-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.resource-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px; }
+.resource-card h3 { font-family:'Playfair Display',serif; font-size:22px; font-weight:800; margin-bottom:12px; color:var(--ink); }
+.resource-card p { font-size:14px; color:var(--ink-soft); margin-bottom:20px; }
 
 /* ===================== HOW IT WORKS ===================== */
-.how-section { background: var(--ink); color: var(--cream); }
-.how-section h2 { color: var(--cream); }
+.how-section { background: var(--card-dark-bg); color: var(--card-dark-text); }
+.how-section h2 { color: var(--card-dark-text); }
 .how-section h2 em { color: var(--moss-light); }
 .how-section .section-label { color: var(--moss-light); }
 .how-section .section-label::before { background: var(--moss-light); }
 .how-section .section-intro { color: rgba(245,240,232,0.6); }
 
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-}
-
+.steps-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; }
 .step {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 40px 32px;
-  position: relative;
-  transition: background 0.3s;
+  background: var(--step-bg); border:1px solid var(--step-border);
+  padding:40px 32px; position:relative; transition:background 0.3s;
 }
-
-.step:first-child { border-radius: 8px 0 0 8px; }
-.step:last-child { border-radius: 0 8px 8px 0; }
-.step:hover { background: rgba(255,255,255,0.06); }
-
-.step-number {
-  font-family: 'Playfair Display', serif;
-  font-size: 72px;
-  font-weight: 900;
-  line-height: 1;
-  color: rgba(255,255,255,0.04);
-  position: absolute;
-  top: 20px; right: 24px;
-}
-
-.step-icon {
-  font-size: 36px;
-  margin-bottom: 20px;
-  display: block;
-}
-
-.step-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: var(--cream);
-}
-
-.step-desc {
-  font-size: 14px;
-  line-height: 1.7;
-  color: rgba(245,240,232,0.55);
-}
+.step:first-child { border-radius:8px 0 0 8px; }
+.step:last-child { border-radius:0 8px 8px 0; }
+.step:hover { background: var(--step-bg); filter: brightness(1.3); }
+.step-number { font-family:'Playfair Display',serif; font-size:72px; font-weight:900; line-height:1; color:var(--step-num); position:absolute; top:20px; right:24px; }
+.step-icon { font-size:36px; margin-bottom:20px; display:block; }
+.step-title { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; margin-bottom:12px; color:var(--card-dark-text); }
+.step-desc { font-size:14px; line-height:1.7; color:rgba(245,240,232,0.55); }
 
 /* ===================== FOR WHO ===================== */
-.forwho-section { background: var(--parchment); }
-
-.profiles-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
+.forwho-section { background: var(--surface); }
+.profiles-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; }
 .profile-card {
-  background: var(--cream);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 40px;
-  position: relative;
-  overflow: hidden;
+  background: var(--bg); border:1px solid var(--border);
+  border-radius:12px; padding:40px; position:relative; overflow:hidden;
   transition: transform 0.2s, box-shadow 0.2s;
 }
-
-.profile-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(28,26,20,0.08);
-}
-
-.profile-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-}
-
-.profile-card.producer::before { background: var(--moss); }
-.profile-card.client::before { background: var(--rust); }
-
-.profile-emoji {
-  font-size: 40px;
-  margin-bottom: 20px;
-  display: block;
-}
-
-.profile-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 26px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: var(--ink);
-}
-
-.profile-sub {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin-bottom: 28px;
-  font-style: italic;
-}
-
-.profile-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.profile-list li {
-  display: flex;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--ink-soft);
-  align-items: flex-start;
-  line-height: 1.5;
-}
-
-.profile-list li::before {
-  content: '→';
-  color: var(--moss);
-  font-weight: 700;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.profile-card.client .profile-list li::before { color: var(--rust); }
-
-/* ===================== METRICS ===================== */
-.metrics-section {
-  background: var(--cream);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-}
-
-.metric-item {
-  padding: 40px 32px;
-  border-right: 1px solid var(--border);
-  text-align: center;
-}
-
-.metric-item:last-child { border-right: none; }
-
-.metric-number {
-  font-family: 'Playfair Display', serif;
-  font-size: 48px;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--ink);
-  margin-bottom: 8px;
-}
-
-.metric-number span { color: var(--moss); }
-
-.metric-desc {
-  font-size: 13px;
-  color: var(--ink-soft);
-  line-height: 1.5;
-  font-weight: 300;
-}
-
-/* ===================== LEGAL ===================== */
-.legal-section { background: var(--parchment); }
-
-.legal-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-
-.legal-card {
-  background: var(--cream);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 28px;
-}
-
-.legal-icon {
-  width: 40px; height: 40px;
-  border-radius: 8px;
-  background: var(--moss-pale);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  margin-bottom: 16px;
-}
-
-.legal-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--ink);
-}
-
-.legal-text {
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--ink-soft);
-}
+.profile-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,0,0,0.1); }
+.profile-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.profile-card.producer::before { background:var(--moss); }
+.profile-card.client::before { background:var(--rust); }
+.profile-card.organizer::before { background:var(--gold); }
+.profile-emoji { font-size:40px; margin-bottom:20px; display:block; }
+.profile-title { font-family:'Playfair Display',serif; font-size:26px; font-weight:800; margin-bottom:8px; color:var(--ink); }
+.profile-sub { font-size:13px; color:var(--ink-soft); margin-bottom:28px; font-style:italic; }
+.profile-list { list-style:none; display:flex; flex-direction:column; gap:10px; }
+.profile-list li { display:flex; gap:12px; font-size:14px; color:var(--ink-soft); align-items:flex-start; line-height:1.5; }
+.profile-list li::before { content:'→'; color:var(--moss); font-weight:700; flex-shrink:0; margin-top:1px; }
+.profile-card.client .profile-list li::before { color:var(--rust); }
+.profile-card.organizer .profile-list li::before { color:var(--gold); }
 
 /* ===================== BOUCLES ===================== */
-.boucles-section { background: var(--ink); color: var(--cream); }
-.boucles-section h2 { color: var(--cream); }
+.boucles-section { background: var(--card-dark-bg); color: var(--card-dark-text); }
+.boucles-section h2 { color: var(--card-dark-text); }
 .boucles-section h2 em { color: var(--gold); }
 .boucles-section .section-label { color: var(--gold); }
 .boucles-section .section-label::before { background: var(--gold); }
 .boucles-section .section-intro { color: rgba(245,240,232,0.55); }
 
-.boucle-visual {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 12px;
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
+.boucle-visual { background:var(--boucle-bg); border:1px solid var(--boucle-border); border-radius:12px; padding:40px; display:flex; flex-direction:column; gap:32px; }
+.boucle-row { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
+.b-node { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.b-dot { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; border:2px solid; transition:transform 0.2s; }
+.b-dot:hover { transform:scale(1.1); }
+.b-dot.origin { border-color:var(--moss-light); background:rgba(90,138,103,0.15); box-shadow:0 0 16px rgba(90,138,103,0.2); }
+.b-dot.mid { border-color:var(--hop-text); background:var(--hop-bg); }
+.b-dot.return { border-color:var(--gold); background:rgba(212,160,23,0.15); box-shadow:0 0 16px rgba(212,160,23,0.2); animation:glow-gold 2s ease infinite; }
+@keyframes glow-gold { 0%,100%{box-shadow:0 0 12px rgba(212,160,23,0.2);}50%{box-shadow:0 0 28px rgba(212,160,23,0.4);} }
+.b-name { font-family:'DM Mono',monospace; font-size:9px; color:var(--hop-text); letter-spacing:0.05em; }
+.b-arrow { width:40px; height:2px; position:relative; margin-bottom:18px; }
+.b-arrow.active::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,var(--moss-light),rgba(90,138,103,0.3)); animation:flowRight 1.5s linear infinite; }
+.b-arrow.plain::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,0.1); }
+@keyframes flowRight { 0%{transform:scaleX(0);transform-origin:left;}50%{transform:scaleX(1);transform-origin:left;}51%{transform:scaleX(1);transform-origin:right;}100%{transform:scaleX(0);transform-origin:right;} }
+.b-tag { display:inline-block; font-family:'DM Mono',monospace; font-size:9px; padding:3px 8px; border-radius:3px; letter-spacing:0.05em; }
+.b-tag.good { background:rgba(90,138,103,0.2); color:var(--moss-light); border:1px solid rgba(90,138,103,0.3); }
+.b-tag.warn { background:rgba(212,160,23,0.15); color:var(--gold); border:1px solid rgba(212,160,23,0.25); }
+.boucle-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; margin-top:8px; }
+.boucle-stat { background:rgba(255,255,255,0.03); padding:20px; text-align:center; border:1px solid rgba(255,255,255,0.05); }
+.boucle-stat-value { font-family:'Playfair Display',serif; font-size:28px; font-weight:900; line-height:1; margin-bottom:4px; }
+.boucle-stat-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(245,240,232,0.35); }
 
-.boucle-row {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-wrap: wrap;
-}
+/* ===================== LEGAL ===================== */
+.legal-section { background: var(--bg); }
+.legal-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+.legal-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:28px; }
+.legal-icon { width:40px; height:40px; border-radius:8px; background:var(--moss-pale); display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:16px; }
+.legal-title { font-family:'Playfair Display',serif; font-size:18px; font-weight:700; margin-bottom:8px; color:var(--ink); }
+.legal-text { font-size:13px; line-height:1.65; color:var(--ink-soft); }
 
-.b-node {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
+/* ===================== FEEDBACK / FINANCE ===================== */
+.feedback-section { background: var(--surface); }
+.finance-section { background: var(--bg); }
+.finance-inner { display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:start; }
+.finance-text h2 { margin-bottom:16px; }
+.finance-text p { font-size:15px; line-height:1.7; color:var(--ink-soft); margin-bottom:16px; }
 
-.b-dot {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  border: 2px solid;
-  transition: transform 0.2s;
-}
-
-.b-dot:hover { transform: scale(1.1); }
-
-.b-dot.origin { border-color: var(--moss-light); background: rgba(90,138,103,0.15); box-shadow: 0 0 16px rgba(90,138,103,0.2); }
-.b-dot.mid { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
-.b-dot.return { border-color: var(--gold); background: rgba(212,160,23,0.15); box-shadow: 0 0 16px rgba(212,160,23,0.2); animation: glow-gold 2s ease infinite; }
-
-@keyframes glow-gold {
-  0%,100% { box-shadow: 0 0 12px rgba(212,160,23,0.2); }
-  50% { box-shadow: 0 0 28px rgba(212,160,23,0.4); }
-}
-
-.b-name { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(245,240,232,0.4); letter-spacing: 0.05em; }
-
-.b-arrow {
-  width: 40px; height: 2px;
-  position: relative;
-  margin-bottom: 18px;
-}
-
-.b-arrow.active::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, var(--moss-light), rgba(90,138,103,0.3));
-  animation: flowRight 1.5s linear infinite;
-}
-
-.b-arrow.plain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255,255,255,0.1);
-}
-
-@keyframes flowRight {
-  0% { transform: scaleX(0); transform-origin: left; }
-  50% { transform: scaleX(1); transform-origin: left; }
-  51% { transform: scaleX(1); transform-origin: right; }
-  100% { transform: scaleX(0); transform-origin: right; }
-}
-
-.b-tag {
-  display: inline-block;
-  font-family: 'DM Mono', monospace;
-  font-size: 9px;
-  padding: 3px 8px;
-  border-radius: 3px;
-  letter-spacing: 0.05em;
-}
-
-.b-tag.good { background: rgba(90,138,103,0.2); color: var(--moss-light); border: 1px solid rgba(90,138,103,0.3); }
-.b-tag.warn { background: rgba(212,160,23,0.15); color: var(--gold); border: 1px solid rgba(212,160,23,0.25); }
-.b-tag.bad  { background: rgba(196,82,26,0.15); color: #e07040; border: 1px solid rgba(196,82,26,0.25); }
-
-.boucle-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  margin-top: 8px;
-}
-
-.boucle-stat {
-  background: rgba(255,255,255,0.03);
-  padding: 20px;
-  text-align: center;
-  border: 1px solid rgba(255,255,255,0.05);
-}
-
-.boucle-stat-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.boucle-stat-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(245,240,232,0.35);
-}
-
-/* ===================== FEEDBACK ===================== */
-.feedback-section { background: var(--parchment); }
-
-.feedback-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.finance-card { background:var(--card-dark-bg); border-radius:16px; padding:40px; color:var(--card-dark-text); position:sticky; top:100px; }
+.finance-card-title { font-family:'Playfair Display',serif; font-size:22px; font-weight:800; margin-bottom:8px; }
+.finance-card-sub { font-size:13px; color:rgba(245,240,232,0.5); margin-bottom:28px; }
 
 .form-input {
-  width: 100%;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: var(--cream);
-  padding: 14px 16px;
-  border-radius: 8px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 14px;
-  transition: border-color 0.2s;
+  width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  color:var(--card-dark-text); padding:14px 16px; border-radius:8px;
+  font-family:'DM Sans',sans-serif; font-size:14px; transition:border-color 0.2s;
 }
+.form-input:focus { outline:none; border-color:var(--moss-light); }
+.form-input::placeholder { color:rgba(245,240,232,0.4); }
+.form-input option { background:var(--card-dark-bg); color:var(--card-dark-text); }
+.feedback-form { display:flex; flex-direction:column; gap:16px; }
 
-.form-input:focus {
-  outline: none;
-  border-color: var(--moss-light);
-}
-
-.form-input::placeholder {
-  color: rgba(245,240,232,0.4);
-}
-
-.form-input option {
-  background: var(--ink);
-  color: var(--cream);
-}
-
-/* ===================== FINANCE ===================== */
-.finance-section {
-  background: var(--cream);
-}
-
-.finance-inner {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  align-items: start;
-}
-
-.finance-text h2 { margin-bottom: 16px; }
-.finance-text p {
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--ink-soft);
-  margin-bottom: 16px;
-}
-
-.finance-card {
-  background: var(--ink);
-  border-radius: 16px;
-  padding: 40px;
-  color: var(--cream);
-  position: sticky;
-  top: 100px;
-}
-
-.finance-card-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 22px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: var(--cream);
-}
-
-.finance-card-sub {
-  font-size: 13px;
-  color: rgba(245,240,232,0.5);
-  margin-bottom: 28px;
-}
-
-.uses-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 32px;
-}
-
-.uses-list li {
-  display: flex;
-  gap: 12px;
-  font-size: 14px;
-  color: rgba(245,240,232,0.7);
-  align-items: flex-start;
-  line-height: 1.5;
-}
-
-.uses-list li::before {
-  content: '✦';
-  color: var(--moss-light);
-  flex-shrink: 0;
-  font-size: 10px;
-  margin-top: 3px;
-}
+.uses-list { list-style:none; display:flex; flex-direction:column; gap:12px; margin-bottom:32px; }
+.uses-list li { display:flex; gap:12px; font-size:14px; color:rgba(245,240,232,0.7); align-items:flex-start; line-height:1.5; }
+.uses-list li::before { content:'✦'; color:var(--moss-light); flex-shrink:0; font-size:10px; margin-top:3px; }
 
 /* ===================== FOOTER ===================== */
-footer {
-  background: var(--ink);
-  color: rgba(245,240,232,0.5);
-  padding: 48px 40px;
-}
-
-.footer-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 24px;
-}
-
-.footer-logo {
-  font-family: 'Playfair Display', serif;
-  font-size: 20px;
-  font-weight: 900;
-  color: var(--cream);
-}
-
-.footer-logo span { color: var(--moss-light); }
-
-.footer-links {
-  display: flex;
-  gap: 28px;
-  list-style: none;
-}
-
-.footer-links a {
-  font-size: 12px;
-  color: rgba(245,240,232,0.4);
-  text-decoration: none;
-  letter-spacing: 0.04em;
-  transition: color 0.2s;
-}
-
-.footer-links a:hover { color: var(--moss-light); }
-
-.footer-copy {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  color: rgba(245,240,232,0.25);
-}
+footer { background: var(--card-dark-bg); color:rgba(245,240,232,0.5); padding:48px 40px; }
+.footer-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:24px; }
+.footer-logo { font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--card-dark-text); }
+.footer-logo span { color:var(--moss-light); }
+.footer-links { display:flex; gap:28px; list-style:none; }
+.footer-links a { font-size:12px; color:rgba(245,240,232,0.4); text-decoration:none; letter-spacing:0.04em; transition:color 0.2s; }
+.footer-links a:hover { color:var(--moss-light); }
+.footer-copy { font-family:'DM Mono',monospace; font-size:10px; color:rgba(245,240,232,0.25); }
 
 /* ===================== UTILITIES ===================== */
-.fade-in {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-.fade-in.visible {
-  opacity: 1;
-  transform: none;
-}
+.fade-in { opacity:0; transform:translateY(20px); transition:opacity 0.6s ease, transform 0.6s ease; }
+.fade-in.visible { opacity:1; transform:none; }
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 900px) {
-  nav { padding: 16px 24px; }
-  .nav-links { display: none; }
-  .hero-inner { grid-template-columns: 1fr; gap: 48px; }
-  .hero { padding: 100px 24px 60px; }
-  .bon-card-mini { display: none; }
-  section { padding: 64px 24px; }
-  .resources-grid { grid-template-columns: 1fr; }
-  .steps-grid { grid-template-columns: 1fr; gap: 2px; }
-  .step:first-child { border-radius: 8px 8px 0 0; }
-  .step:last-child { border-radius: 0 0 8px 8px; }
-  .profiles-grid { grid-template-columns: 1fr; }
-  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-  .metric-item:nth-child(2) { border-right: none; }
-  .legal-grid { grid-template-columns: 1fr; }
-  .boucle-stats { grid-template-columns: 1fr; }
-  .finance-inner { grid-template-columns: 1fr; }
-  .footer-inner { flex-direction: column; align-items: flex-start; }
+  nav { padding:16px 20px; }
+  .nav-links { display:none; }
+  .hero-inner { grid-template-columns:1fr; gap:48px; }
+  .hero { padding:100px 24px 60px; }
+  .bon-card-mini { display:none; }
+  section { padding:64px 24px; }
+  .resources-grid, .profiles-grid, .finance-inner { grid-template-columns:1fr; }
+  .steps-grid { grid-template-columns:1fr; gap:2px; }
+  .step:first-child { border-radius:8px 8px 0 0; }
+  .step:last-child { border-radius:0 0 8px 8px; }
+  .metrics-grid { grid-template-columns:repeat(2,1fr); }
+  .metric-item:nth-child(2) { border-right:none; }
+  .legal-grid, .boucle-stats { grid-template-columns:1fr; }
+  .footer-inner { flex-direction:column; align-items:flex-start; }
 }
 </style>
 </head>
 <body>
 
-<!-- ===================== NAV ===================== -->
 <nav>
-  <div class="nav-logo">ẐEN<span>·</span></div>
+  <a href="/" class="nav-logo">ẐEN<span>·</span></a>
   <ul class="nav-links">
     <li><a href="#ressources">Ressources</a></li>
     <li><a href="#comment">Comment ça marche</a></li>
@@ -1033,68 +501,48 @@ footer {
     <li><a href="/monitor">Monitor</a></li>
     <li><a href="#feedback">Feedback</a></li>
     <li><a href="#financer">Soutenir</a></li>
+    <li><button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" aria-label="Basculer le thème">🌙</button></li>
   </ul>
 </nav>
 
-<!-- ===================== HERO ===================== -->
 <section class="hero" id="hero">
-
-  <!-- Animated travelling nodes -->
   <div class="hero-canvas" id="heroCanvas"></div>
-
   <div class="hero-inner">
     <div class="hero-text fade-in">
-      <div class="hero-eyebrow">Bons locaux décentralisés</div>
-      <h1>La confiance qui<br><em>circule</em> crée<br>la richesse</h1>
-      <p class="hero-sub">
-        ẐEN est un protocole de bons numériques pour les marchés locaux. 
-        Offline, sécurisé, sans banque — chaque échange tissu un lien 
-        dans votre communauté.
-      </p>
+      <div class="hero-eyebrow">Bons cadeaux pour les marchés locaux</div>
+      <h1>Vos clients reviennent,<br>votre marché <em>vit</em></h1>
+      <p class="hero-sub">TrocZen, c'est une application gratuite pour créer et échanger des bons entre commerçants et clients sur les marchés. Ça marche même sans Internet, sans banque, sans abonnement.</p>
       <div class="hero-cta-row">
-        <a href="https://github.com/papiche/troczen/tree/main/api/apks" target="_blank" class="btn-primary">
-          ↓ Télécharger l'app
-        </a>
-        <a href="#comment" class="btn-secondary">
-          Voir comment ça marche
-        </a>
+        <a href="https://github.com/papiche/troczen/tree/main/api/apks" target="_blank" class="btn-primary">↓ Télécharger l'application</a>
+        <a href="#comment" class="btn-secondary">Voir comment ça marche</a>
       </div>
     </div>
-
     <div class="hero-card-area fade-in" style="transition-delay:0.2s">
       <div class="bon-card-mini card-a">
         <div class="mini-emoji">🌾</div>
         <div class="mini-label">Rucher de Jean</div>
         <div class="mini-value">5 ẐEN</div>
       </div>
-
       <div class="bon-card">
-        <div class="bon-card-tag">Bon actif · Marché Toulouse</div>
+        <div class="bon-card-tag">Bon actif · Marché de Toulouse</div>
         <div class="bon-card-value">10 <span>ẐEN</span></div>
-        <div class="bon-card-issuer">Émis par La Ferme des Combes</div>
-
+        <div class="bon-card-issuer">Créé par La Ferme des Combes</div>
         <div class="bon-card-journey">
-          <div class="bon-card-journey-label">Carnet de voyage · 4 hops · 11 jours</div>
+          <div class="bon-card-journey-label">Voyage du bon · 4 personnes · 11 jours</div>
           <div class="journey-hops">
-            <div class="hop active">🌿</div>
-            <div class="hop-line active"></div>
-            <div class="hop active">🛒</div>
-            <div class="hop-line active"></div>
-            <div class="hop active">🍞</div>
-            <div class="hop-line active"></div>
-            <div class="hop active">🧑‍🔧</div>
-            <div class="hop-line"></div>
+            <div class="hop active">🌿</div><div class="hop-line active"></div>
+            <div class="hop active">🛒</div><div class="hop-line active"></div>
+            <div class="hop active">🍞</div><div class="hop-line active"></div>
+            <div class="hop active">🧑‍🔧</div><div class="hop-line"></div>
             <div class="hop">…</div>
           </div>
         </div>
-
         <div class="bon-card-meta">
-          <span class="meta-chip green">● En transit</span>
-          <span class="meta-chip">TTL : 17 jours restants</span>
+          <span class="meta-chip green">● En circulation</span>
+          <span class="meta-chip">Expire dans 17 jours</span>
           <span class="meta-chip">rare</span>
         </div>
       </div>
-
       <div class="bon-card-mini card-b">
         <div class="mini-emoji">🍞</div>
         <div class="mini-label">Boulangerie du Pont</div>
@@ -1104,359 +552,214 @@ footer {
   </div>
 </section>
 
-<!-- ===================== MÉTRIQUES ===================== -->
 <div class="metrics-section">
   <div class="metrics-grid">
-    <div class="metric-item fade-in">
-      <div class="metric-number">100<span>%</span></div>
-      <div class="metric-desc">Offline — fonctionne<br>sans réseau mobile</div>
-    </div>
-    <div class="metric-item fade-in" style="transition-delay:0.1s">
-      <div class="metric-number">0<span>€</span></div>
-      <div class="metric-desc">Frais bancaires,<br>commissions ou abonnement</div>
-    </div>
-    <div class="metric-item fade-in" style="transition-delay:0.2s">
-      <div class="metric-number">3<span>×</span></div>
-      <div class="metric-desc">Parts cryptographiques —<br>impossible à falsifier</div>
-    </div>
-    <div class="metric-item fade-in" style="transition-delay:0.3s">
-      <div class="metric-number">∞<span>j</span></div>
-      <div class="metric-desc">Portée locale — de<br>main en main, sans limite</div>
-    </div>
+    <div class="metric-item fade-in"><div class="metric-number">100<span>%</span></div><div class="metric-desc">Fonctionne sans réseau —<br>même au fond d'un champ</div></div>
+    <div class="metric-item fade-in" style="transition-delay:0.1s"><div class="metric-number">0<span>€</span></div><div class="metric-desc">Aucun frais, aucune commission,<br>aucun abonnement</div></div>
+    <div class="metric-item fade-in" style="transition-delay:0.2s"><div class="metric-number">2<span>s</span></div><div class="metric-desc">Pour transférer un bon —<br>deux téléphones face à face</div></div>
+    <div class="metric-item fade-in" style="transition-delay:0.3s"><div class="metric-number">∞</div><div class="metric-desc">Le bon peut passer<br>de main en main sans limite</div></div>
   </div>
 </div>
 
-<!-- ===================== RESSOURCES ===================== -->
 <section class="resources-section" id="ressources">
   <div class="section-inner">
-    <div class="section-label">Ressources</div>
-    <h2>Pour aller plus <em>loin</em></h2>
-    <p class="section-intro">
-      Découvrez l'histoire de la monnaie et les concepts derrière ẐEN à travers nos contenus multimédias.
-    </p>
-
+    <div class="section-label">Pour en savoir plus</div>
+    <h2>Comprendre TrocZen <em>en 5 minutes</em></h2>
+    <p class="section-intro">La monnaie, c'est une vieille histoire. Découvrez pourquoi les bons locaux sont une idée ancienne qui reprend tout son sens aujourd'hui.</p>
     <div class="resources-grid fade-in">
       <div class="resource-card">
-        <h3>Des coquillages sacrés aux codes cryptographiques</h3>
-        <p>Écoutez notre podcast sur l'évolution de la monnaie.</p>
-        <audio controls style="width: 100%; margin-top: 16px; border-radius: 8px;">
+        <h3>Des coquillages au smartphone : histoire de la monnaie</h3>
+        <p>Écoutez notre podcast sur l'évolution de la monnaie, des origines à aujourd'hui.</p>
+        <audio controls style="width:100%;margin-top:16px;border-radius:8px;">
           <source src="/static/sounds/Des_coquillages_sacr%C3%A9s_aux_codes_cryptographiques.m4a" type="audio/mp4">
-          Votre navigateur ne supporte pas l'élément audio.
         </audio>
       </div>
-      
       <div class="resource-card">
         <h3>La Monnaie : du Métal au Code</h3>
         <p>Regardez notre vidéo explicative.</p>
-        <video controls style="width: 100%; border-radius: 8px; margin-top: 16px; background: #000;">
+        <video controls style="width:100%;border-radius:8px;margin-top:16px;background:#000;">
           <source src="/static/videos/La_Monnaie__du_M%C3%A9tal_au_Code.mp4" type="video/mp4">
-          Votre navigateur ne supporte pas l'élément vidéo.
         </video>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===================== COMMENT ÇA MARCHE ===================== -->
 <section class="how-section" id="comment">
   <div class="section-inner">
     <div class="section-label">Comment ça marche</div>
-    <h2>Un bon numérique aussi<br>simple qu'un <em>billet de marché</em></h2>
-    <p class="section-intro">
-      Trois rôles, deux scans, zéro serveur central.
-      Le transfert est cryptographiquement atomique — soit tout s'est passé, soit rien.
-    </p>
-
+    <h2>Simple comme un<br><em>billet de marché</em></h2>
+    <p class="section-intro">Trois actions, deux scans, zéro papier. Tout se passe entre deux téléphones, en face à face. Pas besoin d'Internet, pas besoin d'un compte bancaire.</p>
     <div class="steps-grid fade-in">
-      <div class="step">
-        <div class="step-number">1</div>
-        <span class="step-icon">🌱</span>
-        <div class="step-title">Émettre</div>
-        <div class="step-desc">
-          Un commerçant crée un bon. La clé secrète est divisée en trois parts (P1 chez l'émetteur, P2 chez le porteur, P3 sur le réseau local). Personne n'a les trois à la fois.
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <span class="step-icon">📱</span>
-        <div class="step-title">Transférer</div>
-        <div class="step-desc">
-          Deux téléphones se font face. Un QR, un accusé de réception — le tout en 2 secondes. Le bon voyage de main en main, même sans Internet.
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <span class="step-icon">🔁</span>
-        <div class="step-title">Boucler</div>
-        <div class="step-desc">
-          Quand le bon revient à son émetteur, la boucle est fermée. Son parcours est révélé. L'économie locale devient visible sans que personne n'ait été espionné.
-        </div>
-      </div>
+      <div class="step"><div class="step-number">1</div><span class="step-icon">🌱</span><div class="step-title">Créer un bon</div><div class="step-desc">Un commerçant crée un bon depuis l'application : il choisit la valeur, la durée de validité et son usage. Le bon est sécurisé — il ne peut pas être copié ni falsifié.</div></div>
+      <div class="step"><div class="step-number">2</div><span class="step-icon">📱</span><div class="step-title">Donner ou recevoir</div><div class="step-desc">Deux téléphones face à face. Le donneur affiche un QR code, le receveur le scanne, les deux confirment. Le bon change de main en 2 secondes — sans Internet.</div></div>
+      <div class="step"><div class="step-number">3</div><span class="step-icon">🔁</span><div class="step-title">Utiliser et boucler</div><div class="step-desc">Quand le bon revient à son créateur (un client l'utilise pour payer), la boucle est fermée. Le commerçant voit combien de mains son bon a traversé — sans espionner personne.</div></div>
     </div>
   </div>
 </section>
 
-<!-- ===================== POUR QUI ===================== -->
 <section class="forwho-section" id="pour-qui">
   <div class="section-inner">
     <div class="section-label">Pour qui</div>
-    <h2>Un outil pour chaque<br>côté du <em>marché</em></h2>
-    <p class="section-intro">
-      Que vous vendiez des légumes ou que vous achetiez du pain, 
-      ẐEN s'adapte à votre usage sans friction.
-    </p>
-
+    <h2>Un outil pour chaque<br>rôle du <em>marché</em></h2>
+    <p class="section-intro">Que vous teniez un stand, que vous fassiez vos courses, ou que vous organisiez le marché — TrocZen a un rôle pour vous, sans rien changer à vos habitudes.</p>
     <div class="profiles-grid fade-in">
       <div class="profile-card producer">
         <span class="profile-emoji">🌾</span>
         <div class="profile-title">Producteurs & commerçants</div>
-        <div class="profile-sub">Émettre, fidéliser, écouler</div>
+        <div class="profile-sub">Fidélisez vos clients, renforcez votre réseau</div>
         <ul class="profile-list">
-          <li>Créez des bons de réduction ou prévente en quelques secondes</li>
-          <li>Validez les bons clients sans connexion réseau</li>
-          <li>Visualisez l'activité de vos bons dans un tableau de bord simple</li>
-          <li>Exportez l'historique pour votre comptabilité</li>
-          <li>Participez au réseau local pour recevoir les bons d'autres commerçants</li>
+          <li>Créez un bon de réduction ou de prévente en quelques secondes depuis l'application</li>
+          <li>Validez les bons de vos clients sans connexion Internet, même au fond d'un champ</li>
+          <li>Suivez l'activité de vos bons dans un tableau de bord simple et lisible</li>
+          <li>Exportez l'historique pour votre comptabilité, en un clic</li>
+          <li>Acceptez aussi les bons des autres commerçants du marché — créez un vrai réseau de confiance</li>
         </ul>
       </div>
       <div class="profile-card client">
         <span class="profile-emoji">🛒</span>
         <div class="profile-title">Clients & consommateurs</div>
-        <div class="profile-sub">Recevoir, utiliser, transmettre</div>
+        <div class="profile-sub">Recevez, utilisez, offrez</div>
         <ul class="profile-list">
-          <li>Recevez des bons directement de vos producteurs favoris</li>
-          <li>Un scan suffit pour payer — pas de compte, pas de mot de passe</li>
-          <li>Transmettez un bon à un ami si vous ne l'utilisez pas</li>
-          <li>Vos données personnelles ne quittent jamais votre téléphone</li>
-          <li>Soutenez les circuits courts simplement, en achetant comme d'habitude</li>
+          <li>Recevez des bons directement de vos producteurs préférés — en personne, sur le marché</li>
+          <li>Un scan suffit pour payer — pas besoin de créer un compte ni de mémoriser un mot de passe</li>
+          <li>Offrez un bon à un ami si vous ne l'utilisez pas — il reste valable</li>
+          <li>Vos achats et vos habitudes restent privés, rien ne sort de votre téléphone</li>
+          <li>En achetant local avec TrocZen, vous aidez concrètement les commerçants de votre marché</li>
+        </ul>
+      </div>
+      <div class="profile-card organizer">
+        <span class="profile-emoji">🏪</span>
+        <div class="profile-title">Organisateurs de marché</div>
+        <div class="profile-sub">Animez, observez, faites grandir</div>
+        <ul class="profile-list">
+          <li>Déployez TrocZen sur votre marché sans aucune installation technique complexe</li>
+          <li>Suivez en temps réel combien de bons circulent, combien sont utilisés, combien expirent</li>
+          <li>Identifiez les stands les plus actifs et ceux qui ont besoin d'accompagnement</li>
+          <li>Connectez plusieurs marchés entre eux pour que les bons circulent sur tout le territoire</li>
+          <li>Téléchargez un rapport mensuel simple pour présenter l'activité à vos élus ou partenaires</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===================== LES BOUCLES ===================== -->
 <section class="boucles-section" id="boucles">
   <div class="section-inner">
-    <div class="section-label">L'Observatoire</div>
-    <h2>Quand un bon boucle,<br>il raconte la <em>vitalité</em><br>d'un réseau</h2>
-    <p class="section-intro">
-      Chaque retour à l'émetteur révèle combien de mains ont porté ce bon. 
-      Ce n'est pas de la surveillance — c'est de l'économie qui devient lisible.
-    </p>
-
+    <div class="section-label">Voir la vie de votre marché</div>
+    <h2>Un bon qui circule,<br>c'est un marché <em>en bonne santé</em></h2>
+    <p class="section-intro">Chaque fois qu'un bon passe d'une main à l'autre avant de revenir à son créateur, il laisse une trace. Pas des noms — juste un comptage. C'est ça, un marché vivant.</p>
     <div class="boucle-visual fade-in">
-      <!-- Boucle longue -->
       <div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-          <span class="b-tag good">✦ Boucle longue · Réseau vivant</span>
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);">→ C² élevé · DU augmenté</span>
+          <span class="b-tag good">✦ Boucle longue · Marché bien connecté</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);">→ Le bon a touché 5 personnes avant de revenir</span>
         </div>
         <div class="boucle-row">
-          <div class="b-node">
-            <div class="b-dot origin">🌾</div>
-            <div class="b-name">Alice</div>
-          </div>
+          <div class="b-node"><div class="b-dot origin">🌾</div><div class="b-name">Alice</div></div>
           <div class="b-arrow active"></div>
-          <div class="b-node">
-            <div class="b-dot mid">🛒</div>
-            <div class="b-name">Bob</div>
-          </div>
+          <div class="b-node"><div class="b-dot mid">🛒</div><div class="b-name">Bob</div></div>
           <div class="b-arrow active"></div>
-          <div class="b-node">
-            <div class="b-dot mid">🍞</div>
-            <div class="b-name">Chloé</div>
-          </div>
+          <div class="b-node"><div class="b-dot mid">🍞</div><div class="b-name">Chloé</div></div>
           <div class="b-arrow active"></div>
-          <div class="b-node">
-            <div class="b-dot mid">🧑‍🔧</div>
-            <div class="b-name">David</div>
-          </div>
+          <div class="b-node"><div class="b-dot mid">🧑‍🔧</div><div class="b-name">David</div></div>
           <div class="b-arrow active"></div>
-          <div class="b-node">
-            <div class="b-dot mid">🌿</div>
-            <div class="b-name">Eva</div>
-          </div>
+          <div class="b-node"><div class="b-dot mid">🌿</div><div class="b-name">Eva</div></div>
           <div class="b-arrow active"></div>
-          <div class="b-node">
-            <div class="b-dot return">🌾</div>
-            <div class="b-name" style="color:var(--gold);">Alice ✦</div>
-          </div>
-          <div style="flex:1;padding-left:24px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.4);">
-            5 hops · 18 jours · boucle fermée<br>
-            <span style="color:var(--moss-light);">Le bon a traversé 5 univers différents.</span>
-          </div>
+          <div class="b-node"><div class="b-dot return">🌾</div><div class="b-name" style="color:var(--gold);">Alice ✦</div></div>
+          <div style="flex:1;padding-left:24px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.4);">5 personnes · 18 jours · bon utilisé<br><span style="color:var(--moss-light);">Ce bon a fait vivre 5 stands différents.</span></div>
         </div>
       </div>
-
-      <!-- Séparateur -->
       <div style="border-top:1px solid rgba(255,255,255,0.06);"></div>
-
-      <!-- Boucle courte -->
       <div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-          <span class="b-tag warn">▲ Boucle courte · Réseau dense</span>
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);">→ Sain, mais peu étendu</span>
+          <span class="b-tag warn">▲ Boucle courte · Réseau qui démarre</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);">→ Ça fonctionne, mais le bon reste entre 2 personnes</span>
         </div>
         <div class="boucle-row">
-          <div class="b-node">
-            <div class="b-dot origin">🌾</div>
-            <div class="b-name">Alice</div>
-          </div>
+          <div class="b-node"><div class="b-dot origin">🌾</div><div class="b-name">Alice</div></div>
           <div class="b-arrow plain"></div>
-          <div class="b-node">
-            <div class="b-dot mid">🛒</div>
-            <div class="b-name">Bob</div>
-          </div>
+          <div class="b-node"><div class="b-dot mid">🛒</div><div class="b-name">Bob</div></div>
           <div class="b-arrow plain"></div>
-          <div class="b-node">
-            <div class="b-dot return" style="animation-duration:3.5s;">🌾</div>
-            <div class="b-name" style="color:var(--gold);">Alice ✦</div>
-          </div>
-          <div style="flex:1;padding-left:24px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.4);">
-            2 hops · 3 jours · boucle fermée<br>
-            <span style="color:rgba(212,160,23,0.7);">Le réseau fonctionne, mais reste intime.</span>
-          </div>
+          <div class="b-node"><div class="b-dot return" style="animation-duration:3.5s;">🌾</div><div class="b-name" style="color:var(--gold);">Alice ✦</div></div>
+          <div style="flex:1;padding-left:24px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(245,240,232,0.4);">2 personnes · 3 jours · bon utilisé<br><span style="color:rgba(212,160,23,0.7);">Le marché fonctionne, mais pourrait s'étendre.</span></div>
         </div>
       </div>
     </div>
-
-    <!-- Stats -->
     <div class="boucle-stats fade-in" style="margin-top:24px;">
-      <div class="boucle-stat">
-        <div class="boucle-stat-value" style="color:var(--moss-light);">4.8</div>
-        <div class="boucle-stat-label">Hops moyens</div>
-      </div>
-      <div class="boucle-stat">
-        <div class="boucle-stat-value" style="color:var(--gold);">12j</div>
-        <div class="boucle-stat-label">Retour médian</div>
-      </div>
-      <div class="boucle-stat">
-        <div class="boucle-stat-value" style="color:rgba(245,240,232,0.7);">82%</div>
-        <div class="boucle-stat-label">Ratio santé</div>
-      </div>
+      <div class="boucle-stat"><div class="boucle-stat-value" style="color:var(--moss-light);">4,8</div><div class="boucle-stat-label">Personnes en moyenne par bon</div></div>
+      <div class="boucle-stat"><div class="boucle-stat-value" style="color:var(--gold);">12j</div><div class="boucle-stat-label">Délai moyen de retour</div></div>
+      <div class="boucle-stat"><div class="boucle-stat-value" style="color:rgba(245,240,232,0.7);">82%</div><div class="boucle-stat-label">Bons utilisés avant expiration</div></div>
     </div>
   </div>
 </section>
 
-<!-- ===================== LÉGAL ===================== -->
 <section class="legal-section">
   <div class="section-inner">
-    <div class="section-label">Légalité & fiscalité</div>
-    <h2>Conforme, <em>traçable</em>,<br>et respectueux</h2>
-    <p class="section-intro">
-      Les bons ẐEN sont des instruments juridiquement reconnus. 
-      Chaque transaction est enregistrée de façon immuable sur le réseau Nostr.
-    </p>
-
+    <div class="section-label">Légalité & comptabilité</div>
+    <h2>Tout est <em>en règle</em>,<br>rien à craindre</h2>
+    <p class="section-intro">Les bons TrocZen ont un statut juridique clair en France. Chaque transaction est enregistrée automatiquement, ce qui facilite votre comptabilité.</p>
     <div class="legal-grid fade-in">
-      <div class="legal-card">
-        <div class="legal-icon">📋</div>
-        <div class="legal-title">Statut juridique clair</div>
-        <div class="legal-text">Les bons ẐEN sont des instruments de créance ou bons cadeaux, conformes aux obligations fiscales et comptables françaises. Les transactions en euros restent entièrement traçables.</div>
-      </div>
-      <div class="legal-card">
-        <div class="legal-icon">🔗</div>
-        <div class="legal-title">Traçabilité Nostr</div>
-        <div class="legal-text">Chaque création, transfert et encaissement est signé cryptographiquement et publié sur le réseau Nostr. L'historique est permanent, vérifiable et disponible pour l'administration fiscale.</div>
-      </div>
-      <div class="legal-card">
-        <div class="legal-icon">🔒</div>
-        <div class="legal-title">Vie privée préservée</div>
-        <div class="legal-text">Les identités des porteurs sont protégées par des clés HMAC. La conformité est assurée sans créer un registre de surveillance des comportements d'achat.</div>
-      </div>
+      <div class="legal-card"><div class="legal-icon">📋</div><div class="legal-title">Statut clair</div><div class="legal-text">Les bons TrocZen sont des bons cadeaux ou instruments de créance, conformes à la réglementation française. Vos transactions en euros restent traçables et déclarables.</div></div>
+      <div class="legal-card"><div class="legal-icon">🔗</div><div class="legal-title">Historique automatique</div><div class="legal-text">Chaque création, transfert et encaissement est enregistré et signé numériquement. Vous pouvez exporter cet historique à tout moment pour votre comptable ou l'administration.</div></div>
+      <div class="legal-card"><div class="legal-icon">🔒</div><div class="legal-title">Vie privée protégée</div><div class="legal-text">L'identité des porteurs de bons reste privée. Le système sait qu'un bon a circulé, mais pas qui l'a porté. Vos clients ne sont pas fichés.</div></div>
     </div>
   </div>
 </section>
 
-<!-- ===================== FEEDBACK ===================== -->
 <section class="feedback-section" id="feedback">
   <div class="section-inner">
     <div class="finance-inner fade-in">
       <div class="finance-text">
-        <div class="section-label">Feedback & Support</div>
+        <div class="section-label">Vos retours comptent</div>
         <h2>Aidez-nous à<br><em>améliorer</em><br>TrocZen</h2>
-        <p>
-          Vos retours créent directement des tâches pour les développeurs sur GitHub.
-          Signalez un bug, suggérez une idée ou posez une question.
-        </p>
+        <p>Un bug ? Une idée ? Une question ? Écrivez-nous. Vos retours arrivent directement chez les développeurs et permettent d'améliorer l'application.</p>
       </div>
-
       <div class="finance-card">
         <form id="feedbackForm" class="feedback-form">
-          <div class="form-group">
-            <select id="fbType" class="form-input">
-              <option value="bug">🐛 Signaler un bug</option>
-              <option value="feature">✨ Suggérer une idée</option>
-              <option value="question">❓ Question</option>
-              <option value="feedback">👍 Avis général</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <input type="text" id="fbTitle" class="form-input" placeholder="Titre (ex: Problème d'affichage...)" required>
-          </div>
-          <div class="form-group">
-            <textarea id="fbDesc" class="form-input" rows="4" placeholder="Description détaillée..." required></textarea>
-          </div>
-          <div class="form-group">
-            <input type="email" id="fbEmail" class="form-input" placeholder="Votre email (optionnel)">
-          </div>
-          <button type="submit" class="btn-primary" style="width:100%;justify-content:center;" id="fbSubmitBtn">
-            Envoyer le feedback
-          </button>
-          <div id="fbStatus" style="margin-top: 15px; text-align: center; font-weight: bold; font-size: 13px;"></div>
+          <select id="fbType" class="form-input">
+            <option value="bug">🐛 Signaler un bug</option>
+            <option value="feature">✨ Suggérer une idée</option>
+            <option value="question">❓ Question</option>
+            <option value="feedback">👍 Avis général</option>
+          </select>
+          <input type="text" id="fbTitle" class="form-input" placeholder="Titre (ex: Problème d'affichage...)" required>
+          <textarea id="fbDesc" class="form-input" rows="4" placeholder="Description détaillée..." required></textarea>
+          <input type="email" id="fbEmail" class="form-input" placeholder="Votre email (optionnel)">
+          <button type="submit" class="btn-primary" style="width:100%;justify-content:center;" id="fbSubmitBtn">Envoyer le feedback</button>
+          <div id="fbStatus" style="margin-top:15px;text-align:center;font-weight:bold;font-size:13px;"></div>
         </form>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===================== FINANCER ===================== -->
 <section class="finance-section" id="financer">
   <div class="section-inner">
     <div class="finance-inner fade-in">
       <div class="finance-text">
         <div class="section-label">Soutenir le projet</div>
-        <h2>Un labo ouvert,<br>une <em>infrastructure</em><br>commune</h2>
-
-        <p>
-          TrocZen est développé par le <strong>G1FabLab</strong>, un collectif 
-          de développeurs et d'économistes qui construisent des outils 
-          monétaires libres et souverains.
-        </p>
-
-        <p>
-          Le code est open-source (AGPL-3.0). Votre soutien finance 
-          directement les développeurs, les relais Nostr locaux, 
-          et les TrocZen Box déployées sur les marchés.
-        </p>
+        <h2>Un projet ouvert,<br>une <em>infrastructure</em><br>collective</h2>
+        <p>TrocZen est développé par le <strong>G1FabLab</strong>, un collectif de bénévoles qui construisent des outils pour les économies locales.</p>
+        <p>Le code est entièrement open-source et gratuit. Votre soutien financier permet de payer les développeurs, les serveurs de synchronisation locaux et les boîtiers TrocZen Box installés sur les marchés sans réseau.</p>
       </div>
-
       <div class="finance-card">
         <div class="finance-card-title">G1FabLab</div>
         <div class="finance-card-sub">Collectif · Infrastructure Monnaie Libre</div>
-
         <ul class="uses-list">
-          <li>Développement et maintenance de l'application</li>
-          <li>Déploiement des relais Nostr sur les marchés locaux</li>
-          <li>TrocZen Box solaires pour les marchés sans réseau</li>
-          <li>Documentation et formation des commerçants</li>
-          <li>Audit de sécurité du protocole cryptographique</li>
+          <li>Développement et maintenance de l'application mobile</li>
+          <li>Serveurs de synchronisation sur les marchés locaux</li>
+          <li>Boîtiers TrocZen Box solaires pour les marchés sans réseau mobile</li>
+          <li>Guides et formation pour les commerçants</li>
+          <li>Vérification indépendante de la sécurité de l'application</li>
         </ul>
-
-        <a href="https://opencollective.com/monnaie-libre" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">
-          Soutenir sur OpenCollective →
-        </a>
-
-        <div style="margin-top:16px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);letter-spacing:0.08em;">
-          AGPL-3.0 · CODE OUVERT · GOUVERNANCE COLLECTIVE
-        </div>
+        <a href="https://opencollective.com/monnaie-libre" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">Soutenir sur OpenCollective →</a>
+        <div style="margin-top:16px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:rgba(245,240,232,0.3);letter-spacing:0.08em;">AGPL-3.0 · CODE OUVERT · GOUVERNANCE COLLECTIVE</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===================== FOOTER ===================== -->
 <footer>
   <div class="footer-inner">
     <div class="footer-logo">ẐEN<span>·</span></div>
@@ -1469,111 +772,72 @@ footer {
   </div>
 </footer>
 
-<!-- ===================== JS ===================== -->
 <script>
-/* Animated travelling nodes in hero */
+/* ── THEME TOGGLE ── */
+function getTheme() {
+  try { return localStorage.getItem('zen-theme') || 'light'; } catch(e) { return 'light'; }
+}
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+  try { localStorage.setItem('zen-theme', t); } catch(e) {}
+}
+function toggleTheme() {
+  setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+setTheme(getTheme());
+
+/* ── HERO CANVAS ── */
 (function() {
   const canvas = document.getElementById('heroCanvas');
-  const w = window.innerWidth;
-  const h = window.innerHeight;
   const nodes = [
-    { x: '15%', y: '20%', delay: 0, dur: 7 },
-    { x: '70%', y: '15%', delay: 1.2, dur: 9 },
-    { x: '30%', y: '65%', delay: 2.5, dur: 8 },
-    { x: '80%', y: '55%', delay: 0.7, dur: 11 },
-    { x: '50%', y: '80%', delay: 3.1, dur: 7.5 },
-    { x: '10%', y: '75%', delay: 1.8, dur: 10 },
-    { x: '90%', y: '30%', delay: 4,   dur: 8.5 },
+    {x:'15%',y:'20%',delay:0,dur:7},{x:'70%',y:'15%',delay:1.2,dur:9},
+    {x:'30%',y:'65%',delay:2.5,dur:8},{x:'80%',y:'55%',delay:0.7,dur:11},
+    {x:'50%',y:'80%',delay:3.1,dur:7.5},{x:'10%',y:'75%',delay:1.8,dur:10},
+    {x:'90%',y:'30%',delay:4,dur:8.5}
   ];
   const lines = [
-    { x: '15%', y: '20%', w: '220px', delay: 0.3, dur: 7 },
-    { x: '30%', y: '65%', w: '180px', delay: 2.8, dur: 8 },
-    { x: '70%', y: '15%', w: '150px', delay: 1.5, dur: 9 },
-    { x: '10%', y: '75%', w: '200px', delay: 2.0, dur: 10 },
+    {x:'15%',y:'20%',w:'220px',delay:0.3,dur:7},{x:'30%',y:'65%',w:'180px',delay:2.8,dur:8},
+    {x:'70%',y:'15%',w:'150px',delay:1.5,dur:9},{x:'10%',y:'75%',w:'200px',delay:2.0,dur:10}
   ];
-
   nodes.forEach(n => {
-    const el = document.createElement('div');
-    el.className = 'travel-node';
-    el.style.left = n.x;
-    el.style.top = n.y;
-    el.style.setProperty('--dur', n.dur + 's');
-    el.style.setProperty('--delay', n.delay + 's');
+    const el = document.createElement('div'); el.className = 'travel-node';
+    el.style.left = n.x; el.style.top = n.y;
+    el.style.setProperty('--dur', n.dur+'s'); el.style.setProperty('--delay', n.delay+'s');
     canvas.appendChild(el);
   });
-
   lines.forEach(l => {
-    const el = document.createElement('div');
-    el.className = 'travel-line';
-    el.style.left = l.x;
-    el.style.top = l.y;
-    el.style.setProperty('--dur', l.dur + 's');
-    el.style.setProperty('--delay', l.delay + 's');
-    el.style.setProperty('--w', l.w);
-    canvas.appendChild(el);
+    const el = document.createElement('div'); el.className = 'travel-line';
+    el.style.left = l.x; el.style.top = l.y;
+    el.style.setProperty('--dur', l.dur+'s'); el.style.setProperty('--delay', l.delay+'s');
+    el.style.setProperty('--w', l.w); canvas.appendChild(el);
   });
 })();
 
-/* Feedback Form */
+/* ── FEEDBACK FORM ── */
 document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('fbSubmitBtn');
-    const status = document.getElementById('fbStatus');
-    
-    btn.disabled = true;
-    btn.style.opacity = "0.7";
-    btn.textContent = 'Envoi en cours...';
-    status.innerHTML = '';
-
-    const payload = {
-        type: document.getElementById('fbType').value,
-        title: document.getElementById('fbTitle').value,
-        description: document.getElementById('fbDesc').value,
-        email: document.getElementById('fbEmail').value,
-        platform: 'Web Interface',
-        app_version: 'v1.0'
-    };
-
-    try {
-        const res = await fetch('/api/feedback', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        
-        const data = await res.json();
-
-        if (data.success) {
-            status.innerHTML = `<span style="color: var(--moss-light)">✅ Feedback envoyé (Issue #${data.issue_number})</span>`;
-            document.getElementById('feedbackForm').reset();
-        } else {
-            let msg = data.error;
-            if(msg.includes('404')) msg = "Erreur configuration GitHub (Repo introuvable)";
-            status.innerHTML = `<span style="color: var(--rust)">❌ ${msg}</span>`;
-        }
-    } catch (err) {
-        status.innerHTML = `<span style="color: var(--rust)">❌ Erreur réseau</span>`;
-    } finally {
-        btn.disabled = false;
-        btn.style.opacity = "1";
-        btn.textContent = 'Envoyer le feedback';
-    }
+  e.preventDefault();
+  const btn = document.getElementById('fbSubmitBtn');
+  const status = document.getElementById('fbStatus');
+  btn.disabled = true; btn.textContent = 'Envoi...'; status.innerHTML = '';
+  const payload = { type:document.getElementById('fbType').value, title:document.getElementById('fbTitle').value, description:document.getElementById('fbDesc').value, email:document.getElementById('fbEmail').value, platform:'Web', app_version:'v1.0' };
+  try {
+    const res = await fetch('/api/feedback', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.success) { status.innerHTML = `<span style="color:var(--moss-light)">✅ Feedback envoyé (Issue #${data.issue_number})</span>`; document.getElementById('feedbackForm').reset(); }
+    else { status.innerHTML = `<span style="color:var(--rust)">❌ ${data.error}</span>`; }
+  } catch(err) { status.innerHTML = `<span style="color:var(--rust)">❌ Erreur réseau</span>`; }
+  finally { btn.disabled = false; btn.textContent = 'Envoyer le feedback'; }
 });
 
-/* Intersection Observer for fade-in */
+/* ── FADE IN ── */
 (function() {
   const els = document.querySelectorAll('.fade-in');
   const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        observer.unobserve(e.target);
-      }
-    });
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
   }, { threshold: 0.1 });
   els.forEach(el => observer.observe(el));
 })();
 </script>
-
 </body>
 </html>

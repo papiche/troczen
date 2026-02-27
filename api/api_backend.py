@@ -602,8 +602,8 @@ def upload_image():
             error_code=400
         )), 400
     
-    # Lire le contenu du fichier pour validation magic bytes
-    file_content = file.read()
+    # Lire le début du fichier pour validation magic bytes
+    file_content = file.read(12)
     file.seek(0)  # Remettre le curseur au début pour sauvegarde
     
     # Validation extension ET magic bytes

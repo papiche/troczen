@@ -9,9 +9,8 @@ Type=simple
 User=_USER_
 Group=_USER_
 WorkingDirectory=_APIDIR_
-Environment="PATH=/home/_USER_/.astro/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EnvironmentFile=_APIDIR_/.env
-ExecStart=python _APIDIR_/api_backend.py
+ExecStart=/home/_USER_/.astro/bin/gunicorn -w 2 -b 127.0.0.1:5000 api_backend:app
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=on-failure

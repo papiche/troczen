@@ -1,63 +1,127 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ẐEN — Simulateur v4 · Bon Zéro & Rachat Volontaire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@700;800&display=swap');
-
+/* ===================== DESIGN SYSTEM TOKENS ===================== */
 :root {
-  --bg:    #04070c;
-  --p1:    #07101a;
-  --p2:    #0b1724;
-  --bd:    #152535;
-  --dim:   #1e3348;
-  --dim2:  #3a5570;
-  --text:  #b8ccdc;
-  --green: #10b981;
-  --blue:  #3b82f6;
-  --amber: #f59e0b;
-  --red:   #ef4444;
-  --violet:#8b5cf6;
-  --orange:#f97316;
-  --circ:  #fbbf24;
-  --zero:  #22d3ee; /* Bon Zéro */
+  --radius: 4px;
+  --moss:       #3d6147;
+  --moss-light: #5a8a67;
+  --rust:       #c4521a;
+  --gold:       #d4a017;
+  --green:  #10b981;
+  --blue:   #3b82f6;
+  --amber:  #f59e0b;
+  --red:    #ef4444;
+  --violet: #8b5cf6;
+  --orange: #f97316;
+  --circ:   #fbbf24;
+  --zero:   #22d3ee;
+}
+
+[data-theme="dark"] {
+  --bg:      #04070c;
+  --p1:      #07101a;
+  --p2:      #0b1724;
+  --bd:      #152535;
+  --dim:     #1e3348;
+  --dim2:    #3a5570;
+  --text:    #b8ccdc;
+  --nav-bg:  rgba(4,7,12,0.95);
+  --border:  #152535;
+  --surface: #07101a;
+  --surface2:#0b1724;
+  --ink:     #b8ccdc;
+  --ink-soft:#3a5570;
+  --chart-grid: #0b1520;
+  --chart-axis: #152535;
+  --chart-label:#1e3348;
+}
+[data-theme="light"] {
+  --bg:      #f5f0e8;
+  --p1:      #ede5d0;
+  --p2:      #e5dcc8;
+  --bd:      rgba(122,92,58,0.2);
+  --dim:     rgba(122,92,58,0.15);
+  --dim2:    #7a6d55;
+  --text:    #1c1a14;
+  --nav-bg:  rgba(245,240,232,0.95);
+  --border:  rgba(122,92,58,0.2);
+  --surface: #ede5d0;
+  --surface2:#e5dcc8;
+  --ink:     #1c1a14;
+  --ink-soft:#7a6d55;
+  --chart-grid: #e5dcc8;
+  --chart-axis: rgba(122,92,58,0.2);
+  --chart-label:rgba(122,92,58,0.4);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; font-size: 12px; }
 
-/* HEADER */
-header {
-  padding: 0.8rem 1.4rem;
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ── NAV ── */
+nav {
+  padding: 10px 20px;
   border-bottom: 1px solid var(--bd);
-  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+  transition: background 0.3s;
 }
-.logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; color: var(--green); flex-shrink: 0; }
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900; font-size: 1.2rem;
+  color: var(--moss); text-decoration: none;
+  flex-shrink: 0;
+}
+.nav-logo span { color: var(--rust); }
+.nav-links { display: flex; gap: 14px; list-style: none; align-items: center; }
+.nav-links a { font-size: 0.6rem; font-weight: 500; color: var(--dim2); text-decoration: none; letter-spacing: 0.04em; transition: color 0.2s; }
+.nav-links a:hover { color: var(--moss); }
+.nav-links a.active { color: var(--green); font-weight: 700; }
+
+.nav-spacer { flex: 1; }
+
 .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.chip {
-  padding: 0.18rem 0.55rem; border-radius: 3px; font-size: 0.55rem;
-  font-weight: 600; letter-spacing: 0.06em; border: 1px solid; cursor: default;
-}
+.chip { padding: 0.18rem 0.55rem; border-radius: 3px; font-size: 0.55rem; font-weight: 600; letter-spacing: 0.06em; border: 1px solid; cursor: default; }
 .chip-ok   { color: var(--green); border-color: #10b98135; background: #10b98108; }
 .chip-no   { color: var(--red);   border-color: #ef444435; background: #ef444408; }
 .chip-new  { color: var(--zero);  border-color: #22d3ee35; background: #22d3ee08; }
 .chip-hmac { color: var(--violet);border-color: #8b5cf635; background: #8b5cf608; }
 
-/* LAYOUT */
+.theme-toggle {
+  background: var(--p2); border: 1px solid var(--bd);
+  color: var(--text); width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px; flex-shrink: 0;
+}
+
+/* ── LAYOUT ── */
 .layout { flex: 1; display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
 
-/* SIDEBAR */
+/* ── SIDEBAR ── */
 .side { background: var(--p1); border-right: 1px solid var(--bd); padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.1rem; }
 .sh { font-size: 0.52rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim2); border-bottom: 1px solid var(--bd); padding-bottom: 0.3rem; margin-bottom: 0.45rem; }
 
-/* Actor config */
 .actors { display: flex; flex-direction: column; gap: 0.45rem; }
-.actor {
-  border: 1px solid var(--bd); border-radius: 4px; padding: 0.55rem 0.65rem;
-  background: var(--p2); transition: border-color 0.15s; cursor: default;
-}
+.actor { border: 1px solid var(--bd); border-radius: 4px; padding: 0.55rem 0.65rem; background: var(--p2); transition: border-color 0.15s; cursor: default; }
 .actor.on { border-color: var(--ac); }
 .a-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
 .a-name { display: flex; align-items: center; gap: 0.4rem; font-weight: 700; font-size: 0.72rem; }
@@ -67,46 +131,28 @@ header {
 .rl { font-size: 0.56rem; color: var(--dim2); width: 22px; flex-shrink: 0; }
 .rl.r { text-align: right; }
 
-input[type=range].sl {
-  flex: 1; -webkit-appearance: none; height: 3px;
-  background: linear-gradient(to right, color-mix(in srgb, var(--ac) 25%, var(--dim)), var(--ac));
-  border-radius: 2px; outline: none;
-}
-input[type=range].sl::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--ac); cursor: pointer; box-shadow: 0 0 6px var(--ac);
-}
-input[type=range].gsl {
-  width: 100%; -webkit-appearance: none; height: 2px; background: var(--bd); outline: none; border-radius: 1px;
-}
-input[type=range].gsl::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 11px; height: 11px;
-  border-radius: 50%; background: var(--circ); cursor: pointer; box-shadow: 0 0 5px var(--circ);
-}
+input[type=range].sl { flex: 1; -webkit-appearance: none; height: 3px; background: linear-gradient(to right, color-mix(in srgb, var(--ac) 25%, var(--dim)), var(--ac)); border-radius: 2px; outline: none; }
+input[type=range].sl::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--ac); cursor: pointer; box-shadow: 0 0 6px var(--ac); }
+input[type=range].gsl { width: 100%; -webkit-appearance: none; height: 2px; background: var(--bd); outline: none; border-radius: 1px; }
+input[type=range].gsl::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: var(--circ); cursor: pointer; box-shadow: 0 0 5px var(--circ); }
 
 .a-sub { font-size: 0.56rem; color: var(--dim2); font-style: italic; }
 .gp { margin-bottom: 0.65rem; }
 .gl { display: flex; justify-content: space-between; font-size: 0.6rem; margin-bottom: 0.28rem; }
-.gv { color: var(--circ); font-family: 'Syne', sans-serif; font-weight: 700; }
+.gv { color: var(--circ); font-family: 'DM Mono', monospace; font-weight: 700; }
 
-.ibox {
-  background: #020508; border: 1px solid var(--bd); border-radius: 3px;
-  padding: 0.65rem; font-size: 0.58rem; line-height: 1.8; color: var(--dim2);
-}
+.ibox { background: var(--bg); border: 1px solid var(--bd); border-radius: 3px; padding: 0.65rem; font-size: 0.58rem; line-height: 1.8; color: var(--dim2); }
 .ibox .ok  { color: var(--green); font-weight: 600; }
 .ibox .no  { color: var(--red);   font-weight: 600; }
 .ibox .hi  { color: var(--zero);  font-weight: 600; }
-.ibox code { font-family: 'JetBrains Mono'; background: var(--p2); padding: 0.03rem 0.28rem; border-radius: 2px; font-size: 0.62rem; color: var(--green); }
+.ibox code { font-family: 'DM Mono', monospace; background: var(--p2); padding: 0.03rem 0.28rem; border-radius: 2px; font-size: 0.62rem; color: var(--green); }
 
-/* MAIN */
+/* ── MAIN ── */
 .main { overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; }
 
-.stats {
-  display: grid; grid-template-columns: repeat(7, 1fr);
-  gap: 1px; background: var(--bd); border: 1px solid var(--bd); border-radius: 3px; overflow: hidden;
-}
+.stats { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--bd); border: 1px solid var(--bd); border-radius: 3px; overflow: hidden; }
 .st { background: var(--p1); padding: 0.55rem 0.6rem; text-align: center; }
-.sv { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; display: block; }
+.sv { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 1rem; display: block; }
 .sl2 { font-size: 0.48rem; color: var(--dim2); text-transform: uppercase; letter-spacing: 0.07em; }
 
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
@@ -117,42 +163,26 @@ input[type=range].gsl::-webkit-slider-thumb {
 
 canvas { display: block; width: 100% !important; }
 
-/* PHASES panel */
-.phases {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem;
-  margin-bottom: 0.3rem;
-}
-.phase {
-  background: var(--p2); border: 1px solid var(--bd); border-radius: 3px;
-  padding: 0.5rem 0.6rem; border-top: 2px solid var(--pc);
-}
+.phases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin-bottom: 0.3rem; }
+.phase { background: var(--p2); border: 1px solid var(--bd); border-radius: 3px; padding: 0.5rem 0.6rem; border-top: 2px solid var(--pc); }
 .ph-title { font-size: 0.58rem; font-weight: 700; color: var(--pc); margin-bottom: 0.2rem; }
 .ph-body  { font-size: 0.55rem; color: var(--dim2); line-height: 1.6; }
 
-/* Log */
 .log { max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.22rem; scrollbar-width: thin; }
-.le {
-  font-size: 0.56rem; line-height: 1.5; padding: 0.22rem 0.45rem;
-  border-radius: 2px; animation: fu 0.2s ease;
-}
-.le-circ { background: color-mix(in srgb, var(--circ) 5%, transparent); border: 1px solid color-mix(in srgb, var(--circ) 18%, transparent); }
+.le { font-size: 0.56rem; line-height: 1.5; padding: 0.22rem 0.45rem; border-radius: 2px; animation: fu 0.2s ease; }
+.le-circ    { background: color-mix(in srgb, var(--circ) 5%, transparent); border: 1px solid color-mix(in srgb, var(--circ) 18%, transparent); }
 .le-buyback { background: color-mix(in srgb, var(--violet) 5%, transparent); border: 1px solid color-mix(in srgb, var(--violet) 20%, transparent); }
-.le-exp { background: color-mix(in srgb, var(--red) 4%, transparent); border: 1px solid color-mix(in srgb, var(--red) 15%, transparent); }
-.le-zero { background: color-mix(in srgb, var(--zero) 5%, transparent); border: 1px solid color-mix(in srgb, var(--zero) 20%, transparent); }
+.le-exp     { background: color-mix(in srgb, var(--red) 4%, transparent); border: 1px solid color-mix(in srgb, var(--red) 15%, transparent); }
+.le-zero    { background: color-mix(in srgb, var(--zero) 5%, transparent); border: 1px solid color-mix(in srgb, var(--zero) 20%, transparent); }
+@keyframes fu { from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;} }
 
-@keyframes fu { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
-
-/* HMAC vis */
 .hmac-vis { display: flex; flex-direction: column; gap: 0.35rem; }
-.hv-path {
-  display: flex; align-items: center; gap: 0.3rem; font-size: 0.56rem;
-  padding: 0.3rem 0.5rem; background: var(--p2); border: 1px solid var(--bd); border-radius: 3px;
-}
+.hv-path { display: flex; align-items: center; gap: 0.3rem; font-size: 0.56rem; padding: 0.3rem 0.5rem; background: var(--p2); border: 1px solid var(--bd); border-radius: 3px; }
 .hv-hop { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; }
 .hv-dot { width: 10px; height: 10px; border-radius: 50%; }
 .hv-label { font-size: 0.48rem; color: var(--dim2); }
 .hv-arrow { color: var(--dim2); font-size: 0.7rem; margin: 0 0.1rem; }
-.hv-hash { font-size: 0.46rem; color: var(--violet); font-family: 'JetBrains Mono'; }
+.hv-hash { font-size: 0.46rem; color: var(--violet); font-family: 'DM Mono', monospace; }
 
 .leg { display: flex; gap: 0.7rem; flex-wrap: wrap; font-size: 0.56rem; margin-top: 0.4rem; }
 .li { display: flex; align-items: center; gap: 0.28rem; }
@@ -163,211 +193,136 @@ canvas { display: block; width: 100% !important; }
   .grid { grid-template-columns: 1fr; }
   .stats { grid-template-columns: repeat(4, 1fr); }
   .phases { grid-template-columns: 1fr 1fr; }
+  .nav-links { display: none; }
 }
 </style>
 </head>
 <body>
 
-<header>
-  <a href="/" style="text-decoration: none;"><div class="logo">ẐEN v4</div></a>
+<nav>
+  <a href="/" class="nav-logo">ẐEN<span>·</span></a>
+  <ul class="nav-links">
+    <li><a href="/">Accueil</a></li>
+    <li><a href="/boucles">Schéma</a></li>
+    <li><a href="/simulateur" class="active">Simulateur</a></li>
+    <li><a href="/monitor">Monitor</a></li>
+  </ul>
   <div class="chips">
-    <div class="chip chip-new">✦ Bon Zéro — amorce sociale</div>
-    <div class="chip chip-ok">✓ TTL décroit, max 365j</div>
-    <div class="chip chip-ok">✓ Rachat volontaire</div>
-    <div class="chip chip-hmac">⬡ HMAC path anonyme</div>
-    <div class="chip chip-no">✗ Pas de split · Pas de restamp</div>
+    <div class="chip chip-new">✦ Bon Zéro — premier bon gratuit pour lancer le réseau</div>
+    <div class="chip chip-ok">✓ Durée de vie limitée (max 365 jours)</div>
+    <div class="chip chip-ok">✓ Rachat volontaire avant expiration</div>
+    <div class="chip chip-hmac">⬡ Identités des porteurs protégées</div>
+    <div class="chip chip-no">✗ Pas de fractionnement · Pas de prolongation</div>
   </div>
-</header>
+  <div class="nav-spacer"></div>
+  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀️</button>
+</nav>
 
 <div class="layout">
   <aside class="side">
     <div>
-      <div class="sh">Acteurs</div>
+      <div class="sh">Acteurs du marché</div>
       <div class="actors" id="actor-list"></div>
     </div>
     <div>
-      <div class="sh">Réseau global</div>
-      <div class="gp">
-        <div class="gl">Jours simulés <span class="gv" id="v-days">300</span></div>
-        <input type="range" class="gsl" id="sl-days" min="60" max="720" step="10" value="300">
-      </div>
-      <div class="gp">
-        <div class="gl">Constante C² <span class="gv" id="v-c2">0.07</span></div>
-        <input type="range" class="gsl" id="sl-c2" min="0.02" max="0.20" step="0.01" value="0.07">
-      </div>
-      <div class="gp">
-        <div class="gl">Vitesse réseau <span class="gv" id="v-speed">0.5</span></div>
-        <input type="range" class="gsl" id="sl-speed" min="0.1" max="2.0" step="0.1" value="0.5">
-      </div>
-      <div class="gp">
-        <div class="gl">Densité boucles <span class="gv" id="v-dens">0.5</span></div>
-        <input type="range" class="gsl" id="sl-dens" min="0.1" max="1.5" step="0.1" value="0.5">
-      </div>
-      <div class="gp">
-        <div class="gl">Taux rachat volontaire <span class="gv" id="v-buyback">40</span>%</div>
-        <input type="range" class="gsl" id="sl-buyback" min="0" max="100" step="5" value="40">
-      </div>
+      <div class="sh">Paramètres de simulation</div>
+      <div class="gp"><div class="gl">Jours simulés <span class="gv" id="v-days">300</span></div><input type="range" class="gsl" id="sl-days" min="60" max="720" step="10" value="300"></div>
+      <div class="gp"><div class="gl">Intensité des échanges <span class="gv" id="v-c2">0.07</span></div><input type="range" class="gsl" id="sl-c2" min="0.02" max="0.20" step="0.01" value="0.07"></div>
+      <div class="gp"><div class="gl">Vitesse d'échange <span class="gv" id="v-speed">0.5</span></div><input type="range" class="gsl" id="sl-speed" min="0.1" max="2.0" step="0.1" value="0.5"></div>
+      <div class="gp"><div class="gl">Fréquence des retours <span class="gv" id="v-dens">0.5</span></div><input type="range" class="gsl" id="sl-dens" min="0.1" max="1.5" step="0.1" value="0.5"></div>
+      <div class="gp"><div class="gl">Rachat volontaire avant expiration <span class="gv" id="v-buyback">40</span>%</div><input type="range" class="gsl" id="sl-buyback" min="0" max="100" step="5" value="40"></div>
     </div>
     <div>
-      <div class="sh">Protocole actif</div>
+      <div class="sh">Règles du protocole</div>
       <div class="ibox">
-        <span class="hi">●</span> <b>Bon Zéro</b> : J0→J28, 0 ẐEN<br>
-        &nbsp;&nbsp;→ propage follows à chaque hop<br>
-        &nbsp;&nbsp;→ active DU quand N1≥5<br><br>
-        <span class="ok">R2</span> <code>expires_at</code> immuable<br>
-        <span class="ok">R3</span> Hop → <code>hop_count++</code> seulement<br>
-        <span class="ok">R6</span> Retour = boucle + parcours révélé<br>
-        <span class="no">R∅</span> Pas de split · Pas de restamp<br><br>
-        <span style="color:var(--violet)">⬡</span> <code>path[i] = HMAC(pubkey, bon_id)</code><br>
-        &nbsp;&nbsp;Seul l'émetteur décode le parcours
+        <span class="hi">●</span> <b>Bon Zéro</b> : gratuit, valide 28 jours<br>
+        &nbsp;&nbsp;→ crée des liens de confiance à chaque passage<br>
+        &nbsp;&nbsp;→ active le crédit quotidien dès 5 contacts atteints<br><br>
+        <span class="ok">✓</span> La date d'expiration ne change jamais<br>
+        <span class="ok">✓</span> Chaque transfert incrémente le compteur de passages<br>
+        <span class="ok">✓</span> Retour au créateur = bon utilisé, parcours révélé<br>
+        <span class="no">✗</span> Pas de division · Pas de prolongation<br><br>
+        <span style="color:var(--violet)">⬡</span> Le parcours est enregistré de façon anonyme<br>
+        &nbsp;&nbsp;Seul le créateur peut reconstituer qui a porté le bon
       </div>
     </div>
   </aside>
 
   <main class="main">
-    <!-- Stats bar -->
     <div class="stats" id="stats"></div>
-
-    <!-- Phases of a community lifecycle -->
     <div class="phases">
-      <div class="phase" style="--pc: var(--zero)">
-        <div class="ph-title">① Germination</div>
-        <div class="ph-body">Bon Zéro circule<br>Graph social se construit<br>N1 → 5 pour chaque acteur</div>
-      </div>
-      <div class="phase" style="--pc: var(--green)">
-        <div class="ph-title">② Activation</div>
-        <div class="ph-body">DU démarre<br>Premiers bons de valeur<br>Masse converge vers M*</div>
-      </div>
-      <div class="phase" style="--pc: var(--amber)">
-        <div class="ph-title">③ Circulation</div>
-        <div class="ph-body">Boucles se ferment<br>Rachats volontaires<br>Ratio santé &gt; 1</div>
-      </div>
-      <div class="phase" style="--pc: var(--violet)">
-        <div class="ph-title">④ Coopérative</div>
-        <div class="ph-body">Patterns révélés<br>Rôles émergent<br>Structure productive</div>
-      </div>
+      <div class="phase" style="--pc: var(--zero)"><div class="ph-title">① Démarrage</div><div class="ph-body">Bon Zéro circule gratuitement<br>Les liens de confiance se créent<br>5 contacts pour activer le crédit</div></div>
+      <div class="phase" style="--pc: var(--green)"><div class="ph-title">② Premier crédit</div><div class="ph-body">Les premiers bons de valeur circulent<br>La masse totale se stabilise<br>Le marché commence à vivre</div></div>
+      <div class="phase" style="--pc: var(--amber)"><div class="ph-title">③ Circulation active</div><div class="ph-body">Les bons reviennent aux créateurs<br>Rachats avant expiration<br>Plus de bons utilisés qu'expirés</div></div>
+      <div class="phase" style="--pc: var(--violet)"><div class="ph-title">④ Marché mature</div><div class="ph-body">Les habitudes d'échange se révèlent<br>Les rôles de chacun émergent<br>Le marché devient autonome</div></div>
     </div>
-
     <div class="grid">
-      <!-- Masse principale -->
-      <div class="card wide" style="--ca: var(--green)">
-        <div class="ct">📊 Masse ẐEN en circulation · avec phase Bon Zéro (J0→J28)</div>
-        <canvas id="c-mass" height="190"></canvas>
-        <div class="leg" id="leg"></div>
-      </div>
-
-      <!-- Zero bond propagation -->
-      <div class="card" style="--ca: var(--zero)">
-        <div class="ct">🌱 Propagation Bon Zéro · N1 par acteur (seuil 5 = activation DU)</div>
-        <canvas id="c-n1" height="165"></canvas>
-      </div>
-
-      <!-- Circuits -->
-      <div class="card" style="--ca: var(--circ)">
-        <div class="ct">🔁 Boucles : organiques vs rachats volontaires</div>
-        <canvas id="c-circ" height="165"></canvas>
-      </div>
-
-      <!-- Expiration vs buyback -->
-      <div class="card" style="--ca: var(--red)">
-        <div class="ct">⚖️ Flux : création / expiration / rachat sauvé</div>
-        <canvas id="c-flow" height="165"></canvas>
-      </div>
-
-      <!-- Health ratio -->
-      <div class="card" style="--ca: var(--amber)">
-        <div class="ct">❤️ Ratio santé (boucles/expirations) · seuil 1.0 = économie vivante</div>
-        <canvas id="c-health" height="165"></canvas>
-      </div>
-
-      <!-- HMAC visualization -->
-      <div class="card" style="--ca: var(--violet)">
-        <div class="ct">⬡ Exemple HMAC · parcours d'un bon (lecture émetteur vs tiers)</div>
-        <div class="hmac-vis" id="hmac-vis" style="margin-top:0.4rem"></div>
-      </div>
-
-      <!-- Event log -->
-      <div class="card wide" style="--ca: var(--circ)">
-        <div class="ct">📜 Journal des événements · circuits, rachats, Bon Zéro, expirations</div>
-        <div class="log" id="log"></div>
-      </div>
+      <div class="card wide" style="--ca: var(--green)"><div class="ct">📊 Bons ẐEN en circulation · avec phase de démarrage Bon Zéro (28 premiers jours)</div><canvas id="c-mass" height="190"></canvas><div class="leg" id="leg"></div></div>
+      <div class="card" style="--ca: var(--zero)"><div class="ct">🌱 Propagation Bon Zéro · contacts par personne (5 contacts = activation du crédit)</div><canvas id="c-n1" height="165"></canvas></div>
+      <div class="card" style="--ca: var(--circ)"><div class="ct">🔁 Bons utilisés : retours organiques vs rachats volontaires</div><canvas id="c-circ" height="165"></canvas></div>
+      <div class="card" style="--ca: var(--red)"><div class="ct">⚖️ Flux : création / expiration / sauvés par rachat</div><canvas id="c-flow" height="165"></canvas></div>
+      <div class="card" style="--ca: var(--amber)"><div class="ct">❤️ Santé du marché (bons utilisés / bons expirés) · au-dessus de 1,0 = marché vivant</div><canvas id="c-health" height="165"></canvas></div>
+      <div class="card" style="--ca: var(--violet)"><div class="ct">⬡ Confidentialité du parcours · ce que voit le créateur vs un tiers</div><div class="hmac-vis" id="hmac-vis" style="margin-top:0.4rem"></div></div>
+      <div class="card wide" style="--ca: var(--circ)"><div class="ct">📜 Journal des événements · bons utilisés, rachats, démarrages, expirations</div><div class="log" id="log"></div></div>
     </div>
   </main>
 </div>
 
 <script>
-// ── ACTORS ─────────────────────────────────────────────────────────────────
+/* ── THEME ── */
+function getTheme() { try { return localStorage.getItem('zen-theme') || 'dark'; } catch(e) { return 'dark'; } }
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+  try { localStorage.setItem('zen-theme', t); } catch(e) {}
+  if (typeof render === 'function') render();
+}
+function toggleTheme() { setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
+setTheme(getTheme());
+
+/* ── ACTORS ── */
 const ACTORS = [
-  { id:'alice',  name:'Alice',  color:'#10b981', ttl:28,  spend:0.80,
-    n1:(t,s)=>Math.min(6+Math.floor(t*0.06*s),18), n2r:(n1,d)=>n1*7*d },
-  { id:'bob',    name:'Bob',    color:'#f97316', ttl:7,   spend:0.95,
-    n1:(t,s)=>Math.min(5+Math.floor(t*0.10*s),28), n2r:(n1,d)=>n1*3*d },
-  { id:'carol',  name:'Carol',  color:'#818cf8', ttl:90,  spend:0.30,
-    n1:(t,s)=>Math.min(5+Math.floor(t*0.03*s),10), n2r:(n1,d)=>n1*11*d },
-  { id:'dave',   name:'Dave',   color:'#f43f5e', ttl:180, spend:0.15,
-    n1:(t,s)=>Math.min(5+Math.floor(t*0.01*s),7),  n2r:(n1,d)=>n1*2*d },
-  { id:'eve',    name:'Eve',    color:'#fbbf24', ttl:45,  spend:0.65,
-    n1:(t,s)=>Math.min(7+Math.floor(t*0.07*s),20), n2r:(n1,d)=>n1*6*d },
+  { id:'alice',  name:'Alice',  color:'#10b981', ttl:28,  spend:0.80, n1:(t,s)=>Math.min(6+Math.floor(t*0.06*s),18), n2r:(n1,d)=>n1*7*d },
+  { id:'bob',    name:'Bob',    color:'#f97316', ttl:7,   spend:0.95, n1:(t,s)=>Math.min(5+Math.floor(t*0.10*s),28), n2r:(n1,d)=>n1*3*d },
+  { id:'carol',  name:'Carol',  color:'#818cf8', ttl:90,  spend:0.30, n1:(t,s)=>Math.min(5+Math.floor(t*0.03*s),10), n2r:(n1,d)=>n1*11*d },
+  { id:'dave',   name:'Dave',   color:'#f43f5e', ttl:180, spend:0.15, n1:(t,s)=>Math.min(5+Math.floor(t*0.01*s),7),  n2r:(n1,d)=>n1*2*d },
+  { id:'eve',    name:'Eve',    color:'#fbbf24', ttl:45,  spend:0.65, n1:(t,s)=>Math.min(7+Math.floor(t*0.07*s),20), n2r:(n1,d)=>n1*6*d },
 ];
 
 let active = new Set(ACTORS.map(a=>a.id));
 let eventLog = [];
 
-// ── SIMULATION ──────────────────────────────────────────────────────────────
+/* ── SIMULATION ── */
 function simulate(C2, days, speed, dens, buybackRate) {
   eventLog = [];
   const res = {};
-
   ACTORS.forEach(actor => {
     const massArr=[], n1Arr=[], circOrg=[], circBuy=[], expArr=[], savedArr=[], flowCreation=[], healthArr=[];
     let bonds=[], totalOrg=0, totalBuy=0, totalExp=0, totalSaved=0, totalCreated=0;
-
-    // Phase 1: Bon Zéro bootstrap (no monetary value, just social graph seed)
-    // Modeled as: N1 grows from day 0 without waiting for DU
-    // Bon Zéro propagates for 28 days
     const zeroBondActive = (t) => t <= 28;
-
     for (let t=0; t<=days; t++) {
       const n1 = actor.n1(t, speed);
       const n2 = Math.floor(actor.n2r(n1, dens));
-
-      // ─ 1. Expire bonds ─
       let expiredVal=0;
-      bonds = bonds.filter(b => {
-        if (b.expiresAt<=t) { expiredVal+=b.val; totalExp+=b.val; return false; }
-        return true;
-      });
-
-      // ─ 2. Buyback: before expiry, some bonds get voluntarily bought back ─
+      bonds = bonds.filter(b => { if (b.expiresAt<=t) { expiredVal+=b.val; totalExp+=b.val; return false; } return true; });
       let savedVal=0;
       const alertBonds = bonds.filter(b => b.expiresAt-t<=3 && b.expiresAt>t && !b.buybackAttempted);
       alertBonds.forEach(b => {
         b.buybackAttempted=true;
         if (Math.random() < buybackRate) {
-          // Buyback success: treated as circuit closure
-          totalBuy++;
-          totalSaved+=b.val;
-          savedVal+=b.val;
-          bonds.splice(bonds.indexOf(b),1);
+          totalBuy++; totalSaved+=b.val; savedVal+=b.val; bonds.splice(bonds.indexOf(b),1);
           if (eventLog.length<80) eventLog.push({ t, type:'buyback', actor:actor.name, color:actor.color, val:b.val.toFixed(1), age:t-b.issuedAt, residual:b.expiresAt-t });
         }
       });
-
-      // ─ 3. DU creation (only if N1 >= 5, i.e. Bon Zéro has done its job) ─
       let du=0;
       if (n1>=5) {
         const lm = bonds.reduce((s,b)=>s+b.val,0);
         const sqN2 = Math.sqrt(Math.max(n2,1));
         du = Math.max(0, Math.min(C2*(lm*0.55+lm*0.28/sqN2)/(n1+sqN2), 35));
         const nb=Math.max(1, Math.round(du/5));
-        for (let k=0;k<nb;k++) {
-          bonds.push({ val:du/nb, issuedBy:actor.id, issuedAt:t,
-            expiresAt:t+actor.ttl, hops:0, buybackAttempted:false });
-        }
+        for (let k=0;k<nb;k++) bonds.push({ val:du/nb, issuedBy:actor.id, issuedAt:t, expiresAt:t+actor.ttl, hops:0, buybackAttempted:false });
         totalCreated+=du;
       }
-
-      // ─ 4. Organic circulation ─
       const toPass = Math.floor(bonds.length*actor.spend*0.07);
       for (let k=0; k<toPass; k++) {
         if (!bonds.length) break;
@@ -376,48 +331,27 @@ function simulate(C2, days, speed, dens, buybackRate) {
         const loopP=Math.min(0.03+(n2/(n1*18+1))*0.18, 0.25);
         if (Math.random()<loopP) {
           totalOrg++;
-          if (eventLog.length<80) eventLog.push({ t, type:'circuit', actor:actor.name, color:actor.color,
-            val:b.val.toFixed(1), age:t-b.issuedAt, hops:b.hops+1,
-            residual:Math.max(0,b.expiresAt-t), ttl:actor.ttl });
+          if (eventLog.length<80) eventLog.push({ t, type:'circuit', actor:actor.name, color:actor.color, val:b.val.toFixed(1), age:t-b.issuedAt, hops:b.hops+1, residual:Math.max(0,b.expiresAt-t), ttl:actor.ttl });
           bonds.splice(idx,1);
-        } else {
-          b.hops++; // R3: only hop_count increments, expiresAt unchanged
-        }
+        } else { b.hops++; }
       }
-
-      // Bon Zéro events (social graph propagation)
-      if (zeroBondActive(t) && t>0 && t%5===0 && n1<5 && eventLog.length<80) {
-        eventLog.push({ t, type:'zero', actor:actor.name, color:'#22d3ee',
-          n1, msg:`Bon Zéro actif — N1=${n1}/5` });
-      }
-
+      if (zeroBondActive(t) && t>0 && t%5===0 && n1<5 && eventLog.length<80)
+        eventLog.push({ t, type:'zero', actor:actor.name, color:'#22d3ee', n1, msg:`Bon Zéro actif — N1=${n1}/5` });
       const lm=bonds.reduce((s,b)=>s+b.val,0);
       const health=(totalOrg+totalBuy)/Math.max((totalExp/Math.max(t,1))*30+0.01, 0.01);
-
-      massArr.push(Math.round(lm*10)/10);
-      n1Arr.push(n1);
-      circOrg.push(totalOrg);
-      circBuy.push(totalBuy);
-      expArr.push(Math.round(totalExp*10)/10);
-      savedArr.push(Math.round(totalSaved*10)/10);
-      flowCreation.push(Math.round(du*100)/100);
-      healthArr.push(Math.min(Math.round(health*100)/100, 5));
+      massArr.push(Math.round(lm*10)/10); n1Arr.push(n1);
+      circOrg.push(totalOrg); circBuy.push(totalBuy);
+      expArr.push(Math.round(totalExp*10)/10); savedArr.push(Math.round(totalSaved*10)/10);
+      flowCreation.push(Math.round(du*100)/100); healthArr.push(Math.min(Math.round(health*100)/100, 5));
     }
-
-    res[actor.id]={ massArr,n1Arr,circOrg,circBuy,expArr,savedArr,flowCreation,healthArr,
-      totOrg:totalOrg, totBuy:totalBuy, totExp:totalExp, totSaved:totalSaved };
+    res[actor.id]={ massArr,n1Arr,circOrg,circBuy,expArr,savedArr,flowCreation,healthArr, totOrg:totalOrg,totBuy:totalBuy,totExp:totalExp,totSaved:totalSaved };
   });
-
   return res;
 }
 
-// ── CHART ────────────────────────────────────────────────────────────────────
+/* ── CHART ── */
 class Chart {
-  constructor(id,h){
-    this.cv=document.getElementById(id); this.ctx=this.cv.getContext('2d');
-    this.dpr=devicePixelRatio||1; this.H=h;
-    this.pad={t:10,r:12,b:26,l:44}; this.resize();
-  }
+  constructor(id,h){ this.cv=document.getElementById(id); this.ctx=this.cv.getContext('2d'); this.dpr=devicePixelRatio||1; this.H=h; this.pad={t:10,r:12,b:26,l:44}; this.resize(); }
   resize(){
     const w=this.cv.parentElement.clientWidth-28;
     this.W=w; this.cv.width=w*this.dpr; this.cv.height=this.H*this.dpr;
@@ -427,6 +361,10 @@ class Chart {
   }
   draw(datasets,xL,refLine){
     const {ctx,pad,pw,ph}=this;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? '#0b1520' : '#e5dcc8';
+    const axisColor = isDark ? '#152535' : 'rgba(122,92,58,0.2)';
+    const labelColor = isDark ? '#1e3348' : 'rgba(122,92,58,0.4)';
     ctx.clearRect(0,0,this.W,this.H);
     let mn=Infinity,mx=-Infinity;
     datasets.forEach(ds=>{ if(!ds.vis)return; (ds.data||[]).forEach(v=>{ if(isFinite(v)){if(v<mn)mn=v;if(v>mx)mx=v;} }); });
@@ -435,148 +373,70 @@ class Chart {
     const yr=mx-mn;
     const px=i=>pad.l+(i/Math.max((datasets[0]?.data?.length||2)-1,1))*pw;
     const py=v=>pad.t+ph-((v-mn)/yr)*ph;
-
     for(let i=0;i<=4;i++){
       const y=pad.t+ph-(i/4)*ph;
-      ctx.strokeStyle='#0b1520';ctx.lineWidth=1;
+      ctx.strokeStyle=gridColor;ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();
-      ctx.fillStyle='#1e3348';ctx.font='9px JetBrains Mono';ctx.textAlign='right';
+      ctx.fillStyle=labelColor;ctx.font='9px DM Mono, monospace';ctx.textAlign='right';
       ctx.fillText(fv(mn+(i/4)*yr),pad.l-4,y+3);
     }
-    if(xL){
-      ctx.fillStyle='#1e3348';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
-      const step=Math.ceil(xL.length/5);
-      xL.forEach((l,i)=>{if(i%step!==0)return;ctx.fillText(l,pad.l+(i/(xL.length-1))*pw,pad.t+ph+18);});
-    }
-    ctx.strokeStyle='#152535';ctx.lineWidth=1;
+    if(xL){ ctx.fillStyle=labelColor;ctx.font='9px DM Mono, monospace';ctx.textAlign='center'; const step=Math.ceil(xL.length/5); xL.forEach((l,i)=>{if(i%step!==0)return;ctx.fillText(l,pad.l+(i/(xL.length-1))*pw,pad.t+ph+18);}); }
+    ctx.strokeStyle=axisColor;ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,pad.t+ph);ctx.lineTo(pad.l+pw,pad.t+ph);ctx.stroke();
-
-    // Reference line
-    if(refLine!=null){
-      ctx.strokeStyle='#ffffff30';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-      ctx.beginPath();ctx.moveTo(pad.l,py(refLine));ctx.lineTo(pad.l+pw,py(refLine));ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle='#ffffff50';ctx.font='8px JetBrains Mono';ctx.textAlign='left';
-      ctx.fillText(fv(refLine),pad.l+3,py(refLine)-3);
-    }
-
+    if(refLine!=null){ ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;ctx.setLineDash([4,4]); ctx.beginPath();ctx.moveTo(pad.l,py(refLine));ctx.lineTo(pad.l+pw,py(refLine));ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='8px DM Mono, monospace';ctx.textAlign='left'; ctx.fillText(fv(refLine),pad.l+3,py(refLine)-3); }
     datasets.forEach(ds=>{
       if(!ds.vis)return;
       const data=ds.data||[];
-      if(ds.fill){
-        ctx.beginPath();ctx.moveTo(px(0),pad.t+ph);
-        data.forEach((v,i)=>ctx.lineTo(px(i),py(v)));
-        ctx.lineTo(px(data.length-1),pad.t+ph);ctx.closePath();
-        ctx.fillStyle=ds.color+'12';ctx.fill();
-      }
+      if(ds.fill){ ctx.beginPath();ctx.moveTo(px(0),pad.t+ph); data.forEach((v,i)=>ctx.lineTo(px(i),py(v))); ctx.lineTo(px(data.length-1),pad.t+ph);ctx.closePath(); ctx.fillStyle=ds.color+'12';ctx.fill(); }
       ctx.beginPath();ctx.strokeStyle=ds.color;ctx.lineWidth=ds.lw||2;ctx.lineJoin='round';
       if(ds.dash)ctx.setLineDash(ds.dash);else ctx.setLineDash([]);
       let first=true;
       data.forEach((v,i)=>{ const x=px(i),y=py(v); first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y); });
       ctx.stroke();ctx.setLineDash([]);
       const lv=data[data.length-1];
-      if(isFinite(lv)){
-        ctx.save();ctx.shadowColor=ds.color;ctx.shadowBlur=8;
-        ctx.beginPath();ctx.arc(px(data.length-1),py(lv),3,0,Math.PI*2);ctx.fillStyle=ds.color;ctx.fill();ctx.restore();
-      }
+      if(isFinite(lv)){ ctx.save();ctx.shadowColor=ds.color;ctx.shadowBlur=8; ctx.beginPath();ctx.arc(px(data.length-1),py(lv),3,0,Math.PI*2);ctx.fillStyle=ds.color;ctx.fill();ctx.restore(); }
     });
   }
 }
 
 function fv(v){const a=Math.abs(v);if(a>=10000)return(v/1e3).toFixed(0)+'k';if(a>=1000)return(v/1e3).toFixed(1)+'k';return Math.round(v).toString();}
 
-// ── HMAC VIZ ─────────────────────────────────────────────────────────────────
+/* ── HMAC VIZ ── */
 function renderHMAC(actors){
-  const container=document.getElementById('hmac-vis');
-  container.innerHTML='';
-
-  // Pick a random active actor sequence
+  const container=document.getElementById('hmac-vis'); container.innerHTML='';
   const actives=actors.filter(a=>active.has(a.id));
   if(actives.length<2){container.innerHTML='<div style="font-size:0.55rem;color:var(--dim2)">Activer au moins 2 acteurs</div>';return;}
-
-  const path=actives.slice(0,Math.min(4,actives.length));
-  const bonId='bon_a3f8c2';
-
-  // Issuer view
-  const ivRow=document.createElement('div');
-  ivRow.className='hv-path';
-  ivRow.innerHTML=`<span style="font-size:0.52rem;color:var(--green);font-weight:700;width:80px;flex-shrink:0">Émetteur voit :</span>`;
-  path.forEach((a,i)=>{
-    const hop=document.createElement('div');
-    hop.className='hv-hop';
-    hop.innerHTML=`<div class="hv-dot" style="background:${a.color}"></div><div class="hv-label" style="color:${a.color}">${a.name}</div>`;
-    ivRow.appendChild(hop);
-    if(i<path.length-1){const arr=document.createElement('span');arr.className='hv-arrow';arr.textContent='→';ivRow.appendChild(arr);}
-  });
+  const path=actives.slice(0,Math.min(4,actives.length)); const bonId='bon_a3f8c2';
+  const ivRow=document.createElement('div'); ivRow.className='hv-path';
+  ivRow.innerHTML=`<span style="font-size:0.52rem;color:var(--green);font-weight:700;width:100px;flex-shrink:0">Créateur du bon :</span>`;
+  path.forEach((a,i)=>{ const hop=document.createElement('div'); hop.className='hv-hop'; hop.innerHTML=`<div class="hv-dot" style="background:${a.color}"></div><div class="hv-label" style="color:${a.color}">${a.name}</div>`; ivRow.appendChild(hop); if(i<path.length-1){const arr=document.createElement('span');arr.className='hv-arrow';arr.textContent='→';ivRow.appendChild(arr);} });
   container.appendChild(ivRow);
-
-  // Third party view (only sees HMACs)
-  const tpRow=document.createElement('div');
-  tpRow.className='hv-path';
-  tpRow.innerHTML=`<span style="font-size:0.52rem;color:var(--violet);font-weight:700;width:80px;flex-shrink:0">Tiers voit :</span>`;
-  path.forEach((a,i)=>{
-    const hop=document.createElement('div');
-    hop.className='hv-hop';
-    const hash=btoa(a.id+bonId).substring(0,8)+'…';
-    hop.innerHTML=`<div class="hv-dot" style="background:var(--dim)"></div><div class="hv-hash">HMAC:${hash}</div>`;
-    tpRow.appendChild(hop);
-    if(i<path.length-1){const arr=document.createElement('span');arr.className='hv-arrow';arr.textContent='→';tpRow.appendChild(arr);}
-  });
+  const tpRow=document.createElement('div'); tpRow.className='hv-path';
+  tpRow.innerHTML=`<span style="font-size:0.52rem;color:var(--violet);font-weight:700;width:100px;flex-shrink:0">N'importe qui d'autre :</span>`;
+  path.forEach((a,i)=>{ const hop=document.createElement('div'); hop.className='hv-hop'; const hash=btoa(a.id+bonId).substring(0,8)+'…'; hop.innerHTML=`<div class="hv-dot" style="background:var(--dim)"></div><div class="hv-hash">HMAC:${hash}</div>`; tpRow.appendChild(hop); if(i<path.length-1){const arr=document.createElement('span');arr.className='hv-arrow';arr.textContent='→';tpRow.appendChild(arr);} });
   container.appendChild(tpRow);
-
-  const note=document.createElement('div');
-  note.style.cssText='font-size:0.52rem;color:var(--dim2);margin-top:0.3rem;line-height:1.6';
-  note.innerHTML=`bon_id = <span style="color:var(--green)">${bonId}</span> · HMAC = HMAC-SHA256(pubkey, bon_id) · ${path.length} hops visibles, identités masquées`;
+  const note=document.createElement('div'); note.style.cssText='font-size:0.52rem;color:var(--dim2);margin-top:0.3rem;line-height:1.6';
+  note.innerHTML=`bon_id = <span style="color:var(--green)">${bonId}</span> · Le parcours est enregistré de façon anonyme · ${path.length} passages visibles, mais les noms restent cachés`;
   container.appendChild(note);
 }
 
-// ── UI ────────────────────────────────────────────────────────────────────────
+/* ── UI ── */
 let charts={};
-
 function ttlBadge(d){ return d<=7?`${d}j 🟠`:d<=28?`${d}j 🟢`:d<=90?`${d}j 🔵`:d<365?`${d}j 🟣`:`${d}j 🔴`; }
 
 function initActors(){
   const list=document.getElementById('actor-list'); list.innerHTML='';
   ACTORS.forEach(a=>{
-    const div=document.createElement('div');
-    div.className='actor on'; div.style.setProperty('--ac',a.color);
-    div.innerHTML=`
-      <div class="a-head">
-        <div class="a-name"><div class="dot" id="dot-${a.id}"></div><span>${a.name}</span></div>
-        <div class="a-badge" id="badge-${a.id}">${ttlBadge(a.ttl)}</div>
-      </div>
-      <div class="row">
-        <span class="rl">7j</span>
-        <input type="range" class="sl" id="ttl-${a.id}" min="7" max="365" step="1" value="${a.ttl}" style="--ac:${a.color}">
-        <span class="rl r">365j</span>
-      </div>
-      <div class="row">
-        <span class="rl">⚡</span>
-        <input type="range" class="sl" id="sp-${a.id}" min="0.05" max="1.0" step="0.05" value="${a.spend}" style="--ac:${a.color}">
-        <span class="rl r" id="spv-${a.id}">${Math.round(a.spend*100)}%</span>
-      </div>
-      <div class="a-sub" id="sub-${a.id}">${desc(a)}</div>
-    `;
+    const div=document.createElement('div'); div.className='actor on'; div.style.setProperty('--ac',a.color);
+    div.innerHTML=`<div class="a-head"><div class="a-name"><div class="dot" id="dot-${a.id}"></div><span>${a.name}</span></div><div class="a-badge" id="badge-${a.id}">${ttlBadge(a.ttl)}</div></div><div class="row"><span class="rl">7j</span><input type="range" class="sl" id="ttl-${a.id}" min="7" max="365" step="1" value="${a.ttl}" style="--ac:${a.color}"><span class="rl r">365j</span></div><div class="row"><span class="rl">⚡</span><input type="range" class="sl" id="sp-${a.id}" min="0.05" max="1.0" step="0.05" value="${a.spend}" style="--ac:${a.color}"><span class="rl r" id="spv-${a.id}">${Math.round(a.spend*100)}%</span></div><div class="a-sub" id="sub-${a.id}">${desc(a)}</div>`;
     list.appendChild(div);
-    document.getElementById(`ttl-${a.id}`).addEventListener('input',function(){
-      a.ttl=parseInt(this.value); document.getElementById(`badge-${a.id}`).textContent=ttlBadge(a.ttl);
-      document.getElementById(`sub-${a.id}`).textContent=desc(a); render();
-    });
-    document.getElementById(`sp-${a.id}`).addEventListener('input',function(){
-      a.spend=parseFloat(this.value); document.getElementById(`spv-${a.id}`).textContent=Math.round(a.spend*100)+'%'; render();
-    });
-    document.getElementById(`dot-${a.id}`).addEventListener('click',()=>{
-      if(active.has(a.id)){ if(active.size<=1)return; active.delete(a.id); div.classList.remove('on'); }
-      else { active.add(a.id); div.classList.add('on'); }
-      render();
-    });
+    document.getElementById(`ttl-${a.id}`).addEventListener('input',function(){ a.ttl=parseInt(this.value); document.getElementById(`badge-${a.id}`).textContent=ttlBadge(a.ttl); document.getElementById(`sub-${a.id}`).textContent=desc(a); render(); });
+    document.getElementById(`sp-${a.id}`).addEventListener('input',function(){ a.spend=parseFloat(this.value); document.getElementById(`spv-${a.id}`).textContent=Math.round(a.spend*100)+'%'; render(); });
+    document.getElementById(`dot-${a.id}`).addEventListener('click',()=>{ if(active.has(a.id)){ if(active.size<=1)return; active.delete(a.id); div.classList.remove('on'); } else { active.add(a.id); div.classList.add('on'); } render(); });
   });
 }
 
-function desc(a){
-  const d=[[7,'Urgentiste — boucles < 7j'],[14,'Rapide — marché hebdo'],[28,'Standard — mensuel'],[90,'Projet — trimestriel'],[180,'Long — semestriel'],[365,'Annuel — max confiance']];
-  return d.reduce((p,c)=>Math.abs(c[0]-a.ttl)<Math.abs(p[0]-a.ttl)?c:p)[1];
-}
+function desc(a){ const d=[[7,'Urgentiste — boucles < 7j'],[14,'Rapide — marché hebdo'],[28,'Standard — mensuel'],[90,'Projet — trimestriel'],[180,'Long — semestriel'],[365,'Annuel — max confiance']]; return d.reduce((p,c)=>Math.abs(c[0]-a.ttl)<Math.abs(p[0]-a.ttl)?c:p)[1]; }
 
 function bindGlobal(){
   [['sl-days','v-days',0],['sl-c2','v-c2',2],['sl-speed','v-speed',1],['sl-dens','v-dens',1],['sl-buyback','v-buyback',0]].forEach(([id,vid,dec])=>{
@@ -591,69 +451,30 @@ function render(){
   const speed=+document.getElementById('sl-speed').value;
   const dens=+document.getElementById('sl-dens').value;
   const buyback=+document.getElementById('sl-buyback').value/100;
-
   const data=simulate(C2,days,speed,dens,buyback);
   const labels=Array.from({length:days+1},(_,i)=>`J${i}`);
   const actives=ACTORS.filter(a=>active.has(a.id));
-
-  // Charts
   charts.mass.draw(actives.map(a=>({ data:data[a.id].massArr, color:a.color, fill:true, lw:2, vis:true })),labels);
-  charts.n1.draw([
-    ...actives.map(a=>({ data:data[a.id].n1Arr, color:a.color, fill:false, lw:2, vis:true })),
-  ],labels,5); // refLine=5 (DU activation threshold)
-
-  // Circuits: organic (solid) vs buyback (dashed)
-  const circDs=[];
-  actives.forEach(a=>{
-    circDs.push({ data:data[a.id].circOrg, color:a.color, fill:false, lw:2, vis:true });
-    circDs.push({ data:data[a.id].circBuy, color:a.color, fill:false, lw:1, dash:[3,3], vis:true });
-  });
+  charts.n1.draw([ ...actives.map(a=>({ data:data[a.id].n1Arr, color:a.color, fill:false, lw:2, vis:true })) ],labels,5);
+  const circDs=[]; actives.forEach(a=>{ circDs.push({ data:data[a.id].circOrg, color:a.color, fill:false, lw:2, vis:true }); circDs.push({ data:data[a.id].circBuy, color:a.color, fill:false, lw:1, dash:[3,3], vis:true }); });
   charts.circ.draw(circDs,labels);
-
-  // Flow: creation vs expiration vs saved by buyback
   const firstA=actives[0];
-  charts.flow.draw([
-    { data:data[firstA.id].flowCreation, color:firstA.color, fill:true, lw:2, vis:true },
-    { data:data[firstA.id].expArr.map((_,i,arr)=>i>0?arr[i]-arr[i-1]:0), color:'#ef4444', fill:true, lw:1.5, dash:[4,3], vis:true },
-    { data:data[firstA.id].savedArr.map((_,i,arr)=>i>0?arr[i]-arr[i-1]:0), color:'#8b5cf6', fill:false, lw:1.5, vis:true },
-  ],labels);
-
-  // Health
+  charts.flow.draw([ { data:data[firstA.id].flowCreation, color:firstA.color, fill:true, lw:2, vis:true }, { data:data[firstA.id].expArr.map((_,i,arr)=>i>0?arr[i]-arr[i-1]:0), color:'#ef4444', fill:true, lw:1.5, dash:[4,3], vis:true }, { data:data[firstA.id].savedArr.map((_,i,arr)=>i>0?arr[i]-arr[i-1]:0), color:'#8b5cf6', fill:false, lw:1.5, vis:true } ],labels);
   charts.health.draw(actives.map(a=>({ data:data[a.id].healthArr, color:a.color, fill:false, lw:2, vis:true })),labels,1.0);
-
-  // Legend
   const leg=document.getElementById('leg'); leg.innerHTML='';
-  actives.forEach(a=>{
-    const item=document.createElement('div'); item.className='li';
-    item.innerHTML=`<div class="ld" style="background:${a.color}"></div><span style="color:${a.color}">${a.name} (${a.ttl}j)</span>`;
-    leg.appendChild(item);
-  });
+  actives.forEach(a=>{ const item=document.createElement('div'); item.className='li'; item.innerHTML=`<div class="ld" style="background:${a.color}"></div><span style="color:${a.color}">${a.name} (${a.ttl}j)</span>`; leg.appendChild(item); });
   leg.innerHTML+=`<span style="color:var(--dim2);font-size:0.5rem">  — — : rachats volontaires</span>`;
-
-  // HMAC
   renderHMAC(ACTORS);
-
-  // Log
   const logEl=document.getElementById('log'); logEl.innerHTML='';
   const sorted=[...eventLog].sort((a,b)=>b.t-a.t).slice(0,30);
-  if(!sorted.length){ logEl.innerHTML='<div style="font-size:0.56rem;color:var(--dim2)">Augmenter densité boucles pour voir les événements...</div>'; }
+  if(!sorted.length){ logEl.innerHTML='<div style="font-size:0.56rem;color:var(--dim2)">Augmentez la densité des retours pour voir les événements...</div>'; }
   else sorted.forEach(e=>{
-    const div=document.createElement('div');
-    let cls='le ', txt='';
-    if(e.type==='circuit'){
-      cls+='le-circ';
-      txt=`🔁 <span style="color:${e.color};font-weight:600">${e.actor}</span> J${e.t} · <span style="color:var(--circ)">${e.val}ẐEN</span> · ${e.hops} hops · ${e.age}j/${e.ttl}j · résiduel ${e.residual}j`;
-    } else if(e.type==='buyback'){
-      cls+='le-buyback';
-      txt=`🛒 <span style="color:${e.color};font-weight:600">${e.actor}</span> RACHAT J${e.t} · <span style="color:var(--violet)">${e.val}ẐEN sauvés</span> · âge ${e.age}j · résiduel ${e.residual}j`;
-    } else if(e.type==='zero'){
-      cls+='le-zero';
-      txt=`🌱 <span style="color:#22d3ee;font-weight:600">${e.actor}</span> BON ZÉRO J${e.t} · ${e.msg}`;
-    }
+    const div=document.createElement('div'); let cls='le ', txt='';
+    if(e.type==='circuit'){ cls+='le-circ'; txt=`🔁 <span style="color:${e.color};font-weight:600">${e.actor}</span> J${e.t} · <span style="color:var(--circ)">${e.val}ẐEN</span> · ${e.hops} personnes · ${e.age}j/${e.ttl}j · reste ${e.residual}j`; }
+    else if(e.type==='buyback'){ cls+='le-buyback'; txt=`🛒 <span style="color:${e.color};font-weight:600">${e.actor}</span> RACHAT J${e.t} · <span style="color:var(--violet)">${e.val}ẐEN récupérés</span> · âge ${e.age}j · restait ${e.residual}j`; }
+    else if(e.type==='zero'){ cls+='le-zero'; txt=`🌱 <span style="color:#22d3ee;font-weight:600">${e.actor}</span> BON ZÉRO J${e.t} · ${e.msg}`; }
     div.className=cls; div.innerHTML=txt; logEl.appendChild(div);
   });
-
-  // Stats
   const totMass=actives.reduce((s,a)=>s+data[a.id].massArr[days],0);
   const totOrg=actives.reduce((s,a)=>s+data[a.id].totOrg,0);
   const totBuy=actives.reduce((s,a)=>s+data[a.id].totBuy,0);
@@ -661,19 +482,9 @@ function render(){
   const totSaved=actives.reduce((s,a)=>s+data[a.id].totSaved,0);
   const activatedCount=actives.filter(a=>data[a.id].n1Arr[days]>=5).length;
   const avgHealth=actives.reduce((s,a)=>s+data[a.id].healthArr[days],0)/actives.length;
-
-  document.getElementById('stats').innerHTML=`
-    <div class="st"><span class="sv" style="color:var(--green)">${fv(totMass)}</span><span class="sl2">Masse ẐEN</span></div>
-    <div class="st"><span class="sv" style="color:var(--circ)">${totOrg}</span><span class="sl2">Circuits org.</span></div>
-    <div class="st"><span class="sv" style="color:var(--violet)">${totBuy}</span><span class="sl2">Rachats</span></div>
-    <div class="st"><span class="sv" style="color:var(--red)">${fv(totExp)}</span><span class="sl2">ẐEN expirés</span></div>
-    <div class="st"><span class="sv" style="color:var(--violet)">${fv(totSaved)}</span><span class="sl2">ẐEN sauvés</span></div>
-    <div class="st"><span class="sv" style="color:var(--zero)">${activatedCount}/${actives.length}</span><span class="sl2">DU actifs</span></div>
-    <div class="st"><span class="sv" style="color:${avgHealth>=1?'var(--green)':'var(--amber)'}">${avgHealth.toFixed(2)}×</span><span class="sl2">Santé</span></div>
-  `;
+  document.getElementById('stats').innerHTML=`<div class="st"><span class="sv" style="color:var(--green)">${fv(totMass)}</span><span class="sl2">Bons en circulation</span></div><div class="st"><span class="sv" style="color:var(--circ)">${totOrg}</span><span class="sl2">Retours organiques</span></div><div class="st"><span class="sv" style="color:var(--violet)">${totBuy}</span><span class="sl2">Rachats volontaires</span></div><div class="st"><span class="sv" style="color:var(--red)">${fv(totExp)}</span><span class="sl2">Expirés sans usage</span></div><div class="st"><span class="sv" style="color:var(--violet)">${fv(totSaved)}</span><span class="sl2">Valeur sauvée</span></div><div class="st"><span class="sv" style="color:var(--zero)">${activatedCount}/${actives.length}</span><span class="sl2">Acteurs actifs</span></div><div class="st"><span class="sv" style="color:${avgHealth>=1?'var(--green)':'var(--amber)'}"> ${avgHealth.toFixed(2)}×</span><span class="sl2">Santé marché</span></div>`;
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
 document.fonts.ready.then(()=>{
   initActors(); bindGlobal();
   charts.mass   = new Chart('c-mass',  190);
