@@ -9,9 +9,9 @@ Type=notify
 User=_USER_
 Group=_USER_
 WorkingDirectory=_APIDIR_
-Environment="PATH=_APIDIR_/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PATH=/home/_USER_/.astro/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EnvironmentFile=_APIDIR_/.env
-ExecStart=/home/_USER_/.astro/bin/python _APIDIR_/api_backend.py
+ExecStart=python _APIDIR_/api_backend.py
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=on-failure
