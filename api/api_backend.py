@@ -53,7 +53,7 @@ app_logger = get_logger('api_backend')
 SCRIPT_DIR = Path(__file__).parent.resolve()
 UPLOAD_FOLDER = SCRIPT_DIR / 'uploads'
 APK_FOLDER = SCRIPT_DIR / 'apks'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 # ✅ Configuration IPFS
@@ -88,10 +88,11 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Magic bytes pour les types MIME autorisés
 MAGIC_BYTES = {
-    'png': [b'\x89PNG\r\n\x1a\n'],
-    'jpg': [b'\xff\xd8\xff'],
-    'jpeg': [b'\xff\xd8\xff'],
-    'webp': [b'RIFF', b'WEBP'],  # WEBP commence par RIFF....WEBP
+    'png': [b'\x89PNG\r\n\x1a\n'],   # Signature PNG
+    'jpg': [b'\xFF\xD8\xFF'],         # Signature JPEG
+    'jpeg': [b'\xFF\xD8\xFF'],        # Même que JPG
+    'webp': [b'RIFF', b'WEBP'],       # WEBP commence par "RIFF" et contient "WEBP" à l'offset 8
+    'gif': [b'GIF87a', b'GIF89a']     # Signature GIF : commence par "GIF87a" ou "GIF89a"
 }
 
 # Mapping extension -> MIME type
