@@ -3,7 +3,6 @@
 TrocZen API Backend
 Gère l'upload des logos commerçants et la distribution d'APK
 Intégration IPFS pour stockage décentralisé des images
-Intégration Nostr pour récupération des profils marchands (kind 0) et bons (kind 30303)
 """
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
@@ -580,7 +579,7 @@ def services_health():
 @app.route('/api/upload/image', methods=['POST'])
 def upload_image():
     """
-    Upload image (logo, bandeau, avatar) pour profils Nostr
+    Upload image (logo, bandeau, picture) pour profils Nostr
     
     Sécurité:
     - Validation de l'extension du fichier
