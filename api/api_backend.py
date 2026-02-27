@@ -92,7 +92,7 @@ MAGIC_BYTES = {
     'jpg': [b'\xFF\xD8\xFF'],         # Signature JPEG
     'jpeg': [b'\xFF\xD8\xFF'],        # Même que JPG
     'webp': [b'RIFF', b'WEBP'],       # WEBP commence par "RIFF" et contient "WEBP" à l'offset 8
-    'gif': [b'GIF87a', b'GIF89a']     # Signature GIF : commence par "GIF87a" ou "GIF89a"
+    'gif': [b'GIF87a', b'GIF89a'],     # Signature GIF : commence par "GIF87a" ou "GIF89a"
 }
 
 # Mapping extension -> MIME type
@@ -101,6 +101,7 @@ MIME_TYPES = {
     'jpg': 'image/jpeg',
     'jpeg': 'image/jpeg',
     'webp': 'image/webp',
+    'gif': 'image/gif',
 }
 
 
