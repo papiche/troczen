@@ -8,9 +8,12 @@ import '../../services/burn_service.dart';
 import '../../services/crypto_service.dart';
 import '../../widgets/panini_card.dart';
 import '../../widgets/qr_explosion_widget.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/circuit_revelation_widget.dart';
 import '../mirror_offer_screen.dart';
 import '../bon_journey_screen.dart';
+import '../../providers/app_mode_provider.dart';
+import '../../models/app_mode.dart';
 
 /// WalletView — Bons dont je détiens P2
 /// Vue principale du commerçant receveur
@@ -162,6 +165,9 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     
+    final appMode = context.watch<AppModeProvider>().currentMode;
+    final showUpgradeBanner = appMode == AppMode.flaneur && bons.length >= 5;
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
@@ -192,6 +198,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                     children: [
                       // En-tête avec soldes
                       _buildBalanceHeader(),
+                      // Bandeau d'upgrade (Gamification)
+                      if (showUpgradeBanner) _buildUpgradeBanner(),
                       // Barre de recherche
                       _buildSearchBar(),
                       // Liste des bons
@@ -199,6 +207,83 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildUpgradeBanner() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0A7EA4), Color(0xFF054A61)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0A7EA4).withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.stars, color: Colors.amber, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Félicitations !',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Votre toile de confiance est prête. Passez en mode Artisan pour créer vos propres bons.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () {
+              // Rediriger vers les paramètres pour changer de mode
+              // ou ouvrir une modale de changement de mode
+              context.read<AppModeProvider>().setMode(AppMode.artisan);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🎉 Bienvenue en mode Artisan !'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Évoluer',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
