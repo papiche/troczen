@@ -58,6 +58,7 @@ fi
 # Étape 3: Installer le service systemd
 print_info "Étape 3: Installation du service systemd"
 SERVICE_FILE_SRC="$API_DIR/troczen-api.service"
+SERVICE_FILE_DST="$SYSTEMD_DIR/troczen-api.service"
 if [ ! -f "$SERVICE_FILE_SRC" ]; then
     print_error "Fichier de service introuvable : $SERVICE_FILE_SRC"
     exit 1
