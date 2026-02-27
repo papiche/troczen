@@ -22,6 +22,7 @@ class CacheDatabaseService {
   static const String _localWalletBonsTable = 'local_wallet_bons';
   static const String _followersCacheTable = 'followers_cache';
   static const String _skillAttestationsTable = 'skill_attestations';
+  static const String _duIncrementsTable = 'du_increments';
 
   // Stream pour notifier les insertions (Vigilance Alchimiste)
   final _insertionsController = StreamController<Map<String, dynamic>>.broadcast();
@@ -41,7 +42,7 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await _createAllTables(db);
       },
@@ -99,6 +100,17 @@ class CacheDatabaseService {
           await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_mt_timestamp ON $_marketTransfersTable(timestamp)',
           );
+        }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_duIncrementsTable (
+              npub TEXT NOT NULL,
+              date TEXT NOT NULL,
+              amount REAL NOT NULL,
+              updated_at INTEGER NOT NULL,
+              PRIMARY KEY (npub, date)
+            )
+          ''');
         }
       },
     );
@@ -222,6 +234,17 @@ class CacheDatabaseService {
     await db.execute(
       'CREATE INDEX idx_skill_attester ON $_skillAttestationsTable(attester_npub)',
     );
+
+    // Table pour les incréments DU (kind 30305)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_duIncrementsTable (
+        npub TEXT NOT NULL,
+        date TEXT NOT NULL,
+        amount REAL NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (npub, date)
+      )
+    ''');
   }
 
   // ============================================================
@@ -1093,6 +1116,48 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES DU INCREMENTS (KIND 30305)
+  // ============================================================
+
+  /// Sauvegarder un incrément DU
+  Future<void> saveDuIncrement(String npub, String dateStr, double amount) async {
+    final db = await database;
+    await db.insert(
+      _duIncrementsTable,
+      {
+        'npub': npub,
+        'date': dateStr,
+        'amount': amount,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Récupérer tous les incréments DU d'un utilisateur
+  Future<List<Map<String, dynamic>>> getDuIncrements(String npub) async {
+    final db = await database;
+    final results = await db.query(
+      _duIncrementsTable,
+      where: 'npub = ?',
+      whereArgs: [npub],
+      orderBy: 'date ASC',
+    );
+    return results;
+  }
+
+  /// Calculer le total des incréments DU d'un utilisateur depuis le cache
+  Future<double> getTotalDuIncrements(String npub) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT SUM(amount) as total FROM $_duIncrementsTable WHERE npub = ?',
+      [npub],
+    );
+    final total = result.first['total'];
+    return total != null ? (total as num).toDouble() : 0.0;
+  }
+
+  // ============================================================
   // MÉTHODES FOLLOWERS CACHE
   // ============================================================
 
@@ -1159,6 +1224,7 @@ class CacheDatabaseService {
     await db.delete(_localWalletBonsTable);
     await db.delete(_followersCacheTable);
     await db.delete(_skillAttestationsTable);
+    await db.delete(_duIncrementsTable);
   }
 
   /// Exécute la maintenance automatique de la base de données

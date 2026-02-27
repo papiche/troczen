@@ -337,6 +337,22 @@ Le format V2 a été étendu pour inclure un challenge et une signature Schnorr,
 
 ## Protocole Nostr
 
+### kind 30305 — Incrément DU (Dividende Universel)
+
+```json
+{
+  "kind": 30305,
+  "pubkey": "npub_user",
+  "created_at": 1708084800,
+  "tags": [
+    ["d", "du-2026-02-28"],
+    ["amount", "10.50"]
+  ],
+  "content": "",
+  "sig": "schnorr_signature"
+}
+```
+
 ### kind 30303 — Publication P3
 
 ```json

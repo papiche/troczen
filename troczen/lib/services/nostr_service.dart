@@ -13,6 +13,7 @@ import 'du_calculation_service.dart';
 import 'nostr_connection_service.dart';
 import 'nostr_market_service.dart';
 import 'nostr_wotx_service.dart';
+import 'cache_database_service.dart';
 
 /// ✅ NostrService REFACTORED - Pattern Facade
 /// 
@@ -450,6 +451,155 @@ class NostrService {
   Future<List<String>> fetchActivityTagsFromProfiles({int limit = 100}) =>
     _wotx.fetchActivityTagsFromProfiles(limit: limit);
   
+  // ============================================================
+  // DU (Dividende Universel) - Kind 30305
+  // ============================================================
+
+  /// Publie un incrément de DU (kind 30305)
+  Future<bool> publishDuIncrement(String npub, String nsec, double amount, DateTime date) async {
+    if (!_connection.isConnected) {
+      onError?.call('Non connecté au relais');
+      return false;
+    }
+
+    try {
+      final dTag = 'du-${date.toIso8601String().substring(0, 10)}';
+
+      final event = {
+        'kind': NostrConstants.kindDuIncrement,
+        'pubkey': npub,
+        'created_at': date.millisecondsSinceEpoch ~/ 1000,
+        'tags': [
+          ['d', dTag],
+          ['amount', amount.toStringAsFixed(2)],
+        ],
+        'content': '',
+      };
+
+      final eventId = _calculateEventId(event);
+      event['id'] = eventId;
+      
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
+      event['sig'] = signature;
+
+      final message = jsonEncode(['EVENT', event]);
+      return await _connection.sendEventAndWait(eventId, message);
+    } catch (e) {
+      onError?.call('Erreur publication DU: $e');
+      return false;
+    }
+  }
+
+  /// Calcule le DU disponible à partir des événements Nostr
+  Future<double> computeAvailableDu(String npub) async {
+    final cacheDb = CacheDatabaseService();
+    
+    if (!_connection.isConnected) {
+      // En offline, retourner la dernière valeur en cache
+      return await cacheDb.getTotalDuIncrements(npub);
+    }
+
+    try {
+      // 1. Récupérer tous les incréments (kind 30305) de l'utilisateur
+      final increments = await _fetchEvents(kind: NostrConstants.kindDuIncrement, authors: [npub]);
+      double totalIncrements = 0;
+      
+      for (final e in increments) {
+        final tags = e['tags'] as List?;
+        if (tags != null) {
+          final amountTag = tags.firstWhere(
+            (t) => t is List && t.isNotEmpty && t[0] == 'amount',
+            orElse: () => null,
+          );
+          if (amountTag != null && amountTag.length > 1) {
+            totalIncrements += double.tryParse(amountTag[1].toString()) ?? 0.0;
+          }
+        }
+      }
+
+      // 2. Récupérer tous les bons émis (kind 30303) de l'utilisateur
+      final bons = await _fetchEvents(kind: NostrConstants.kindP3Publication, authors: [npub]);
+      double totalEmitted = 0;
+      
+      for (final bon in bons) {
+        final tags = bon['tags'] as List?;
+        if (tags != null) {
+          final valueTag = tags.firstWhere(
+            (t) => t is List && t.isNotEmpty && t[0] == 'value',
+            orElse: () => null,
+          );
+          if (valueTag != null && valueTag.length > 1) {
+            totalEmitted += double.tryParse(valueTag[1].toString()) ?? 0.0;
+          }
+        }
+      }
+
+      return totalIncrements - totalEmitted;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur calcul DU', e);
+      // Fallback sur le cache en cas d'erreur
+      return await cacheDb.getTotalDuIncrements(npub);
+    }
+  }
+
+  /// Méthode générique pour récupérer des événements
+  Future<List<Map<String, dynamic>>> _fetchEvents({
+    required int kind,
+    List<String>? authors,
+    int limit = 1000,
+  }) async {
+    if (!_connection.isConnected) return [];
+
+    final completer = Completer<List<Map<String, dynamic>>>();
+    final events = <Map<String, dynamic>>[];
+    final subscriptionId = 'fetch_${kind}_${DateTime.now().millisecondsSinceEpoch}';
+
+    _connection.registerHandler(subscriptionId, (message) {
+      try {
+        if (message[0] == 'EVENT' && message.length >= 3) {
+          final event = message[2] as Map<String, dynamic>;
+          events.add(event);
+        } else if (message[0] == 'EOSE') {
+          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          _connection.removeHandler(subscriptionId);
+          if (!completer.isCompleted) {
+            completer.complete(events);
+          }
+        }
+      } catch (e) {
+        Logger.error('NostrService', 'Erreur parsing event kind $kind', e);
+      }
+    });
+
+    final filter = <String, dynamic>{
+      'kinds': [kind],
+      'limit': limit,
+    };
+    if (authors != null && authors.isNotEmpty) {
+      filter['authors'] = authors;
+    }
+
+    final request = jsonEncode(['REQ', subscriptionId, filter]);
+    _connection.sendMessage(request);
+
+    Timer(const Duration(seconds: 5), () {
+      _connection.removeHandler(subscriptionId);
+      if (!completer.isCompleted) {
+        _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+        completer.complete(events);
+      }
+    });
+
+    return await completer.future;
+  }
+
   // ============================================================
   // PROFILS UTILISATEUR & AUTRES (À conserver temporairement)
   // ============================================================
@@ -1101,12 +1251,43 @@ class NostrService {
             _handleMetadataEvent(event);
           } else if (kind == 30303 || kind == 1) {
             _market.handleP3Event(event);
+          } else if (kind == NostrConstants.kindDuIncrement) {
+            _handleDuIncrementEvent(event);
           }
         }
         break;
     }
   }
   
+  void _handleDuIncrementEvent(Map<String, dynamic> event) async {
+    try {
+      final npub = event['pubkey'] as String?;
+      final tags = event['tags'] as List?;
+      if (npub == null || tags == null) return;
+
+      final dateTag = tags.firstWhere(
+        (t) => t is List && t.isNotEmpty && t[0] == 'd',
+        orElse: () => null,
+      );
+      final amountTag = tags.firstWhere(
+        (t) => t is List && t.isNotEmpty && t[0] == 'amount',
+        orElse: () => null,
+      );
+
+      if (dateTag != null && amountTag != null && dateTag.length > 1 && amountTag.length > 1) {
+        final dateStr = dateTag[1].toString().replaceFirst('du-', '');
+        final amount = double.tryParse(amountTag[1].toString());
+        if (amount != null) {
+          final cacheDb = CacheDatabaseService();
+          await cacheDb.saveDuIncrement(npub, dateStr, amount);
+          Logger.log('NostrService', 'Incrément DU mis en cache pour $npub: $amount ẐEN ($dateStr)');
+        }
+      }
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur traitement incrément DU', e);
+    }
+  }
+
   void _handleMetadataEvent(Map<String, dynamic> event) {
     try {
       final npub = event['pubkey'] as String?;

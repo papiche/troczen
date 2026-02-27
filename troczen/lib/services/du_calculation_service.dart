@@ -252,14 +252,27 @@ class DuCalculationService {
         'Incrément DU: ${totalIncrement.toStringAsFixed(2)} ẐEN '
         '(${duParams.duTotal.toStringAsFixed(2)} ẐEN/jour × $missedDays jours)');
 
-      // 6. Ajouter l'incrément total au DU disponible à émettre
+      // 6. Ajouter l'incrément total au DU disponible à émettre (cache local)
       await _storageService.addAvailableDuToEmit(totalIncrement);
 
       // 7. Enregistrer la date de génération et la nouvelle valeur cumulée
       await _storageService.setLastDuGenerationDate(DateTime.now());
       await _storageService.setLastDuValue(currentDu + totalIncrement);
 
-      // 8. Publier les données économiques sur le profil Nostr
+      // 8. Publier l'incrément DU sur Nostr (kind 30305)
+      try {
+        await _nostrService.publishDuIncrement(
+          user.npub,
+          user.nsec,
+          totalIncrement,
+          DateTime.now(),
+        );
+        Logger.success('DuCalculationService', 'Incrément DU publié sur Nostr (kind 30305)');
+      } catch (e) {
+        Logger.warn('DuCalculationService', 'Erreur publication incrément DU: $e');
+      }
+
+      // 9. Publier les données économiques sur le profil Nostr
       try {
         final availableDu = await _storageService.getAvailableDuToEmit();
         final economicData = {

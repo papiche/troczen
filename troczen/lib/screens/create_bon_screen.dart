@@ -46,6 +46,9 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   List<String> _suggestedTags = [];
   double _availableDu = 0.0;
   
+  static double? _cachedAvailableDu;
+  static DateTime? _cacheTimestamp;
+  
   final List<Map<String, dynamic>> _expirationOptions = [
     {'label': '7 jours', 'days': 7},
     {'label': '28 jours', 'days': 28},
@@ -72,11 +75,38 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   }
 
   Future<void> _loadAvailableDu() async {
-    final available = await _storageService.getAvailableDuToEmit();
-    if (mounted) {
-      setState(() {
-        _availableDu = available;
-      });
+    if (_cachedAvailableDu != null &&
+        _cacheTimestamp != null &&
+        DateTime.now().difference(_cacheTimestamp!).inMinutes < 5) {
+      if (mounted) {
+        setState(() {
+          _availableDu = _cachedAvailableDu!;
+        });
+      }
+      return;
+    }
+
+    try {
+      final nostrService = context.read<NostrService>();
+      final available = await nostrService.computeAvailableDu(widget.user.npub);
+      
+      _cachedAvailableDu = available;
+      _cacheTimestamp = DateTime.now();
+      
+      if (mounted) {
+        setState(() {
+          _availableDu = available;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur calcul DU disponible: $e');
+      // Fallback sur le stockage local en cas d'erreur
+      final available = await _storageService.getAvailableDuToEmit();
+      if (mounted) {
+        setState(() {
+          _availableDu = available;
+        });
+      }
     }
   }
 
