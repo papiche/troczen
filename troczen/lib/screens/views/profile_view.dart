@@ -1007,9 +1007,27 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
     );
   }
 
+  void _shareApp(User currentUser) {
+    // On pointe vers une route spécifique du backend
+    final String shareUrl = "https://zen.copylaradio.com/invite/${currentUser.npubBech32}";
+    
+    Share.share(
+      "Rejoins-moi sur TrocZen pour échanger des bons locaux ! 🌻\n\n"
+      "Installe l'appli via ce lien et nous serons automatiquement connectés : $shareUrl",
+      subject: "Invitation TrocZen",
+    );
+  }
+
   Widget _buildActionsSection() {
     return Column(
       children: [
+        _buildActionButton(
+          'Inviter un ami',
+          Icons.share,
+          const Color(0xFF4CAF50),
+          () => _shareApp(_currentUser!),
+        ),
+        const SizedBox(height: 12),
         _buildActionButton(
           'Modifier mon profil',
           Icons.edit,

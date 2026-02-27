@@ -363,7 +363,31 @@ def upload_to_ipfs(filepath):
 @app.route('/')
 def index():
     """Page d'accueil"""
-    return render_template('index.html')
+    return render_template('zen.html')
+
+
+@app.route('/boucles')
+def boucles():
+    """Schéma des boucles"""
+    return render_template('zen_boucles_schema.html')
+
+
+@app.route('/simulateur')
+def simulateur():
+    """Simulateur v4"""
+    return render_template('zen_v4.html')
+
+
+@app.route('/invite/<npub>')
+def invite_page(npub):
+    """Page d'invitation virale"""
+    # Récupérer les infos de l'APK pour le lien de téléchargement
+    apk_result = get_latest_apk()
+    apk_info = apk_result.get_json() if not isinstance(apk_result, tuple) else apk_result[0].get_json()
+    
+    return render_template('invite.html',
+                         referrer_npub=npub,
+                         apk_url=apk_info.get('download_url', '/'))
 
 
 @app.route('/health', methods=['GET'])

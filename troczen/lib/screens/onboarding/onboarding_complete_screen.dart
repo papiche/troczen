@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/nostr_service.dart';
 import '../../services/du_calculation_service.dart';
+import '../../services/logger_service.dart';
+import '../../config/app_config.dart';
 import '../../models/market.dart';
 import '../../models/user.dart';
 import '../../models/onboarding_state.dart';
@@ -367,6 +370,47 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     });
   }
   
+  Future<void> _checkClipboardForReferrer() async {
+    try {
+      ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
+      String? text = data?.text;
+
+      if (text != null && text.startsWith('npub1')) {
+        final storageService = StorageService();
+        // C'est un lien d'invitation !
+        // On stocke l'npub dans le StorageService comme "contact en attente"
+        await storageService.addContact(text);
+        
+        // On peut aussi déclencher le follow direct sur Nostr
+        final nostrService = context.read<NostrService>();
+        final user = await storageService.getUser();
+        if (user != null) {
+           await nostrService.connect(AppConfig.defaultRelayUrl);
+           await nostrService.publishContactList(
+             npub: user.npub,
+             nsec: user.nsec,
+             contactsNpubs: [text]
+           );
+           await nostrService.disconnect();
+        }
+        
+        Logger.success('Onboarding', 'Parrain détecté et suivi : $text');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vous avez suivi automatiquement l\'ami qui vous a invité !'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('Onboarding', 'Erreur lecture presse-papier', e);
+    }
+  }
+
   Future<void> _completeOnboarding() async {
     setState(() => _isCreatingAccount = true);
     
@@ -464,6 +508,9 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       
       // 6. Marquer l'onboarding comme complété
       await storageService.markOnboardingComplete();
+      
+      // Vérifier le presse-papier pour un parrain
+      await _checkClipboardForReferrer();
       
       setState(() => _isCreatingAccount = false);
       

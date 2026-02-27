@@ -804,6 +804,41 @@ h2 em { font-style: italic; color: var(--moss); }
   color: rgba(245,240,232,0.35);
 }
 
+/* ===================== FEEDBACK ===================== */
+.feedback-section { background: var(--parchment); }
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-input {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--cream);
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--moss-light);
+}
+
+.form-input::placeholder {
+  color: rgba(245,240,232,0.4);
+}
+
+.form-input option {
+  background: var(--ink);
+  color: var(--cream);
+}
+
 /* ===================== FINANCE ===================== */
 .finance-section {
   background: var(--cream);
@@ -961,6 +996,9 @@ footer {
     <li><a href="#comment">Comment ça marche</a></li>
     <li><a href="#pour-qui">Pour qui</a></li>
     <li><a href="#boucles">Les boucles</a></li>
+    <li><a href="/boucles">Schéma</a></li>
+    <li><a href="/simulateur">Simulateur</a></li>
+    <li><a href="#feedback">Feedback</a></li>
     <li><a href="#financer">Soutenir</a></li>
   </ul>
 </nav>
@@ -1267,6 +1305,48 @@ footer {
   </div>
 </section>
 
+<!-- ===================== FEEDBACK ===================== -->
+<section class="feedback-section" id="feedback">
+  <div class="section-inner">
+    <div class="finance-inner fade-in">
+      <div class="finance-text">
+        <div class="section-label">Feedback & Support</div>
+        <h2>Aidez-nous à<br><em>améliorer</em><br>TrocZen</h2>
+        <p>
+          Vos retours créent directement des tâches pour les développeurs sur GitHub.
+          Signalez un bug, suggérez une idée ou posez une question.
+        </p>
+      </div>
+
+      <div class="finance-card">
+        <form id="feedbackForm" class="feedback-form">
+          <div class="form-group">
+            <select id="fbType" class="form-input">
+              <option value="bug">🐛 Signaler un bug</option>
+              <option value="feature">✨ Suggérer une idée</option>
+              <option value="question">❓ Question</option>
+              <option value="feedback">👍 Avis général</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <input type="text" id="fbTitle" class="form-input" placeholder="Titre (ex: Problème d'affichage...)" required>
+          </div>
+          <div class="form-group">
+            <textarea id="fbDesc" class="form-input" rows="4" placeholder="Description détaillée..." required></textarea>
+          </div>
+          <div class="form-group">
+            <input type="email" id="fbEmail" class="form-input" placeholder="Votre email (optionnel)">
+          </div>
+          <button type="submit" class="btn-primary" style="width:100%;justify-content:center;" id="fbSubmitBtn">
+            Envoyer le feedback
+          </button>
+          <div id="fbStatus" style="margin-top: 15px; text-align: center; font-weight: bold; font-size: 13px;"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== FINANCER ===================== -->
 <section class="finance-section" id="financer">
   <div class="section-inner">
@@ -1369,6 +1449,52 @@ footer {
     canvas.appendChild(el);
   });
 })();
+
+/* Feedback Form */
+document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('fbSubmitBtn');
+    const status = document.getElementById('fbStatus');
+    
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
+    btn.textContent = 'Envoi en cours...';
+    status.innerHTML = '';
+
+    const payload = {
+        type: document.getElementById('fbType').value,
+        title: document.getElementById('fbTitle').value,
+        description: document.getElementById('fbDesc').value,
+        email: document.getElementById('fbEmail').value,
+        platform: 'Web Interface',
+        app_version: 'v1.0'
+    };
+
+    try {
+        const res = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+
+        if (data.success) {
+            status.innerHTML = `<span style="color: var(--moss-light)">✅ Feedback envoyé (Issue #${data.issue_number})</span>`;
+            document.getElementById('feedbackForm').reset();
+        } else {
+            let msg = data.error;
+            if(msg.includes('404')) msg = "Erreur configuration GitHub (Repo introuvable)";
+            status.innerHTML = `<span style="color: var(--rust)">❌ ${msg}</span>`;
+        }
+    } catch (err) {
+        status.innerHTML = `<span style="color: var(--rust)">❌ Erreur réseau</span>`;
+    } finally {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.textContent = 'Envoyer le feedback';
+    }
+});
 
 /* Intersection Observer for fade-in */
 (function() {

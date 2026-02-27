@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation TrocZen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-scaffold: #121212;
+            --bg-card: #1E1E1E;
+            --primary: #FFB347;
+            --primary-dark: #FF8C42;
+            --text-main: #FFFFFF;
+            --text-secondary: #B0BEC5;
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-scaffold);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 40px 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .logo-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        code {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--primary);
+            word-break: break-all;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #000;
+            box-shadow: 0 4px 12px rgba(255, 179, 71, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 179, 71, 0.4);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="logo-icon">🌻</div>
+        <h2>Vous êtes invité sur TrocZen !</h2>
+        <p>Par : <br><code>{{ referrer_npub[:16] }}...</code></p>
+        
+        <a href="{{ apk_url }}" class="btn btn-primary" onclick="copyReferrer(event)">
+            ⬇️ Télécharger l'App
+        </a>
+    </div>
+    
+    <div id="toast" class="toast">Lien copié ! Téléchargement en cours...</div>
+
+    <script>
+    function copyReferrer(event) {
+        // On copie l'npub dans le presse-papier juste avant le téléchargement
+        const npub = '{{ referrer_npub }}';
+        
+        // Méthode moderne
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(npub).catch(err => {
+                console.error('Erreur clipboard API:', err);
+                fallbackCopyTextToClipboard(npub);
+            });
+        } else {
+            // Fallback
+            fallbackCopyTextToClipboard(npub);
+        }
+        
+        // Afficher le toast
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+        
+        // L'npub est maintenant dans le clipboard du téléphone
+        // Le téléchargement va démarrer grâce au href du lien
+    }
+    
+    function fallbackCopyTextToClipboard(text) {
+        const el = document.createElement('textarea');
+        el.value = text;
+        // Éviter de scroller
+        el.style.top = "0";
+        el.style.left = "0";
+        el.style.position = "fixed";
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+        }
+        document.body.removeChild(el);
+    }
+    </script>
+</body>
+</html>
