@@ -147,6 +147,7 @@ class NostrService {
     String? category,
     String? rarity,
     String? wish,
+    int? duIndex,
   }) => _market.publishP3(
     bonId: bonId,
     issuerNsecHex: issuerNsecHex,
@@ -158,6 +159,7 @@ class NostrService {
     category: category,
     rarity: rarity,
     wish: wish,
+    duIndex: duIndex,
   );
   
   Future<bool> publishBonProfileUpdate({

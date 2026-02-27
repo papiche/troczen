@@ -219,7 +219,63 @@ main {
 .event-id { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--ink-muted); text-align: right; margin-top: 4px; }
 
 .initial-msg { text-align: center; color: var(--ink-muted); margin-top: 60px; font-family: 'DM Mono', monospace; font-size: 12px; }
-    </style>
+
+/* ── PROFILES ── */
+.profile-container {
+  margin-bottom: 8px;
+}
+.profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  padding: 4px 8px 4px 4px;
+  border-radius: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: background 0.2s, border-color 0.2s;
+}
+.profile-link:hover {
+  background: var(--nav-bg);
+  border-color: var(--moss);
+}
+.profile-link:hover .profile-name {
+  color: var(--moss);
+}
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #000;
+}
+.avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--moss);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+}
+.profile-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 13px;
+  transition: color 0.2s;
+}
+.profile-pubkey {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-muted);
+}
+
+</style>
 </head>
 <body>
 
@@ -267,7 +323,7 @@ main {
 </main>
 
 <script>
-/* ── THEME ── */
+  /* ── THEME ── */
 function getTheme() { try { return localStorage.getItem('zen-theme') || 'dark'; } catch(e) { return 'dark'; } }
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
@@ -277,7 +333,7 @@ function setTheme(t) {
 function toggleTheme() { setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); }
 setTheme(getTheme());
 
-/* ── MONITOR ── */
+/* ── MONITOR & PROFILES CACHE ── */
 let socket;
 const feed = document.getElementById('event-feed');
 const initialMessage = document.getElementById('initial-message');
@@ -286,48 +342,144 @@ const statusText = document.getElementById('status-text');
 const statusDot = document.getElementById('status-dot');
 const scrollLock = document.getElementById('scroll-lock');
 
+// Cache pour les profils (Kind 0)
+const profilesCache = {};
+const requestedProfiles = new Set();
+
 function connect() {
   const url = relayInput.value;
   statusText.innerText = "Connexion...";
   statusDot.className = "dot";
   socket = new WebSocket(url);
+  
   socket.onopen = () => {
     statusText.innerText = "Connecté";
     statusDot.className = "dot connected";
     if (initialMessage) initialMessage.style.display = 'none';
     subscribe();
   };
+  
   socket.onclose = () => { statusText.innerText = "Déconnecté"; statusDot.className = "dot"; };
   socket.onerror = () => { statusText.innerText = "Erreur"; statusDot.className = "dot error"; };
+  
   socket.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
-    if (data[0] === "EVENT") renderEvent(data[2]);
+    
+    if (data[0] === "EVENT") {
+      const event = data[2];
+      
+      // Si c'est un profil (Kind 0), on le met en cache et on met à jour l'UI
+      if (event.kind === 0) {
+        processProfileEvent(event);
+      }
+      
+      renderEvent(event);
+    } 
+    // Fermer proprement les souscriptions spécifiques aux profils une fois reçus
+    else if (data[0] === "EOSE" && data[1].startsWith("profile-")) {
+      socket.send(JSON.stringify(["CLOSE", data[1]]));
+    }
   };
 }
 
 function subscribe() {
+  // Abonnement principal
   socket.send(JSON.stringify(["REQ", "monitor-tz", { kinds:[0,1,3,5,7,30303,30304,30500,30501,30502,30503], limit:50 }]));
 }
+
+/* ── GESTION DES PROFILS ── */
+
+function processProfileEvent(event) {
+  try {
+    const profileData = JSON.parse(event.content);
+    profilesCache[event.pubkey] = {
+      name: profileData.name || profileData.display_name || null,
+      picture: profileData.picture || null
+    };
+    // Mettre à jour rétroactivement toutes les cartes affichant cette pubkey
+    updateProfileDisplays(event.pubkey);
+  } catch (e) {
+    console.error("Erreur parsing profil", e);
+  }
+}
+
+function requestProfileMissing(pubkey) {
+  if (requestedProfiles.has(pubkey)) return;
+  requestedProfiles.add(pubkey);
+  
+  // Demander spécifiquement le profil de cet auteur
+  const subId = "profile-" + pubkey.substring(0, 8);
+  socket.send(JSON.stringify(["REQ", subId, { kinds: [0], authors: [pubkey], limit: 1 }]));
+}
+
+function generateProfileHTML(pubkey) {
+  const profile = profilesCache[pubkey];
+  const shortPubkey = pubkey.substring(0, 8) + '…' + pubkey.substring(58);
+  const viewerLink = `https://ipfs.copylaradio.com/ipns/copylaradio.com/nostr_profile_viewer.html?hex=${pubkey}`;
+
+  if (profile) {
+    const name = profile.name || 'Anonyme';
+    const initial = name.charAt(0).toUpperCase();
+    const avatarHtml = profile.picture 
+      ? `<img src="${profile.picture}" class="avatar" alt="Avatar" onerror="this.outerHTML='<div class=\\'avatar-placeholder\\'>${initial}</div>'">` 
+      : `<div class="avatar-placeholder">${initial}</div>`;
+      
+    return `
+      <a href="${viewerLink}" target="_blank" class="profile-link" title="${pubkey}">
+        ${avatarHtml}
+        <span class="profile-name">${name}</span>
+        <span class="profile-pubkey">${shortPubkey}</span>
+      </a>
+    `;
+  } else {
+    // Profil inconnu : on demande au relai et on affiche un placeholder
+    requestProfileMissing(pubkey);
+    return `
+      <a href="${viewerLink}" target="_blank" class="profile-link" title="${pubkey}">
+        <div class="avatar-placeholder">?</div>
+        <span class="profile-name" style="color: var(--ink-muted)">Recherche...</span>
+        <span class="profile-pubkey">${shortPubkey}</span>
+      </a>
+    `;
+  }
+}
+
+function updateProfileDisplays(pubkey) {
+  const elements = document.querySelectorAll(`.author-${pubkey}`);
+  const newHTML = generateProfileHTML(pubkey);
+  elements.forEach(el => el.innerHTML = newHTML);
+}
+
+/* ── RENDU DES ÉVÉNEMENTS ── */
 
 function renderEvent(event) {
   const card = document.createElement('div');
   card.className = `event-card kind-${event.kind}`;
+  
   const activeKinds = getActiveKinds();
   if (!activeKinds.includes(event.kind)) card.style.display = 'none';
+  
   const date = new Date(event.created_at * 1000).toLocaleTimeString();
   const labels = { 30303:'📦 BON ZEN', 30304:'🎉 BON UTILISÉ (boucle)', 30500:'📜 COMPÉTENCE DÉCLARÉE', 30501:'🙋 DEMANDE D\'ATTESTATION', 30502:'🛡️ ATTESTATION PAR UN PAIR', 30503:'✅ COMPÉTENCE VALIDÉE', 1:'💬 MESSAGE', 0:'👤 PROFIL' };
   const typeLabel = labels[event.kind] || 'Event';
   const tagsHtml = event.tags.map(t => `<span class="tag">${t[0]}: ${(t[1]||'').substring(0,32)}</span>`).join('');
+  
   card.innerHTML = `
     <div class="event-header">
       <span class="kind-badge">${typeLabel} · Kind ${event.kind}</span>
       <span class="event-time">${date}</span>
     </div>
-    <div class="pubkey">${event.pubkey}</div>
+    
+    <!-- Zone Auteur dynamique -->
+    <div class="profile-container author-${event.pubkey}">
+      ${generateProfileHTML(event.pubkey)}
+    </div>
+    
     <div class="tag-list">${tagsHtml}</div>
     <div class="content-box">${formatContent(event.content)}</div>
     <div class="event-id">ID: ${event.id}</div>
   `;
+  
   feed.appendChild(card);
   if (scrollLock.checked) feed.scrollTop = feed.scrollHeight;
 }
@@ -351,6 +503,7 @@ function clearLogs() {
   initialMessage.style.display = 'block';
 }
 
+// Démarrage
 connect();
 </script>
 
