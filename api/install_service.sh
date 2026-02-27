@@ -68,7 +68,7 @@ print_info "Étape 4: Installation du service systemd"
 sudo cp "$API_DIR/troczen-api.service" "$SYSTEMD_DIR/"
 sudo sed -i "s~_APIDIR_~$API_DIR~g" "$SYSTEMD_DIR/troczen-api.service"
 sudo sed -i "s~%i~$CURRENT_USER~g" "$SYSTEMD_DIR/troczen-api.service"
-sudo sed -i "s~%h_~$HOME~g" "$SYSTEMD_DIR/troczen-api.service"
+sudo sed -i "s~%h~$HOME~g" "$SYSTEMD_DIR/troczen-api.service"
 
 sudo systemctl daemon-reload
 print_success "Service systemd installé"
