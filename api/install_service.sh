@@ -3,6 +3,15 @@
 
 set -e
 
+##################################################################  SUDO
+##  Lancement "root" interdit...
+########################################################################
+[ $(id -u) -eq 0 ] && echo "LANCEMENT root INTERDIT. " && exit 1
+[[ ! $(groups | grep -w sudo) ]] \
+    && echo "AUCUN GROUPE \"sudo\" : su -; usermod -aG sudo $USER" \
+    && su - && apt-get install sudo -y \
+    && echo "Run Install Again..." && exit 0
+
 # Couleurs pour la sortie
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -62,14 +71,17 @@ fi
 
 # Étape 4: Installer le service systemd
 print_info "Étape 4: Installation du service systemd"
-cp "$API_DIR/troczen-api.service" "$SYSTEMD_DIR/"
-sed -i "~_APIDIR_~$API_DIR~" "$SYSTEMD_DIR/troczen-api.service"
-systemctl daemon-reload
+sudo cp "$API_DIR/troczen-api.service" "$SYSTEMD_DIR/"
+sudo sed -i "s~_APIDIR_~$API_DIR~g" "$SYSTEMD_DIR/troczen-api.service"
+sudo sed -i "s~%i~$CURRENT_USER~g" "$SYSTEMD_DIR/troczen-api.service"
+sudo sed -i "s~%h_~$HOME~g" "$SYSTEMD_DIR/troczen-api.service"
+
+sudo systemctl daemon-reload
 print_success "Service systemd installé"
 
 # Étape 5: Activer le service au démarrage
 print_info "Étape 5: Activation du service au démarrage"
-systemctl enable "$SERVICE_NAME"
+sudo systemctl enable "$SERVICE_NAME"
 print_success "Service activé au démarrage"
 
 # Étape 6: Afficher les informations de configuration
