@@ -6,12 +6,12 @@ Wants=network.target
 
 [Service]
 Type=notify
-User=%i
-Group=%i
-WorkingDirectory=%h/_APIDIR_
-Environment="PATH=%h/_APIDIR_/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-EnvironmentFile=%h/_APIDIR_/.env
-ExecStart=%h/_APIDIR_/start_api.sh production
+User=_USER_
+Group=_USER_
+WorkingDirectory=_APIDIR_
+Environment="PATH=_APIDIR_/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile=_APIDIR_/.env
+ExecStart=_APIDIR_/start_api.sh production
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=on-failure
@@ -25,7 +25,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=%h/_APIDIR_/uploads %h/_APIDIR_/apks %h/_APIDIR_/profiles /var/log/troczen
+ReadWritePaths=_APIDIR_/uploads _APIDIR_/apks _APIDIR_/profiles /var/log/troczen
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
