@@ -110,10 +110,25 @@ class DuCalculationService {
     required bool isFirstTime,
   }) async {
     if (isFirstTime) {
-      Logger.log('DuCalculationService', 'Premier DU: émission de la valeur initiale ($_initialDuValue ẐEN)');
+      double initialDu = _initialDuValue;
+      
+      // Tenter de récupérer la moyenne des DU actuels sur le réseau (kind 30305)
+      // pour fixer un DU(0) actualisé par rapport au temps passé des actuels participants
+      try {
+        final avgDu = await _nostrService.fetchAverageRecentDu();
+        if (avgDu != null && avgDu > 0) {
+          initialDu = avgDu;
+          Logger.log('DuCalculationService', 'Premier DU: valeur actualisée depuis le réseau (${initialDu.toStringAsFixed(2)} ẐEN)');
+        } else {
+          Logger.log('DuCalculationService', 'Premier DU: émission de la valeur par défaut ($_initialDuValue ẐEN)');
+        }
+      } catch (e) {
+        Logger.log('DuCalculationService', 'Premier DU: émission de la valeur par défaut ($_initialDuValue ẐEN)');
+      }
+
       return DuParams.fallback(
         cSquared: _cSquared,
-        duBase: _initialDuValue,
+        duBase: initialDu,
         n1: mutuals.length,
         n2: 0,
       );

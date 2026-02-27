@@ -549,6 +549,38 @@ class NostrService {
     }
   }
 
+  /// Récupère la moyenne des incréments DU récents sur le réseau
+  Future<double?> fetchAverageRecentDu() async {
+    if (!_connection.isConnected) return null;
+    try {
+      final events = await _fetchEvents(kind: NostrConstants.kindDuIncrement, limit: 50);
+      if (events.isEmpty) return null;
+      
+      double total = 0;
+      int count = 0;
+      for (final e in events) {
+        final tags = e['tags'] as List?;
+        if (tags != null) {
+          final amountTag = tags.firstWhere(
+            (t) => t is List && t.isNotEmpty && t[0] == 'amount',
+            orElse: () => null,
+          );
+          if (amountTag != null && amountTag.length > 1) {
+            final amount = double.tryParse(amountTag[1].toString());
+            if (amount != null && amount > 0) {
+              total += amount;
+              count++;
+            }
+          }
+        }
+      }
+      return count > 0 ? total / count : null;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur calcul moyenne DU récent', e);
+      return null;
+    }
+  }
+
   /// Méthode générique pour récupérer des événements
   Future<List<Map<String, dynamic>>> _fetchEvents({
     required int kind,
