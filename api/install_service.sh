@@ -25,12 +25,6 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# Vérifier si on est root
-if [ "$EUID" -ne 0 ]; then
-    print_error "Ce script doit être exécuté en tant que root (sudo)"
-    exit 1
-fi
-
 # Variables
 SERVICE_NAME="troczen-api"
 CURRENT_USER=$(whoami)
@@ -45,7 +39,8 @@ echo "=========================================="
 # Étape 1: Créer les répertoires
 print_info "Étape 1: Création des répertoires"
 mkdir -p "$API_DIR"
-mkdir -p "$LOG_DIR"
+sudo mkdir -p "$LOG_DIR"
+sudo chown "$CURRENT_USER:$CURRENT_USER" "$LOG_DIR"
 print_success "Répertoires créés"
 
 # Étape 2: Configurer les permissions
@@ -54,7 +49,6 @@ chown -R "$CURRENT_USER:$CURRENT_USER" "$API_DIR"
 chmod -R 755 "$API_DIR"
 chmod 755 "$API_DIR/start_api.sh"
 chmod 644 "$API_DIR/troczen-api.service"
-chmod 644 "$LOG_DIR" 2>/dev/null || true
 print_success "Permissions configurées"
 
 # Étape 3: Créer le fichier .env si nécessaire
