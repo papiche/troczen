@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/bon.dart';
 import 'image_cache_service.dart';
 import 'logger_service.dart';
+import 'image_memory_cache.dart';
 
 /// Résultat du cache pour une carte Panini
 class PaniniCacheResult {
@@ -43,10 +44,42 @@ class PaniniCardCacheService extends ChangeNotifier {
   
   // Set des IDs en cours de vérification
   final Set<String> _checkingIds = {};
+  
+  // Set des chemins de fichiers locaux existants (cache mémoire partagé)
+  static final Set<String> _existingLocalFiles = {};
+  static bool _isInitialized = false;
+  static bool _isInitializing = false;
 
   PaniniCardCacheService({
     ImageCacheService? imageCacheService,
-  }) : _imageCacheService = imageCacheService ?? ImageCacheService();
+  }) : _imageCacheService = imageCacheService ?? ImageCacheService() {
+    _initCache();
+  }
+
+  /// Initialise le cache en scannant le dossier image_cache
+  Future<void> _initCache() async {
+    if (_isInitialized || _isInitializing) return;
+    _isInitializing = true;
+    
+    try {
+      final cacheDir = await _imageCacheService.getCacheDirectory();
+      if (await cacheDir.exists()) {
+        final files = cacheDir.listSync();
+        for (var file in files) {
+          if (file is File) {
+            _existingLocalFiles.add(file.path);
+          }
+        }
+      }
+      _isInitialized = true;
+      _isInitializing = false;
+      Logger.log('PaniniCardCache', 'Cache initialisé avec ${_existingLocalFiles.length} fichiers');
+      notifyListeners();
+    } catch (e) {
+      _isInitializing = false;
+      Logger.error('PaniniCardCache', 'Erreur initialisation cache', e);
+    }
+  }
 
   /// Récupère le résultat du cache pour un bon donné.
   /// 
@@ -86,6 +119,9 @@ class PaniniCardCacheService extends ChangeNotifier {
     if (pictureUrl != null && pictureUrl.isNotEmpty) {
       Logger.log('PaniniCardCache', 'Picture URL: $pictureUrl');
       localPath = await _imageCacheService.getCachedImage(pictureUrl);
+      if (localPath != null) {
+        addLocalFileToCache(localPath);
+      }
     }
     
     Logger.log('PaniniCardCache', 'Cache trouvé: $localPath');
@@ -119,10 +155,18 @@ class PaniniCardCacheService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Vérifie si un fichier local existe physiquement
+  /// Vérifie si un fichier local existe physiquement (utilise le cache mémoire si possible)
   bool localFileExists(String? path) {
     if (path == null) return false;
+    if (_isInitialized) {
+      return _existingLocalFiles.contains(path);
+    }
     return File(path).existsSync();
+  }
+  
+  /// Ajoute un fichier au cache mémoire
+  void addLocalFileToCache(String path) {
+    _existingLocalFiles.add(path);
   }
 
   /// Construit une image offline-first avec fallback réseau
@@ -146,13 +190,30 @@ class PaniniCardCacheService extends ChangeNotifier {
     // OFFLINE-FIRST: Si l'image est disponible localement, l'utiliser directement
     if (localPath != null && localFileExists(localPath)) {
       Logger.log('PaniniCardCache', 'Utilisation fichier local: $localPath');
+      
+      // Utiliser le cache mémoire pour éviter le flicker
+      final cachedImage = ImageMemoryCache.getLocal(localPath);
+      if (cachedImage != null) {
+        return Image(
+          image: cachedImage,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) {
+            Logger.error('PaniniCardCache',
+              'Erreur lecture fichier local (cache): $localPath', error);
+            return _buildDefaultIcon(width, color, isPending, defaultIcon);
+          },
+        );
+      }
+      
       return Image.file(
         File(localPath),
         width: width,
         height: height,
         fit: fit,
         errorBuilder: (context, error, stackTrace) {
-          Logger.error('PaniniCardCache', 
+          Logger.error('PaniniCardCache',
             'Erreur lecture fichier local: $localPath', error);
           return _buildDefaultIcon(width, color, isPending, defaultIcon);
         },

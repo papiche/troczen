@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:troczen/services/image_compression_service.dart';
 
@@ -26,6 +27,23 @@ class ImageMemoryCache {
       }
     } catch (e) {
       debugPrint("Erreur décodage cache: $e");
+    }
+    return null;
+  }
+
+  /// Récupère une image locale depuis le cache ou la charge et la met en cache.
+  /// [path] est le chemin local du fichier.
+  static ImageProvider? getLocal(String? path) {
+    if (path == null) return null;
+    
+    if (_cache.containsKey(path)) return _cache[path];
+
+    try {
+      final provider = FileImage(File(path));
+      _cache[path] = provider;
+      return provider;
+    } catch (e) {
+      debugPrint("Erreur chargement image locale cache: $e");
     }
     return null;
   }

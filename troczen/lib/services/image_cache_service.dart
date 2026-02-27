@@ -15,7 +15,7 @@ class ImageCacheService {
   static const String _metadataFile = 'cache_metadata.json';
   
   /// Obtenir le répertoire de cache
-  Future<Directory> get _getCacheDirectory async {
+  Future<Directory> getCacheDirectory() async {
     final appDir = await getApplicationDocumentsDirectory();
     final cacheDir = Directory('${appDir.path}/$_cacheDir');
     
@@ -24,6 +24,11 @@ class ImageCacheService {
     }
     
     return cacheDir;
+  }
+
+  /// Obtenir le répertoire de cache (interne)
+  Future<Directory> get _getCacheDirectory async {
+    return getCacheDirectory();
   }
   
   /// Obtenir le fichier de métadonnées

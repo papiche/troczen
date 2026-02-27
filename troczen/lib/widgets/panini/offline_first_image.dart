@@ -57,6 +57,20 @@ class OfflineFirstImage extends StatelessWidget {
     
     // OFFLINE-FIRST: Si l'image est disponible localement, l'utiliser directement
     if (localPath != null && _localFileExists(localPath)) {
+      final cachedImage = ImageMemoryCache.getLocal(localPath);
+      if (cachedImage != null) {
+        return Image(
+          image: cachedImage,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) {
+            // En cas d'erreur de lecture locale, fallback sur le réseau
+            return _buildNetworkImage();
+          },
+        );
+      }
+      
       return Image.file(
         File(localPath!),
         width: width,
