@@ -40,7 +40,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   bool _isCreating = false;
   Market? _selectedMarket;     // Marché actif pour l'émission
   final Color _selectedColor = Colors.blue; // Couleur par défaut
-  File? _selectedImage;
   bool _isUploading = false;
   final _websiteController = TextEditingController();
   final _wishController = TextEditingController();

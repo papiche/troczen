@@ -633,18 +633,6 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Future<void> _navigateToCreateBon() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateBonScreen(user: widget.user),
-      ),
-    );
-    
-    // On force la reconstruction de l'interface
-    setState(() {});
-  }
-
   // ===== ACTIONS DRAWER =====
   
   void _navigateToSettings() {
