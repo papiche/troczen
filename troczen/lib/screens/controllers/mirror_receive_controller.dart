@@ -110,6 +110,11 @@ class MirrorReceiveController extends ChangeNotifier {
         throw Exception('Format QR invalide ou obsolète (V1)');
       }
 
+      final emittedTimestamp = qrV2Payload.emittedAt.millisecondsSinceEpoch ~/ 1000;
+      if (_qrService.isExpired(emittedTimestamp, 60)) {
+        throw Exception('Ce QR Code a expiré. Demandez au donneur de quitter et revenir sur l\'écran.');
+      }
+      
       await _processOffer(qrV2Payload, onSuccess);
 
     } catch (e) {
