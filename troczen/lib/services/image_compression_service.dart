@@ -53,28 +53,8 @@ class ImageCompressionService {
         maintainAspect: true,
       );
       
-      int currentQuality = 80;
-      List<int> compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
-
-      // 1. Boucle de compression dynamique (baisse de qualité)
-      while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
-        currentQuality -= 10;
-        compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
-      }
-
-      // 2. Sécurité finale si c'est toujours trop lourd (baisse de résolution)
-      if (compressedBytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
-        resizedImage = img.copyResize(
-          resizedImage, 
-          width: resizedImage.width ~/ 2, 
-          height: resizedImage.height ~/ 2,
-          maintainAspect: true,
-        );
-        compressedBytes = img.encodeJpg(resizedImage, quality: 30);
-      }
-
-      final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
+      final compressedBytes = await _compressToTargetSize(resizedImage, maxEncodedSize);
+      final base64Uri = _encodeAsDataUri(compressedBytes);
       
       return ImageResult(
         originalPath: image.path,
@@ -107,28 +87,8 @@ class ImageCompressionService {
         maintainAspect: true,
       );
       
-      int currentQuality = 80;
-      List<int> compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
-
-      // 1. Boucle de compression dynamique (baisse de qualité)
-      while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
-        currentQuality -= 10;
-        compressedBytes = img.encodeJpg(resizedImage, quality: currentQuality);
-      }
-
-      // 2. Sécurité finale si c'est toujours trop lourd (baisse de résolution)
-      if (compressedBytes.length > maxEncodedSize) {
-        Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
-        resizedImage = img.copyResize(
-          resizedImage, 
-          width: resizedImage.width ~/ 2, 
-          height: resizedImage.height ~/ 2,
-          maintainAspect: true,
-        );
-        compressedBytes = img.encodeJpg(resizedImage, quality: 30);
-      }
-
-      final base64Uri = _encodeAsDataUri(Uint8List.fromList(compressedBytes));
+      final compressedBytes = await _compressToTargetSize(resizedImage, maxEncodedSize);
+      final base64Uri = _encodeAsDataUri(compressedBytes);
       
       return ImageResult(
         originalPath: image.path,
@@ -158,26 +118,7 @@ class ImageCompressionService {
         final decodedImage = img.decodeImage(bytes);
         if (decodedImage == null) return null;
 
-        int currentQuality = 80;
-        var compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
-
-        while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
-          currentQuality -= 10;
-          compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
-        }
-
-        if (compressedBytes.length > maxEncodedSize) {
-          Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
-          final smallerImage = img.copyResize(
-            decodedImage, 
-            width: decodedImage.width ~/ 2, 
-            height: decodedImage.height ~/ 2,
-            maintainAspect: true,
-          );
-          compressedBytes = img.encodeJpg(smallerImage, quality: 30);
-        }
-        
-        bytes = Uint8List.fromList(compressedBytes);
+        bytes = await _compressToTargetSize(decodedImage, maxEncodedSize);
       }
       
       return _encodeAsDataUri(bytes);
@@ -205,26 +146,7 @@ class ImageCompressionService {
         final decodedImage = img.decodeImage(bytes);
         if (decodedImage == null) return null;
 
-        int currentQuality = 80;
-        var compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
-
-        while (compressedBytes.length > maxEncodedSize && currentQuality > 10) {
-          currentQuality -= 10;
-          compressedBytes = img.encodeJpg(decodedImage, quality: currentQuality);
-        }
-
-        if (compressedBytes.length > maxEncodedSize) {
-          Logger.log('ImageCompressionService', 'Image toujours > 4Ko. Réduction des dimensions.');
-          final smallerImage = img.copyResize(
-            decodedImage, 
-            width: decodedImage.width ~/ 2, 
-            height: decodedImage.height ~/ 2,
-            maintainAspect: true,
-          );
-          compressedBytes = img.encodeJpg(smallerImage, quality: 30);
-        }
-        
-        bytes = Uint8List.fromList(compressedBytes);
+        bytes = await _compressToTargetSize(decodedImage, maxEncodedSize);
       }
       
       return _encodeAsDataUri(bytes);
@@ -234,6 +156,31 @@ class ImageCompressionService {
     }
   }
   
+  Future<Uint8List> _compressToTargetSize(img.Image image, int maxBytes) async {
+    int currentQuality = 80;
+    List<int> compressedBytes = img.encodeJpg(image, quality: currentQuality);
+
+    // 1. Boucle de compression dynamique (baisse de qualité)
+    while (compressedBytes.length > maxBytes && currentQuality > 10) {
+      currentQuality -= 10;
+      compressedBytes = img.encodeJpg(image, quality: currentQuality);
+    }
+
+    // 2. Sécurité finale si c'est toujours trop lourd (baisse de résolution)
+    if (compressedBytes.length > maxBytes) {
+      Logger.log('ImageCompressionService', 'Image toujours > ${maxBytes ~/ 1024}Ko. Réduction des dimensions.');
+      final smallerImage = img.copyResize(
+        image, 
+        width: image.width ~/ 2, 
+        height: image.height ~/ 2,
+        maintainAspect: true,
+      );
+      compressedBytes = img.encodeJpg(smallerImage, quality: 30);
+    }
+
+    return Uint8List.fromList(compressedBytes);
+  }
+
   /// Encode les bytes en data URI Base64
   String _encodeAsDataUri(Uint8List bytes) {
     final base64 = base64Encode(bytes);
