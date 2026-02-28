@@ -834,18 +834,15 @@ class NostrService {
         throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
       }
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-
-      final content = {
-        'type': 'transfer',
-        'bon_id': bonId,
-        'value': value,
-        'unit': 'ZEN',
-        'market': marketName,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
+      
+      // (Bitcoin Cypher Punk Guerilla)
+      final humanReadableContent = "💸 Un transfert de ${value.toString()} ẐEN "
+          "vient d'avoir lieu sur '$marketName' !\n\n"
+          "TrocZen 🌻 : La monnaie locale, P2P et 100% offline.\n"
+          "Rejoignez le mouvement : https://github.com/papiche/troczen";
 
       final event = {
-        'kind': NostrConstants.kindText,
+        'kind': 1,
         'pubkey': bonId,
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         'tags': [
@@ -857,7 +854,7 @@ class NostrService {
           ['bon', bonId],
           ['value', value.toString()],
         ],
-        'content': jsonEncode(content),
+        'content': humanReadableContent,
       };
 
       final eventId = _calculateEventId(event);

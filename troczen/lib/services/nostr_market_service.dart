@@ -735,7 +735,7 @@ class NostrMarketService {
         }
       }
 
-      if (bonId == null || toNpub == null) return;
+      if (bonId == null || toNpub == null || fromNpub == null) return;
 
       if (value == 0.0) {
         try {
@@ -750,7 +750,7 @@ class NostrMarketService {
       final transferData = {
         'event_id': event['id'],
         'bon_id': bonId,
-        'from_npub': fromNpub ?? event['pubkey'],
+        'from_npub': fromNpub,
         'to_npub': toNpub,
         'value': value,
         'timestamp': event['created_at'],
