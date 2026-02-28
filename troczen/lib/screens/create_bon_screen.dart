@@ -348,7 +348,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       // SIGNÉ PAR LE BON LUI-MÊME (reconstruction éphémère P2+P3)
       try {
         // Connexion au relais
-        final relayUrl = _selectedMarket!.relayUrl ?? NostrConstants.defaultRelay;
+        final relayUrl = _selectedMarket!.relayUrl ?? AppConfig.defaultRelayUrl;
         final connected = await nostrService.connect(relayUrl);
 
         if (connected) {

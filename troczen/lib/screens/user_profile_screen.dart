@@ -171,7 +171,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
       // 3. Publier sur Nostr (kind 0)
       final market = await _storageService.getMarket();
-      final relayUrl = market?.relayUrl ?? NostrConstants.defaultRelay;
+      final relayUrl = market?.relayUrl ?? AppConfig.defaultRelayUrl;
       
       final nostrService = context.read<NostrService>();
 

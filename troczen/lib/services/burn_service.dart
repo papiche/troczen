@@ -66,7 +66,7 @@ class BurnService {
       final nostrService = NostrService(cryptoService: _cryptoService, storageService: _storageService);
 
       final market = await _storageService.getMarket();
-      final relayUrl = market?.relayUrl ?? NostrConstants.defaultRelay;
+      final relayUrl = market?.relayUrl ?? AppConfig.defaultRelayUrl;
       
       final connected = await nostrService.connect(relayUrl);
       if (!connected) {

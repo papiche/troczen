@@ -255,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
           storageService: _storageService,
         );
 
-        await nostrService.connect(NostrConstants.defaultRelay);
+        await nostrService.connect(AppConfig.defaultRelayUrl);
         
         await nostrService.publishUserProfile(
           npub: user.npub,
