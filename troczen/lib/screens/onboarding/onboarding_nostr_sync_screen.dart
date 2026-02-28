@@ -121,18 +121,13 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       }
       if (receivedP3s.isNotEmpty) {
         setState(() => _currentStep = 'Déchiffrement et stockage des P3...');
-        
+
+        final batchData = <String, String>{};
         for (final p3Data in receivedP3s) {
-          try {
-            // Sauvegarder le P3 en cache
-            await storageService.saveP3ToCache(
-              p3Data['bonId']!,
-              p3Data['p3']!,
-            );
-          } catch (e) {
-            debugPrint('⚠️ Erreur sauvegarde P3 ${p3Data['bonId']}: $e');
-          }
+          batchData[p3Data['bonId']!] = p3Data['p3']!;
         }
+        
+        await storageService.saveP3BatchToCache(batchData);
       }
       
       // Étape 5: Synchronisation terminée
