@@ -20,11 +20,7 @@ import 'cache_database_service.dart';
 /// Cette séparation évite la suppression accidentelle du cache lors d'une
 /// demande RGPD (droit à l'oubli) qui ne doit effacer que les données personnelles
 class StorageService {
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-  );
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // Instance du service SQLite pour le cache réseau (P3, marché)
   // ✅ SÉPARÉ de l'audit trail pour indépendance du cycle de vie
@@ -318,17 +314,6 @@ class StorageService {
     } catch (e) {
       Logger.error('StorageService', 'Erreur _getBonsInternal', e);
       return [];
-    }
-  }
-
-  /// Sauvegarde la liste complète des bons
-  Future<void> _saveBons(List<Bon> bons) async {
-    try {
-      final bonsJson = bons.map((b) => b.toJson()).toList();
-      await _cacheService.replaceAllLocalBons(bonsJson);
-    } catch (e) {
-      Logger.error('StorageService', 'Erreur _saveBons', e);
-      rethrow; // Propager l'erreur pour permettre une gestion en amont
     }
   }
 
