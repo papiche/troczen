@@ -529,8 +529,7 @@ class StorageService {
   }
 
   // ============================================================
-  // ✅ MÉTHODES P3 CACHE - Maintenant dans SQLite
-  // FlutterSecureStorage causait des OOM sur iOS/Android
+  // ✅ MÉTHODES P3 CACHE - dans SQLite
   // ============================================================
 
   /// Sauvegarde une P3 dans le cache SQLite
@@ -541,7 +540,6 @@ class StorageService {
 
   /// ✅ OPTIMISÉ: Insertion en lot (batch) pour le cache P3
   /// Utilise une transaction SQLite pour performance optimale
-  /// Évite les OOM et le Jank UI lors de la synchronisation massive
   Future<void> saveP3BatchToCache(Map<String, String> p3Batch) async {
     if (p3Batch.isEmpty) return;
     
@@ -707,7 +705,7 @@ class StorageService {
     return await _cacheService.calculateOtherMonetaryMass(excludedNpubs);
   }
 
-  /// ✅ CORRECTION: Récupère les données économiques agrégées pour le dashboard
+  /// ✅ Récupère les données économiques agrégées pour le dashboard
   /// Combine les données du marché global avec le wallet local
   Future<Map<String, dynamic>> getMarketEconomicData() async {
     try {
@@ -850,8 +848,7 @@ class StorageService {
 
     // Déterminer le nom du marché
     final marketName = name ?? 'Marché Libre';
-    final isGlobalMarket = marketName.toUpperCase() == 'MARCHÉ LIBRE' ||
-                           marketName.toUpperCase() == 'HACKATHON';
+    final isGlobalMarket = marketName.toUpperCase() == 'HACKATHON';
 
     String seedHex;
     
