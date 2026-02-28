@@ -715,6 +715,7 @@ class NostrMarketService {
       final tags = event['tags'] as List;
       String? bonId;
       String? toNpub;
+      String? fromNpub;
       String? marketTag;
       double value = 0.0;
 
@@ -724,6 +725,8 @@ class NostrMarketService {
             bonId = tag[1].toString();
           } else if (tag[0] == 'p' && tag.length > 1) {
             toNpub = tag[1].toString();
+          } else if (tag[0] == 'from_npub' && tag.length > 1) {
+            fromNpub = tag[1].toString();
           } else if (tag[0] == 't' && tag.length > 1) {
             marketTag = tag[1].toString();
           } else if (tag[0] == 'value' && tag.length > 1) {
@@ -747,7 +750,7 @@ class NostrMarketService {
       final transferData = {
         'event_id': event['id'],
         'bon_id': bonId,
-        'from_npub': event['pubkey'],
+        'from_npub': fromNpub ?? event['pubkey'],
         'to_npub': toNpub,
         'value': value,
         'timestamp': event['created_at'],

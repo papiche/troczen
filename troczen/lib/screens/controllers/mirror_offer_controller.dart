@@ -264,6 +264,7 @@ class MirrorOfferController extends ChangeNotifier {
           bonId: bon.bonId,
           bonP2: bon.p2!,
           bonP3: p3,
+          senderNpub: user.npub,
           receiverNpub: receiverNpub,
           value: bon.value,
           marketName: market.name,

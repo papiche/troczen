@@ -809,6 +809,7 @@ class NostrService {
     required String bonId,
     required String bonP2,
     required String bonP3,
+    required String senderNpub,
     required String receiverNpub,
     required double value,
     required String marketName,
@@ -849,6 +850,7 @@ class NostrService {
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         'tags': [
           ['p', receiverNpub],
+          ['from_npub', senderNpub],
           ['t', 'troczen-transfer'],
           ['t', _normalizeMarketTag(marketName)],
           ['market', marketName],
