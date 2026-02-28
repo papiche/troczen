@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import 'package:http/http.dart' as http;
 import '../models/nostr_profile.dart';
+import '../utils/nostr_utils.dart';
 import 'crypto_service.dart';
 import 'logger_service.dart';
 import 'nostr_connection_service.dart';
@@ -670,23 +671,5 @@ class NostrWoTxService {
       Logger.error('NostrWoTx', 'Erreur fetchActivityTagsFromProfiles', e);
       return [];
     }
-  }
-  
-  // ============================================================
-  // UTILITAIRES
-  // ============================================================
-  
-  String _calculateEventId(Map<String, dynamic> event) {
-    final serialized = jsonEncode([
-      0,
-      event['pubkey'],
-      event['created_at'],
-      event['kind'],
-      event['tags'],
-      event['content'],
-    ]);
-
-    final hash = sha256.convert(utf8.encode(serialized));
-    return HEX.encode(hash.bytes);
   }
 }
