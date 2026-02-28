@@ -159,7 +159,7 @@ class NostrMarketService {
         'tags':[
           ['d', dTag],
           ['bon_id', bonId],
-          ['t', _normalizeMarketTag(marketName)],
+          ['t', NostrUtils.normalizeMarketTag(marketName)],
           ['market', marketName],['currency', 'ZEN'],
           ['value', value.toString()],
           ['issuer', issuerNpub],
@@ -176,7 +176,7 @@ class NostrMarketService {
       };
 
       // 4. Calculer l'ID et signer avec la clé de l'émetteur
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List issuerNsecBytes;
       try {
@@ -231,7 +231,7 @@ class NostrMarketService {
         'created_at': now.millisecondsSinceEpoch ~/ 1000,
         'tags':[
           ['d', 'zen-$bonId'],
-          ['t', _normalizeMarketTag(marketName)],
+          ['t', NostrUtils.normalizeMarketTag(marketName)],
           ['market', marketName],
           ['currency', 'ZEN'],
           ['value', value.toString()],
@@ -246,7 +246,7 @@ class NostrMarketService {
         'content': jsonEncode(profileData),
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       
       // Signer avec la clé de l'émetteur
@@ -318,7 +318,7 @@ class NostrMarketService {
       
       // Tags publics
       final tags = <List<String>>[
-        ['d', 'circuit_$bonId'],['t', _normalizeMarketTag(marketName)],
+        ['d', 'circuit_$bonId'],['t', NostrUtils.normalizeMarketTag(marketName)],
         ['market', marketName],
         ['issuer', issuerNpub],['value', valueZen.toString()],
         ['hops', hopCount.toString()],['age_days', ageDays.toString()],
@@ -337,7 +337,7 @@ class NostrMarketService {
         'content': encrypted['ciphertext']!,
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
       event['sig'] = signature;
@@ -375,7 +375,7 @@ class NostrMarketService {
     }
 
     final subscriptionId = 'zen-multi-${marketNames.length}-${DateTime.now().millisecondsSinceEpoch}';
-    final marketTags = marketNames.map((m) => _normalizeMarketTag(m)).toList();
+    final marketTags = marketNames.map((m) => NostrUtils.normalizeMarketTag(m)).toList();
     
     final filters = <String, dynamic>{
       'kinds': [1, 30303],
@@ -552,7 +552,7 @@ class NostrMarketService {
 
       if (event['kind'] != 30303) return;
 
-      final calculatedId = _calculateEventId(event);
+      final calculatedId = NostrUtils.calculateEventId(event);
       if (event['id'] != calculatedId) {
         Logger.error('NostrMarket', 'Event ID falsifié rejeté');
         return;

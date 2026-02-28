@@ -476,7 +476,7 @@ class NostrService {
         'content': '',
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       
       Uint8List nsecBytes;
@@ -712,7 +712,7 @@ class NostrService {
         'content': jsonEncode(profile.toJson()),
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List nsecBytes;
       try {
@@ -758,7 +758,7 @@ class NostrService {
             final event = message[2] as Map<String, dynamic>;
             
             // Vérifier cryptographiquement l'événement
-            final calculatedId = _calculateEventId(event);
+            final calculatedId = NostrUtils.calculateEventId(event);
             if (event['id'] == calculatedId && _cryptoService.verifySignature(calculatedId, event['sig'], event['pubkey'])) {
               transfers.add(event);
             } else {
@@ -850,7 +850,7 @@ class NostrService {
           ['p', receiverNpub],
           ['from_npub', senderNpub],
           ['t', 'troczen-transfer'],
-          ['t', _normalizeMarketTag(marketName)],
+          ['t', NostrUtils.normalizeMarketTag(marketName)],
           ['market', marketName],
           ['bon', bonId],
           ['value', value.toString()],
@@ -858,7 +858,7 @@ class NostrService {
         'content': humanReadableContent,
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
       event['sig'] = signature;
@@ -900,14 +900,14 @@ class NostrService {
         'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         'tags': [
           ['a', '30303:$bonId:zen-$bonId'],
-          ['t', _normalizeMarketTag(marketName)],
+          ['t', NostrUtils.normalizeMarketTag(marketName)],
           ['market', marketName],
           ['reason', reason],
         ],
         'content': 'BURN | $reason',
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       final signature = _cryptoService.signMessageBytes(eventId, nsecBonBytes);
       event['sig'] = signature;
@@ -1021,7 +1021,7 @@ class NostrService {
         'content': '',
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List nsecBytes;
       try {
@@ -1261,7 +1261,7 @@ class NostrService {
         'content': jsonEncode(relayList),
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List nsecBytes;
       try {

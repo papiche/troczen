@@ -128,7 +128,7 @@ class NostrWoTxService {
         'content': encrypted['ciphertext']!,
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List nsecBytes;
       try {
@@ -239,7 +239,7 @@ class NostrWoTxService {
         'content': encrypted['ciphertext']!,
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List nsecBytes;
       try {
@@ -384,7 +384,7 @@ class NostrWoTxService {
         'content': encrypted['ciphertext']!,
       };
 
-      final eventId = _calculateEventId(event);
+      final eventId = NostrUtils.calculateEventId(event);
       event['id'] = eventId;
       Uint8List myNsecBytes;
       try {
@@ -498,7 +498,7 @@ class NostrWoTxService {
         'content': isPositive ? '+' : '-',
       };
 
-      final id = _calculateEventId(event);
+      final id = NostrUtils.calculateEventId(event);
       event['id'] = id;
       Uint8List myNsecBytes;
       try {
@@ -545,7 +545,7 @@ class NostrWoTxService {
         'content': isPositive ? '+' : '-',
       };
 
-      final id = _calculateEventId(event);
+      final id = NostrUtils.calculateEventId(event);
       event['id'] = id;
       Uint8List myNsecBytes;
       try {
