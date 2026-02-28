@@ -286,43 +286,7 @@ class DuCalculationService {
       } catch (e) {
         Logger.warn('DuCalculationService', 'Erreur publication incrément DU: $e');
       }
-
-      // 9. Publier les données économiques sur le profil Nostr
-      try {
-        final availableDu = await _storageService.getAvailableDuToEmit();
-        final economicData = {
-          'cumulative_du': currentDu + duParams.duTotal,
-          'available_du': availableDu,
-          'daily_increment': duParams.duTotal,
-          'missed_days_caught_up': missedDays,
-          'n1_count': mutuals.length,
-          'n2_count': duParams.n2,
-          'last_update': DateTime.now().toIso8601String(),
-        };
-
-        // On récupère le profil actuel pour ne pas écraser les autres champs
-        final currentProfile = await _nostrService.fetchUserProfile(user.npub);
-        
-        await _nostrService.publishUserProfile(
-          npub: user.npub,
-          nsec: user.nsec,
-          name: currentProfile?.name ?? user.displayName,
-          displayName: currentProfile?.displayName ?? user.displayName,
-          about: currentProfile?.about,
-          picture: currentProfile?.picture,
-          banner: currentProfile?.banner,
-          website: currentProfile?.website,
-          g1pub: currentProfile?.g1pub ?? user.g1pub,
-          tags: currentProfile?.tags,
-          activity: currentProfile?.activity,
-          profession: currentProfile?.profession,
-          economicData: economicData,
-        );
-        Logger.success('DuCalculationService', 'Données économiques publiées sur le profil');
-      } catch (e) {
-        Logger.warn('DuCalculationService', 'Erreur publication données économiques: $e');
-      }
-
+      
       return true;
     } catch (e) {
       Logger.error('DuCalculationService', 'Erreur calcul DU', e);
