@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../models/market.dart';
 import 'crypto_service.dart';
 import 'storage_service.dart';
-import 'image_cache_service.dart';
 import 'logger_service.dart';
 import 'du_calculation_service.dart';
 import 'nostr_connection_service.dart';
@@ -19,7 +19,6 @@ class NostrMarketService {
   final NostrConnectionService _connection;
   final CryptoService _cryptoService;
   final StorageService _storageService;
-  final ImageCacheService _imageCache = ImageCacheService();
   
   Timer? _backgroundSyncTimer;
   bool _autoSyncEnabled = false;
@@ -407,7 +406,7 @@ class NostrMarketService {
     
     try {
       if (!_connection.isConnected) {
-        final connected = await _connection.connect(market.relayUrl ?? 'wss://relay.copylaradio.com');
+        final connected = await _connection.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
         if (!connected) {
           _isSyncing = false;
           return 0;
@@ -671,14 +670,8 @@ class NostrMarketService {
           final contentJson = jsonDecode(content);
           
           pictureUrl = contentJson['picture'] as String?;
-          if (pictureUrl != null && pictureUrl.isNotEmpty) {
-            _imageCache.getOrCacheImage(url: pictureUrl, npub: issuerNpub ?? '', type: 'logo');
-          }
           
           bannerUrl = contentJson['banner'] as String?;
-          if (bannerUrl != null && bannerUrl.isNotEmpty) {
-            _imageCache.getOrCacheImage(url: bannerUrl, npub: issuerNpub ?? '', type: 'banner');
-          }
           
           picture64 = contentJson['picture64'] as String?;
           banner64 = contentJson['banner64'] as String?;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../config/app_config.dart';
 import '../../models/user.dart';
 import '../../models/bon.dart';
 import '../../models/market.dart';
@@ -951,7 +952,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   Future<void> _reactToSkill(SkillCredential cred, String artisanNpub, bool isPositive) async {
     if (cred.eventId == null) return;
     
-    final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+    final relayUrl = widget.user.relayUrl ?? AppConfig.defaultRelayUrl;
     final nostrService = context.read<NostrService>();
     
     try {
@@ -1314,7 +1315,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       return;
     }
     
-    final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+    final relayUrl = widget.user.relayUrl ?? AppConfig.defaultRelayUrl;
     Logger.info('ExploreView', 'Chargement demandes pour compétences: ${widget.user.activityTags}');
     
     setState(() => _isLoadingRequests = true);
@@ -1345,7 +1346,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   Future<void> _attestUser(Map<String, dynamic> request) async {
     setState(() => _isAttesting = true);
     
-    final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+    final relayUrl = widget.user.relayUrl ?? AppConfig.defaultRelayUrl;
     Logger.info('ExploreView', 'Attestation pour ${request['pubkey']} - skill: ${request['skill']}');
     
     try {
@@ -1734,7 +1735,7 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
       // Publier la mise à jour sur Nostr (Kind 30303)
       final nostrService = context.read<NostrService>();
 
-      final relayUrl = widget.user.relayUrl ?? 'wss://relay.copylaradio.com';
+      final relayUrl = widget.user.relayUrl ?? AppConfig.defaultRelayUrl;
       
       if (await nostrService.connect(relayUrl)) {
         // Construire les métadonnées du profil

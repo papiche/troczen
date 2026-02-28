@@ -121,8 +121,6 @@ class StorageService {
   // ✅ WAL (Write-Ahead Log) - Protection contre double-dépense
   // Implémente un verrouillage atomique pour les transferts
   // ============================================================
-
-  /// ✅ WAL: Verrouille un bon pour un transfert en cours
   /// Cette opération DOIT être effectuée AVANT de générer l'offre
   /// Retourne le bon verrouillé ou null si le bon n'existe pas/déjà verrouillé
   Future<Bon?> lockBonForTransfer(

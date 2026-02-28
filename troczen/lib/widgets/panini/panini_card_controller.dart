@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../models/bon.dart';
-import '../../services/panini_card_cache_service.dart';
 
 /// État de la carte Panini
 class PaniniCardState {
-  final PaniniCacheResult cacheResult;
   final bool isPressed;
 
   const PaniniCardState({
-    this.cacheResult = const PaniniCacheResult(isChecking: true),
     this.isPressed = false,
   });
 
   PaniniCardState copyWith({
-    PaniniCacheResult? cacheResult,
     bool? isPressed,
   }) {
     return PaniniCardState(
-      cacheResult: cacheResult ?? this.cacheResult,
       isPressed: isPressed ?? this.isPressed,
     );
   }
@@ -42,36 +37,18 @@ class PaniniCardState {
 /// ```
 class PaniniCardController extends ChangeNotifier {
   final Bon bon;
-  final PaniniCardCacheService? cacheService;
   
   PaniniCardState _state = const PaniniCardState();
-  PaniniCardCacheService? _internalCacheService;
 
   PaniniCardController({
     required this.bon,
-    this.cacheService,
   });
 
   PaniniCardState get state => _state;
 
   /// Initialise le contrôleur (à appeler dans initState)
   void initialize() {
-    _internalCacheService = cacheService ?? PaniniCardCacheService();
-    _internalCacheService!.addListener(_onCacheChanged);
-    _updateCacheResult();
-  }
-
-  void _onCacheChanged() {
-    _updateCacheResult();
-  }
-
-  void _updateCacheResult() {
-    if (_internalCacheService != null) {
-      _state = _state.copyWith(
-        cacheResult: _internalCacheService!.getCacheResult(bon),
-      );
-      notifyListeners();
-    }
+    // Plus besoin de cache service
   }
 
   /// Gestion de la pression tactile (début)
@@ -94,17 +71,11 @@ class PaniniCardController extends ChangeNotifier {
 
   /// Rafraîchit le cache pour ce bon
   void refreshCache() {
-    _internalCacheService?.invalidateCache(bon.bonId);
-    _updateCacheResult();
+    // Plus besoin de cache service
   }
 
   @override
   void dispose() {
-    _internalCacheService?.removeListener(_onCacheChanged);
-    // Ne pas disposer le cache service s'il a été passé en paramètre
-    if (cacheService == null) {
-      _internalCacheService?.dispose();
-    }
     super.dispose();
   }
 }

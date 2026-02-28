@@ -20,16 +20,11 @@ import 'offline_first_image.dart';
 class BonCardBody extends StatelessWidget {
   final Bon bon;
   final Color color;
-  /// Chemin local de l'image mise en cache (picture selon NIP nostr)
-  final String? localPicturePath;
-  final bool isCheckingCache;
 
   const BonCardBody({
     super.key,
     required this.bon,
     required this.color,
-    this.localPicturePath,
-    this.isCheckingCache = false,
   });
 
   @override
@@ -70,16 +65,11 @@ class BonCardBody extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: OfflineFirstImage(
-                    url: pictureUrl,
-                    localPath: localPicturePath,
-                    fallbackBase64: bon.picture64,
+                    networkUrl: pictureUrl,
+                    base64Data: bon.picture64,
                     width: 64,
                     height: 64,
-                    color: color,
-                    rarity: rarity,
-                    isPending: isPending,
                     fit: BoxFit.cover,
-                    isChecking: isCheckingCache,
                   ),
                 ),
               )
@@ -179,16 +169,11 @@ class _TransferCountBadge extends StatelessWidget {
 class BonCardBodyWithTransfers extends StatelessWidget {
   final Bon bon;
   final Color color;
-  /// Chemin local de l'image mise en cache (picture selon NIP nostr)
-  final String? localPicturePath;
-  final bool isCheckingCache;
 
   const BonCardBodyWithTransfers({
     super.key,
     required this.bon,
     required this.color,
-    this.localPicturePath,
-    this.isCheckingCache = false,
   });
 
   @override
@@ -228,16 +213,11 @@ class BonCardBodyWithTransfers extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: OfflineFirstImage(
-                    url: pictureUrl,
-                    localPath: localPicturePath,
-                    fallbackBase64: bon.picture64,
+                    networkUrl: pictureUrl,
+                    base64Data: bon.picture64,
                     width: 64,
                     height: 64,
-                    color: color,
-                    rarity: rarity,
-                    isPending: isPending,
                     fit: BoxFit.cover,
-                    isChecking: isCheckingCache,
                   ),
                 ),
               )

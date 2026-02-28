@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
+import '../config/app_config.dart';
 import '../models/market.dart';
 import '../models/nostr_profile.dart';
 import 'crypto_service.dart';
 import 'storage_service.dart';
-import 'image_cache_service.dart';
 import 'logger_service.dart';
 import 'du_calculation_service.dart';
 import 'nostr_connection_service.dart';
@@ -34,8 +34,6 @@ class NostrService {
   late final NostrMarketService _market;
   late final NostrWoTxService _wotx;
   
-  // Garder pour compatibilité
-  final ImageCacheService _imageCache = ImageCacheService();
   
   // Callbacks (redirigés vers les sous-services)
   Function(String bonId, String p3Hex)? onP3Received;
@@ -245,7 +243,7 @@ class NostrService {
   
   Future<int> syncMarketsP3s(List<Market> markets) async {
     // Utiliser le relay du premier marché
-    final relayUrl = markets.first.relayUrl ?? 'wss://relay.copylaradio.com';
+    final relayUrl = markets.first.relayUrl ?? AppConfig.defaultRelayUrl;
     
     if (!_connection.isConnected) {
       final connected = await _connection.connect(relayUrl);
@@ -1346,25 +1344,8 @@ class NostrService {
       
       if (npub == null || content == null) return;
       
-      final contentJson = jsonDecode(content);
-      final picture = contentJson['picture'] as String?;
-      final banner = contentJson['banner'] as String?;
-
-      if (picture != null && picture.isNotEmpty) {
-        _imageCache.getOrCacheImage(
-          url: picture,
-          npub: npub,
-          type: 'avatar'
-        );
-      }
-      
-      if (banner != null && banner.isNotEmpty) {
-        _imageCache.getOrCacheImage(
-          url: banner,
-          npub: npub,
-          type: 'banner'
-        );
-      }
+      // Les images sont maintenant gérées par OfflineFirstImage
+      // et cached_network_image
     } catch (e) {
       Logger.error('NostrService', 'Erreur traitement metadata', e);
     }

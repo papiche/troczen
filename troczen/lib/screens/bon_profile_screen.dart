@@ -73,16 +73,14 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
 
   File? _selectedImageFile;
   String? _base64Banner;
-  String? _base64Logo;
   File? _selectedBannerFile;
-  File? _selectedLogoFile;
 
   Future<void> _selectImage(bool isBanner) async {
     final imageService = ImageCompressionService();
     setState(() => _isUploading = true);
     
     try {
-      final result = isBanner 
+      final result = isBanner
           ? await imageService.pickBannerWithOriginal()
           : await imageService.pickAvatarWithOriginal();
           
@@ -92,8 +90,8 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             _base64Banner = result.base64DataUri;
             _selectedBannerFile = File(result.originalPath);
           } else {
-            _base64Logo = result.base64DataUri;
-            _selectedLogoFile = File(result.originalPath);
+            _base64Image = result.base64DataUri;
+            _selectedImageFile = File(result.originalPath);
           }
         });
       }
@@ -148,15 +146,8 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             if (res != null) ipfsBannerUrl = res['ipfs_url'] ?? res['url'];
           }
 
-          String? ipfsLogoUrl;
-          if (_selectedLogoFile != null) {
-            final res = await _apiService.uploadImage(npub: widget.bon.bonId, imageFile: _selectedLogoFile!, type: 'logo');
-            if (res != null) ipfsLogoUrl = res['ipfs_url'] ?? res['url'];
-          }
-
+          String? finalLogoUrl = ipfsUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
           String? finalBannerUrl = ipfsBannerUrl ?? (widget.bon.banner != null && !widget.bon.banner!.startsWith('data:') ? widget.bon.banner : null);
-          String? finalLogoUrl = ipfsLogoUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
-
 
           final nostrService = context.read<NostrService>();
           try {
@@ -174,8 +165,8 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               about: _descriptionController.text,
               picture: finalLogoUrl,     // ✅ Avatar/Logo du bon
               banner: finalBannerUrl,    // ✅ Bannière du bon
-              picture64: _base64Logo ?? widget.bon.picture64,
-              banner64: _base64Banner ?? widget.bon.banner64,
+              picture64: _base64Image ?? widget.bon.picture64,
+              banner64: _base64Image ?? widget.bon.banner64,
               website: widget.user.website, // ✅ Reprend le site web de l'utilisateur
             );
             
@@ -369,10 +360,53 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // Image
-              _buildSectionTitle('Image du Bon'),
+              // Image Logo (Avatar)
+              _buildSectionTitle('Logo du Bon (Avatar)'),
               GestureDetector(
-                onTap: _isUploading ? null : _selectImage,
+                onTap: _isUploading ? null : () => _selectImage(false),
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A2A),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[700]!),
+                  ),
+                  child: _base64Image != null || widget.bon.picture != null
+                      ? ClipOval(
+                          child: ImageCompressionService.buildImage(
+                            uri: _base64Image ?? widget.bon.picture,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isUploading)
+                                const CircularProgressIndicator()
+                              else ...[
+                                Icon(Icons.add_photo_alternate, size: 32, color: Colors.grey[600]),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Logo',
+                                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Image Bannière (Fond)
+              _buildSectionTitle('Bannière du Bon (Fond)'),
+              GestureDetector(
+                onTap: _isUploading ? null : () => _selectImage(true),
                 child: Container(
                   height: 150,
                   decoration: BoxDecoration(
@@ -380,11 +414,11 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[700]!),
                   ),
-                  child: _base64Image != null || widget.bon.picture != null
+                  child: _base64Banner != null || widget.bon.banner != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: ImageCompressionService.buildImage(
-                            uri: _base64Image ?? widget.bon.picture,
+                            uri: _base64Banner ?? widget.bon.banner,
                             width: double.infinity,
                             height: 150,
                             fit: BoxFit.cover,
@@ -397,10 +431,10 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
                               if (_isUploading)
                                 const CircularProgressIndicator()
                               else ...[
-                                Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey[600]),
+                                Icon(Icons.wallpaper, size: 48, color: Colors.grey[600]),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Ajouter une photo',
+                                  'Ajouter une bannière',
                                   style: TextStyle(color: Colors.grey[500]),
                                 ),
                                 Text(
@@ -465,45 +499,45 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
     );
   }
 Widget _buildPreviewCard() {
-    // Vérifie si une image est disponible (nouvelle sélection, base64 généré, ou déjà existante sur le bon)
-    final hasImage = _selectedImageFile != null || 
-                      _base64Image != null || 
-                      widget.bon.banner != null || 
-                      widget.bon.banner64 != null;
+  // Vérifie si une bannière est disponible
+  final hasBanner = _selectedBannerFile != null ||
+                    _base64Banner != null ||
+                    widget.bon.banner != null ||
+                    widget.bon.banner64 != null;
 
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFB347), width: 3),
-        boxShadow:[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      // ClipRRect évite que l'image de fond ne déborde sur les bords arrondis
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13), 
-        child: Stack(
-          fit: StackFit.expand,
-          children:[
-            // 1. L'image de fond (Bannière)
-            if (hasImage)
-              Opacity(
-                opacity: 0.4, // Opacité réduite pour garder le texte lisible
-                child: _selectedImageFile != null
-                    // Si on vient de sélectionner un fichier local
-                    ? Image.file(_selectedImageFile!, fit: BoxFit.cover)
-                    // Sinon on utilise l'image en base64 ou l'URL existante
-                    : ImageCompressionService.buildImage(
-                        uri: _base64Image ?? widget.bon.banner,
-                        fallbackUri: widget.bon.banner64,
-                        fit: BoxFit.cover,
-                      ),
-              ),
+  return Container(
+    height: 200,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFFFB347), width: 3),
+      boxShadow:[
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.1),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    // ClipRRect évite que l'image de fond ne déborde sur les bords arrondis
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: Stack(
+        fit: StackFit.expand,
+        children:[
+          // 1. L'image de fond (Bannière)
+          if (hasBanner)
+            Opacity(
+              opacity: 0.4, // Opacité réduite pour garder le texte lisible
+              child: _selectedBannerFile != null
+                  // Si on vient de sélectionner un fichier local
+                  ? Image.file(_selectedBannerFile!, fit: BoxFit.cover)
+                  // Sinon on utilise l'image en base64 ou l'URL existante
+                  : ImageCompressionService.buildImage(
+                      uri: _base64Banner ?? widget.bon.banner,
+                      fallbackUri: widget.bon.banner64,
+                      fit: BoxFit.cover,
+                    ),
+            ),
 
             // 2. Le dégradé par-dessus
             Container(
@@ -511,8 +545,8 @@ Widget _buildPreviewCard() {
                 gradient: LinearGradient(
                   colors:[
                     // Plus transparent si on a une image en dessous
-                    Colors.white.withValues(alpha: hasImage ? 0.8 : 1.0),
-                    const Color(0xFFFFF8E7).withValues(alpha: hasImage ? 0.8 : 1.0),
+                    Colors.white.withValues(alpha: hasBanner ? 0.8 : 1.0),
+                    const Color(0xFFFFF8E7).withValues(alpha: hasBanner ? 0.8 : 1.0),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -567,11 +601,27 @@ Widget _buildPreviewCard() {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children:[
-                          Icon(
-                            _categories[_selectedCategory]!['icon'] as IconData,
-                            size: 48,
-                            color: const Color(0xFFFFB347),
-                          ),
+                          if (_base64Image != null || widget.bon.picture != null)
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: ClipOval(
+                                child: ImageCompressionService.buildImage(
+                                  uri: _base64Image ?? widget.bon.picture,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                          else
+                            Icon(
+                              _categories[_selectedCategory]!['icon'] as IconData,
+                              size: 48,
+                              color: const Color(0xFFFFB347),
+                            ),
                           const SizedBox(height: 8),
                           Text(
                             _titleController.text.isEmpty 

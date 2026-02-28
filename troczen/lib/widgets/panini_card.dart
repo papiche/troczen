@@ -20,11 +20,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../models/bon.dart';
-import '../services/panini_card_cache_service.dart';
 import '../utils/bon_extensions.dart';
-import 'panini/holographic_effect.dart';
-import 'panini/panini_card_controller.dart';
-import 'panini/offline_first_image.dart';
+import 'panini/panini.dart';
 
 /// Carte Panini pour l'affichage des bons ẐEN.
 /// 
@@ -48,7 +45,6 @@ class PaniniCard extends StatefulWidget {
   final VoidCallback? onLongPress;
   final bool showActions;
   final Widget? statusChip;
-  final PaniniCardCacheService? cacheService;
 
   const PaniniCard({
     super.key,
@@ -57,7 +53,6 @@ class PaniniCard extends StatefulWidget {
     this.onLongPress,
     this.showActions = true,
     this.statusChip,
-    this.cacheService,
   });
 
   @override
@@ -123,7 +118,6 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
   void _initController() {
     _controller = PaniniCardController(
       bon: widget.bon,
-      cacheService: widget.cacheService,
     )..initialize();
   }
 
@@ -240,7 +234,7 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
                               alignment: Alignment.center,
                               child: _buildVerso(color),
                             )
-                          : _buildRecto(color, state.cacheResult.localPicturePath, state.cacheResult.isChecking),
+                          : _buildRecto(color),
 
                       // Status chip externe (optionnel)
                       if (widget.statusChip != null && !isBackVisible)
@@ -287,71 +281,18 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
     );
   }
 
-  /// Recto : Ultra épuré (Logo, Nom, Valeur)
-  Widget _buildRecto(Color color, String? localPicturePath, bool isCheckingCache) {
-    final pictureUrl = widget.bon.picture ?? widget.bon.logoUrl;
-    
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Valeur en gros
-          Text(
-            '${widget.bon.value.toStringAsFixed(0)} ẐEN',
-            style: const TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              color: Colors.black87,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Logo
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: OfflineFirstImage(
-                url: pictureUrl,
-                localPath: localPicturePath,
-                fallbackBase64: widget.bon.picture64,
-                width: 80,
-                height: 80,
-                color: color,
-                rarity: widget.bon.rarity,
-                isPending: widget.bon.status == BonStatus.pending,
-                fit: BoxFit.cover,
-                isChecking: isCheckingCache,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Nom du commerçant
-          Text(
-            widget.bon.issuerName,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+  /// Recto : Utilise les sous-composants (Header, Body, Footer)
+  Widget _buildRecto(Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        BonCardHeader(bon: widget.bon, color: color),
+        BonCardBody(
+          bon: widget.bon,
+          color: color,
+        ),
+        BonCardFooter(bon: widget.bon),
+      ],
     );
   }
 
@@ -479,14 +420,10 @@ Widget _buildCardBackground(Color color, String rarity) {
           Opacity(
             opacity: 0.5, // 50% d'opacité pour que le texte par dessus reste bien lisible
             child: OfflineFirstImage(
-              url: widget.bon.banner,
-              localPath: null, // Géré automatiquement par le cache si URL fournie
-              fallbackBase64: widget.bon.banner64,
+              networkUrl: widget.bon.banner,
+              base64Data: widget.bon.banner64,
               width: double.infinity,
               height: double.infinity,
-              color: color,
-              rarity: rarity,
-              isPending: false,
               fit: BoxFit.cover, // Important : remplit tout le fond
             ),
           ),
