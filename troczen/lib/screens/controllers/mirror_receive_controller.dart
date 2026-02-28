@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hex/hex.dart';
@@ -196,6 +197,30 @@ class MirrorReceiveController extends ChangeNotifier {
       
       if (bonP2Bytes == null || bonP3Bytes == null) throw Exception('Erreur parts P2/P3');
       
+      // 1. Reconstruire le hash du message tel qu'Alice l'a signé
+      final bonIdBytes = Uint8List.fromList(HEX.decode(payload.bonId));
+      final timestampBytes = ByteData(4)..setUint32(0, payload.emittedAt.millisecondsSinceEpoch ~/ 1000, Endian.big);
+
+      final messageBytes = Uint8List.fromList([
+        ...bonIdBytes,
+        ...payload.encryptedP2,
+        ...payload.p2Nonce,
+        ...payload.challenge,
+        ...timestampBytes.buffer.asUint8List(),
+      ]);
+
+      final messageHash = Uint8List.fromList(sha256.convert(messageBytes).bytes);
+
+      // 2. Vérifier la signature avec la clé publique du Bon (bonId)
+      final isValid = _cryptoService.verifySignatureBytesDirect(
+        messageHash,
+        payload.signature,
+        bonIdBytes,
+      );
+
+      if (!isValid) throw Exception('Signature de l\'offre invalide (QR potentiellement falsifié)');
+
+
       final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, bonP2Bytes, bonP3Bytes);
       
       final challengeHash = sha256.convert(payload.challenge).bytes;
