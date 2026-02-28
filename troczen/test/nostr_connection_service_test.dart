@@ -20,12 +20,11 @@ void main() {
       expect(service.isAppInBackground, isFalse);
     });
 
-    test('Callbacks null-safe', () {
-      // Ne doit pas planter même si les callbacks ne sont pas assignés
-      // Les callbacks sont maintenant gérés via des listes de listeners
-      expect(() => service.addConnectionChangeListener((_) {}), returnsNormally);
-      expect(() => service.addErrorListener((_) {}), returnsNormally);
-      expect(() => service.addMessageListener((_) {}), returnsNormally);
+    test('Streams null-safe', () {
+      // Ne doit pas planter même si les streams ne sont pas écoutés
+      expect(() => service.onConnectionChange.listen((_) {}), returnsNormally);
+      expect(() => service.onError.listen((_) {}), returnsNormally);
+      expect(() => service.onMessage.listen((_) {}), returnsNormally);
     });
 
     test('onAppPaused met à jour le flag', () {

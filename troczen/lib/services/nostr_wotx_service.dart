@@ -176,12 +176,15 @@ class NostrWoTxService {
 
       _connection.sendMessage(jsonEncode(['REQ', subId, {'kinds': [NostrConstants.kindSkillPermit]}]));
       
-      Timer(const Duration(seconds: 4), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subId);
         if (!completer.isCompleted) completer.complete(skills.toList()..sort());
       });
       
-      return await completer.future;
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrWoTx', 'Erreur fetchSkillDefinitions', e);
       return [];
@@ -316,12 +319,15 @@ class NostrWoTxService {
         }
       ]));
       
-      Timer(const Duration(seconds: 5), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subId);
         if (!completer.isCompleted) completer.complete(requests);
       });
       
-      return await completer.future;
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrWoTx', 'Erreur fetchPendingSkillRequests', e);
       return [];
@@ -445,13 +451,16 @@ class NostrWoTxService {
           'limit': 100,
         }
       ]));
-      
-      Timer(const Duration(seconds: 4), () {
+
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subId);
         if (!completer.isCompleted) completer.complete(attestations);
       });
-      
-      return await completer.future;
+
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrWoTx', 'Erreur fetchMyAttestations', e);
       return [];

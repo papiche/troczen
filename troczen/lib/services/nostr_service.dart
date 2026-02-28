@@ -43,9 +43,10 @@ class NostrService {
   Function(bool connected)? onConnectionChange;
   Function(List<String> tags)? onTagsReceived;
 
-  // Références aux listeners pour pouvoir les retirer
-  late final Function(bool) _connListener;
-  late final Function(String) _errListener;
+  // Abonnements aux streams
+  StreamSubscription<bool>? _connSub;
+  StreamSubscription<String>? _errSub;
+  StreamSubscription<dynamic>? _msgSub;
   
   NostrService({
     required CryptoService cryptoService,
@@ -67,18 +68,16 @@ class NostrService {
       cryptoService: _cryptoService,
     );
     
-    // Rediriger les callbacks
-    _connListener = (connected) {
+    // Rediriger les callbacks via les streams
+    _connSub = _connection.onConnectionChange.listen((connected) {
       onConnectionChange?.call(connected);
-    };
-    _connection.addConnectionChangeListener(_connListener);
+    });
     
-    _errListener = (error) {
+    _errSub = _connection.onError.listen((error) {
       onError?.call(error);
-    };
-    _connection.addErrorListener(_errListener);
+    });
     
-    _connection.addMessageListener(_handleMessage);
+    _msgSub = _connection.onMessage.listen(_handleMessage);
     
     _market.onP3Received = (bonId, p3Hex) {
       onP3Received?.call(bonId, p3Hex);
@@ -127,9 +126,9 @@ class NostrService {
   }
   
   void dispose() {
-    _connection.removeConnectionChangeListener(_connListener);
-    _connection.removeErrorListener(_errListener);
-    _connection.removeMessageListener(_handleMessage);
+    _connSub?.cancel();
+    _errSub?.cancel();
+    _msgSub?.cancel();
     _market.dispose();
   }
   
@@ -334,7 +333,9 @@ class NostrService {
       finishSync();
     });
 
-    return await completer.future;
+    final result = await completer.future;
+    fallbackTimer?.cancel();
+    return result;
   }
   
   void enableAutoSync({Duration? interval, Market? initialMarket}) =>
@@ -621,7 +622,8 @@ class NostrService {
     final request = jsonEncode(['REQ', subscriptionId, filter]);
     _connection.sendMessage(request);
 
-    Timer(const Duration(seconds: 5), () {
+    Timer? fallbackTimer;
+    fallbackTimer = Timer(const Duration(seconds: 10), () {
       _connection.removeHandler(subscriptionId);
       if (!completer.isCompleted) {
         _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
@@ -629,7 +631,9 @@ class NostrService {
       }
     });
 
-    return await completer.future;
+    final result = await completer.future;
+    fallbackTimer.cancel();
+    return result;
   }
 
   // ============================================================
@@ -784,7 +788,8 @@ class NostrService {
       
       _connection.sendMessage(request);
       
-      Timer(const Duration(seconds: 5), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
           _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
@@ -792,7 +797,9 @@ class NostrService {
         }
       });
       
-      return await completer.future;
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération transferts', e);
       return [];
@@ -971,7 +978,8 @@ class NostrService {
       
       _connection.sendMessage(request);
       
-      Timer(const Duration(seconds: 5), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
           _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
@@ -979,7 +987,9 @@ class NostrService {
         }
       });
       
-      return await completer.future;
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération profil', e);
       return null;
@@ -1069,7 +1079,8 @@ class NostrService {
       
       _connection.sendMessage(request);
       
-      Timer(const Duration(seconds: 5), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
           _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
@@ -1077,7 +1088,9 @@ class NostrService {
         }
       });
       
-      return await completer.future;
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération followers', e);
       return [];
@@ -1132,7 +1145,8 @@ class NostrService {
       
       _connection.sendMessage(request);
       
-      Timer(const Duration(seconds: 5), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
           _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
@@ -1140,7 +1154,9 @@ class NostrService {
         }
       });
       
-      return await completer.future;
+      final finalResult = await completer.future;
+      fallbackTimer.cancel();
+      return finalResult;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération multi contacts', e);
       return {};
@@ -1194,7 +1210,8 @@ class NostrService {
       
       _connection.sendMessage(request);
       
-      Timer(const Duration(seconds: 5), () {
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
         _connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
           _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
@@ -1202,7 +1219,9 @@ class NostrService {
         }
       });
       
-      return await completer.future;
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      return result;
     } catch (e) {
       Logger.error('NostrService', 'Erreur récupération contacts', e);
       return [];

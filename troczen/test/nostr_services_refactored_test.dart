@@ -31,11 +31,11 @@ void main() {
       expect(service.isAppInBackground, isFalse);
     });
 
-    test('Callbacks null-safe', () {
-      // Les callbacks sont maintenant gérés via des listes de listeners
-      expect(() => service.addConnectionChangeListener((_) {}), returnsNormally);
-      expect(() => service.addErrorListener((_) {}), returnsNormally);
-      expect(() => service.addMessageListener((_) {}), returnsNormally);
+    test('Streams null-safe', () {
+      // Les callbacks sont maintenant gérés via des streams
+      expect(() => service.onConnectionChange.listen((_) {}), returnsNormally);
+      expect(() => service.onError.listen((_) {}), returnsNormally);
+      expect(() => service.onMessage.listen((_) {}), returnsNormally);
     });
 
     test('Cycle de vie application', () {

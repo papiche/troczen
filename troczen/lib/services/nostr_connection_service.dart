@@ -37,40 +37,14 @@ class NostrConnectionService {
   // Attente des acquittements (OK)
   final Map<String, Completer<bool>> _publishCompleters = {};
   
-  // Callbacks (support multiple listeners for singleton)
-  final List<Function(bool connected)> _onConnectionChangeListeners = [];
-  final List<Function(String error)> _onErrorListeners = [];
-  final List<Function(dynamic message)> _onMessageListeners = [];
+  // Streams pour remplacer les listes de callbacks manuelles (évite les fuites de mémoire)
+  final _connectionChangeController = StreamController<bool>.broadcast();
+  final _errorController = StreamController<String>.broadcast();
+  final _messageController = StreamController<dynamic>.broadcast();
   
-  void addConnectionChangeListener(Function(bool) listener) {
-    if (!_onConnectionChangeListeners.contains(listener)) {
-      _onConnectionChangeListeners.add(listener);
-    }
-  }
-  
-  void removeConnectionChangeListener(Function(bool) listener) {
-    _onConnectionChangeListeners.remove(listener);
-  }
-  
-  void addErrorListener(Function(String) listener) {
-    if (!_onErrorListeners.contains(listener)) {
-      _onErrorListeners.add(listener);
-    }
-  }
-  
-  void removeErrorListener(Function(String) listener) {
-    _onErrorListeners.remove(listener);
-  }
-  
-  void addMessageListener(Function(dynamic) listener) {
-    if (!_onMessageListeners.contains(listener)) {
-      _onMessageListeners.add(listener);
-    }
-  }
-  
-  void removeMessageListener(Function(dynamic) listener) {
-    _onMessageListeners.remove(listener);
-  }
+  Stream<bool> get onConnectionChange => _connectionChangeController.stream;
+  Stream<String> get onError => _errorController.stream;
+  Stream<dynamic> get onMessage => _messageController.stream;
   
   // Getters publics
   bool get isConnected => _isConnected;
@@ -108,19 +82,13 @@ class NostrConnectionService {
         _handleMessage,
         onError: (error) {
           _isConnected = false;
-          for (var listener in _onErrorListeners) {
-            listener('Erreur WebSocket: $error');
-          }
-          for (var listener in _onConnectionChangeListeners) {
-            listener(false);
-          }
+          _errorController.add('Erreur WebSocket: $error');
+          _connectionChangeController.add(false);
           _scheduleReconnect();
         },
         onDone: () {
           _isConnected = false;
-          for (var listener in _onConnectionChangeListeners) {
-            listener(false);
-          }
+          _connectionChangeController.add(false);
           if (!_isAppInBackground) {
             _scheduleReconnect();
           }
@@ -130,20 +98,14 @@ class NostrConnectionService {
       _isConnected = true;
       _isConnecting = false;
       _reconnectAttempts = 0;
-      for (var listener in _onConnectionChangeListeners) {
-        listener(true);
-      }
+      _connectionChangeController.add(true);
       Logger.log('NostrConnection', 'Connecté à $relayUrl');
       return true;
     } catch (e) {
       _isConnected = false;
       _isConnecting = false;
-      for (var listener in _onErrorListeners) {
-        listener('Connexion impossible: $e');
-      }
-      for (var listener in _onConnectionChangeListeners) {
-        listener(false);
-      }
+      _errorController.add('Connexion impossible: $e');
+      _connectionChangeController.add(false);
       _scheduleReconnect();
       return false;
     }
@@ -168,8 +130,8 @@ class NostrConnectionService {
     _channel = null;
     _isConnected = false;
     _currentRelayUrl = null;
-    for (var listener in _onConnectionChangeListeners) {
-      listener(false);
+    if (!_connectionChangeController.isClosed) {
+      _connectionChangeController.add(false);
     }
     Logger.log('NostrConnection', 'Déconnecté (forcé)');
   }
@@ -223,9 +185,7 @@ class NostrConnectionService {
       }
       
       // Notifier les callbacks globaux
-      for (var listener in _onMessageListeners) {
-        listener(message);
-      }
+      _messageController.add(message);
       
       // Gestion spéciale des messages système
       switch (messageType) {
@@ -240,22 +200,16 @@ class NostrConnectionService {
           
           if (!success) {
             final errorMsg = message.length > 3 ? message[3] : 'Erreur inconnue';
-            for (var listener in _onErrorListeners) {
-              listener('Event $eventId rejeté: $errorMsg');
-            }
+            _errorController.add('Event $eventId rejeté: $errorMsg');
           }
           break;
         case 'NOTICE':
           final notice = message[1];
-          for (var listener in _onErrorListeners) {
-            listener('Notice: $notice');
-          }
+          _errorController.add('Notice: $notice');
           break;
       }
     } catch (e) {
-      for (var listener in _onErrorListeners) {
-        listener('Erreur parsing message: $e');
-      }
+      _errorController.add('Erreur parsing message: $e');
     }
   }
   
@@ -299,6 +253,9 @@ class NostrConnectionService {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     forceDisconnect();
+    _connectionChangeController.close();
+    _errorController.close();
+    _messageController.close();
   }
   
   // ============================================================
@@ -310,9 +267,7 @@ class NostrConnectionService {
     // Ne pas reconnecter si en arrière-plan ou max tentatives atteint
     if (_isAppInBackground || _reconnectAttempts >= _maxReconnectAttempts) {
       if (_reconnectAttempts >= _maxReconnectAttempts) {
-        for (var listener in _onErrorListeners) {
-          listener('Max tentatives de reconnexion atteint');
-        }
+        _errorController.add('Max tentatives de reconnexion atteint');
       }
       return;
     }
