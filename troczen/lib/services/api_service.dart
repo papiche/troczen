@@ -12,34 +12,28 @@ class ApiService {
   String _currentRelayUrl = AppConfig.defaultRelayUrl;
   bool _isLocal = false;
 
-  /// Détecte automatiquement si connecté à une borne locale
-  Future<bool> detectLocalNetwork() async {
-    // Tester chaque URL locale
-    for (final url in AppConfig.localHosts) {
-      try {
-        final response = await http.get(
-          Uri.parse('$url/health'),
-        ).timeout(AppConfig.localDetectionTimeout);
+/// Détecte automatiquement si connecté à une borne locale
+Future<bool> detectLocalNetwork() async {
+  // Lancer toutes les requêtes en même temps
+  final futures = AppConfig.localHosts.map((url) async {
+    final response = await http.get(Uri.parse('$url/health')).timeout(AppConfig.localDetectionTimeout);
+    if (response.statusCode == 200) return url;
+    throw Exception('Not local');
+  });
 
-        if (response.statusCode == 200) {
-          // Borne locale détectée !
-          _currentApiUrl = url;
-          _isLocal = true;
-          
-          // Extraire l'IP/host pour le relay WebSocket
-          final host = Uri.parse(url).host;
-          _currentRelayUrl = 'ws://$host:7777';  // Port relay local
-
-          Logger.success('ApiService', 'Borne locale détectée: $_currentApiUrl');
-          return true;
-        }
-      } catch (e) {
-        // Timeout ou erreur - pas cette URL
-        continue;
-      }
-    }
-
-    // Aucune borne locale - utiliser l'API publique
+  try {
+    // Dès qu'une IP répond, on la prend ! (Future.any)
+    final successfulUrl = await Future.any(futures);
+    
+    _currentApiUrl = successfulUrl;
+    _isLocal = true;
+    final host = Uri.parse(successfulUrl).host;
+    _currentRelayUrl = 'ws://$host:7777';
+    
+    Logger.success('ApiService', 'Borne locale détectée: $_currentApiUrl');
+    return true;
+  } catch (e) {
+    // Si toutes échouent (le cas 99% du temps hors marché)
     _currentApiUrl = AppConfig.defaultApiUrl;
     _currentRelayUrl = AppConfig.defaultRelayUrl;
     _isLocal = false;
@@ -47,6 +41,7 @@ class ApiService {
     Logger.info('ApiService', 'Utilisation API publique: $_currentApiUrl');
     return false;
   }
+}
 
   /// Vérifie le statut de l'upload IPFS pour un fichier
   ///

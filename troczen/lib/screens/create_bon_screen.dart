@@ -12,6 +12,7 @@ import '../services/nostr_service.dart';
 import '../services/api_service.dart';
 import '../services/du_calculation_service.dart';
 import '../services/image_compression_service.dart';
+import '../config/app_config.dart';
 import 'package:provider/provider.dart';
 
 class CreateBonScreen extends StatefulWidget {

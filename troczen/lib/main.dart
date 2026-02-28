@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'config/app_config.dart';
 import 'models/user.dart';
-import 'models/nostr_profile.dart';
 import 'models/bon.dart';
 import 'services/crypto_service.dart';
 import 'services/storage_service.dart';

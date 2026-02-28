@@ -240,14 +240,14 @@ class MirrorReceiveController extends ChangeNotifier {
       _cryptoService.secureZeroiseBytes(p2Bytes);
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
-      Uint8List bonIdBytes;
+      Uint8List ackBonIdBytes;
       try {
-        bonIdBytes = Uint8List.fromList(HEX.decode(updatedBon.bonId));
+        ackBonIdBytes = Uint8List.fromList(HEX.decode(updatedBon.bonId));
       } catch (e) {
         throw Exception('ID de bon invalide (non hexadécimal)');
       }
       final ackBytes = _qrService.encodeAckBytes(
-        bonId: bonIdBytes,
+        bonId: ackBonIdBytes,
         signature: signatureBytes,
       );
 
