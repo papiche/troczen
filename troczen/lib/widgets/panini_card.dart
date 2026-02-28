@@ -18,6 +18,7 @@ library;
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../models/bon.dart';
 import '../services/panini_card_cache_service.dart';
 import '../utils/bon_extensions.dart';
@@ -89,7 +90,7 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
       _shimmerController = AnimationController(
         vsync: this,
         duration: const Duration(seconds: 3),
-      )..repeat();
+      );
     } else {
       _shimmerController = AnimationController(vsync: this);
     }
@@ -181,13 +182,28 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
     final isRare = widget.bon.isRare;
     final rarity = widget.bon.rarity ?? 'common';
 
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      onLongPress: widget.onLongPress,
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_scaleAnimation, _flipAnimation, _shimmerController, _controller]),
+    return VisibilityDetector(
+      key: Key('panini-card-${widget.bon.bonId}'),
+      onVisibilityChanged: (info) {
+        if (widget.bon.isRare) {
+          if (info.visibleFraction > 0) {
+            if (!_shimmerController.isAnimating) {
+              _shimmerController.repeat();
+            }
+          } else {
+            if (_shimmerController.isAnimating) {
+              _shimmerController.stop();
+            }
+          }
+        }
+      },
+      child: GestureDetector(
+        onTapDown: _handleTapDown,
+        onTapUp: _handleTapUp,
+        onTapCancel: _handleTapCancel,
+        onLongPress: widget.onLongPress,
+        child: AnimatedBuilder(
+        animation: Listenable.merge([_scaleAnimation, _flipAnimation, _controller]),
         builder: (context, child) {
           final state = _controller.state;
           
@@ -266,6 +282,7 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
             ),
           );
         },
+      ),
       ),
     );
   }

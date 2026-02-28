@@ -68,6 +68,7 @@ dependencies:
   graphview: ^1.5.1
   rxdart: ^0.27.7
   archive: ^4.0.9
+  visibility_detector: ^0.4.0+2
   
 dev_dependencies:
   flutter_test:
