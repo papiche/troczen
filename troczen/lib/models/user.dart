@@ -31,6 +31,39 @@ class User {
     this.activityTags,
   });
 
+// Ajoutez cette méthode
+  User copyWith({
+    String? npub,
+    String? nsec,
+    String? displayName,
+    DateTime? createdAt,
+    String? website,
+    String? g1pub,
+    String? about,
+    String? picture,
+    String? banner,
+    String? picture64,
+    String? banner64,
+    String? relayUrl,
+    List<String>? activityTags,
+  }) {
+    return User(
+      npub: npub ?? this.npub,
+      nsec: nsec ?? this.nsec,
+      displayName: displayName ?? this.displayName,
+      createdAt: createdAt ?? this.createdAt,
+      website: website ?? this.website,
+      g1pub: g1pub ?? this.g1pub,
+      about: about ?? this.about,
+      picture: picture ?? this.picture,
+      banner: banner ?? this.banner,
+      picture64: picture64 ?? this.picture64,
+      banner64: banner64 ?? this.banner64,
+      relayUrl: relayUrl ?? this.relayUrl,
+      activityTags: activityTags ?? this.activityTags,
+    );
+  }
+
   /// Retourne la clé publique en format Bech32 NIP-19 (npub1...)
   String get npubBech32 {
     final cryptoService = CryptoService();

@@ -134,6 +134,11 @@ class FakeStorageService extends StorageService {
   Future<Map<String, dynamic>?> getMarketBonById(String bonId) async {
     return null;
   }
+
+  @override
+  Future<Bon?> lockBonForTransfer(String bonId, {String? challenge, int ttlSeconds = 300}) async {
+    return await getBonById(bonId);
+  }
 }
 
 class FakeAuditTrailService extends AuditTrailService {

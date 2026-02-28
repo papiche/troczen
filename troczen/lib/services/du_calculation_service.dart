@@ -461,6 +461,8 @@ class DuCalculationService {
       picture: user.picture,
       logoUrl: user.picture,
       picture64: user.picture64,
+      banner: user.banner,
+      banner64: user.banner64,
     );
 
     // Sauvegarder localement

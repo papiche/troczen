@@ -72,19 +72,29 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   }
 
   File? _selectedImageFile;
+  String? _base64Banner;
+  String? _base64Logo;
+  File? _selectedBannerFile;
+  File? _selectedLogoFile;
 
-  Future<void> _selectImage() async {
+  Future<void> _selectImage(bool isBanner) async {
     final imageService = ImageCompressionService();
-    
     setState(() => _isUploading = true);
     
     try {
-      final result = await imageService.pickBannerWithOriginal();
+      final result = isBanner 
+          ? await imageService.pickBannerWithOriginal()
+          : await imageService.pickAvatarWithOriginal();
           
       if (result != null) {
         setState(() {
-          _base64Image = result.base64DataUri;
-          _selectedImageFile = File(result.originalPath);
+          if (isBanner) {
+            _base64Banner = result.base64DataUri;
+            _selectedBannerFile = File(result.originalPath);
+          } else {
+            _base64Logo = result.base64DataUri;
+            _selectedLogoFile = File(result.originalPath);
+          }
         });
       }
     } catch (e) {
@@ -132,6 +142,22 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           // Ne pas mettre de base64 dans picture/banner (NIP-01)
           String? finalPictureUrl = ipfsUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
 
+          String? ipfsBannerUrl;
+          if (_selectedBannerFile != null) {
+            final res = await _apiService.uploadImage(npub: widget.bon.bonId, imageFile: _selectedBannerFile!, type: 'banner');
+            if (res != null) ipfsBannerUrl = res['ipfs_url'] ?? res['url'];
+          }
+
+          String? ipfsLogoUrl;
+          if (_selectedLogoFile != null) {
+            final res = await _apiService.uploadImage(npub: widget.bon.bonId, imageFile: _selectedLogoFile!, type: 'logo');
+            if (res != null) ipfsLogoUrl = res['ipfs_url'] ?? res['url'];
+          }
+
+          String? finalBannerUrl = ipfsBannerUrl ?? (widget.bon.banner != null && !widget.bon.banner!.startsWith('data:') ? widget.bon.banner : null);
+          String? finalLogoUrl = ipfsLogoUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
+
+
           final nostrService = context.read<NostrService>();
           try {
             await nostrService.connect(market.relayUrl ?? AppConfig.defaultRelayUrl);
@@ -146,10 +172,11 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               name: _titleController.text,
               displayName: _titleController.text,
               about: _descriptionController.text,
-              picture: finalPictureUrl,
-              banner: finalPictureUrl,
-              picture64: _base64Image ?? widget.bon.picture64,
-              banner64: _base64Image ?? widget.bon.banner64 ?? widget.bon.picture64, // Utilise picture64 comme fallback pour banner64
+              picture: finalLogoUrl,     // ✅ Avatar/Logo du bon
+              banner: finalBannerUrl,    // ✅ Bannière du bon
+              picture64: _base64Logo ?? widget.bon.picture64,
+              banner64: _base64Banner ?? widget.bon.banner64,
+              website: widget.user.website, // ✅ Reprend le site web de l'utilisateur
             );
             
             _crypto.secureZeroiseBytes(nsecBonBytes);
@@ -314,7 +341,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               TextFormField(
                 controller: _titleController,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Nom affiché du bon'),
+                decoration: _inputDecoration('Nom affiché sur le bon'),
                 validator: (v) => v == null || v.isEmpty ? 'Requis' : null,
               ),
 

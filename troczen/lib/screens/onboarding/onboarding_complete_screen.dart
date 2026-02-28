@@ -411,7 +411,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
     }
   }
 
-  Future<void> _completeOnboarding() async {
+Future<void> _completeOnboarding() async {
     setState(() => _isCreatingAccount = true);
     
     try {
@@ -420,6 +420,8 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       
       final storageService = StorageService();
       final cryptoService = CryptoService();
+      final apiService = ApiService();
+      apiService.setCustomApi(state.apiUrl, state.relayUrl);
       
       // 1. Sauvegarder le marché
       final market = Market(
@@ -430,16 +432,43 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
       );
       await storageService.saveMarket(market);
       
-      // 2. Récupérer l'utilisateur créé à l'étape 1 et mis à jour à l'étape 5
-      final user = await storageService.getUser();
-      if (user == null) {
-        throw Exception('Utilisateur non trouvé');
-      }
+      // 2. Récupérer l'utilisateur
+      User user = (await storageService.getUser())!;
       
-      // 3. Publier le profil sur Nostr (avec Base64 initial)
+      // 3. ✅ ATTENDRE L'UPLOAD IPFS ICI (Finie la Race Condition)
+      String? finalPictureUrl = user.picture;
+      String? finalBannerUrl = user.banner;
+
+      if (state.profileImagePath != null) {
+        final result = await apiService.uploadImage(
+          npub: user.npub,
+          imageFile: File(state.profileImagePath!),
+          type: 'avatar',
+          waitForIpfs: true,
+        );
+        if (result != null) finalPictureUrl = result['ipfs_url'] ?? result['url'];
+      }
+
+      if (state.bannerImagePath != null) {
+        final result = await apiService.uploadImage(
+          npub: user.npub,
+          imageFile: File(state.bannerImagePath!),
+          type: 'banner',
+          waitForIpfs: true,
+        );
+        if (result != null) finalBannerUrl = result['ipfs_url'] ?? result['url'];
+      }
+
+      // Mettre à jour l'utilisateur localement avec les vraies URLs IPFS
+      user = user.copyWith(
+        picture: finalPictureUrl,
+        banner: finalBannerUrl,
+      );
+      await storageService.saveUser(user);
+      
+      // 4. Publier le profil sur Nostr avec les bonnes URLs
       try {
         final nostrService = context.read<NostrService>();
-        
         await nostrService.connect(state.relayUrl);
         
         await nostrService.publishUserProfile(
@@ -454,57 +483,51 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           banner64: user.banner64,
           website: null,
           g1pub: user.g1pub,
-          tags: state.activityTags,  // ✅ Tags d'activité/centres d'intérêt
+          tags: state.activityTags, // ✅ Tags d'activité
         );
         
-        // ✅ NOUVEAU: Publier les Skill Permits en arrière-plan (ne pas attendre)
-        // Cela permet de ne pas ralentir la finalisation de l'onboarding
         if (state.activityTags.isNotEmpty) {
           _publishSkillPermitsInBackground(
             relayUrl: state.relayUrl,
             npub: user.npub,
             nsec: user.nsec,
             skillTags: state.activityTags,
-            seedMarket: market.seedMarket,  // ✅ SÉCURITÉ: Seed pour chiffrement
+            seedMarket: market.seedMarket,
             storageService: storageService,
             cryptoService: cryptoService,
           );
         }
         
-        // 5. Générer le Bon Zéro de bootstrap (0 ẐEN, TTL 28j)
-        // On utilise la même connexion Nostr pour publier le Bon Zéro
+        // 5. Générer le Bon Zéro
         try {
           final duService = DuCalculationService(
             storageService: storageService,
             nostrService: nostrService,
             cryptoService: cryptoService,
           );
-          
-          // Vérifier que l'utilisateur n'a pas déjà reçu le bootstrap
           if (!await storageService.hasReceivedBootstrap()) {
             await duService.generateBootstrapAllocation(user, market);
-            debugPrint('✅ Bon Zéro (bootstrap) créé pour ${user.displayName}');
           }
         } catch (e) {
           debugPrint('⚠️ Erreur génération Bon Zéro: $e');
-          // Continuer même si le bootstrap échoue
         }
         
         await nostrService.disconnect();
       } catch (e) {
-        debugPrint('⚠️ Erreur publication profil Nostr ou Bon Zéro: $e');
-        // Continuer même si la publication échoue
+        debugPrint('⚠️ Erreur publication Nostr: $e');
       }
       
-      // 4. Lancer l'upload IPFS en arrière-plan (non bloquant)
-      if (state.profileImagePath != null || state.bannerImagePath != null) {
-        _uploadImagesToIPFSInBackground(
-          state: state,
-          user: user,
-          storageService: storageService,
-          cryptoService: cryptoService,
-        );
-      }
+      // 6. Finaliser
+      await storageService.markOnboardingComplete();
+      await _checkClipboardForReferrer();
+      
+      setState(() => _isCreatingAccount = false);
+      
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => MainShell(user: user)),
+        (route) => false,
+      );
       
       // 6. Marquer l'onboarding comme complété
       await storageService.markOnboardingComplete();

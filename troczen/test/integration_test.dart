@@ -376,13 +376,13 @@ void main() {
         test('Étape D : Finalisation par l\'émetteur', () async {
           final bonKeys = cryptoService.generateNostrKeyPair();
           final bonId = bonKeys['publicKeyHex']!;
-          final nsec = bonKeys['privateKeyHex']!;
+          final nsecHex = bonKeys['privateKeyHex']!;
 
           final challengeBytes = Uint8List.fromList(
             List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
           );
           final challenge = HEX.encode(challengeBytes);
-          final signature = cryptoService.signMessageBytes(challenge, Uint8List.fromList(HEX.decode(cryptoService.decodeNsec(nsec))));
+          final signature = cryptoService.signMessageBytes(challenge, Uint8List.fromList(HEX.decode(nsecHex)));
 
           final isValid = cryptoService.verifySignature(challenge, signature, bonId);
           expect(isValid, isTrue, reason: 'La signature doit être valide');
@@ -503,14 +503,14 @@ void main() {
         test('Signature Schnorr - Détection de falsification', () {
           final keys = cryptoService.generateNostrKeyPair();
           final pubKey = keys['publicKeyHex']!;
-          final nsec = keys['privateKeyHex']!;
+          final nsecHex = keys['privateKeyHex']!;
           
           final challengeBytes = Uint8List.fromList(
             List.generate(16, (_) => DateTime.now().millisecondsSinceEpoch % 256)
           );
           final challenge = HEX.encode(challengeBytes);
 
-          final signature = cryptoService.signMessageBytes(challenge, Uint8List.fromList(HEX.decode(cryptoService.decodeNsec(nsec))));
+          final signature = cryptoService.signMessageBytes(challenge, Uint8List.fromList(HEX.decode(nsecHex)));
 
           // Signature valide
           expect(cryptoService.verifySignature(challenge, signature, pubKey), isTrue);

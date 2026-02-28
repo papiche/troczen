@@ -9,6 +9,7 @@ import '../../services/nostr_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/logger_service.dart';
 import '../create_bon_screen.dart';
+import '../bon_profile_screen.dart';
 import '../mirror_offer_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -541,31 +542,17 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     }
   }
 
-  /// ✅ IMPLÉMENTÉ: Édite le profil Nostr du bon (Kind 30303)
-  /// Permet de mettre à jour les métadonnées du commerçant publiées sur Nostr
+  /// Édite le profil Nostr du bon
   void _editBonProfile(Bon bon) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => _EditBonProfileSheet(
-          bon: bon,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BonProfileScreen(
           user: widget.user,
-          onUpdated: () {
-            // Recharger les données après modification
-            _loadData();
-          },
+          bon: bon,
         ),
       ),
-    );
+    ).then((_) => _loadData());
   }
 
   void _giveBon(Bon bon) {
