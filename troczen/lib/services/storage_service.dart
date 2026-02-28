@@ -4,7 +4,6 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hex/hex.dart';
-import 'package:synchronized/synchronized.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/bon.dart';
@@ -46,11 +45,6 @@ class StorageService {
   static const String _lastDuValueKey = 'last_du_value'; // Dernière valeur du DU générée
   static const String _availableDuToEmitKey = 'available_du_to_emit'; // DU disponible à émettre
 
-  // ✅ SÉCURITÉ: Mutex pour éviter les race conditions
-  // FlutterSecureStorage n'a pas de système de transaction
-  // Ce verrou garantit qu'une seule opération d'écriture à la fois
-  final Lock _bonsLock = Lock();
-
   /// Sauvegarde l'utilisateur
   Future<void> saveUser(User user) async {
     await _secureStorage.write(
@@ -72,29 +66,14 @@ class StorageService {
   }
 
   /// Sauvegarde un bon
-  /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions
+  /// ✅ SÉCURITÉ: Utilise SQLite qui gère ses propres transactions
   Future<void> saveBon(Bon bon) async {
-    await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      
-      // Remplacer ou ajouter le bon
-      final index = bons.indexWhere((b) => b.bonId == bon.bonId);
-      if (index != -1) {
-        bons[index] = bon;
-      } else {
-        bons.add(bon);
-      }
-      
-      await _saveBons(bons);
-    });
+    await _cacheService.saveLocalBon(bon.toJson());
   }
 
   /// Récupère tous les bons
-  /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions lors de la lecture
   Future<List<Bon>> getBons() async {
-    return await _bonsLock.synchronized(() async {
-      return await _getBonsInternal();
-    });
+    return await _getBonsInternal();
   }
 
   /// Récupère un bon par son ID
@@ -108,13 +87,8 @@ class StorageService {
   }
 
   /// Supprime un bon
-  /// ✅ SÉCURITÉ: Utilise un verrou pour éviter les race conditions
   Future<void> deleteBon(String bonId) async {
-    await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      bons.removeWhere((b) => b.bonId == bonId);
-      await _saveBons(bons);
-    });
+    await _cacheService.deleteLocalBon(bonId);
   }
 
   // ============================================================
@@ -128,123 +102,105 @@ class StorageService {
     String? challenge,
     int ttlSeconds = 300, // 5 minutes par défaut
   }) async {
-    return await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      final index = bons.indexWhere((b) => b.bonId == bonId);
-      
-      if (index == -1) {
-        Logger.warn('StorageService', 'Bon $bonId non trouvé pour verrouillage');
-        return null;
-      }
-      
-      final bon = bons[index];
-      
-      // Vérifier si le bon est déjà verrouillé
-      if (bon.isTransferLocked) {
-        Logger.warn('StorageService', 'Bon $bonId déjà verrouillé pour transfert');
-        return null;
-      }
-      
-      // Vérifier que le bon est actif
-      if (bon.status != BonStatus.active) {
-        Logger.warn('StorageService', 'Bon $bonId non actif (status: ${bon.status})');
-        return null;
-      }
-      
-      // Créer le bon verrouillé
-      final lockedBon = bon.copyWith(
-        status: BonStatus.lockedForTransfer,
-        transferLockTimestamp: DateTime.now(),
-        transferLockChallenge: challenge ?? DateTime.now().millisecondsSinceEpoch.toRadixString(16),
-        transferLockTtlSeconds: ttlSeconds,
-      );
-      
-      bons[index] = lockedBon;
-      await _saveBons(bons);
-      
-      Logger.success('StorageService', 'Bon $bonId verrouillé pour transfert (TTL: ${ttlSeconds}s)');
-      return lockedBon;
-    });
+    final bon = await getBonById(bonId);
+    
+    if (bon == null) {
+      Logger.warn('StorageService', 'Bon $bonId non trouvé pour verrouillage');
+      return null;
+    }
+    
+    // Vérifier si le bon est déjà verrouillé
+    if (bon.isTransferLocked) {
+      Logger.warn('StorageService', 'Bon $bonId déjà verrouillé pour transfert');
+      return null;
+    }
+    
+    // Vérifier que le bon est actif
+    if (bon.status != BonStatus.active) {
+      Logger.warn('StorageService', 'Bon $bonId non actif (status: ${bon.status})');
+      return null;
+    }
+    
+    // Créer le bon verrouillé
+    final lockedBon = bon.copyWith(
+      status: BonStatus.lockedForTransfer,
+      transferLockTimestamp: DateTime.now(),
+      transferLockChallenge: challenge ?? DateTime.now().millisecondsSinceEpoch.toRadixString(16),
+      transferLockTtlSeconds: ttlSeconds,
+    );
+    
+    await _cacheService.saveLocalBon(lockedBon.toJson());
+    
+    Logger.success('StorageService', 'Bon $bonId verrouillé pour transfert (TTL: ${ttlSeconds}s)');
+    return lockedBon;
   }
 
   /// ✅ WAL: Confirme le transfert et supprime définitivement P2
   /// Cette opération DOIT être appelée APRÈS réception de l'ACK validé
   /// Retourne true si succès, false si le bon n'était pas verrouillé
   Future<bool> confirmTransferAndRemoveP2(String bonId, String challenge) async {
-    return await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      final index = bons.indexWhere((b) => b.bonId == bonId);
-      
-      if (index == -1) {
-        Logger.error('StorageService', 'Bon $bonId non trouvé pour confirmation');
-        return false;
-      }
-      
-      final bon = bons[index];
-      
-      // Vérifier que le bon était verrouillé
-      if (bon.status != BonStatus.lockedForTransfer) {
-        Logger.error('StorageService', 'Bon $bonId n\'était pas verrouillé (status: ${bon.status})');
-        return false;
-      }
-      
-      // Vérifier le challenge (protection contre replay)
-      if (bon.transferLockChallenge != challenge) {
-        Logger.error('StorageService', 'Challenge mismatch pour bon $bonId');
-        return false;
-      }
-      
-      // Marquer comme dépensé et supprimer P2
-      final spentBon = bon.copyWith(
-        status: BonStatus.spent,
-        p2: null, // CRITIQUE: Suppression de P2
-        transferLockTimestamp: null,
-        transferLockChallenge: null,
-        transferLockTtlSeconds: null,
-        transferCount: (bon.transferCount ?? 0) + 1,
-      );
-      
-      bons[index] = spentBon;
-      await _saveBons(bons);
-      
-      Logger.success('StorageService', 'Transfert confirmé pour bon $bonId - P2 supprimé');
-      return true;
-    });
+    final bon = await getBonById(bonId);
+    
+    if (bon == null) {
+      Logger.error('StorageService', 'Bon $bonId non trouvé pour confirmation');
+      return false;
+    }
+    
+    // Vérifier que le bon était verrouillé
+    if (bon.status != BonStatus.lockedForTransfer) {
+      Logger.error('StorageService', 'Bon $bonId n\'était pas verrouillé (status: ${bon.status})');
+      return false;
+    }
+    
+    // Vérifier le challenge (protection contre replay)
+    if (bon.transferLockChallenge != challenge) {
+      Logger.error('StorageService', 'Challenge mismatch pour bon $bonId');
+      return false;
+    }
+    
+    // Marquer comme dépensé et supprimer P2
+    final spentBon = bon.copyWith(
+      status: BonStatus.spent,
+      p2: null, // CRITIQUE: Suppression de P2
+      transferLockTimestamp: null,
+      transferLockChallenge: null,
+      transferLockTtlSeconds: null,
+      transferCount: (bon.transferCount ?? 0) + 1,
+    );
+    
+    await _cacheService.saveLocalBon(spentBon.toJson());
+    
+    Logger.success('StorageService', 'Transfert confirmé pour bon $bonId - P2 supprimé');
+    return true;
   }
 
   /// ✅ WAL: Annule un verrou de transfert (timeout, erreur, annulation utilisateur)
   /// Remet le bon en état actif
   Future<bool> cancelTransferLock(String bonId) async {
-    return await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      final index = bons.indexWhere((b) => b.bonId == bonId);
-      
-      if (index == -1) {
-        Logger.warn('StorageService', 'Bon $bonId non trouvé pour annulation verrou');
-        return false;
-      }
-      
-      final bon = bons[index];
-      
-      if (bon.status != BonStatus.lockedForTransfer) {
-        // Ce n'est pas une erreur si le bon n'est pas verrouillé
-        return true;
-      }
-      
-      // Remettre le bon en état actif
-      final activeBon = bon.copyWith(
-        status: BonStatus.active,
-        transferLockTimestamp: null,
-        transferLockChallenge: null,
-        transferLockTtlSeconds: null,
-      );
-      
-      bons[index] = activeBon;
-      await _saveBons(bons);
-      
-      Logger.success('StorageService', 'Verrou annulé pour bon $bonId');
+    final bon = await getBonById(bonId);
+    
+    if (bon == null) {
+      Logger.warn('StorageService', 'Bon $bonId non trouvé pour annulation verrou');
+      return false;
+    }
+    
+    if (bon.status != BonStatus.lockedForTransfer) {
+      // Ce n'est pas une erreur si le bon n'est pas verrouillé
       return true;
-    });
+    }
+    
+    // Remettre le bon en état actif
+    final activeBon = bon.copyWith(
+      status: BonStatus.active,
+      transferLockTimestamp: null,
+      transferLockChallenge: null,
+      transferLockTtlSeconds: null,
+    );
+    
+    await _cacheService.saveLocalBon(activeBon.toJson());
+    
+    Logger.success('StorageService', 'Verrou annulé pour bon $bonId');
+    return true;
   }
 
   /// ✅ WAL: Réconciliation des états via Kind 1 au démarrage
@@ -278,55 +234,53 @@ class StorageService {
       }
     }
 
-    // 3. Appliquer les modifications avec verrou
-    return await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      int recoveredCount = 0;
-      
-      for (int i = 0; i < bons.length; i++) {
-        final bon = bons[i];
+    // 3. Appliquer les modifications
+    int recoveredCount = 0;
+    final updatedBons = <Bon>[];
+    
+    for (final bon in bonsToCheck) {
+      if (bon.status == BonStatus.active || bon.status == BonStatus.lockedForTransfer) {
+        final bonTransfers = transfersByBonId[bon.bonId] ?? [];
         
-        if (bon.status == BonStatus.active || bon.status == BonStatus.lockedForTransfer) {
-          final bonTransfers = transfersByBonId[bon.bonId] ?? [];
-          
-          if (bonTransfers.isNotEmpty) {
-            // Cas A et B : Un transfert a eu lieu sur le réseau !
-            bons[i] = bon.copyWith(
-              status: BonStatus.spent,
-              p2: null,
+        if (bonTransfers.isNotEmpty) {
+          // Cas A et B : Un transfert a eu lieu sur le réseau !
+          final updatedBon = bon.copyWith(
+            status: BonStatus.spent,
+            p2: null,
+            transferLockTimestamp: null,
+            transferLockChallenge: null,
+            transferLockTtlSeconds: null,
+          );
+          updatedBons.add(updatedBon);
+          recoveredCount++;
+          Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} marqué comme dépensé (Kind 1 trouvé)');
+        } else if (bon.status == BonStatus.lockedForTransfer && bon.isTransferLockExpired) {
+          // Cas C : Le Fantôme Hors-Ligne
+          if (onGhostTransferDetected != null) {
+            // On délègue la décision à l'UI
+            onGhostTransferDetected(bon);
+          } else {
+            // Par défaut, on le remet actif si pas de callback
+            final updatedBon = bon.copyWith(
+              status: BonStatus.active,
               transferLockTimestamp: null,
               transferLockChallenge: null,
               transferLockTtlSeconds: null,
             );
+            updatedBons.add(updatedBon);
             recoveredCount++;
-            Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} marqué comme dépensé (Kind 1 trouvé)');
-          } else if (bon.status == BonStatus.lockedForTransfer && bon.isTransferLockExpired) {
-            // Cas C : Le Fantôme Hors-Ligne
-            if (onGhostTransferDetected != null) {
-              // On délègue la décision à l'UI
-              onGhostTransferDetected(bon);
-            } else {
-              // Par défaut, on le remet actif si pas de callback
-              bons[i] = bon.copyWith(
-                status: BonStatus.active,
-                transferLockTimestamp: null,
-                transferLockChallenge: null,
-                transferLockTtlSeconds: null,
-              );
-              recoveredCount++;
-              Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} remis en état actif (verrou expiré, pas de Kind 1)');
-            }
+            Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} remis en état actif (verrou expiré, pas de Kind 1)');
           }
         }
       }
-      
-      if (recoveredCount > 0) {
-        await _saveBons(bons);
-        Logger.success('StorageService', 'Réconciliation: $recoveredCount bon(s) mis à jour');
-      }
-      
-      return recoveredCount;
-    });
+    }
+    
+    if (updatedBons.isNotEmpty) {
+      await _cacheService.saveLocalBonsBatch(updatedBons.map((b) => b.toJson()).toList());
+      Logger.success('StorageService', 'Réconciliation: $recoveredCount bon(s) mis à jour');
+    }
+    
+    return recoveredCount;
   }
 
   /// ✅ WAL: Récupère les bons verrouillés (pour affichage UI)
@@ -868,25 +822,23 @@ class StorageService {
   /// Nettoie les bons expirés du wallet local
   /// Marque les bons expirés avec le statut BonStatus.expired au lieu de les supprimer
   Future<int> cleanupExpiredBons() async {
-    return await _bonsLock.synchronized(() async {
-      final bons = await _getBonsInternal();
-      int expiredCount = 0;
-      
-      for (int i = 0; i < bons.length; i++) {
-        final bon = bons[i];
-        if (bon.isExpired && bon.status != BonStatus.expired) {
-          bons[i] = bon.copyWith(status: BonStatus.expired);
-          expiredCount++;
-        }
+    final bons = await _getBonsInternal();
+    int expiredCount = 0;
+    final updatedBons = <Bon>[];
+    
+    for (final bon in bons) {
+      if (bon.isExpired && bon.status != BonStatus.expired) {
+        updatedBons.add(bon.copyWith(status: BonStatus.expired));
+        expiredCount++;
       }
-      
-      if (expiredCount > 0) {
-        await _saveBons(bons);
-        Logger.log('StorageService', 'Nettoyage: $expiredCount bons marqués comme expirés');
-      }
-      
-      return expiredCount;
-    });
+    }
+    
+    if (updatedBons.isNotEmpty) {
+      await _cacheService.saveLocalBonsBatch(updatedBons.map((b) => b.toJson()).toList());
+      Logger.log('StorageService', 'Nettoyage: $expiredCount bons marqués comme expirés');
+    }
+    
+    return expiredCount;
   }
 
   /// Récupère les bons actifs (non dépensés, non expirés)
