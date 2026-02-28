@@ -1,9 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
 import '../../models/user.dart';
 import 'onboarding_flow.dart'; 
+
+
+// Fonction top-level pour l'Isolate
+Future<Uint8List> _deriveSeedInIsolate(Map<String, String> args) async {
+  // On recrée l'instance de CryptoService dans le nouveau thread
+  final crypto = CryptoService(); 
+  return await crypto.deriveSeed(args['salt']!, args['pepper']!);
+}
 
 /// Étape 1: Création du compte utilisateur
 class OnboardingAccountScreen extends StatefulWidget {
@@ -106,9 +115,7 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
   }
   
   Future<void> _createAccountAndContinue() async {
-    if (!_validateCredentials()) {
-      return;
-    }
+    if (!_validateCredentials()) return;
     
     setState(() => _isCreatingAccount = true);
     
@@ -117,12 +124,13 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
       final cryptoService = CryptoService();
       
       final salt = _saltController.text.trim();
-      final pepper = _pepperController.text;
+      final pepper = _pepperController.text.trim();
       
-      final seedBytes = await cryptoService.deriveSeed(
-        salt,
-        pepper,
-      );
+      final seedBytes = await compute(_deriveSeedInIsolate, {
+        'salt': salt,
+        'pepper': pepper,
+      });
+      
       final privateKeyBytes = await cryptoService.deriveNostrPrivateKey(seedBytes);
       cryptoService.secureZeroiseBytes(seedBytes);
       
