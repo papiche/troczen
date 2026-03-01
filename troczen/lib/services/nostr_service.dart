@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import '../config/app_config.dart';
 import '../models/market.dart';

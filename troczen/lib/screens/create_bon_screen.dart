@@ -274,17 +274,21 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       final bonNpubHex = bonKeys['publicKeyHex']!;   // Format hex pour les identifiants
 
       // 2. Découper en 3 parts avec SSSS (utilise le format bytes)
-      Uint8List bonNsecBytes;
+      Uint8List? bonNsecBytes;
+      String p1, p2, p3;
       try {
-        bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
-      } catch (e) {
-        throw Exception('Clé privée du bon invalide (non hexadécimale)');
+        try {
+          bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
+        } catch (e) {
+          throw Exception('Clé privée du bon invalide (non hexadécimale)');
+        }
+        final partsBytes = _cryptoService.shamirSplitBytes(bonNsecBytes);
+        p1 = HEX.encode(partsBytes[0]); // Ancre (reste chez l'émetteur)
+        p2 = HEX.encode(partsBytes[1]); // Voyageur (part active)
+        p3 = HEX.encode(partsBytes[2]); // Témoin (à publier)
+      } finally {
+        if (bonNsecBytes != null) _cryptoService.secureZeroiseBytes(bonNsecBytes);
       }
-      final partsBytes = _cryptoService.shamirSplitBytes(bonNsecBytes);
-      final p1 = HEX.encode(partsBytes[0]); // Ancre (reste chez l'émetteur)
-      final p2 = HEX.encode(partsBytes[1]); // Voyageur (part active)
-      final p3 = HEX.encode(partsBytes[2]); // Témoin (à publier)
-      _cryptoService.secureZeroiseBytes(bonNsecBytes);
 
       // 3. Stocker P3 dans le cache local (utilise le format hex comme identifiant)
       await _storageService.saveP3ToCache(bonNpubHex, p3);
@@ -357,38 +361,40 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           // Note: npub et nsec sont en format hex pour les opérations Nostr
           
           // ✅ SÉCURITÉ: Utiliser shamirCombineBytesDirect avec Uint8List
-          Uint8List p2Bytes, p3Bytes;
+          Uint8List? p2Bytes, p3Bytes, nsecBonBytes;
           try {
-            p2Bytes = Uint8List.fromList(HEX.decode(p2));
-            p3Bytes = Uint8List.fromList(HEX.decode(p3));
-          } catch (e) {
-            throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
+            try {
+              p2Bytes = Uint8List.fromList(HEX.decode(p2));
+              p3Bytes = Uint8List.fromList(HEX.decode(p3));
+            } catch (e) {
+              throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
+            }
+            nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+            final nsecHex = HEX.encode(nsecBonBytes);
+            
+            await nostrService.publishUserProfile(
+              npub: bonNpubHex,
+              nsec: nsecHex,
+              name: _issuerNameController.text,
+              displayName: _issuerNameController.text,
+              about: _wishController.text.trim().isNotEmpty
+                  ? _wishController.text.trim()
+                  : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
+              picture: logoUrl,
+              banner: bannerUrl,
+              picture64: logoBase64,
+              banner64: bannerBase64,
+              website: _websiteController.text.trim().isNotEmpty
+                  ? _websiteController.text.trim()
+                  : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
+              g1pub: widget.user.g1pub,  // ✅ GÉNÉRÉ AUTOMATIQUEMENT
+            );
+          } finally {
+            // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
+            if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
+            if (p2Bytes != null) _cryptoService.secureZeroiseBytes(p2Bytes);
+            if (p3Bytes != null) _cryptoService.secureZeroiseBytes(p3Bytes);
           }
-          final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-          final nsecHex = HEX.encode(nsecBonBytes);
-          
-          await nostrService.publishUserProfile(
-            npub: bonNpubHex,
-            nsec: nsecHex,
-            name: _issuerNameController.text,
-            displayName: _issuerNameController.text,
-            about: _wishController.text.trim().isNotEmpty
-                ? _wishController.text.trim()
-                : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
-            picture: logoUrl,
-            banner: bannerUrl,
-            picture64: logoBase64,
-            banner64: bannerBase64,
-            website: _websiteController.text.trim().isNotEmpty
-                ? _websiteController.text.trim()
-                : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
-            g1pub: widget.user.g1pub,  // ✅ GÉNÉRÉ AUTOMATIQUEMENT
-          );
-          
-          // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
-          _cryptoService.secureZeroiseBytes(nsecBonBytes);
-          _cryptoService.secureZeroiseBytes(p2Bytes);
-          _cryptoService.secureZeroiseBytes(p3Bytes);
 
           // Publication P3 chiffrée - AVEC la clé de l'émetteur pour signature
           final published = await nostrService.publishP3(

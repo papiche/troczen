@@ -100,9 +100,12 @@ class MirrorOfferController extends ChangeNotifier {
   }
 
   Future<void> _generateQR() async {
+    Uint8List? p2Bytes;
+    Uint8List? p3Bytes;
+    Uint8List? nsecBonBytes;
     try {
-      final p2Bytes = bon.p2Bytes;
-      final p3Bytes = await _storageService.getP3FromCacheBytes(bon.bonId);
+      p2Bytes = bon.p2Bytes;
+      p3Bytes = await _storageService.getP3FromCacheBytes(bon.bonId);
       
       if (p2Bytes == null || p3Bytes == null) {
         throw Exception('Parts P2 ou P3 non disponibles.');
@@ -117,7 +120,7 @@ class MirrorOfferController extends ChangeNotifier {
 
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
-      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+      nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
       
       Uint8List bonIdBytes;
       try {
@@ -140,10 +143,6 @@ class MirrorOfferController extends ChangeNotifier {
       final messageHashBytes = Uint8List.fromList(messageHash.bytes);
       
       final signatureBytes = _cryptoService.signMessageBytesDirect(messageHashBytes, nsecBonBytes);
-      
-      _cryptoService.secureZeroiseBytes(nsecBonBytes);
-      _cryptoService.secureZeroiseBytes(p2Bytes);
-      _cryptoService.secureZeroiseBytes(p3Bytes);
       
       final ciphertext = encrypted.ciphertext;
       final encryptedP2Only = ciphertext.length >= 32
@@ -182,6 +181,10 @@ class MirrorOfferController extends ChangeNotifier {
       isGenerating = false;
       statusMessage = 'Erreur: $e';
       notifyListeners();
+    } finally {
+      if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      if (p2Bytes != null) _cryptoService.secureZeroiseBytes(p2Bytes);
+      if (p3Bytes != null) _cryptoService.secureZeroiseBytes(p3Bytes);
     }
   }
 

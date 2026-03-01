@@ -38,15 +38,17 @@ class BurnService {
     required String reason,
     String? skillAnnotation,  // ✅ Bonus: Compétence associée au parcours
   }) async {
+    Uint8List? p3Bytes;
+    Uint8List? p1Bytes;
+    Uint8List? nsecBonBytes;
     try {
       // 1. ✅ SÉCURITÉ: Récupérer P3 du cache en Uint8List directement
-      final p3Bytes = await _storageService.getP3FromCacheBytes(bon.bonId);
+      p3Bytes = await _storageService.getP3FromCacheBytes(bon.bonId);
       if (p3Bytes == null) {
         throw Exception('P3 non trouvée pour ce bon');
       }
 
       // 2. Convertir P1 en Uint8List
-      Uint8List p1Bytes;
       try {
         p1Bytes = Uint8List.fromList(HEX.decode(p1));
       } catch (e) {
@@ -54,7 +56,7 @@ class BurnService {
       }
 
       // 3. ✅ SÉCURITÉ: Reconstruire sk_B temporairement en Uint8List (P1 + P3)
-      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes);
+      nsecBonBytes = _cryptoService.shamirCombineBytesDirect(p1Bytes, null, p3Bytes);
 
       // 4. Extraire les données du parcours pour la Révélation
       final hopCount = bon.transferCount ?? 0;
@@ -71,10 +73,6 @@ class BurnService {
       
       final connected = await nostrService.connect(relayUrl);
       if (!connected) {
-        // ✅ SÉCURITÉ: Nettoyage RAM en cas d'erreur
-        _cryptoService.secureZeroiseBytes(nsecBonBytes);
-        _cryptoService.secureZeroiseBytes(p1Bytes);
-        _cryptoService.secureZeroiseBytes(p3Bytes);
         throw Exception('Impossible de se connecter au relais');
       }
 
@@ -112,17 +110,8 @@ class BurnService {
       await nostrService.disconnect();
 
       if (!burned) {
-        // ✅ SÉCURITÉ: Nettoyage RAM en cas d'erreur
-        _cryptoService.secureZeroiseBytes(nsecBonBytes);
-        _cryptoService.secureZeroiseBytes(p1Bytes);
-        _cryptoService.secureZeroiseBytes(p3Bytes);
         throw Exception('Échec publication burn');
       }
-
-      // ✅ SÉCURITÉ: Nettoyage RAM après usage - utilise Uint8List
-      _cryptoService.secureZeroiseBytes(nsecBonBytes);
-      _cryptoService.secureZeroiseBytes(p1Bytes);
-      _cryptoService.secureZeroiseBytes(p3Bytes);
 
       // 8. Marquer le bon comme révélé/clos localement
       final burnedBon = bon.copyWith(
@@ -138,6 +127,10 @@ class BurnService {
     } catch (e) {
       Logger.error('BurnService', 'Erreur burn/révélation', e);
       return false;
+    } finally {
+      if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
+      if (p1Bytes != null) _cryptoService.secureZeroiseBytes(p1Bytes);
+      if (p3Bytes != null) _cryptoService.secureZeroiseBytes(p3Bytes);
     }
   }
 

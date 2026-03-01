@@ -197,77 +197,81 @@ class MirrorReceiveController extends ChangeNotifier {
         status: 'received',
       );
 
-      final bonP2Bytes = updatedBon.p2Bytes;
-      final bonP3Bytes = await _storageService.getP3FromCacheBytes(updatedBon.bonId);
-      
-      if (bonP2Bytes == null || bonP3Bytes == null) throw Exception('Erreur parts P2/P3');
-      
-      // 1. Reconstruire le hash du message tel qu'Alice l'a signé
-      final bonIdBytes = Uint8List.fromList(HEX.decode(payload.bonId));
-      final timestampBytes = ByteData(4)..setUint32(0, payload.emittedAt.millisecondsSinceEpoch ~/ 1000, Endian.big);
-
-      final messageBytes = Uint8List.fromList([
-        ...bonIdBytes,
-        ...payload.encryptedP2,
-        ...payload.p2Nonce,
-        ...payload.challenge,
-        ...timestampBytes.buffer.asUint8List(),
-      ]);
-
-      final messageHash = Uint8List.fromList(sha256.convert(messageBytes).bytes);
-
-      // 2. Vérifier la signature avec la clé publique du Bon (bonId)
-      final isValid = _cryptoService.verifySignatureBytesDirect(
-        messageHash,
-        payload.signature,
-        bonIdBytes,
-      );
-
-      if (!isValid) throw Exception('Signature de l\'offre invalide (QR potentiellement falsifié)');
-
-
-      final nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, bonP2Bytes, bonP3Bytes);
-      
-      final challengeHash = sha256.convert(payload.challenge).bytes;
-      final challengeHashBytes = Uint8List.fromList(challengeHash);
-      
-      final signatureBytes = _cryptoService.signMessageBytesDirect(challengeHashBytes, nsecBonBytes);
-      
-      _cryptoService.secureZeroiseBytes(nsecBonBytes);
-      _cryptoService.secureZeroiseBytes(bonP2Bytes);
-      _cryptoService.secureZeroiseBytes(bonP3Bytes);
-      
-      _cryptoService.secureZeroiseBytes(p2Bytes);
-      _cryptoService.secureZeroiseBytes(p3Bytes);
-
-      Uint8List ackBonIdBytes;
+      Uint8List? bonP2Bytes;
+      Uint8List? bonP3Bytes;
+      Uint8List? nsecBonBytes;
       try {
-        ackBonIdBytes = Uint8List.fromList(HEX.decode(updatedBon.bonId));
-      } catch (e) {
-        throw Exception('ID de bon invalide (non hexadécimal)');
-      }
-      final ackBytes = _qrService.encodeAckBytes(
-        bonId: ackBonIdBytes,
-        signature: signatureBytes,
-      );
+        bonP2Bytes = updatedBon.p2Bytes;
+        bonP3Bytes = await _storageService.getP3FromCacheBytes(updatedBon.bonId);
+        
+        if (bonP2Bytes == null || bonP3Bytes == null) throw Exception('Erreur parts P2/P3');
+        
+        // 1. Reconstruire le hash du message tel qu'Alice l'a signé
+        final bonIdBytes = Uint8List.fromList(HEX.decode(payload.bonId));
+        final timestampBytes = ByteData(4)..setUint32(0, payload.emittedAt.millisecondsSinceEpoch ~/ 1000, Endian.big);
 
-      HapticFeedback.mediumImpact();
-      _audioPlayer.play(AssetSource('sounds/tap.mp3'));
+        final messageBytes = Uint8List.fromList([
+          ...bonIdBytes,
+          ...payload.encryptedP2,
+          ...payload.p2Nonce,
+          ...payload.challenge,
+          ...timestampBytes.buffer.asUint8List(),
+        ]);
 
-      ackQrData = ackBytes;
-      isProcessingOffer = false;
-      statusMessage = 'Montrez ce QR au donneur';
-      notifyListeners();
+        final messageHash = Uint8List.fromList(sha256.convert(messageBytes).bytes);
 
-      Future.delayed(const Duration(seconds: 3), () {
-        HapticFeedback.heavyImpact();
-        _audioPlayer.play(AssetSource('sounds/bowl.mp3'));
-        isSuccess = true;
+        // 2. Vérifier la signature avec la clé publique du Bon (bonId)
+        final isValid = _cryptoService.verifySignatureBytesDirect(
+          messageHash,
+          payload.signature,
+          bonIdBytes,
+        );
+
+        if (!isValid) throw Exception('Signature de l\'offre invalide (QR potentiellement falsifié)');
+
+
+        nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, bonP2Bytes, bonP3Bytes);
+        
+        final challengeHash = sha256.convert(payload.challenge).bytes;
+        final challengeHashBytes = Uint8List.fromList(challengeHash);
+        
+        final signatureBytes = _cryptoService.signMessageBytesDirect(challengeHashBytes, nsecBonBytes);
+        
+        Uint8List ackBonIdBytes;
+        try {
+          ackBonIdBytes = Uint8List.fromList(HEX.decode(updatedBon.bonId));
+        } catch (e) {
+          throw Exception('ID de bon invalide (non hexadécimal)');
+        }
+        final ackBytes = _qrService.encodeAckBytes(
+          bonId: ackBonIdBytes,
+          signature: signatureBytes,
+        );
+
+        HapticFeedback.mediumImpact();
+        _audioPlayer.play(AssetSource('sounds/tap.mp3'));
+
+        ackQrData = ackBytes;
+        isProcessingOffer = false;
+        statusMessage = 'Montrez ce QR au donneur';
         notifyListeners();
-        Future.delayed(const Duration(seconds: 2), () {
-          onSuccess();
+
+        Future.delayed(const Duration(seconds: 3), () {
+          HapticFeedback.heavyImpact();
+          _audioPlayer.play(AssetSource('sounds/bowl.mp3'));
+          isSuccess = true;
+          notifyListeners();
+          Future.delayed(const Duration(seconds: 2), () {
+            onSuccess();
+          });
         });
-      });
+      } finally {
+        if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
+        if (bonP2Bytes != null) _cryptoService.secureZeroiseBytes(bonP2Bytes);
+        if (bonP3Bytes != null) _cryptoService.secureZeroiseBytes(bonP3Bytes);
+        _cryptoService.secureZeroiseBytes(p2Bytes);
+        _cryptoService.secureZeroiseBytes(p3Bytes);
+      }
 
     } catch (e) {
       rethrow;

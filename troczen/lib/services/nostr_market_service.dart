@@ -536,7 +536,7 @@ class NostrMarketService {
       });
 
       final result = await completer.future;
-      fallbackTimer?.cancel();
+      fallbackTimer.cancel();
       return result;
     } finally {
       _isSyncing = false;

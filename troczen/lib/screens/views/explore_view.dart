@@ -1758,9 +1758,7 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
         // Pour l'instant, on les re-chiffre avec la seed du marché
         final now = DateTime.now();
         String? p3Hex = widget.bon.p3;
-        if (p3Hex == null) {
-          p3Hex = await _storageService.getP3FromCache(widget.bon.bonId);
-        }
+        p3Hex ??= await _storageService.getP3FromCache(widget.bon.bonId);
         if (p3Hex == null) {
           throw Exception('P3 introuvable pour ce bon');
         }
