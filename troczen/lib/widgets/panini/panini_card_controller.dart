@@ -74,8 +74,4 @@ class PaniniCardController extends ChangeNotifier {
     // Plus besoin de cache service
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

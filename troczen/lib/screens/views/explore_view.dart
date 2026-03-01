@@ -1755,7 +1755,14 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
         // Note: Dans une implémentation complète, il faudrait stocker p3Cipher et p3Nonce dans le modèle Bon
         // Pour l'instant, on les re-chiffre avec la seed du marché
         final now = DateTime.now();
-        final p3Encrypted = await cryptoService.encryptP3WithSeed(widget.bon.p3!, market.seedMarket, now);
+        String? p3Hex = widget.bon.p3;
+        if (p3Hex == null) {
+          p3Hex = await _storageService.getP3FromCache(widget.bon.bonId);
+        }
+        if (p3Hex == null) {
+          throw Exception('P3 introuvable pour ce bon');
+        }
+        final p3Encrypted = await cryptoService.encryptP3WithSeed(p3Hex, market.seedMarket, now);
         
         final expiryTimestamp = widget.bon.expiresAt?.millisecondsSinceEpoch != null
             ? widget.bon.expiresAt!.millisecondsSinceEpoch ~/ 1000

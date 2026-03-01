@@ -1,7 +1,6 @@
 import "dart:typed_data";
 import 'dart:async';
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:hex/hex.dart';
 import 'package:http/http.dart' as http;
 import '../models/nostr_profile.dart';

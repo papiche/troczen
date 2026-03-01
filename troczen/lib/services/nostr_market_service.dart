@@ -645,12 +645,18 @@ class NostrMarketService {
 
       final eventTimestamp = event['created_at'] as int;
       final eventDate = DateTime.fromMillisecondsSinceEpoch(eventTimestamp * 1000);
-      final p3Hex = await _cryptoService.decryptP3WithSeed(
-        p3Cipher,
-        p3Nonce,
-        targetMarket.seedMarket,
-        eventDate,
-      );
+      String p3Hex;
+      try {
+        p3Hex = await _cryptoService.decryptP3WithSeed(
+          p3Cipher,
+          p3Nonce,
+          targetMarket.seedMarket,
+          eventDate,
+        );
+      } catch (e) {
+        Logger.warn('NostrMarket', 'Impossible de déchiffrer P3 pour le bon $bonId (seed différente ?)');
+        return;
+      }
 
       String? pictureUrl;
       String? bannerUrl;

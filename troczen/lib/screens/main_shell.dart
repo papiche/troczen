@@ -11,7 +11,6 @@ import 'views/dashboard_view.dart';
 import 'views/dashboard_simple_view.dart';
 import 'views/profile_view.dart';
 import 'mirror_receive_screen.dart';
-import 'create_bon_screen.dart';
 import 'settings_screen.dart';
 import 'logs_screen.dart';
 import 'feedback_screen.dart';

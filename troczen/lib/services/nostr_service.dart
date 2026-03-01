@@ -333,7 +333,7 @@ class NostrService {
     });
 
     final result = await completer.future;
-    fallbackTimer?.cancel();
+    fallbackTimer.cancel();
     return result;
   }
   

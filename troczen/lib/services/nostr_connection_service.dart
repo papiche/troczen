@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 import 'logger_service.dart';
 
 /// Service de gestion de la connexion WebSocket Nostr
@@ -75,7 +77,12 @@ class NostrConnectionService {
       await disconnect();
 
       final uri = Uri.parse(relayUrl);
-      _channel = WebSocketChannel.connect(uri);
+      
+      // Utiliser dart:io WebSocket pour configurer le pingInterval
+      final ws = await WebSocket.connect(uri.toString()).timeout(const Duration(seconds: 10));
+      ws.pingInterval = const Duration(seconds: 30);
+      
+      _channel = IOWebSocketChannel(ws);
       _currentRelayUrl = relayUrl;
 
       _subscription = _channel!.stream.listen(
