@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
 import 'feedback_service.dart';
+import '../config/app_config.dart';
 
 /// Service de log centralisé qui conditionne l'affichage des logs
 /// au mode DEBUG (Marché Libre) ou au mode debug Flutter.
@@ -120,36 +121,15 @@ class Logger {
   /// Utilise le FeedbackService existant pour créer une issue GitHub
   /// Retourne true si la transmission a réussi
   static Future<bool> submitLogsToApi({String? issueDescription}) async {
-    if (!_isDebugMode) {
-      warn('Logger', 'Tentative de soumission de logs hors mode Marché Global');
-      return false;
-    }
-    
     try {
-      // Construire la description avec les logs
-      final logsPreview = _logBuffer.take(50).toList();
-      final logsText = logsPreview.map((log) => log.toString()).join('\n');
-      
-      final fullDescription = '''$issueDescription
-
----
-### Logs récents (${_logBuffer.length} au total)
-
-```
-$logsText
-${_logBuffer.length > 50 ? '\n... et ${_logBuffer.length - 50} logs supplémentaires' : ''}
-```
-
----
-*Soumis depuis le Marché Libre de TrocZen*
-''';
-
       // Utiliser le FeedbackService existant
-      final result = await _feedbackService.reportBug(
-        title: '[Marché Global] Issue avec logs',
-        description: fullDescription,
-        appVersion: '3.6.1',
+      final result = await _feedbackService.sendFeedback(
+        type: 'bug',
+        title: 'Issue avec logs depuis LogsScreen',
+        description: issueDescription ?? 'Aucune description fournie',
+        appVersion: AppConfig.appVersion,
         platform: defaultTargetPlatform.name,
+        logs: exportLogsText(),
       );
       
       if (result.success) {
