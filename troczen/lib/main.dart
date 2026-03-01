@@ -123,51 +123,57 @@ class _LoginScreenState extends State<LoginScreen> {
       onGhostTransferDetected: (bon) async {
         if (!mounted) return;
         
-        // Demander à l'utilisateur ce qu'il s'est passé
-        final result = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            backgroundColor: const Color(0xFF1E1E1E),
-            title: const Text('Transfert interrompu', style: TextStyle(color: Colors.white)),
-            content: Text(
-              'Un transfert de ${bon.value} ẐEN a été interrompu.\n\nL\'avez-vous finalisé avec le receveur ?',
-              style: const TextStyle(color: Colors.white),
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          
+          // Demander à l'utilisateur ce qu'il s'est passé
+          final result = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1E1E),
+              title: const Text('Transfert interrompu', style: TextStyle(color: Colors.white)),
+              content: Text(
+                'Un transfert de ${bon.value} ẐEN a été interrompu.\n\nL\'avez-vous finalisé avec le receveur ?',
+                style: const TextStyle(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Non, annulé', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFB347)),
+                  child: const Text('Oui, finalisé', style: TextStyle(color: Colors.black)),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Non, annulé', style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFB347)),
-                child: const Text('Oui, finalisé', style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
-        );
-        
-        if (result == true) {
-          // Marquer comme dépensé
-          final updatedBon = bon.copyWith(
-            status: BonStatus.spent,
-            p2: null,
-            transferLockTimestamp: null,
-            transferLockChallenge: null,
-            transferLockTtlSeconds: null,
           );
-          await _storageService.saveBon(updatedBon);
-        } else {
-          // Remettre actif
-          final updatedBon = bon.copyWith(
-            status: BonStatus.active,
-            transferLockTimestamp: null,
-            transferLockChallenge: null,
-            transferLockTtlSeconds: null,
-          );
-          await _storageService.saveBon(updatedBon);
-        }
+          
+          if (!mounted) return; // <-- Très important ici
+          
+          if (result == true) {
+            // Marquer comme dépensé
+            final updatedBon = bon.copyWith(
+              status: BonStatus.spent,
+              p2: null,
+              transferLockTimestamp: null,
+              transferLockChallenge: null,
+              transferLockTtlSeconds: null,
+            );
+            await _storageService.saveBon(updatedBon);
+          } else {
+            // Remettre actif
+            final updatedBon = bon.copyWith(
+              status: BonStatus.active,
+              transferLockTimestamp: null,
+              transferLockChallenge: null,
+              transferLockTtlSeconds: null,
+            );
+            await _storageService.saveBon(updatedBon);
+          }
+        });
       }
     );
     
