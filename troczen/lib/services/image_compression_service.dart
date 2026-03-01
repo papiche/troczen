@@ -26,8 +26,8 @@ class ImageResult {
 /// - Poids max: 4 Ko (4096 bytes) encodé Base64
 class ImageCompressionService {
   static const int maxAvatarSize = 80;        // Carré: 80x80 pixels
-  static const int maxBannerWidth = 200;      // Paysage: 200 pixels de large
-  static const int maxBannerHeight = 100;     // Paysage: 100 pixels de haut (Ratio 2:1)
+  static const int maxBannerWidth = 400;      // 400 pixels de large
+  static const int maxBannerHeight = 200;     // 200 pixels de haut (Ratio 2:1)
   static const int maxEncodedSize = 4096;     // 4 Ko max en Base64
   
   final ImagePicker _picker = ImagePicker();
@@ -49,11 +49,36 @@ class ImageCompressionService {
       
       if (decodedImage == null) return null;
       
-      img.Image resizedImage = img.copyResize(
+      // 1. Calculer les dimensions pour forcer un crop au ratio 2:1 (Paysage)
+      int targetWidth = decodedImage.width;
+      int targetHeight = decodedImage.height;
+      
+      if (targetWidth < targetHeight * 2) {
+        // L'image est trop verticale (portrait ou carrée) -> on coupe en haut et en bas
+        targetHeight = targetWidth ~/ 2;
+      } else {
+        // L'image est trop panoramique -> on coupe sur les côtés
+        targetWidth = targetHeight * 2;
+      }
+      
+      int offsetX = (decodedImage.width - targetWidth) ~/ 2;
+      int offsetY = (decodedImage.height - targetHeight) ~/ 2;
+      
+      // 2. Recadrer l'image originale au centre
+      img.Image croppedImage = img.copyCrop(
         decodedImage,
-        width: maxAvatarSize,
-        height: maxAvatarSize,
-        maintainAspect: true,
+        x: offsetX,
+        y: offsetY,
+        width: targetWidth,
+        height: targetHeight,
+      );
+      
+      // 3. Redimensionner à la taille max de la bannière (400x200)
+      img.Image resizedImage = img.copyResize(
+        croppedImage,
+        width: maxBannerWidth,
+        height: maxBannerHeight,
+        // Plus besoin de maintainAspect car on a déjà le ratio parfait
       );
       
       final compressedBytes = await _compressToTargetSize(resizedImage, maxEncodedSize);
@@ -140,22 +165,55 @@ class ImageCompressionService {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: maxBannerWidth.toDouble(),
-        maxHeight: maxBannerHeight.toDouble(),
+        // On demande une haute résolution initiale pour avoir de la matière à recadrer
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
       );
       
       if (image == null) return null;
       
-      var bytes = await image.readAsBytes();
+      final originalBytes = await image.readAsBytes();
+      final decodedImage = img.decodeImage(originalBytes);
       
-      if (bytes.length > maxEncodedSize) {
-        final decodedImage = img.decodeImage(bytes);
-        if (decodedImage == null) return null;
+      if (decodedImage == null) return null;
 
-        bytes = await _compressToTargetSize(decodedImage, maxEncodedSize);
+      // 1. Calculer les dimensions pour forcer un crop au ratio 2:1 (Paysage)
+      int targetWidth = decodedImage.width;
+      int targetHeight = decodedImage.height;
+      
+      if (targetWidth < targetHeight * 2) {
+        // L'image est trop verticale (portrait ou carrée) -> on coupe en haut et en bas
+        targetHeight = targetWidth ~/ 2;
+      } else {
+        // L'image est trop panoramique -> on coupe sur les côtés
+        targetWidth = targetHeight * 2;
       }
       
-      return _encodeAsDataUri(bytes);
+      int offsetX = (decodedImage.width - targetWidth) ~/ 2;
+      int offsetY = (decodedImage.height - targetHeight) ~/ 2;
+      
+      // 2. Recadrer l'image originale au centre
+      img.Image croppedImage = img.copyCrop(
+        decodedImage,
+        x: offsetX,
+        y: offsetY,
+        width: targetWidth,
+        height: targetHeight,
+      );
+      
+      // 3. Redimensionner à la taille max de la bannière (400x200)
+      img.Image resizedImage = img.copyResize(
+        croppedImage,
+        width: maxBannerWidth,
+        height: maxBannerHeight,
+        // Plus besoin de maintainAspect car on a déjà le ratio parfait
+      );
+      
+      // 4. Compresser pour s'assurer qu'on reste sous la limite des 4 Ko
+      final compressedBytes = await _compressToTargetSize(resizedImage, maxEncodedSize);
+      
+      return _encodeAsDataUri(compressedBytes);
     } catch (e) {
       Logger.error('ImageCompressionService', 'Erreur sélection bannière', e);
       return null;
