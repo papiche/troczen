@@ -111,7 +111,7 @@ class MirrorReceiveController extends ChangeNotifier {
       }
 
       final emittedTimestamp = qrV2Payload.emittedAt.millisecondsSinceEpoch ~/ 1000;
-      if (_qrService.isExpired(emittedTimestamp, 60)) {
+      if (_qrService.isExpired(emittedTimestamp, 300)) {
         throw Exception('Ce QR Code a expiré. Demandez au donneur de quitter et revenir sur l\'écran.');
       }
       
