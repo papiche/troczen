@@ -68,7 +68,11 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   void _loadProfile() {
     _titleController.text = widget.bon.issuerName;
     _descriptionController.text = widget.bon.wish ?? '';
-    _selectedCategory = widget.bon.cardType ?? 'generic';
+    var category = widget.bon.cardType ?? 'generic';
+    if (!_categories.containsKey(category)) {
+      category = 'generic'; // Fallback sûr
+    }
+    _selectedCategory = category;
   }
 
   File? _selectedImageFile;
@@ -166,7 +170,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               picture: finalLogoUrl,     // ✅ Avatar/Logo du bon
               banner: finalBannerUrl,    // ✅ Bannière du bon
               picture64: _base64Image ?? widget.bon.picture64,
-              banner64: _base64Image ?? widget.bon.banner64,
+              banner64: _base64Banner ?? widget.bon.banner64,
               website: widget.user.website, // ✅ Reprend le site web de l'utilisateur
             );
             
@@ -198,10 +202,10 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             wish: _descriptionController.text,
             cardType: _selectedCategory,
             picture: finalPictureUrl ?? widget.bon.picture,
-            banner: finalPictureUrl ?? widget.bon.banner,
+            banner: finalBannerUrl ?? widget.bon.banner,
             logoUrl: finalPictureUrl ?? widget.bon.logoUrl, // Pour compatibilité
             picture64: _base64Image ?? widget.bon.picture64,
-            banner64: _base64Image ?? widget.bon.banner64,
+            banner64: _base64Banner ?? widget.bon.banner64,
           );
           await _storage.saveBon(updatedBon);
         }
@@ -565,7 +569,7 @@ Widget _buildPreviewCard() {
                       Row(
                         children: [
                           Icon(
-                            _categories[_selectedCategory]!['icon'] as IconData,
+                            (_categories[_selectedCategory]?['icon'] as IconData?) ?? Icons.category,
                             color: const Color(0xFFFFB347),
                           ),
                           const SizedBox(width: 8),
@@ -618,7 +622,7 @@ Widget _buildPreviewCard() {
                             )
                           else
                             Icon(
-                              _categories[_selectedCategory]!['icon'] as IconData,
+                              (_categories[_selectedCategory]?['icon'] as IconData?) ?? Icons.category,
                               size: 48,
                               color: const Color(0xFFFFB347),
                             ),

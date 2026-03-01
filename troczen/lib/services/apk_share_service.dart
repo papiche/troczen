@@ -95,7 +95,7 @@ class ApkShareService {
     }
   }
   
-  static const platform = MethodChannel('com.example.troczen/apk_path');
+  static const platform = MethodChannel('com.copylaradio.zen/apk_path');
 
   /// Récupère le chemin de l'APK installé via MethodChannel
   Future<String?> _getInstalledApkPath() async {
