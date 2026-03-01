@@ -98,7 +98,7 @@ class NostrWoTxService {
     }
 
     try {
-      final normalizedTag = skillTag.toLowerCase().trim();
+      final normalizedTag = NostrUtils.normalizeSkillTag(skillTag);
       final dTag = 'PERMIT_${normalizedTag.toUpperCase()}_X1';
       
       final plaintextContent = jsonEncode({
@@ -211,7 +211,7 @@ class NostrWoTxService {
     }
     
     try {
-      final normalizedSkill = skill.toLowerCase().trim().replaceAll(' ', '_');
+      final normalizedSkill = NostrUtils.normalizeSkillTag(skill);
       final permitId = 'PERMIT_${normalizedSkill.toUpperCase()}_X1';
       
       final plaintextContent = jsonEncode({
@@ -223,7 +223,7 @@ class NostrWoTxService {
       
       final tags = <List<String>>[
         ['permit_id', permitId],
-        ['t', skill],
+        ['t', normalizedSkill],
       ];
       
       if (encrypted['nonce']!.isNotEmpty) {
@@ -292,7 +292,7 @@ class NostrWoTxService {
             }
           }
           
-          if (skill != null && mySkills.any((s) => s.toLowerCase() == skill!.toLowerCase())) {
+          if (skill != null && mySkills.any((s) => NostrUtils.normalizeSkillTag(s) == NostrUtils.normalizeSkillTag(skill!))) {
             requests.add({
               'id': event['id'],
               'pubkey': pubkey,
@@ -309,7 +309,7 @@ class NostrWoTxService {
         }
       });
 
-      final skillTags = mySkills.map((s) => s.toLowerCase()).toList();
+      final skillTags = mySkills.map((s) => NostrUtils.normalizeSkillTag(s)).toList();
       _connection.sendMessage(jsonEncode([
         'REQ', subId,
         {
@@ -364,11 +364,14 @@ class NostrWoTxService {
       
       final encrypted = _cryptoService.encryptWoTxContent(plaintextContent, seedMarket);
       
+      final rawSkill = permitId.replaceFirst('PERMIT_', '').replaceAll(RegExp(r'_X\d+$'), '');
+      final normalizedSkill = NostrUtils.normalizeSkillTag(rawSkill);
+      
       final tags = <List<String>>[
         ['e', requestId],
         ['p', requesterNpub],
         ['permit_id', permitId],
-        ['t', permitId.replaceAll('PERMIT_', '').replaceAll('_X1', '').replaceAll('_', ' ')],
+        ['t', normalizedSkill],
       ];
       
       if (encrypted['nonce']!.isNotEmpty) {

@@ -35,6 +35,19 @@ class NostrUtils {
     return 'market_$cleaned';
   }
 
+  static String normalizeSkillTag(String skill) {
+    // 1. Enlever les accents
+    final noDiacritics = skill.runes.map((r) {
+      final char = String.fromCharCode(r);
+      return char.codeUnitAt(0) > 127 ? removeDiacritics(char) : char;
+    }).join();
+    
+    // 2. Minuscules, espaces remplacés par des tirets, garder que l'alphanumérique
+    final lower = noDiacritics.toLowerCase().trim();
+    final sanitized = lower.replaceAll(RegExp(r'[^a-z0-9]'), '-');
+    return sanitized.replaceAll(RegExp(r'-+'), '-').replaceAll(RegExp(r'^-|-$'), '');
+  }
+
   /// Supprime les diacritiques d'un caractère
   static String removeDiacritics(String char) {
     const diacriticsMap = {
