@@ -643,7 +643,7 @@ class NostrMarketService {
         return;
       }
 
-      final eventTimestamp = event['created_at'] as int;
+      final eventTimestamp = (event['created_at'] as num).toInt();
       final eventDate = DateTime.fromMillisecondsSinceEpoch(eventTimestamp * 1000);
       String p3Hex;
       try {
