@@ -32,6 +32,15 @@ Cet événement est émis par un pair pour certifier qu'un utilisateur possède 
 3. **Sélection des savoir-faire** : L'utilisateur sélectionne ses savoir-faire parmi ceux disponibles ou en crée de nouveaux (ce qui publie immédiatement un Kind 30500).
 4. **Demande d'attestation (Kind 30501)** : À la fin de l'onboarding, l'application publie une demande d'attestation (Kind 30501) pour chaque savoir-faire sélectionné par l'utilisateur. Cela permet d'initier la certification croisée.
 
+## Normalisation des Savoir-Faire
+
+Pour éviter la fragmentation de la Toile de Confiance (ex: "Maraîcher" vs "maraicher" vs "maraicher "), le protocole applique une normalisation stricte via `NostrUtils.normalizeSkillTag()` avant toute publication ou filtrage :
+1. Suppression de tous les accents et diacritiques.
+2. Passage en minuscules.
+3. Remplacement des espaces et caractères spéciaux par des tirets (`-`).
+
+Ainsi, une recherche ou une attestation pour "Maître Pâtissier !" sera toujours indexée et chiffrée sous le tag unifié `maitre-patissier`.
+
 ## Évolution de la certification croisée
 
 Grâce aux événements 30501, les autres participants du marché peuvent voir les revendications de savoir-faire et y répondre en émettant des événements 30502 (Attestations). Cela crée un réseau de confiance (Web of Trust) décentralisé et spécifique au marché local.

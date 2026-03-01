@@ -61,45 +61,29 @@ Un premier lancement est détecté si :
 
 ---
 
-## 📱 Les 5 Étapes
+## 📱 Les 6 Étapes du Parcours
 
-### Étape 1️⃣ : Configuration de la Seed de Marché
+### Étape 1️⃣ : Création du Compte (Identifiants Cryptographiques)
 
-**Fichier** : [`onboarding_seed_screen.dart`](lib/screens/onboarding/onboarding_seed_screen.dart)
+**Fichier** : [`onboarding_account_screen.dart`](lib/screens/onboarding/onboarding_account_screen.dart)
 
-**Objectif** : Choisir comment configurer la seed du marché local
+**Objectif** : Générer l'identité cryptographique de l'utilisateur de manière déterministe via Scrypt.
 
-**Options disponibles** :
-
-#### 📷 Scanner une Seed
-- Rejoindre un marché existant
-- Scanner un QR code contenant une seed de 64 caractères hex
-- Utilise `mobile_scanner`
-
-#### 🎲 Générer une Seed
-- Créer un nouveau marché
-- Génération crypto-aléatoire avec `Random.secure()`
-- 32 octets (64 caractères hex)
-- Export QR pour partager avec d'autres participants
-- Option de copie dans le presse-papiers
-
-#### ☠️ Mode 000 (Hackathon)
-- Seed de 32 zéros (intentionnellement vulnérable)
-- **Double confirmation obligatoire** :
-  1. Dialog d'avertissement
-  2. Saisie manuelle du texte "HACKATHON"
-- Réservé aux défis de sécurité et tests
+**Fonctionnement** :
+- **Login (Salt)** et **Mot de passe (Pepper)** saisis par l'utilisateur.
+- La dérivation (Scrypt) se fait dans un **Isolate** en arrière-plan (`_deriveSeedInIsolate`) pour ne pas bloquer l'UI.
+- **Génération automatique** des clés Nostr (`nsec`/`npub`) et de la clé publique Ğ1 (`g1pub`).
+- **Création silencieuse du marché** : Le système initialise automatiquement le "Marché Libre" (seed `000...0`) en arrière-plan et configure l'état pour la suite du parcours.
 
 **Code clé** :
 ```dart
-void _generateSecureSeed() {
-  final secureRandom = Random.secure();
-  final seedBytes = Uint8List.fromList(
-    List.generate(32, (_) => secureRandom.nextInt(256)),
-  );
-  final seedHex = HEX.encode(seedBytes);
-  // Affichage QR et export...
-}
+final seedBytes = await compute(_deriveSeedInIsolate, {
+  'salt': salt,
+  'pepper': pepper,
+});
+final privateKeyBytes = await cryptoService.deriveNostrPrivateKey(seedBytes);
+// Initialisation silencieuse du marché global
+final market = await storageService.initializeDefaultMarket(name: 'Marché Libre');
 ```
 
 ---
@@ -120,157 +104,74 @@ void _generateSecureSeed() {
 
 **Fonctionnalités** :
 - ✅ Bouton "Passer" pour utiliser les valeurs par défaut
-- ✅ Test de connexion pour chaque service
-- ✅ RadioListTile pour chaque option
-- ✅ TextField conditionnel pour URLs personnalisées
-
-**Tests de connectivité** :
-```dart
-// Relais Nostr - WebSocket
-final channel = WebSocketChannel.connect(Uri.parse(url));
-
-// API REST - HTTP HEAD
-final response = await http.head(Uri.parse('$url/health'));
-
-// IPFS - HTTP HEAD
-final response = await http.head(Uri.parse(url));
-```
+- ✅ Test de connexion en temps réel pour chaque service
+- ✅ Détection dynamique des configurations
 
 ---
 
 ### Étape 3️⃣ : Synchronisation P3 depuis Nostr
 
-**Fichier** : [`onboarding_nostr_sync_screen.dart`](lib/screens/onboarding/onboarding_nostr_sync_screen.dart)
+**Fichier** :[`onboarding_nostr_sync_screen.dart`](lib/screens/onboarding/onboarding_nostr_sync_screen.dart)
 
-**Objectif** : Récupérer les P3 (preuves de provision) depuis le relais Nostr
+**Objectif** : Récupérer les P3 (preuves de provision) existantes sur le relais Nostr.
 
 **États progressifs affichés** :
-
 1. 🔗 Connexion au relais Nostr...
 2. 📡 Requête des événements kind:30303...
-3. 🔓 Déchiffrement et stockage des P3...
+3. 🔓 Déchiffrement et stockage des P3 dans SQLite (`CacheDatabaseService`)...
 4. ✅ Synchronisation terminée — N bons trouvés
 
 **Gestion d'erreur** :
-- Bouton "Réessayer" en cas d'échec
-- Option "Passer (mode hors-ligne)"
-- Possibilité de continuer sans synchronisation
-
-**Retour arrière** :
-- ❌ **Désactivé** après cette étape (seed générée)
-- Empêche la navigation accidentelle après configuration
+- Bouton "Réessayer" en cas d'échec.
+- Option "Passer (mode hors-ligne)".
+- ❌ **Retour arrière désactivé** à partir d'ici pour éviter la corruption de l'état cryptographique.
 
 ---
 
-### Étape 4️⃣ : Création du Profil Nostr (et DU local)
+### Étape 4️⃣ : Création du Profil Nostr
 
-**Fichier** : [`onboarding_profile_screen.dart`](lib/screens/onboarding/onboarding_profile_screen.dart)
+**Fichier** :[`onboarding_profile_screen.dart`](lib/screens/onboarding/onboarding_profile_screen.dart)
 
-**Objectif** : Créer l'identité de l'utilisateur sur le marché
+**Objectif** : Créer l'identité publique de l'utilisateur sur le marché. *(Note : La clé Ğ1 n'est plus demandée, elle a été dérivée automatiquement à l'Étape 1).*
 
 #### Section A — Identité
+- **Nom affiché** : Obligatoire.
+- **Description** : Facultatif.
+- **Avatar & Bannière** : Image picker. Compressions drastiques (< 4Ko) et génération instantanée des miniatures Base64 pour garantir une UX parfaite même en mode hors-ligne.
 
-| Champ | Type | Obligatoire |
-|-------|------|-------------|
-| **Nom affiché** | TextField | ✅ Oui |
-| **Description** | TextField (3 lignes) | ❌ Non |
-| **Photo de profil** | Image picker → IPFS | ❌ Non (v1.008+) |
-
-#### Section B — Tags d'Activité
-
-Chips sélectionnables multi-choix par catégorie :
-
-**Alimentation** : Boulanger, Maraîcher, Fromager, Traiteur, Épicerie
-
-**Services** : Artisan, Plombier, Électricien, Coiffeur, Réparateur
-
-**Culture & Bien-être** : Musicien, Thérapeute, Yoga, Librairie, Café
-
-**Artisanat** : Potier, Tisserand, Bijoutier, Menuisier, Couturier
-
-**Personnalisé** : Saisie libre (v1.008+)
-
-#### Section C — Clé Ğ1 (Optionnelle)
-
-- Format Base58
-- Facultatif pour v2.0.1+
-- **Non requis** : Le système utilise désormais le **DU Nostr P2P** (création monétaire basée sur le graphe social)
-- Peut servir pour interopérabilité future avec l'écosystème Ğ1/Duniter
-
-**Publication Nostr** :
-```dart
-// Event kind 0 (profile metadata)
-{
-  kind: 0,
-  content: JSON.stringify({
-    name: displayName,
-    about: description,
-    picture: ipfsUrl ?? '',
-    zen_tags: selectedTags,        // Extension TrocZen
-    g1_pubkey: g1PublicKey ?? '',  // Extension TrocZen
-  }),
-  tags: selectedTags.map(t => ['t', t]),
-}
-```
+#### Section B — Tags d'Activité (Savoir-Faire)
+- Sélection de tags par catégorie.
+- **Normalisation stricte** (`NostrUtils.normalizeSkillTag`) pour éviter l'éparpillement sémantique ("Artisan" devient "artisan").
+- Chargement dynamique des tags existants sur le réseau via `Kind 30500`.
 
 ---
 
-### Étape 5️⃣ : Écran de Bienvenue
+### Étape 5️⃣ : Sélection du Mode d'Utilisation (Le Chapeau)
 
-**Fichier** : [`onboarding_complete_screen.dart`](lib/screens/onboarding/onboarding_complete_screen.dart)
+**Fichier** :[`onboarding_mode_selection_screen.dart`](lib/screens/onboarding/onboarding_mode_selection_screen.dart)
 
-**Objectif** : Récapitulatif et finalisation de la configuration
+**Objectif** : Adapter l'interface au profil de l'utilisateur (*Progressive Disclosure*) pour réduire la surcharge cognitive.
 
-**Animations** :
-- ✨ FadeTransition (0.0 → 1.0)
-- 📈 ScaleTransition (0.8 → 1.0)
-- ⏱️ Durée : 1200ms avec courbe easeOutBack
-
-**Récapitulatif affiché** :
-- 👤 Nom du profil
-- ☁️ Relais Nostr configuré
-- 🔄 Nombre de P3 synchronisés
-- 🏷️ Tags d'activité (2 premiers + compteur)
-
-**Actions finales** :
-
-1. Sauvegarder le marché avec la seed
-2. Créer un utilisateur avec credentials temporaires
-3. Dériver clés Nostr (npub/nsec)
-4. Générer clé Ğ1 (g1pub) — optionnel, pour interopérabilité
-5. Publier le profil sur Nostr (kind 0)
-6. **Créer le Bon Zéro de bootstrap** (0 ẐEN, validité 28 jours)
-7. Initialiser le calcul du DU local (graphe social Nostr)
-8. Marquer l'onboarding comme complété
-9. Navigation vers `WalletScreen`
-
-> **Note** : Le Bon Zéro (0 ẐEN, TTL 28j) sert de "ticket d'entrée" sur le marché. Il évite l'asymétrie monétaire tout en permettant à l'utilisateur de participer aux échanges. À chaque transfert, l'app propose de suivre l'émetteur pour activer le DU. Voir [`docs/DU_NOSTR_P2P_FLOW.md`](../../docs/DU_NOSTR_P2P_FLOW.md) pour les détails.
+**3 Profils Disponibles** :
+- 🚶‍♂️ **Flâneur** : Interface ultra-simplifiée pour les clients (Scanner, Recevoir, Payer).
+- 🧑‍🌾 **Artisan** : Interface métier pour les producteurs. Ajoute la création de bons et le "Dashboard Simple" (caisse, entrées, sorties).
+- 🧙‍♂️ **Alchimiste** : Interface experte. Débloque le "Dashboard Avancé" (graphiques, C², Alpha, vitesse de circulation), les exports CSV, et la modération du réseau de confiance (WoTx2).
 
 ---
 
-## 🔐 Sécurité
+### Étape 6️⃣ : Écran de Bienvenue et Finalisation
 
-### Gestion de la Seed
+**Fichier** :[`onboarding_complete_screen.dart`](lib/screens/onboarding/onboarding_complete_screen.dart)
 
-- **Génération** : `Random.secure()` pour 32 octets crypto-aléatoires
-- **Stockage** : `FlutterSecureStorage` avec chiffrement Android
-- **Export** : QR code pour partage contrôlé
+**Objectif** : Récapitulatif et orchestration finale en arrière-plan.
 
-### Mode 000 - Sécurité Intentionnellement Faible
+**Actions finales déclenchées par le bouton "Entrer dans TrocZen"** :
 
-⚠️ **AVERTISSEMENT** : Ce mode est volontairement vulnérable
-
-**Restrictions** :
-- Double confirmation obligatoire
-- Avertissement explicite
-- Saisie manuelle "HACKATHON"
-- Réservé aux défis de sécurité
-
-**Utilité** :
-- Tests de sécurité
-- Hackathons
-- Démonstrations de vulnérabilité
-- Recherche en cryptographie
+1. Récupération de l'utilisateur généré à l'Étape 1.
+2. **Upload IPFS Synchrone/Asynchrone** des images (Avatar et Bannière) via `ApiService`.
+3. Publication du profil sur Nostr (`kind 0`) avec les URL IPFS finales.
+4. Publication des demandes d'attestation de compétences (`kind 30501`) en arrière-plan.
+5. **Génération du Bon Zéro** (0 ẐEN, TTL 28 jours) pour le bootstrap social
 
 ---
 
@@ -344,121 +245,15 @@ class OnboardingNotifier extends ChangeNotifier {
 
 ---
 
-## 🧪 Tests et Validation
-
-### Scénarios de Test
-
-#### Test 1 : Premier lancement complet
-1. Lancer l'app sans données
-2. Vérifier redirection vers onboarding
-3. Générer une seed
-4. Configurer les services (défaut)
-5. Synchroniser les P3
-6. Créer un profil
-7. Vérifier navigation vers wallet
-
-#### Test 2 : Scan de seed existante
-1. Lancer l'onboarding
-2. Scanner un QR code de seed
-3. Vérifier la seed de 64 caractères
-4. Continuer le parcours
-
-#### Test 3 : Mode 000
-1. Sélectionner "Mode 000"
-2. Confirmer le premier dialog
-3. Taper "HACKATHON"
-4. Vérifier seed = "0" × 64
-
-#### Test 4 : Configuration avancée
-1. Tester chaque service
-2. Saisir URL personnalisée
-3. Tester la connectivité
-4. Vérifier sauvegarde
-
-#### Test 5 : Échec de synchronisation
-1. Configurer avec relais invalide
-2. Vérifier gestion d'erreur
-3. Cliquer "Réessayer"
-4. Tester "Passer (mode hors-ligne)"
-
----
-
-## 📝 Notes d'Implémentation
-
-### Dépendances Requises
-
-Toutes déjà présentes dans `pubspec.yaml` :
-- ✅ `provider` : Gestion d'état
-- ✅ `mobile_scanner` : Scan QR
-- ✅ `qr_flutter` : Génération QR
-- ✅ `flutter_secure_storage` : Stockage sécurisé
-- ✅ `http` : Tests de connectivité
-- ✅ `web_socket_channel` : Nostr WebSocket
-- ✅ `hex` : Conversion hex
-
-### Améliorations Futures et en cours
-
-- [ ] Upload photo de profil via IPFS
-- [ ] Saisie libre de tags personnalisés
-- [ ] Import/export complet de configuration
-- [ ] Support multi-langues
-- [ ] Animations Lottie pour les transitions
-- [ ] Tutoriel interactif post-onboarding
-- [ ] Sauvegarde backup de la seed
-- [ ] Visualisation du graphe social (N1/N2) pour le DU
-- [ ] Indicateur de confiance (nombre de follows réciproques)
-
----
-
-## 🚨 Gestion d'Erreurs
-
-### Erreurs Réseau
-
-```dart
-try {
-  await nostrService.connect(relayUrl);
-} catch (e) {
-  // Afficher erreur + bouton réessayer
-  // Option mode hors-ligne
-}
-```
-
-### Erreurs de Validation
-
-```dart
-validator: (value) {
-  if (value == null || value.isEmpty) {
-    return 'Le nom est obligatoire';
-  }
-  return null;
-}
-```
-
-### Erreurs de Scan
-
-```dart
-onDetect: (capture) {
-  final seed = barcodes.first.rawValue;
-  if (seed != null && seed.length == 64) {
-    // Seed valide
-  } else {
-    // Afficher erreur format
-  }
-}
-```
-
----
-
 ## 📞 Support
 
 Pour toute question ou problème :
-- 📧 Email : support@troczen.io
-- 💬 Discord : TrocZen Community
+- 📧 Email : support@qo-op.com
 - 🐛 Issues : GitHub Repository
 
 ---
 
-**Version** : 1.007  
-**Date** : 2026-02-18  
+**Version** : 1.008
+**Date** : 2026-03-01  
 **Auteur** : Équipe TrocZen  
 **Licence** : AGPL-3.0

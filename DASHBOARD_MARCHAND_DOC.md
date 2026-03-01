@@ -570,27 +570,10 @@ test('Score santé entre 0 et 100', () {
 ## 📖 Utilisation
 
 ### Navigation
-```dart
-Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => MerchantDashboardScreen(
-      merchantNpub: user.npub,
-      merchantName: 'Rucher de Jean',
-      marketName: 'Marché Samedi',
-    ),
-  ),
-);
-```
 
-### Refresh Données
-```dart
-// Pull to refresh
-RefreshIndicator(
-  onRefresh: _loadMetrics,
-  child: ...
-)
-```
+L'affichage est géré dynamiquement par le MainShell selon l'AppMode :
+Mode Artisan (1) -> DashboardSimpleView
+Mode Alchimiste (2) -> DashboardView
 
 ---
 

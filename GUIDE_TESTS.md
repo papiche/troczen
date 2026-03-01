@@ -23,7 +23,7 @@
 cd troczen && flutter test test/crypto_service_test.dart
 ```
 
-**Couverture** : 15 tests
+**Couverture** : 18 tests
 
 - Dérivation de clé déterministe ✅
 - Génération paires de clés ✅
@@ -99,21 +99,10 @@ void main() {
       qrService = QRService();
     });
 
-    // ✅ CORRECTION: Taille du QR Offre v1 = 177 octets (avec signature Schnorr)
-    // Ancien format sans signature: 113 octets
-    // Nouveau format avec signature: 113 + 64 = 177 octets
-    test('encodeOffer génère 177 octets (avec signature Schnorr)', () {
-      final qrBytes = qrService.encodeOffer(
-        bonIdHex: 'a' * 64,
-        p2CipherHex: 'b' * 96,
-        nonceHex: 'c' * 24,
-        challengeHex: 'd' * 32,
-        timestamp: 1708084800,
-        ttl: 30,
-        signatureHex: 'e' * 128, // 64 octets = 128 caractères hex
-      );
-
-      expect(qrBytes.length, equals(177));
+    // ✅ CORRECTION: Taille du QR Offre = 240 octets (avec signature Schnorr)
+    test('encodeQrV2 génère 240 octets (avec challenge et signature)', () {
+      // ...
+      expect(qrBytes.length, equals(240));
     });
 
     test('encodeOffer/decodeOffer sont réciproques', () {

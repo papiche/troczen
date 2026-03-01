@@ -727,12 +727,12 @@ export class SeedMarket {
     return bytesToHex(hkdf(sha256, this.seed, 'nostr-namespace', '', 16));
   }
 
-  // Chiffrer P3 (NIP-44 ou null pour HACKATHON)
+  // Chiffrer P3 (AES-GCM 256 ou null pour HACKATHON)
   encryptP3(p3Bytes) {
-    if (this.isPublic) return bytesToHex(p3Bytes); // En clair pour HACKATHON
+    if (this.isPublic) return bytesToHex(p3Bytes); 
     const key = this.deriveP3Key();
-    // Chiffrement NIP-44 (ChaCha20-Poly1305)
-    return nip44Encrypt(p3Bytes, key);
+    // Chiffrement AES-GCM (et non NIP-44 qui est fait pour le 1:1)
+    return aesGcmEncrypt(p3Bytes, key);
   }
 
   // Déchiffrer P3

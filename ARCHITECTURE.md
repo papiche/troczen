@@ -178,7 +178,7 @@ class OnboardingState {
 ```
 
 ### QrPayloadV2
-Payload étendu pour QR code v2 (160 octets, offline complet).
+Payload étendu pour QR code v2 (240 octets, offline complet avec handshake).
 ```dart
 class QrPayloadV2 {
   String bonId;             // 32 octets hex
@@ -448,7 +448,7 @@ lib/
 │   ├── storage_service.dart      ← SecureStorage + SQLite
 │   ├── nostr_service.dart        ← WebSocket, kind 30303/1/5
 │   ├── api_service.dart
-│   ├── image_upload_service.dart ← upload IPFS ou local
+│   ├── image_compression_service.dart ← compress & upload IPFS et local
 │   ├── image_cache_service.dart
 │   ├── audit_trail_service.dart
 │   ├── burn_service.dart
@@ -461,6 +461,7 @@ lib/
 │   │   ├── explore_view.dart
 │   │   ├── dashboard_view.dart
 │   │   └── profile_view.dart
+│   │   └── dashboard_simple_view.dart
 │   ├── onboarding/               ← 5 écrans (voir ONBOARDING_GUIDE.md)
 │   ├── wallet_screen.dart
 │   ├── create_bon_screen.dart
@@ -470,7 +471,6 @@ lib/
 │   ├── ack_scanner_screen.dart
 │   ├── atomic_swap_screen.dart
 │   ├── market_screen.dart
-│   └── merchant_dashboard_screen.dart
 └── widgets/
     ├── panini_card.dart
     ├── cached_profile_image.dart

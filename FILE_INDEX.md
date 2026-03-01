@@ -86,6 +86,8 @@
         │   ├── api_service.dart
         │   ├── audit_trail_service.dart
         │   ├── burn_service.dart
+        │   ├── nostr_wotx_service.dart
+        │   ├── burn_service.dart
         │   ├── nfc_service.dart            # ⚠️ Expérimental
         │   ├── feedback_service.dart       # Envoi feedback GitHub
         │   └── image_cache_service.dart    # Cache images profils
