@@ -72,6 +72,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       // Charger les profils du marché (simulé pour l'instant)
       final profiles = <NostrProfile>[];
       
+      if (!mounted) return;
       setState(() {
         _selectedMarket = activeMarket;
         _myIssuedBons = myBons;
@@ -80,6 +81,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       });
     } catch (e) {
       debugPrint('❌ Erreur chargement données Explorer: $e');
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

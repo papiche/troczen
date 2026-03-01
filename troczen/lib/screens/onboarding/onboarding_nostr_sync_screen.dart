@@ -187,10 +187,12 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
           // Contenu principal
           Expanded(
             child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Icône d'état
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icône d'état
                   if (_isSyncing)
                     const SizedBox(
                       width: 80,
@@ -279,8 +281,9 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

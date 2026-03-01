@@ -54,6 +54,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
       // Calculer les statistiques
       final stats = _calculateStats(user ?? widget.user, bons);
       
+      if (!mounted) return;
       setState(() {
         _currentUser = user ?? widget.user;
         _stats = stats;
@@ -61,6 +62,7 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
       });
     } catch (e) {
       debugPrint('❌ Erreur chargement profil: $e');
+      if (!mounted) return;
       setState(() {
         _currentUser = widget.user;
         _stats = null;
