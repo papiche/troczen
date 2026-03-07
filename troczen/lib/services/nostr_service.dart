@@ -438,13 +438,29 @@ class NostrService {
     required String myNsec,
     required String artisanNpub,
     required String eventId,
+    required String skillTag,
     required bool isPositive,
   }) => _wotx.publishSkillReaction(
     myNpub: myNpub,
     myNsec: myNsec,
     artisanNpub: artisanNpub,
     eventId: eventId,
+    skillTag: skillTag,
     isPositive: isPositive,
+  );
+
+  Future<bool> publishSkillAchievement({
+    required String myNpub,
+    required String myNsec,
+    required String skillTag,
+    required int newLevel,
+    required List<String> justificationEventIds,
+  }) => _wotx.publishSkillAchievement(
+    myNpub: myNpub,
+    myNsec: myNsec,
+    skillTag: skillTag,
+    newLevel: newLevel,
+    justificationEventIds: justificationEventIds,
   );
   
   Future<List<String>> fetchActivityTagsFromProfiles({int limit = 100}) =>

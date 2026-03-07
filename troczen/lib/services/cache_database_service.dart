@@ -22,6 +22,7 @@ class CacheDatabaseService {
   static const String _localWalletBonsTable = 'local_wallet_bons';
   static const String _followersCacheTable = 'followers_cache';
   static const String _skillAttestationsTable = 'skill_attestations';
+  static const String _skillReactionsTable = 'skill_reactions';
   static const String _duIncrementsTable = 'du_increments';
   static const String _pendingEventsTable = 'pending_events';
 
@@ -43,7 +44,7 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await _createAllTables(db);
       },
@@ -122,6 +123,22 @@ class CacheDatabaseService {
               attempts INTEGER NOT NULL DEFAULT 0
             )
           ''');
+        }
+        if (oldVersion < 6) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_skillReactionsTable (
+              event_id TEXT PRIMARY KEY,
+              reactor_npub TEXT NOT NULL,
+              target_npub TEXT NOT NULL,
+              skill_tag TEXT NOT NULL,
+              is_positive INTEGER NOT NULL,
+              created_at INTEGER NOT NULL,
+              raw_data TEXT NOT NULL
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_skill_reaction_target ON $_skillReactionsTable(target_npub, skill_tag)',
+          );
         }
       },
     );
@@ -244,6 +261,22 @@ class CacheDatabaseService {
     );
     await db.execute(
       'CREATE INDEX idx_skill_attester ON $_skillAttestationsTable(attester_npub)',
+    );
+
+    // Table pour les réactions de savoir-faire (kind 7)
+    await db.execute('''
+      CREATE TABLE $_skillReactionsTable (
+        event_id TEXT PRIMARY KEY,
+        reactor_npub TEXT NOT NULL,
+        target_npub TEXT NOT NULL,
+        skill_tag TEXT NOT NULL,
+        is_positive INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        raw_data TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_skill_reaction_target ON $_skillReactionsTable(target_npub, skill_tag)',
     );
 
     // Table pour les incréments DU (kind 30305)
@@ -1074,6 +1107,66 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES SKILL REACTION (KIND 7)
+  // ============================================================
+
+  /// Sauvegarder une réaction de savoir-faire (Kind 7)
+  Future<void> saveSkillReaction(Map<String, dynamic> reactionData) async {
+    final db = await database;
+    final eventId = reactionData['id'] as String?;
+    if (eventId == null) return;
+
+    // Extraire les tags
+    final tags = reactionData['tags'] as List? ?? [];
+    String targetNpub = '';
+    String skillTag = '';
+    
+    for (final tag in tags) {
+      if (tag is List && tag.length > 1) {
+        if (tag[0] == 'p') targetNpub = tag[1].toString();
+        if (tag[0] == 't' && tag[1] != 'wotx-review') skillTag = tag[1].toString();
+      }
+    }
+
+    final content = reactionData['content'] as String? ?? '';
+    final isPositive = content == '+' ? 1 : 0;
+
+    await db.insert(
+      _skillReactionsTable,
+      {
+        'event_id': eventId,
+        'reactor_npub': reactionData['pubkey'],
+        'target_npub': targetNpub,
+        'skill_tag': skillTag,
+        'is_positive': isPositive,
+        'created_at': reactionData['created_at'] ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'raw_data': jsonEncode(reactionData),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    _insertionsController.add({
+      'type': 'n7_reaction',
+      'data': reactionData,
+    });
+  }
+
+  /// Récupérer les réactions reçues par un utilisateur pour un skill donné
+  Future<List<Map<String, dynamic>>> getSkillReactionsForSubject(String targetNpub, String skillTag) async {
+    final db = await database;
+    final results = await db.query(
+      _skillReactionsTable,
+      where: 'target_npub = ? AND skill_tag = ?',
+      whereArgs: [targetNpub, skillTag],
+      orderBy: 'created_at DESC',
+    );
+    
+    return results.map((row) {
+      return jsonDecode(row['raw_data'] as String) as Map<String, dynamic>;
+    }).toList();
+  }
+
+  // ============================================================
   // MÉTHODES SKILL ATTESTATION (KIND 30502)
   // ============================================================
 
@@ -1134,6 +1227,65 @@ class CacheDatabaseService {
     return results.map((row) {
       return jsonDecode(row['raw_data'] as String) as Map<String, dynamic>;
     }).toList();
+  }
+
+  /// Vérifie si l'utilisateur peut monter de niveau pour un skill donné
+  /// Retourne un Map avec 'canUpgrade': bool, 'newLevel': int, 'justificationEvents': List<String>
+  Future<Map<String, dynamic>> checkLevelUpgrade(String npub, String skill, int currentLevel) async {
+    final db = await database;
+    
+    // Règle B : Adoubement (Kind 30502)
+    // On cherche une attestation d'un utilisateur de niveau > currentLevel + 1
+    // Note: Dans une implémentation complète, il faudrait vérifier le niveau de l'attestateur.
+    // Ici on suppose que si on a reçu un 30502 valide, c'est un adoubement.
+    final attestations = await db.query(
+      _skillAttestationsTable,
+      where: 'subject_npub = ? AND skill = ?',
+      whereArgs: [npub, skill],
+    );
+    
+    if (attestations.isNotEmpty) {
+      // On prend la première attestation comme justification
+      final eventId = attestations.first['event_id'] as String;
+      return {
+        'canUpgrade': true,
+        'newLevel': currentLevel + 1,
+        'justificationEvents': [eventId],
+        'rule': 'B', // Adoubement
+      };
+    }
+    
+    // Règle A : Consensus des pairs (Kind 7)
+    // 3 réactions positives de 3 utilisateurs distincts
+    final reactions = await db.query(
+      _skillReactionsTable,
+      where: 'target_npub = ? AND skill_tag = ? AND is_positive = 1',
+      whereArgs: [npub, skill],
+    );
+    
+    final distinctReactors = <String, String>{}; // reactor_npub -> event_id
+    for (final row in reactions) {
+      final reactor = row['reactor_npub'] as String;
+      final eventId = row['event_id'] as String;
+      if (!distinctReactors.containsKey(reactor)) {
+        distinctReactors[reactor] = eventId;
+      }
+    }
+    
+    if (distinctReactors.length >= 3) {
+      return {
+        'canUpgrade': true,
+        'newLevel': currentLevel + 1,
+        'justificationEvents': distinctReactors.values.take(3).toList(),
+        'rule': 'A', // Consensus
+      };
+    }
+    
+    return {
+      'canUpgrade': false,
+      'newLevel': currentLevel,
+      'justificationEvents': [],
+    };
   }
 
   // ============================================================

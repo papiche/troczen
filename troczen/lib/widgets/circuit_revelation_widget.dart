@@ -31,6 +31,9 @@ class CircuitRevelationWidget extends StatefulWidget {
   
   /// Rareté du bon
   final String? rarity;
+  
+  /// Message personnalisé (ex: pour le WoTx)
+  final String? customMessage;
 
   const CircuitRevelationWidget({
     super.key,
@@ -42,6 +45,7 @@ class CircuitRevelationWidget extends StatefulWidget {
     this.ageDays,
     this.skillAnnotation,
     this.rarity,
+    this.customMessage,
   });
 
   @override

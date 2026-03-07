@@ -12,6 +12,7 @@ import '../../services/logger_service.dart';
 import '../create_bon_screen.dart';
 import '../bon_profile_screen.dart';
 import '../mirror_offer_screen.dart';
+import '../skill_swap_screen.dart';
 import 'package:provider/provider.dart';
 
 /// ExploreView — Bons émis (P1) + Marché
@@ -1310,6 +1311,29 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     return Icons.verified;
   }
 
+  void _openSkillSwapScanner(BuildContext context) {
+    if (widget.user.activityTags == null || widget.user.activityTags!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vous n\'avez pas de compétences définies.')),
+      );
+      return;
+    }
+    
+    // Si l'utilisateur a plusieurs compétences, on pourrait lui demander de choisir.
+    // Pour l'instant, on prend la première.
+    final skillTag = widget.user.activityTags!.first;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SkillSwapScreen(
+          user: widget.user,
+          skillTag: skillTag,
+        ),
+      ),
+    );
+  }
+
   /// Charge les demandes de certification en attente
   Future<void> _loadPendingRequests() async {
     if (widget.user.activityTags == null || widget.user.activityTags!.isEmpty) {
@@ -1412,14 +1436,28 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Titre
-                  const Text(
-                    'Mode Expert',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFB347),
-                    ),
+                  // Titre et Bouton
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Mode Expert',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFB347),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => _openSkillSwapScanner(context),
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Certifier un Pair'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   

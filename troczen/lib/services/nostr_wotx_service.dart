@@ -462,6 +462,70 @@ class NostrWoTxService {
   }
   
   // ============================================================
+  // SKILL ACHIEVEMENT (Kind 30503)
+  // ============================================================
+
+  /// Publie un accomplissement de compétence (kind 30503) auto-émis
+  Future<bool> publishSkillAchievement({
+    required String myNpub,
+    required String myNsec,
+    required String skillTag,
+    required int newLevel,
+    required List<String> justificationEventIds,
+  }) async {
+    try {
+      final normalizedSkill = NostrUtils.normalizeSkillTag(skillTag);
+      final permitId = 'PERMIT_${normalizedSkill.toUpperCase()}_X$newLevel';
+      
+      final tags = <List<String>>[
+        ['d', permitId],
+        ['t', normalizedSkill],
+        ['level', newLevel.toString()],
+      ];
+      
+      // Ajouter les événements justificatifs (Kind 7 ou 30502)
+      for (final eventId in justificationEventIds) {
+        tags.add(['e', eventId]);
+      }
+      
+      final plaintextContent = jsonEncode({
+        'type': 'skill_achievement',
+        'skill': normalizedSkill,
+        'level': newLevel,
+        'timestamp': DateTime.now().toIso8601String(),
+        'justifications': justificationEventIds,
+      });
+      
+      final event = {
+        'kind': NostrConstants.kindSkillCredential,
+        'pubkey': myNpub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': tags,
+        'content': plaintextContent, // Pas chiffré car c'est une preuve publique
+      };
+
+      final eventId = NostrUtils.calculateEventId(event);
+      event['id'] = eventId;
+      Uint8List myNsecBytes;
+      try {
+        myNsecBytes = Uint8List.fromList(HEX.decode(myNsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      event['sig'] = _cryptoService.signMessageBytes(eventId, myNsecBytes);
+
+      final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
+      if (success) {
+        Logger.success('NostrWoTx', 'Skill Achievement publié: $normalizedSkill X$newLevel');
+      }
+      return success;
+    } catch (e) {
+      Logger.error('NostrWoTx', 'Erreur publishSkillAchievement', e);
+      return false;
+    }
+  }
+
+  // ============================================================
   // SKILL REACTION (Kind 7)
   // ============================================================
   
@@ -516,13 +580,16 @@ class NostrWoTxService {
     required String myNsec,
     required String artisanNpub,
     required String eventId,
+    required String skillTag,
     required bool isPositive,
   }) async {
     try {
+      final normalizedSkill = NostrUtils.normalizeSkillTag(skillTag);
       final tags = <List<String>>[
         ['e', eventId],
         ['p', artisanNpub],
         ['t', 'wotx-review'],
+        ['t', normalizedSkill],
         ['k', '30500'],
       ];
       
