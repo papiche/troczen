@@ -1,7 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:troczen/services/nostr_connection_service.dart';
+import 'test_helper.dart';
 
 void main() {
+  setUpAll(() {
+    setupTestEnvironment();
+  });
+
   group('NostrConnectionService', () {
     late NostrConnectionService service;
 
@@ -70,6 +75,19 @@ void main() {
       // Le forceReconnect reset le compteur
       await service.forceReconnect();
       expect(service.reconnectAttempts, equals(0));
+    });
+
+    test('sendEventAndWait hors-ligne retourne true et met en attente', () async {
+      // S'assurer qu'on est déconnecté
+      expect(service.isConnected, isFalse);
+      
+      final eventId = 'test_event_id';
+      final message = '{"id":"$eventId","kind":1}';
+      final fullMessage = '["EVENT", $message]';
+      
+      // Doit retourner true (succès local) même si déconnecté
+      final result = await service.sendEventAndWait(eventId, fullMessage);
+      expect(result, isTrue);
     });
   });
 

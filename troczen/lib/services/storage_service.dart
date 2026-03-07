@@ -212,6 +212,22 @@ class StorageService {
     
     if (bonsToCheck.isEmpty) return 0;
 
+    // 1.5. Récupérer les événements en attente (Outbox)
+    final pendingEvents = await _cacheService.getPendingEvents();
+    final pendingBonIds = <String>{};
+    for (final event in pendingEvents) {
+      if (event['kind'] == 1) {
+        final tags = event['tags'] as List?;
+        if (tags != null) {
+          for (final tag in tags) {
+            if (tag is List && tag.isNotEmpty && tag[0] == 'bon' && tag.length > 1) {
+              pendingBonIds.add(tag[1].toString());
+            }
+          }
+        }
+      }
+    }
+
     // 2. Requêter les Kind 1 pour tous ces bons
     final bonIds = bonsToCheck.map((b) => b.bonId).toList();
     final transfers = await nostrService.fetchBonsTransfers(bonIds);
@@ -251,6 +267,12 @@ class StorageService {
           recoveredCount++;
           Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} marqué comme dépensé (Kind 1 trouvé)');
         } else if (bon.status == BonStatus.lockedForTransfer && bon.isTransferLockExpired) {
+          // Vérifier si un événement est en attente dans l'Outbox
+          if (pendingBonIds.contains(bon.bonId)) {
+            Logger.info('StorageService', 'Réconciliation: bon ${bon.bonId} maintenu verrouillé (transfert en attente dans l\'Outbox)');
+            continue;
+          }
+
           // Cas C : Le Fantôme Hors-Ligne
           if (onGhostTransferDetected != null) {
             // On délègue la décision à l'UI

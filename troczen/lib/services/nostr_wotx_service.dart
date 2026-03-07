@@ -87,11 +87,6 @@ class NostrWoTxService {
     required String skillTag,
     required String seedMarket,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await ensurePubkeyRegistered(npub);
     if (!registered) {
       Logger.warn('NostrWoTx', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
@@ -203,8 +198,6 @@ class NostrWoTxService {
     required String seedMarket,
     String motivation = "Déclaration initiale lors de l'inscription",
   }) async {
-    if (!_connection.isConnected) return false;
-    
     final registered = await ensurePubkeyRegistered(npub);
     if (!registered) {
       Logger.warn('NostrWoTx', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
@@ -348,8 +341,6 @@ class NostrWoTxService {
     required String seedMarket,
     String? motivation,
   }) async {
-    if (!_connection.isConnected) return false;
-    
     final registered = await ensurePubkeyRegistered(myNpub);
     if (!registered) {
       Logger.warn('NostrWoTx', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
@@ -482,8 +473,6 @@ class NostrWoTxService {
     required String permitEventId,
     required bool isPositive,
   }) async {
-    if (!_connection.isConnected) return false;
-    
     try {
       final tags = <List<String>>[
         ['e', permitEventId],
@@ -529,8 +518,6 @@ class NostrWoTxService {
     required String eventId,
     required bool isPositive,
   }) async {
-    if (!_connection.isConnected) return false;
-    
     try {
       final tags = <List<String>>[
         ['e', eventId],

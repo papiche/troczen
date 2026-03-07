@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user.dart';
@@ -20,6 +21,8 @@ import '../services/storage_service.dart';
 import '../services/nostr_service.dart';
 import '../services/logger_service.dart';
 import '../services/notification_service.dart';
+import '../services/cache_database_service.dart';
+import '../services/nostr_connection_service.dart';
 
 /// MainShell — Architecture de navigation principale adaptative
 ///
@@ -43,11 +46,27 @@ class _MainShellState extends State<MainShell> {
   int _currentTab = 0;
   final _storageService = StorageService();
   late final NostrService _nostrService;
+  int _pendingEventsCount = 0;
+  Timer? _pendingEventsTimer;
+
   @override
   void initState() {
     super.initState();
     _nostrService = context.read<NostrService>();
     _initAutoSync();
+    _updatePendingEventsCount();
+    _pendingEventsTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _updatePendingEventsCount();
+    });
+  }
+
+  Future<void> _updatePendingEventsCount() async {
+    final count = await CacheDatabaseService().getPendingEventsCount();
+    if (mounted && count != _pendingEventsCount) {
+      setState(() {
+        _pendingEventsCount = count;
+      });
+    }
   }
 
   Future<void> _initAutoSync() async {
@@ -63,6 +82,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    _pendingEventsTimer?.cancel();
     _nostrService.disableAutoSync();
     super.dispose();
   }
@@ -480,6 +500,38 @@ class _MainShellState extends State<MainShell> {
                   
                   const Divider(color: Colors.white24),
                   
+                  // ✅ SYNCHRONISATION MANUELLE
+                  ListTile(
+                    leading: Stack(
+                      children: [
+                        const Icon(Icons.sync, color: Color(0xFF0A7EA4)),
+                        if (_pendingEventsCount > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: const BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    title: const Text('Synchroniser', style: TextStyle(color: Colors.white)),
+                    subtitle: Text(
+                      _pendingEventsCount > 0
+                          ? '$_pendingEventsCount événement(s) en attente'
+                          : 'Réseau à jour',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    onTap: () => _triggerManualSync(),
+                  ),
+                  
+                  const Divider(color: Colors.white24),
+
                   // Paramètres (tous modes)
                   ListTile(
                     leading: const Icon(Icons.settings, color: Color(0xFFFFB347)),
@@ -634,6 +686,40 @@ class _MainShellState extends State<MainShell> {
 
   // ===== ACTIONS DRAWER =====
   
+  Future<void> _triggerManualSync() async {
+    Navigator.pop(context); // Fermer le drawer
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Synchronisation en cours...')),
+    );
+    
+    final connection = NostrConnectionService();
+    if (!connection.isConnected) {
+      final market = await _storageService.getMarket();
+      if (market?.relayUrl != null) {
+        await connection.connect(market!.relayUrl!);
+      }
+    }
+    
+    final syncedCount = await connection.flushPendingEvents();
+    
+    // Rafraîchir le cache local depuis le relai
+    final market = await _storageService.getMarket();
+    if (market != null) {
+      await _nostrService.triggerImmediateSync(market);
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$syncedCount événement(s) synchronisé(s) avec le réseau'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _updatePendingEventsCount();
+    }
+  }
+
   void _navigateToSettings() {
     Navigator.pop(context); // Fermer le drawer
     Navigator.push(

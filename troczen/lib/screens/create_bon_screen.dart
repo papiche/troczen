@@ -353,68 +353,66 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
       try {
         // Connexion au relais
         final relayUrl = _selectedMarket!.relayUrl ?? AppConfig.defaultRelayUrl;
-        final connected = await nostrService.connect(relayUrl);
+        await nostrService.connect(relayUrl);
 
-        if (connected) {
-          // Publication du profil du bon (kind 0)
-          // Utilise les informations du profil utilisateur par défaut
-          // Note: npub et nsec sont en format hex pour les opérations Nostr
-          
-          // ✅ SÉCURITÉ: Utiliser shamirCombineBytesDirect avec Uint8List
-          Uint8List? p2Bytes, p3Bytes, nsecBonBytes;
+        // Publication du profil du bon (kind 0)
+        // Utilise les informations du profil utilisateur par défaut
+        // Note: npub et nsec sont en format hex pour les opérations Nostr
+        
+        // ✅ SÉCURITÉ: Utiliser shamirCombineBytesDirect avec Uint8List
+        Uint8List? p2Bytes, p3Bytes, nsecBonBytes;
+        try {
           try {
-            try {
-              p2Bytes = Uint8List.fromList(HEX.decode(p2));
-              p3Bytes = Uint8List.fromList(HEX.decode(p3));
-            } catch (e) {
-              throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
-            }
-            nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
-            final nsecHex = HEX.encode(nsecBonBytes);
-            
-            await nostrService.publishUserProfile(
-              npub: bonNpubHex,
-              nsec: nsecHex,
-              name: _issuerNameController.text,
-              displayName: _issuerNameController.text,
-              about: _wishController.text.trim().isNotEmpty
-                  ? _wishController.text.trim()
-                  : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
-              picture: logoUrl,
-              banner: bannerUrl,
-              picture64: logoBase64,
-              banner64: bannerBase64,
-              website: _websiteController.text.trim().isNotEmpty
-                  ? _websiteController.text.trim()
-                  : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
-              g1pub: widget.user.g1pub,  // ✅ GÉNÉRÉ AUTOMATIQUEMENT
-            );
-          } finally {
-            // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
-            if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
-            if (p2Bytes != null) _cryptoService.secureZeroiseBytes(p2Bytes);
-            if (p3Bytes != null) _cryptoService.secureZeroiseBytes(p3Bytes);
+            p2Bytes = Uint8List.fromList(HEX.decode(p2));
+            p3Bytes = Uint8List.fromList(HEX.decode(p3));
+          } catch (e) {
+            throw Exception('Parts P2 ou P3 invalides (non hexadécimales)');
           }
-
-          // Publication P3 chiffrée - AVEC la clé de l'émetteur pour signature
-          final published = await nostrService.publishP3(
-            bonId: bonNpubHex,
-            issuerNsecHex: widget.user.nsec,
-            p3Hex: p3,
-            seedMarket: _selectedMarket!.seedMarket,
-            issuerNpub: widget.user.npub,
-            marketName: _selectedMarket!.name,
-            value: bonValue,
-            category: isBootstrap ? 'bootstrap' : 'DU',
-            wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
+          nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
+          final nsecHex = HEX.encode(nsecBonBytes);
+          
+          await nostrService.publishUserProfile(
+            npub: bonNpubHex,
+            nsec: nsecHex,
+            name: _issuerNameController.text,
+            displayName: _issuerNameController.text,
+            about: _wishController.text.trim().isNotEmpty
+                ? _wishController.text.trim()
+                : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
+            picture: logoUrl,
+            banner: bannerUrl,
+            picture64: logoBase64,
+            banner64: bannerBase64,
+            website: _websiteController.text.trim().isNotEmpty
+                ? _websiteController.text.trim()
+                : widget.user.website,  // Utilise la valeur saisie ou celle du profil utilisateur
+            g1pub: widget.user.g1pub,  // ✅ GÉNÉRÉ AUTOMATIQUEMENT
           );
-
-          if (published) {
-            debugPrint('✅ P3 publiée sur Nostr (signée par le bon)');
-          }
-
-          await nostrService.disconnect();
+        } finally {
+          // ✅ SÉCURITÉ: Nettoyer les clés de la RAM
+          if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
+          if (p2Bytes != null) _cryptoService.secureZeroiseBytes(p2Bytes);
+          if (p3Bytes != null) _cryptoService.secureZeroiseBytes(p3Bytes);
         }
+
+        // Publication P3 chiffrée - AVEC la clé de l'émetteur pour signature
+        final published = await nostrService.publishP3(
+          bonId: bonNpubHex,
+          issuerNsecHex: widget.user.nsec,
+          p3Hex: p3,
+          seedMarket: _selectedMarket!.seedMarket,
+          issuerNpub: widget.user.npub,
+          marketName: _selectedMarket!.name,
+          value: bonValue,
+          category: isBootstrap ? 'bootstrap' : 'DU',
+          wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
+        );
+
+        if (published) {
+          debugPrint('✅ P3 publiée sur Nostr (signée par le bon)');
+        }
+
+        await nostrService.disconnect();
 
         // 9. Déduire le montant du DU disponible
         if (bonValue > 0) {

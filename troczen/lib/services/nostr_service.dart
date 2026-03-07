@@ -456,11 +456,6 @@ class NostrService {
 
   /// Publie un incrément de DU (kind 30305)
   Future<bool> publishDuIncrement(String npub, String nsec, double amount, DateTime date) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     try {
       final dTag = 'du-${date.toIso8601String().substring(0, 10)}';
 
@@ -656,11 +651,6 @@ class NostrService {
     String? profession,
     Map<String, dynamic>? economicData,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await _market.ensurePubkeyRegistered(npub);
     if (!registered) {
       Logger.warn('NostrService', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
@@ -814,11 +804,6 @@ class NostrService {
     required double value,
     required String marketName,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await _market.ensurePubkeyRegistered(bonId);
     if (!registered) {
       Logger.error('NostrService', 'Publication transfert annulée');
@@ -881,11 +866,6 @@ class NostrService {
     required String reason,
     required String marketName,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await _market.ensurePubkeyRegistered(bonId);
     if (!registered) {
       Logger.error('NostrService', 'Publication burn annulée');
@@ -999,11 +979,6 @@ class NostrService {
     required String nsec,
     required List<String> contactsNpubs,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await _market.ensurePubkeyRegistered(npub);
     if (!registered) {
       return false;
@@ -1231,11 +1206,6 @@ class NostrService {
     required String nsec,
     required List<String> relays,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await _market.ensurePubkeyRegistered(npub);
     if (!registered) {
       return false;

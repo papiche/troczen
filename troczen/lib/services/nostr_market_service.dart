@@ -121,11 +121,6 @@ class NostrMarketService {
     String? wish,
     int? duIndex, // ✅ AJOUT : Paramètre pour gérer de multiples DUs émis le même jour
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     try {
       // 1. Chiffrer P3 avec K_day
       final now = DateTime.now();
@@ -216,11 +211,6 @@ class NostrMarketService {
     String? rarity,
     String? wish,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     try {
       final now = DateTime.now();
       
@@ -285,11 +275,6 @@ class NostrMarketService {
     String? rarity,
     String? cardType,
   }) async {
-    if (!_connection.isConnected) {
-      onError?.call('Non connecté au relais');
-      return false;
-    }
-
     final registered = await ensurePubkeyRegistered(bonId);
     if (!registered) {
       Logger.warn('NostrMarket', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');

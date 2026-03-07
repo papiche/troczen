@@ -23,6 +23,7 @@ class CacheDatabaseService {
   static const String _followersCacheTable = 'followers_cache';
   static const String _skillAttestationsTable = 'skill_attestations';
   static const String _duIncrementsTable = 'du_increments';
+  static const String _pendingEventsTable = 'pending_events';
 
   // Stream pour notifier les insertions (Vigilance Alchimiste)
   final _insertionsController = StreamController<Map<String, dynamic>>.broadcast();
@@ -42,7 +43,7 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await _createAllTables(db);
       },
@@ -109,6 +110,16 @@ class CacheDatabaseService {
               amount REAL NOT NULL,
               updated_at INTEGER NOT NULL,
               PRIMARY KEY (npub, date)
+            )
+          ''');
+        }
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_pendingEventsTable (
+              id TEXT PRIMARY KEY,
+              event_json TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              attempts INTEGER NOT NULL DEFAULT 0
             )
           ''');
         }
@@ -243,6 +254,16 @@ class CacheDatabaseService {
         amount REAL NOT NULL,
         updated_at INTEGER NOT NULL,
         PRIMARY KEY (npub, date)
+      )
+    ''');
+
+    // Table pour les événements en attente (Outbox)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_pendingEventsTable (
+        id TEXT PRIMARY KEY,
+        event_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -1209,6 +1230,66 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES PENDING EVENTS (OUTBOX)
+  // ============================================================
+
+  /// Sauvegarder un événement en attente
+  Future<void> savePendingEvent(Map<String, dynamic> event) async {
+    final db = await database;
+    await db.insert(
+      _pendingEventsTable,
+      {
+        'id': event['id'],
+        'event_json': jsonEncode(event),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+        'attempts': 0,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// Récupérer tous les événements en attente
+  Future<List<Map<String, dynamic>>> getPendingEvents() async {
+    final db = await database;
+    final results = await db.query(
+      _pendingEventsTable,
+      orderBy: 'created_at ASC',
+    );
+    
+    return results.map((row) {
+      return jsonDecode(row['event_json'] as String) as Map<String, dynamic>;
+    }).toList();
+  }
+
+  /// Supprimer un événement en attente
+  Future<void> deletePendingEvent(String id) async {
+    final db = await database;
+    await db.delete(
+      _pendingEventsTable,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Incrémenter le nombre de tentatives d'un événement
+  Future<void> incrementPendingEventAttempts(String id) async {
+    final db = await database;
+    await db.rawUpdate(
+      'UPDATE $_pendingEventsTable SET attempts = attempts + 1 WHERE id = ?',
+      [id],
+    );
+  }
+
+  /// Obtenir le nombre d'événements en attente
+  Future<int> getPendingEventsCount() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM $_pendingEventsTable',
+    );
+    return result.first['count'] as int;
+  }
+
+  // ============================================================
   // MÉTHODES DE GESTION
   // ============================================================
 
@@ -1225,6 +1306,7 @@ class CacheDatabaseService {
     await db.delete(_followersCacheTable);
     await db.delete(_skillAttestationsTable);
     await db.delete(_duIncrementsTable);
+    await db.delete(_pendingEventsTable);
   }
 
   /// Exécute la maintenance automatique de la base de données

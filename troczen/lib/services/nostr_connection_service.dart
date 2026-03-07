@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
 import 'logger_service.dart';
+import 'cache_database_service.dart';
 
 /// Service de gestion de la connexion WebSocket Nostr
 /// Responsabilité unique: Connexion, reconnexion, cycle de vie
@@ -107,6 +108,10 @@ class NostrConnectionService {
       _reconnectAttempts = 0;
       _connectionChangeController.add(true);
       Logger.log('NostrConnection', 'Connecté à $relayUrl');
+      
+      // Déclencher le flush automatiquement
+      flushPendingEvents();
+      
       return true;
     } catch (e) {
       _isConnected = false;
@@ -155,11 +160,70 @@ class NostrConnectionService {
   /// Alias pour compatibilité avec les services existants
   void sendMessage(String message) => send(message);
   
+  /// Tente de synchroniser tous les événements en attente (Outbox)
+  Future<int> flushPendingEvents() async {
+    if (!_isConnected) return 0;
+    
+    final cacheDb = CacheDatabaseService();
+    final pendingEvents = await cacheDb.getPendingEvents();
+    
+    if (pendingEvents.isEmpty) return 0;
+    
+    Logger.info('NostrConnection', 'Flush de ${pendingEvents.length} événements en attente...');
+    int syncedCount = 0;
+    
+    for (final event in pendingEvents) {
+      if (!_isConnected) break;
+      
+      final eventId = event['id'] as String;
+      final message = jsonEncode(['EVENT', event]);
+      
+      final completer = Completer<bool>();
+      _publishCompleters[eventId] = completer;
+      
+      send(message);
+      
+      try {
+        final success = await completer.future.timeout(const Duration(seconds: 5));
+        if (success) {
+          await cacheDb.deletePendingEvent(eventId);
+          syncedCount++;
+          Logger.success('NostrConnection', 'Événement $eventId synchronisé avec succès');
+        } else {
+          await cacheDb.incrementPendingEventAttempts(eventId);
+          Logger.warn('NostrConnection', 'Événement $eventId rejeté par le relais');
+        }
+      } catch (e) {
+        _publishCompleters.remove(eventId);
+        await cacheDb.incrementPendingEventAttempts(eventId);
+        Logger.warn('NostrConnection', 'Timeout lors de la synchronisation de $eventId');
+      }
+    }
+    
+    return syncedCount;
+  }
+
   /// Envoie un événement et attend l'acquittement (OK) du relais
   Future<bool> sendEventAndWait(String eventId, String message, {Duration timeout = const Duration(seconds: 5)}) async {
+    final cacheDb = CacheDatabaseService();
+    Map<String, dynamic>? eventData;
+    
+    try {
+      final decoded = jsonDecode(message);
+      if (decoded is List && decoded.length > 1 && decoded[0] == 'EVENT') {
+        eventData = decoded[1] as Map<String, dynamic>;
+      }
+    } catch (e) {
+      // Ignorer si ce n'est pas un EVENT valide
+    }
+
     if (!_isConnected) {
-      Logger.warn('NostrConnection', 'Tentative d\'envoi sans connexion');
-      return false;
+      Logger.warn('NostrConnection', 'Événement mis en attente (mode hors-ligne)');
+      if (eventData != null) {
+        await cacheDb.savePendingEvent(eventData);
+      }
+      // On retourne true pour que l'UI considère l'action comme "réussie" localement
+      return true;
     }
     
     final completer = Completer<bool>();
@@ -168,11 +232,20 @@ class NostrConnectionService {
     send(message);
     
     try {
-      return await completer.future.timeout(timeout);
+      final success = await completer.future.timeout(timeout);
+      if (!success && eventData != null) {
+        Logger.warn('NostrConnection', 'Événement rejeté par le relais, mis en attente');
+        await cacheDb.savePendingEvent(eventData);
+        return true; // Considéré comme réussi localement
+      }
+      return success;
     } catch (e) {
       _publishCompleters.remove(eventId);
-      Logger.warn('NostrConnection', 'Timeout attente OK pour event $eventId');
-      return false;
+      Logger.warn('NostrConnection', 'Timeout attente OK pour event $eventId, mis en attente');
+      if (eventData != null) {
+        await cacheDb.savePendingEvent(eventData);
+      }
+      return true; // Considéré comme réussi localement
     }
   }
   
