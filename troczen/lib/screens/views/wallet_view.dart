@@ -963,9 +963,9 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               ),
               const SizedBox(height: 12),
               
-              // ✅ Bouton ENCAISSER/DÉTRUIRE (si l'utilisateur est l'émetteur avec P1+P2+P3)
-              // L'émetteur peut "encaisser" son propre bon = détruire la boucle
-              if (_isEmitterWithAllParts(bon) && bon.status == BonStatus.active && !bon.isExpired) ...[
+              // ✅ Bouton ENCAISSER (si l'utilisateur est l'émetteur avec P1+P2+P3)
+              // L'émetteur peut "encaisser" son propre bon = révéler la boucle
+              if (_isEmitterWithAllParts(bon) && bon.status == BonStatus.active) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1091,7 +1091,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   }
 
   /// Vérifie si l'utilisateur est l'émetteur du bon avec toutes les parties (P1+P2+P3)
-  /// Cela signifie qu'il peut "encaisser" le bon = détruire la boucle
+  /// Cela signifie qu'il peut "encaisser" le bon = révéler la boucle
   bool _isEmitterWithAllParts(Bon bon) {
     // L'émetteur possède P1 (ancre) + P2 (voyageur retourné) + P3 (témoin en cache)
     // P1 et P2 sont stockés dans le bon, P3 est dans le cache
