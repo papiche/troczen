@@ -17,6 +17,11 @@ import '../../services/crypto_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/audit_trail_service.dart';
 
+enum ReceiveStep {
+  scanning,
+  presenting,
+}
+
 class MirrorReceiveController extends ChangeNotifier {
   final User user;
 
@@ -32,7 +37,8 @@ class MirrorReceiveController extends ChangeNotifier {
   Uint8List? ackQrData;
   bool isProcessingOffer = false;
   bool isSuccess = false;
-  String statusMessage = 'Scannez le QR du donneur';
+  ReceiveStep step = ReceiveStep.scanning;
+  String statusMessage = 'Scannez le code du donneur.';
 
   bool permissionGranted = false;
   bool isCheckingPermission = true;
@@ -85,10 +91,14 @@ class MirrorReceiveController extends ChangeNotifier {
 
   void _initScanner() {
     scannerController = MobileScannerController(
-      facing: CameraFacing.front,
+      facing: CameraFacing.back,
       formats: [BarcodeFormat.qrCode],
       detectionSpeed: DetectionSpeed.noDuplicates,
     );
+  }
+
+  void toggleCamera() {
+    scannerController?.switchCamera();
   }
 
   Future<void> handleOfferScan(BarcodeCapture capture, VoidCallback onSuccess) async {
@@ -253,18 +263,13 @@ class MirrorReceiveController extends ChangeNotifier {
 
         ackQrData = ackBytes;
         isProcessingOffer = false;
-        statusMessage = 'Montrez ce QR au donneur';
+        step = ReceiveStep.presenting;
+        statusMessage = 'Code reçu ! Montrez maintenant votre confirmation au donneur.';
         notifyListeners();
 
-        Future.delayed(const Duration(seconds: 3), () {
-          HapticFeedback.heavyImpact();
-          _audioPlayer.play(AssetSource('sounds/bowl.mp3'));
-          isSuccess = true;
-          notifyListeners();
-          Future.delayed(const Duration(seconds: 2), () {
-            onSuccess();
-          });
-        });
+        // On ne ferme plus automatiquement après 3 secondes pour laisser le temps au donneur de scanner
+        HapticFeedback.heavyImpact();
+        _audioPlayer.play(AssetSource('sounds/bowl.mp3'));
       } finally {
         if (nsecBonBytes != null) _cryptoService.secureZeroiseBytes(nsecBonBytes);
         if (bonP2Bytes != null) _cryptoService.secureZeroiseBytes(bonP2Bytes);

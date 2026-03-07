@@ -268,7 +268,7 @@ void main() {
 
       expect(controller.isGenerating, isFalse);
       expect(controller.qrData, isNotNull);
-      expect(controller.statusMessage, 'Placez les téléphones face à face');
+      expect(controller.statusMessage, 'Montrez ce code au receveur.');
     });
   });
 
@@ -307,7 +307,7 @@ void main() {
 
       expect(controller.isProcessingOffer, isFalse);
       expect(controller.ackQrData, isNull);
-      expect(controller.statusMessage, 'Scannez le QR du donneur');
+      expect(controller.statusMessage, 'Scannez le code du donneur.');
     });
   });
 }

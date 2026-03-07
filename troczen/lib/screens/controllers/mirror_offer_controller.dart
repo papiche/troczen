@@ -18,6 +18,11 @@ import '../../services/storage_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../services/nostr_service.dart';
 
+enum OfferStep {
+  presenting,
+  scanning,
+}
+
 class MirrorOfferController extends ChangeNotifier {
   final User user;
   final Bon bon;
@@ -35,6 +40,7 @@ class MirrorOfferController extends ChangeNotifier {
   bool isGenerating = true;
   bool isProcessingAck = false;
   bool isSuccess = false;
+  OfferStep step = OfferStep.presenting;
   String statusMessage = 'Génération de l\'offre...';
   String currentChallenge = '';
 
@@ -93,10 +99,20 @@ class MirrorOfferController extends ChangeNotifier {
 
   void _initScanner() {
     scannerController = MobileScannerController(
-      facing: CameraFacing.front,
+      facing: CameraFacing.back,
       formats: [BarcodeFormat.qrCode],
       detectionSpeed: DetectionSpeed.noDuplicates,
     );
+  }
+
+  void toggleCamera() {
+    scannerController?.switchCamera();
+  }
+
+  void switchToScanning() {
+    step = OfferStep.scanning;
+    statusMessage = 'Scannez la confirmation du receveur pour finaliser.';
+    notifyListeners();
   }
 
   Future<void> _generateQR() async {
@@ -175,7 +191,7 @@ class MirrorOfferController extends ChangeNotifier {
 
       qrData = qrBytes;
       isGenerating = false;
-      statusMessage = 'Placez les téléphones face à face';
+      statusMessage = 'Montrez ce code au receveur.';
       notifyListeners();
     } catch (e) {
       isGenerating = false;

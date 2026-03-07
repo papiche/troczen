@@ -68,114 +68,120 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
   }
 
   Widget _buildMirrorView() {
-    return Column(
-      children: [
-        // Moitié HAUT : Le QR Code ACK à montrer (ou attente)
-        // Fond blanc pour maximiser le contraste et aider l'exposition de la caméra adverse
-        Expanded(
-          flex: 1,
-          child: Container(
-            width: double.infinity,
-            color: _controller.ackQrData != null ? Colors.white : const Color(0xFF121212),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_controller.ackQrData != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                    ),
-                    child: _qrService.buildQrWidget(_controller.ackQrData!, size: 240),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Confirmation générée',
-                    style: TextStyle(color: Colors.green, fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Laissez le donneur scanner',
-                    style: TextStyle(color: Colors.black54, fontSize: 14),
-                  ),
-                ] else ...[
-                  const Icon(Icons.qr_code_scanner, color: Colors.grey, size: 80),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'En attente du bon...',
-                    style: TextStyle(color: Colors.grey, fontSize: 18),
-                  ),
-                ],
-              ],
+    if (_controller.step == ReceiveStep.scanning) {
+      return Stack(
+        children: [
+          if (_controller.isCheckingPermission)
+            const Center(child: CircularProgressIndicator())
+          else if (!_controller.permissionGranted)
+            const Center(child: Text('Caméra requise', style: TextStyle(color: Colors.white)))
+          else if (_controller.scannerController != null)
+            MobileScanner(
+              controller: _controller.scannerController!,
+              onDetect: (capture) => _controller.handleOfferScan(capture, () {
+                if (mounted) Navigator.pop(context);
+              }),
+            ),
+          
+          // Cadre de visée
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.8), width: 3),
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
-        ),
-        
-        // Séparateur
-        Container(
-          height: 4,
-          color: _controller.ackQrData != null ? Colors.green : Colors.orange,
-        ),
 
-        // Moitié BAS : La caméra pour scanner l'offre
-        Expanded(
-          flex: 1,
-          child: Stack(
+          // Status message
+          Positioned(
+            top: 48,
+            left: 24,
+            right: 24,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _controller.statusMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+
+          // Bouton pour changer de caméra
+          Positioned(
+            bottom: 32,
+            right: 24,
+            child: FloatingActionButton(
+              backgroundColor: Colors.black54,
+              onPressed: _controller.toggleCamera,
+              child: const Icon(Icons.cameraswitch, color: Colors.white),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Container(
+        width: double.infinity,
+        color: Colors.white,
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (_controller.isCheckingPermission)
-                const Center(child: CircularProgressIndicator())
-              else if (!_controller.permissionGranted)
-                const Center(child: Text('Caméra requise', style: TextStyle(color: Colors.white)))
-              else if (_controller.scannerController != null && _controller.ackQrData == null)
-                MobileScanner(
-                  controller: _controller.scannerController!,
-                  onDetect: (capture) => _controller.handleOfferScan(capture, () {
-                    if (mounted) Navigator.pop(context);
-                  }),
-                )
-              else if (_controller.ackQrData != null)
-                Container(color: Colors.black87, child: const Center(child: Text('Scan terminé', style: TextStyle(color: Colors.white)))),
-              
-              // Overlay sombre pour ne pas polluer la détection de l'autre téléphone avec la lumière de l'écran
-              if (_controller.ackQrData == null)
+              const Spacer(),
+              if (_controller.ackQrData != null)
                 Container(
-                  color: Colors.black.withValues(alpha: 0.6),
+                  padding: const EdgeInsets.all(32),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                  ),
+                  child: _qrService.buildQrWidget(_controller.ackQrData!, size: 300),
                 ),
-              
-              if (_controller.ackQrData == null)
-                Center(
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.orange.withValues(alpha: 0.8), width: 2),
-                      borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 24),
+              const Text(
+                'Confirmation générée',
+                style: TextStyle(color: Colors.green, fontSize: 28, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  _controller.statusMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black87, fontSize: 20, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (mounted) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                ),
-
-              Positioned(
-                bottom: 24,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _controller.statusMessage,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
+                  child: const Text(
+                    'Terminer',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
             ],
           ),
         ),
-      ],
-    );
+      );
+    }
   }
 }

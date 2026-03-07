@@ -112,104 +112,118 @@ class _MirrorOfferScreenState extends State<MirrorOfferScreen> {
   }
 
   Widget _buildMirrorView() {
-    return Column(
-      children: [
-        // Moitié HAUT : Le QR Code à montrer
-        // Fond blanc pour maximiser le contraste et aider l'exposition de la caméra adverse
-        Expanded(
-          flex: 1,
-          child: Container(
-            width: double.infinity,
-            color: Colors.white,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_controller.isGenerating)
-                  const CircularProgressIndicator(color: Colors.orange)
-                else if (_controller.qrData != null)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                    ),
-                    child: _qrService.buildQrWidget(_controller.qrData!, size: 240),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  '${widget.bon.value} ẐEN',
-                  style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Montrez ce code',
-                  style: TextStyle(color: Colors.black54, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // Séparateur
-        Container(
-          height: 4,
-          color: Colors.orange,
-        ),
-
-        // Moitié BAS : La caméra pour scanner
-        Expanded(
-          flex: 1,
-          child: Stack(
+    if (_controller.step == OfferStep.presenting) {
+      return Container(
+        width: double.infinity,
+        color: Colors.white,
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (_controller.isCheckingPermission)
-                const Center(child: CircularProgressIndicator())
-              else if (!_controller.permissionGranted)
-                const Center(child: Text('Caméra requise', style: TextStyle(color: Colors.white)))
-              else if (_controller.scannerController != null)
-                MobileScanner(
-                  controller: _controller.scannerController!,
-                  onDetect: (capture) => _controller.handleAckScan(capture, _showFollowPrompt),
-                ),
-              
-              // Overlay sombre pour ne pas polluer la détection de l'autre téléphone avec la lumière de l'écran
-              Container(
-                color: Colors.black.withValues(alpha: 0.6),
-              ),
-              
-              // Cadre de visée
-              Center(
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.8), width: 2),
-                    borderRadius: BorderRadius.circular(12),
+              const Spacer(),
+              if (_controller.isGenerating)
+                const CircularProgressIndicator(color: Colors.orange)
+              else if (_controller.qrData != null)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
                   ),
+                  child: _qrService.buildQrWidget(_controller.qrData!, size: 300),
+                ),
+              const SizedBox(height: 24),
+              Text(
+                '${widget.bon.value} ẐEN',
+                style: const TextStyle(color: Colors.black, fontSize: 36, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  _controller.statusMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black87, fontSize: 20, fontWeight: FontWeight.w500),
                 ),
               ),
-
-              // Status message
-              Positioned(
-                bottom: 24,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(20),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: ElevatedButton(
+                  onPressed: _controller.switchToScanning,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(
-                      _controller.statusMessage,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
+                  ),
+                  child: const Text(
+                    'J\'ai montré le code',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
             ],
           ),
         ),
-      ],
-    );
+      );
+    } else {
+      return Stack(
+        children: [
+          if (_controller.isCheckingPermission)
+            const Center(child: CircularProgressIndicator())
+          else if (!_controller.permissionGranted)
+            const Center(child: Text('Caméra requise', style: TextStyle(color: Colors.white)))
+          else if (_controller.scannerController != null)
+            MobileScanner(
+              controller: _controller.scannerController!,
+              onDetect: (capture) => _controller.handleAckScan(capture, _showFollowPrompt),
+            ),
+          
+          // Cadre de visée
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.8), width: 3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+
+          // Status message
+          Positioned(
+            top: 48,
+            left: 24,
+            right: 24,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _controller.statusMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+
+          // Bouton pour changer de caméra
+          Positioned(
+            bottom: 32,
+            right: 24,
+            child: FloatingActionButton(
+              backgroundColor: Colors.black54,
+              onPressed: _controller.toggleCamera,
+              child: const Icon(Icons.cameraswitch, color: Colors.white),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }
