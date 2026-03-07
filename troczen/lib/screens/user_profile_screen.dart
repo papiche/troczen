@@ -33,6 +33,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final _websiteController = TextEditingController();
   final _g1pubController = TextEditingController();
   final _relaysController = TextEditingController();
+  final _skillController = TextEditingController();
   
   final _apiService = ApiService();
   final _storageService = StorageService();
@@ -43,6 +44,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   File? _selectedBannerFile;
   bool _isSaving = false;
   bool _isUploading = false;
+  List<String> _activityTags = [];
 
   @override
   void initState() {
@@ -68,6 +70,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _aboutController.text = widget.user.about ?? '';
     _websiteController.text = widget.user.website ?? '';
     _g1pubController.text = widget.user.g1pub ?? '';
+    _activityTags = List.from(widget.user.activityTags ?? []);
     
     // Relais par défaut
     _relaysController.text = AppConfig.defaultRelayUrl;
@@ -477,6 +480,89 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildSkillsSection() {
+    return Card(
+      color: const Color(0xFF1E1E1E),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Savoir-faire (Compétences)',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Ajoutez vos compétences pour participer au Web of Trust (WoTx).',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _activityTags.map((tag) {
+                return Chip(
+                  label: Text(tag),
+                  backgroundColor: Colors.indigo.withValues(alpha: 0.3),
+                  labelStyle: const TextStyle(color: Colors.white),
+                  deleteIcon: const Icon(Icons.close, size: 16, color: Colors.white70),
+                  onDeleted: () {
+                    setState(() {
+                      _activityTags.remove(tag);
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _skillController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nouvelle compétence',
+                      hintText: 'ex: Maraîchage',
+                      border: OutlineInputBorder(),
+                      labelStyle: TextStyle(color: Colors.white70),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    onFieldSubmitted: (value) {
+                      _addSkill();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.add_circle, color: Colors.indigoAccent, size: 32),
+                  onPressed: _addSkill,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addSkill() {
+    final skill = _skillController.text.trim();
+    if (skill.isNotEmpty && !_activityTags.contains(skill)) {
+      setState(() {
+        _activityTags.add(skill);
+        _skillController.clear();
+      });
+    }
   }
 
   Widget _buildNostrSection() {
