@@ -37,6 +37,12 @@ LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 # Déterminer si on est en mode production
 is_production = os.getenv('PRODUCTION', 'false').lower() == 'true'
 
+# Ignorer LOG_FILE en production (les logs vont vers systemd via stdout)
+if is_production and LOG_FILE:
+    import sys
+    print("WARNING: LOG_FILE is ignored in production mode; logs go to journal", file=sys.stderr)
+    LOG_FILE = None
+
 # Configuration du logging
 logger = setup_logging(
     log_level=LOG_LEVEL,
@@ -66,8 +72,8 @@ APK_IPFS_META_FILE = APK_FOLDER / 'ipfs_meta.json'
 
 # ✅ Configuration TrocZen Box
 MARKET_SEED = os.getenv('MARKET_SEED', '0000000000000000000000000000000000000000000000000000000000000000')  # Seed du marché (64 chars hex)
-MARKET_NAME = os.getenv('MARKET_NAME', 'marche-local')  # Nom du marché
-WIFI_SSID = os.getenv('WIFI_SSID', 'TrocZen-Marche')  # SSID WiFi de la Box
+MARKET_NAME = os.getenv('MARKET_NAME', 'marche-libre')  # Nom du marché
+WIFI_SSID = os.getenv('WIFI_SSID', 'ZEN-Box')  # SSID WiFi de la Box
 WIFI_PASSWORD = os.getenv('WIFI_PASSWORD', '0penS0urce!')  # Mot de passe WiFi
 BOX_IP = os.getenv('BOX_IP', '10.42.0.1')  # IP locale de la Box
 
@@ -951,13 +957,13 @@ def register_nostr_pubkey():
                 
                 if pubkey in existing_keys:
                     already_registered = True
-                    app_logger.info(f'Pubkey déjà enregistrée: {pubkey[:16]}...')
+                    app_logger.info(f'Pubkey déjà enregistrée: {pubkey}')
                 else:
                     # Ajouter la pubkey à la fin
                     f.seek(0, 2)  # Se positionner à la fin
                     f.write(f'{pubkey}\n')
                     f.flush()  # Forcer l'écriture immédiate
-                    app_logger.info(f'Nouvelle pubkey enregistrée: {pubkey[:16]}...')
+                    app_logger.info(f'Nouvelle pubkey enregistrée: {pubkey}')
             finally:
                 # Déverrouiller le fichier
                 fcntl.flock(f.fileno(), fcntl.LOCK_UN)
