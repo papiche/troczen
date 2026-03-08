@@ -73,7 +73,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
         final myProfile = await nostrService.fetchUserProfile(user.npub);
         final mySkills = myProfile?.skillCredentials?.map((c) => c.skillTag).toList() ?? [];
         if (mySkills.isNotEmpty) {
-          final requests = await nostrService.fetchPendingSkillRequests(
+          final requests = await nostrService.wotx.fetchPendingSkillRequests(
             mySkills: mySkills,
             myNpub: user.npub,
           );
@@ -664,7 +664,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
       final market = await storageService.getActiveMarket();
       if (user == null || market == null) throw Exception('Utilisateur ou marché non trouvé');
 
-      final success = await nostrService.publishSkillAttestation(
+      final success = await nostrService.wotx.publishSkillAttestation(
         myNpub: user.npub,
         myNsec: user.nsec,
         requestId: requestId,

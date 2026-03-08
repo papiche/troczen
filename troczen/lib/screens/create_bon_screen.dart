@@ -117,7 +117,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         final nostrService = context.read<NostrService>();
         try {
           if (await nostrService.connect(market.relayUrl!)) {
-            final tags = await nostrService.fetchActivityTagsFromProfiles(limit: 50);
+            final tags = await nostrService.wotx.fetchActivityTagsFromProfiles(limit: 50);
             if (mounted) {
               setState(() {
                 _suggestedTags = tags.take(10).toList(); // Garder les 10 premiers
@@ -335,8 +335,6 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         marketName: _selectedMarket!.name,
         color: _selectedColor.toARGB32(),
         duAtCreation: currentDu,
-        rarity: isBootstrap ? 'bootstrap' : 'common',
-        cardType: isBootstrap ? 'bootstrap' : 'DU',
         wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
         picture: logoUrl,
         banner: bannerUrl,
@@ -371,7 +369,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           nsecBonBytes = _cryptoService.shamirCombineBytesDirect(null, p2Bytes, p3Bytes);
           final nsecHex = HEX.encode(nsecBonBytes);
           
-          await nostrService.publishUserProfile(
+          await nostrService.market.publishUserProfile(
             npub: bonNpubHex,
             nsec: nsecHex,
             name: _issuerNameController.text,
@@ -396,7 +394,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
         }
 
         // Publication P3 chiffrée - AVEC la clé de l'émetteur pour signature
-        final published = await nostrService.publishP3(
+        final published = await nostrService.market.publishP3(
           bonId: bonNpubHex,
           issuerNsecHex: widget.user.nsec,
           p3Hex: p3,

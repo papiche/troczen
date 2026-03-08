@@ -181,7 +181,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       
       if (connected) {
         // Publier le profil utilisateur (kind 0)
-        await nostrService.publishUserProfile(
+        await nostrService.market.publishUserProfile(
           npub: widget.user.npub,
           nsec: widget.user.nsec,
           name: _nameController.text.trim(),

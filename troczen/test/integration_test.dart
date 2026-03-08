@@ -98,9 +98,6 @@ void main() {
           p2: parts[1], // Voyageur
           p3: parts[2], // Témoin
           marketName: 'Marché Local',
-          rarity: Bon.generateRarity(),
-          uniqueId: Bon.generateUniqueId(bonKeys['publicKeyHex']!),
-          cardType: Bon.generateCardType(),
         );
 
         // 3. Vérifier les propriétés du bon

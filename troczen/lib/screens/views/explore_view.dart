@@ -967,7 +967,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     
     try {
       if (await nostrService.connect(relayUrl)) {
-        final success = await nostrService.publishSkillReview(
+        final success = await nostrService.wotx.publishSkillReview(
           myNpub: widget.user.npub,
           myNsec: widget.user.nsec,
           targetNpub: artisanNpub,
@@ -1377,10 +1377,13 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
         
         final Map<String, int> skillsCount = {};
         
-        // On récupère les profils par lots pour ne pas surcharger
-        for (final npub in allNetworkNpubs.take(50)) { // Limite à 50 pour la perf
-          final profile = await nostrService.fetchUserProfile(npub);
-          if (profile != null && profile.tags != null) {
+        // On récupère les profils par lots (batch)
+        final npubsList = allNetworkNpubs.toList();
+        // On peut maintenant récupérer beaucoup plus de profils d'un coup
+        final profiles = await nostrService.fetchUserProfilesBatch(npubsList);
+        
+        for (final profile in profiles) {
+          if (profile.tags != null) {
             for (final tag in profile.tags!) {
               final normalized = NostrUtils.normalizeSkillTag(tag);
               if (normalized.isNotEmpty) {
@@ -1430,7 +1433,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       final nostrService = context.read<NostrService>();
       
       if (await nostrService.connect(relayUrl)) {
-        final requests = await nostrService.fetchPendingSkillRequests(
+        final requests = await nostrService.wotx.fetchPendingSkillRequests(
           mySkills: widget.user.activityTags!,
           myNpub: widget.user.npub,
         );
@@ -1463,7 +1466,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       final nostrService = context.read<NostrService>();
       
       if (await nostrService.connect(relayUrl)) {
-        final success = await nostrService.publishSkillAttestation(
+        final success = await nostrService.wotx.publishSkillAttestation(
           myNpub: widget.user.npub,
           myNsec: widget.user.nsec,
           requestId: request['id'],
@@ -1976,7 +1979,7 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
             ? widget.bon.expiresAt!.millisecondsSinceEpoch ~/ 1000
             : now.add(const Duration(days: 90)).millisecondsSinceEpoch ~/ 1000;
 
-        final success = await nostrService.publishBonProfileUpdate(
+        final success = await nostrService.market.publishBonProfileUpdate(
           bonId: widget.bon.bonId,
           issuerNsecHex: widget.user.nsec,
           issuerNpub: widget.bon.issuerNpub,
@@ -1986,7 +1989,6 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
           p3Nonce: p3Encrypted['nonce']!,
           expiryTimestamp: expiryTimestamp,
           profileData: profileData,
-          rarity: widget.bon.rarity,
           wish: widget.bon.wish,
         );
         

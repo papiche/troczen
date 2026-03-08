@@ -117,7 +117,6 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         filteredBons = bons.where((bon) {
           return bon.issuerName.toLowerCase().contains(query) ||
                  bon.value.toString().contains(query) ||
-                 (bon.cardType?.toLowerCase().contains(query) ?? false) ||
                  bon.marketName.toLowerCase().contains(query);
         }).toList();
       }
@@ -909,25 +908,6 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               _buildDetailRow('Marché', bon.marketName),
               if (bon.wish != null && bon.wish!.isNotEmpty)
                 _buildDetailRow('Vœu', bon.wish!),
-              if (bon.rarity != null && bon.rarity != 'common') ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Rareté',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFB347),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  bon.rarity!.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
               
               const SizedBox(height: 24),
 
@@ -1206,8 +1186,6 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               valueZen: bon.value,
               hopCount: bon.transferCount ?? 0,
               ageDays: DateTime.now().difference(bon.createdAt).inDays,
-              skillAnnotation: bon.specialAbility,
-              rarity: bon.rarity,
               onClose: () => Navigator.pop(context),
             ),
           ),

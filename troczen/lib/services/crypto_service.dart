@@ -183,12 +183,6 @@ class CryptoService {
     return Uint8List.fromList(digest.bytes);
   }
 
-  /// Dérive une clé privée à partir d'un login et mot de passe (Scrypt)
-  /// (Maintenue pour compatibilité, mais utilise désormais deriveSeed + deriveNostrPrivateKey)
-  Future<Uint8List> derivePrivateKey(String login, String password) async {
-    final seed = await deriveSeed(login, password);
-    return await deriveNostrPrivateKey(seed);
-  }
 
   /// Dérive la clé publique depuis une clé privée secp256k1
   String derivePublicKey(Uint8List privateKeyBytes) {
@@ -726,14 +720,6 @@ class CryptoService {
     return HEX.encode(plaintext);
   }
 
-  /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) via bibliothèque éprouvée
-  /// Utilise bip340 qui implémente correctement le nonce déterministe BIP-340
-  /// Accepte la clé privée en format Uint8List
-  /// ⚠️ NOTE: Cette méthode est dépréciée, utilisez signMessageBytes()
-  @Deprecated('Utilisez signMessageBytes à la place')
-  String signMessage(String messageHex, Uint8List privateKeyBytes) {
-    return signMessageBytes(messageHex, privateKeyBytes);
-  }
 
   /// ✅ SÉCURITÉ: Signe un message avec Schnorr (BIP-340) en utilisant Uint8List
   /// Version sécurisée qui permet le nettoyage mémoire de la clé privée.

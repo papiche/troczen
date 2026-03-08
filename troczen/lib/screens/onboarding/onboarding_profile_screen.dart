@@ -79,7 +79,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
       
       if (await nostrService.connect(state.relayUrl)) {
         // 1. Lire les Kind 30500
-        var skills = await nostrService.fetchSkillDefinitions();
+        var skills = await nostrService.wotx.fetchSkillDefinitions();
         
         // 2. Si le relai est vierge (ensemencement initial)
         if (skills.isEmpty) {
@@ -92,7 +92,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
           if (user != null && seedMarket != null) {
             final defaultSkills = AppConfig.allDefaultSkills;
             for (final skill in defaultSkills) {
-               await nostrService.publishSkillPermit(
+               await nostrService.wotx.publishSkillPermit(
                  npub: user.npub,
                  nsec: user.nsec,
                  skillTag: skill,
@@ -140,7 +140,7 @@ class _OnboardingProfileScreenState extends State<OnboardingProfileScreen> {
     if (user != null && state.relayUrl.isNotEmpty && seedMarket != null) {
       final nostrService = context.read<NostrService>();
       if (await nostrService.connect(state.relayUrl)) {
-        await nostrService.publishSkillPermit(
+        await nostrService.wotx.publishSkillPermit(
           npub: user.npub,
           nsec: user.nsec,
           skillTag: tag,

@@ -29,7 +29,7 @@ class BonCardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rarity = bon.rarity ?? 'common';
+    final rarity = 'common';
     final isPending = bon.status == BonStatus.pending;
     // Utiliser picture (NIP nostr) avec fallback sur logoUrl pour compatibilité
     final pictureUrl = bon.picture ?? bon.logoUrl;
@@ -178,7 +178,7 @@ class BonCardBodyWithTransfers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rarity = bon.rarity ?? 'common';
+    final rarity = 'common';
     final isPending = bon.status == BonStatus.pending;
     // Utiliser picture (NIP nostr) avec fallback sur logoUrl pour compatibilité
     final pictureUrl = bon.picture ?? bon.logoUrl;

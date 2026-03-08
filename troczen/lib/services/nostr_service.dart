@@ -30,9 +30,9 @@ class NostrService {
   final StorageService _storageService;
   
   // Services spécialisés
-  late final NostrConnectionService _connection;
-  late final NostrMarketService _market;
-  late final NostrWoTxService _wotx;
+  late final NostrConnectionService connection;
+  late final NostrMarketService market;
+  late final NostrWoTxService wotx;
   
   
   // Callbacks (redirigés vers les sous-services)
@@ -53,43 +53,43 @@ class NostrService {
         _storageService = storageService {
     
     // Initialiser les sous-services
-    _connection = NostrConnectionService();
+    connection = NostrConnectionService();
     
-    _market = NostrMarketService(
-      connection: _connection,
+    market = NostrMarketService(
+      connection: connection,
       cryptoService: _cryptoService,
       storageService: _storageService,
     );
     
-    _wotx = NostrWoTxService(
-      connection: _connection,
+    wotx = NostrWoTxService(
+      connection: connection,
       cryptoService: _cryptoService,
     );
     
     // Rediriger les callbacks via les streams
-    _connSub = _connection.onConnectionChange.listen((connected) {
+    _connSub = connection.onConnectionChange.listen((connected) {
       onConnectionChange?.call(connected);
     });
     
-    _errSub = _connection.onError.listen((error) {
+    _errSub = connection.onError.listen((error) {
       onError?.call(error);
     });
     
-    _msgSub = _connection.onMessage.listen(_handleMessage);
+    _msgSub = connection.onMessage.listen(_handleMessage);
     
-    _market.onP3Received = (bonId, p3Hex) {
+    market.onP3Received = (bonId, p3Hex) {
       onP3Received?.call(bonId, p3Hex);
     };
     
-    _market.onError = (error) {
+    market.onError = (error) {
       onError?.call(error);
     };
     
-    _wotx.onError = (error) {
+    wotx.onError = (error) {
       onError?.call(error);
     };
     
-    _wotx.onTagsReceived = (tags) {
+    wotx.onTagsReceived = (tags) {
       onTagsReceived?.call(tags);
     };
   }
@@ -98,133 +98,47 @@ class NostrService {
   // CONNEXION - Déléguer à NostrConnectionService
   // ============================================================
   
-  Future<bool> connect(String relayUrl) => _connection.connect(relayUrl);
+  Future<bool> connect(String relayUrl) => connection.connect(relayUrl);
   
-  Future<void> disconnect() => _connection.disconnect();
+  Future<void> disconnect() => connection.disconnect();
   
-  bool get isConnected => _connection.isConnected;
+  bool get isConnected => connection.isConnected;
   
-  String? get currentRelay => _connection.currentRelay;
+  String? get currentRelay => connection.currentRelay;
   
-  Future<bool> forceReconnect() => _connection.forceReconnect();
+  Future<bool> forceReconnect() => connection.forceReconnect();
   
-  bool get autoSyncEnabled => _market.autoSyncEnabled;
-  Market? get lastSyncedMarket => _market.lastSyncedMarket;
-  bool get isAppInBackground => _connection.isAppInBackground;
-  int get reconnectAttempts => _connection.reconnectAttempts;
+  bool get autoSyncEnabled => market.autoSyncEnabled;
+  Market? get lastSyncedMarket => market.lastSyncedMarket;
+  bool get isAppInBackground => connection.isAppInBackground;
+  int get reconnectAttempts => connection.reconnectAttempts;
   
   void onAppPaused() {
-    _connection.onAppPaused();
-    _market.onAppPaused();
+    connection.onAppPaused();
+    market.onAppPaused();
   }
   
   void onAppResumed() {
-    _connection.onAppResumed();
-    _market.onAppResumed();
+    connection.onAppResumed();
+    market.onAppResumed();
   }
   
   void dispose() {
     _connSub?.cancel();
     _errSub?.cancel();
     _msgSub?.cancel();
-    _market.dispose();
+    market.dispose();
   }
   
   // ============================================================
   // MARCHÉS - Déléguer à NostrMarketService
   // ============================================================
   
-  Future<bool> publishP3({
-    required String bonId,
-    required String issuerNsecHex,
-    required String p3Hex,
-    required String seedMarket,
-    required String issuerNpub,
-    required String marketName,
-    required double value,
-    String? category,
-    String? rarity,
-    String? wish,
-    int? duIndex,
-  }) => _market.publishP3(
-    bonId: bonId,
-    issuerNsecHex: issuerNsecHex,
-    p3Hex: p3Hex,
-    seedMarket: seedMarket,
-    issuerNpub: issuerNpub,
-    marketName: marketName,
-    value: value,
-    category: category,
-    rarity: rarity,
-    wish: wish,
-    duIndex: duIndex,
-  );
-  
-  Future<bool> publishBonProfileUpdate({
-    required String bonId,
-    required String issuerNsecHex,
-    required String issuerNpub,
-    required String marketName,
-    required double value,
-    required String p3Cipher,
-    required String p3Nonce,
-    required int expiryTimestamp,
-    required Map<String, dynamic> profileData,
-    String? category,
-    String? rarity,
-    String? wish,
-  }) => _market.publishBonProfileUpdate(
-    bonId: bonId,
-    issuerNsecHex: issuerNsecHex,
-    issuerNpub: issuerNpub,
-    marketName: marketName,
-    value: value,
-    p3Cipher: p3Cipher,
-    p3Nonce: p3Nonce,
-    expiryTimestamp: expiryTimestamp,
-    profileData: profileData,
-    category: category,
-    rarity: rarity,
-    wish: wish,
-  );
-
-  Future<bool> publishBonCircuit({
-    required String bonId,
-    required double valueZen,
-    required int hopCount,
-    required int ageDays,
-    required String marketName,
-    required String issuerNpub,
-    required Uint8List nsecBonBytes,
-    required String seedMarket,
-    String? skillAnnotation,
-    String? rarity,
-    String? cardType,
-  }) => _market.publishBonCircuit(
-    bonId: bonId,
-    valueZen: valueZen,
-    hopCount: hopCount,
-    ageDays: ageDays,
-    marketName: marketName,
-    issuerNpub: issuerNpub,
-    nsecBonBytes: nsecBonBytes,
-    seedMarket: seedMarket,
-    skillAnnotation: skillAnnotation,
-    rarity: rarity,
-    cardType: cardType,
-  );
-  
-  Future<String?> subscribeToMarket(String marketName, {int? since}) =>
-    _market.subscribeToMarket(marketName, since: since);
-  
-  Future<String?> subscribeToMarkets(List<String> marketNames, {int? since}) =>
-    _market.subscribeToMarkets(marketNames, since: since);
-  
-  Future<int> syncMarketP3s(Market market) async {
+  Future<int> syncMarketP3s(Market targetMarket) async {
     // Synchroniser les followers avant de lancer la sync du marché
     try {
       final user = await _storageService.getUser();
-      if (user != null && _connection.isConnected) {
+      if (user != null && connection.isConnected) {
         final followers = await fetchFollowers(user.npub);
         await _storageService.saveFollowersBatch(followers);
         Logger.info('NostrService', '${followers.length} followers synchronisés');
@@ -238,15 +152,15 @@ class NostrService {
       nostrService: this,
       cryptoService: _cryptoService,
     );
-    return await _market.syncMarketP3s(market, duService);
+    return await market.syncMarketP3s(targetMarket, duService);
   }
   
   Future<int> syncMarketsP3s(List<Market> markets) async {
     // Utiliser le relay du premier marché
     final relayUrl = markets.first.relayUrl ?? AppConfig.defaultRelayUrl;
     
-    if (!_connection.isConnected) {
-      final connected = await _connection.connect(relayUrl);
+    if (!connection.isConnected) {
+      final connected = await connection.connect(relayUrl);
       if (!connected) return 0;
     }
 
@@ -264,8 +178,8 @@ class NostrService {
       }
     }
 
-    final originalCallback = _market.onP3Received;
-    _market.onP3Received = (bonId, p3Hex) async {
+    final originalCallback = market.onP3Received;
+    market.onP3Received = (bonId, p3Hex) async {
       p3Batch[bonId] = p3Hex;
       syncedCount++;
       originalCallback?.call(bonId, p3Hex);
@@ -279,7 +193,7 @@ class NostrService {
     final lastSyncDate = await _storageService.getLastP3Sync();
     final since = lastSyncDate != null ? lastSyncDate.millisecondsSinceEpoch ~/ 1000 : null;
     
-    final subscriptionId = await subscribeToMarkets(marketNames, since: since);
+    final subscriptionId = await market.subscribeToMarkets(marketNames, since: since);
     
     if (subscriptionId == null) {
       return 0;
@@ -289,11 +203,11 @@ class NostrService {
     
     void finishSync() async {
       fallbackTimer?.cancel();
-      _connection.removeHandler(subscriptionId);
-      _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+      connection.removeHandler(subscriptionId);
+      connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
       
       await flushBatch();
-      _market.onP3Received = originalCallback;
+      market.onP3Received = originalCallback;
       
       try {
         // Synchroniser les followers avant de vérifier le DU
@@ -319,7 +233,7 @@ class NostrService {
       }
     }
 
-    _connection.registerHandler(subscriptionId, (message) {
+    connection.registerHandler(subscriptionId, (message) {
       if (message[0] == 'EOSE') {
         Logger.info('NostrService', 'EOSE reçu pour la sync multi-marchés');
         finishSync();
@@ -336,135 +250,88 @@ class NostrService {
     return result;
   }
   
-  void enableAutoSync({Duration? interval, Market? initialMarket}) =>
-    _market.enableAutoSync(interval: interval, initialMarket: initialMarket);
-  
-  void disableAutoSync() => _market.disableAutoSync();
-  
-  void updateAutoSyncMarket(Market market) =>
-    _market.updateAutoSyncMarket(market);
-  
-  Future<int> triggerImmediateSync(Market market) async {
-    if (!_connection.isConnected && market.relayUrl != null) {
-      await _connection.connect(market.relayUrl!);
+  Future<int> triggerImmediateSync(Market targetMarket) async {
+    if (!connection.isConnected && targetMarket.relayUrl != null) {
+      await connection.connect(targetMarket.relayUrl!);
     }
     
-    if (!_connection.isConnected) {
+    if (!connection.isConnected) {
       onError?.call('Pas de connexion pour synchronisation');
       return 0;
     }
     
-    return await syncMarketP3s(market);
+    return await syncMarketP3s(targetMarket);
   }
-  
-  // ============================================================
-  // WoTx - Déléguer à NostrWoTxService
-  // ============================================================
-  
-  Future<bool> publishSkillPermit({
-    required String npub,
-    required String nsec,
-    required String skillTag,
-    required String seedMarket,
-  }) => _wotx.publishSkillPermit(
-    npub: npub,
-    nsec: nsec,
-    skillTag: skillTag,
-    seedMarket: seedMarket,
-  );
-  
-  Future<List<String>> fetchSkillDefinitions() =>
-    _wotx.fetchSkillDefinitions();
-  
-  Future<bool> publishSkillRequest({
-    required String npub,
-    required String nsec,
-    required String skill,
-    required String seedMarket,
-    String motivation = "Déclaration initiale lors de l'inscription",
-  }) => _wotx.publishSkillRequest(
-    npub: npub,
-    nsec: nsec,
-    skill: skill,
-    seedMarket: seedMarket,
-    motivation: motivation,
-  );
-  
-  Future<List<Map<String, dynamic>>> fetchPendingSkillRequests({
-    required List<String> mySkills,
-    required String myNpub,
-  }) => _wotx.fetchPendingSkillRequests(
-    mySkills: mySkills,
-    myNpub: myNpub,
-  );
-  
-  Future<bool> publishSkillAttestation({
-    required String myNpub,
-    required String myNsec,
-    required String requestId,
-    required String requesterNpub,
-    required String permitId,
-    required String seedMarket,
-    String? motivation,
-  }) => _wotx.publishSkillAttestation(
-    myNpub: myNpub,
-    myNsec: myNsec,
-    requestId: requestId,
-    requesterNpub: requesterNpub,
-    permitId: permitId,
-    seedMarket: seedMarket,
-    motivation: motivation,
-  );
-  
-  Future<List<Map<String, dynamic>>> fetchMyAttestations(String myNpub) =>
-    _wotx.fetchMyAttestations(myNpub);
-  
-  Future<bool> publishSkillReview({
-    required String myNpub,
-    required String myNsec,
-    required String targetNpub,
-    required String permitEventId,
-    required bool isPositive,
-  }) => _wotx.publishSkillReview(
-    myNpub: myNpub,
-    myNsec: myNsec,
-    targetNpub: targetNpub,
-    permitEventId: permitEventId,
-    isPositive: isPositive,
-  );
 
-  Future<bool> publishSkillReaction({
-    required String myNpub,
-    required String myNsec,
-    required String artisanNpub,
-    required String eventId,
-    required String skillTag,
-    required bool isPositive,
-  }) => _wotx.publishSkillReaction(
-    myNpub: myNpub,
-    myNsec: myNsec,
-    artisanNpub: artisanNpub,
-    eventId: eventId,
-    skillTag: skillTag,
-    isPositive: isPositive,
-  );
+  /// Synchronisation "Light Node" pour les Alchimistes (Gossip)
+  Future<int> syncGossipData() async {
+    if (!connection.isConnected) return 0;
 
-  Future<bool> publishSkillAchievement({
-    required String myNpub,
-    required String myNsec,
-    required String skillTag,
-    required int newLevel,
-    required List<String> justificationEventIds,
-  }) => _wotx.publishSkillAchievement(
-    myNpub: myNpub,
-    myNsec: myNsec,
-    skillTag: skillTag,
-    newLevel: newLevel,
-    justificationEventIds: justificationEventIds,
-  );
-  
-  Future<List<String>> fetchActivityTagsFromProfiles({int limit = 100}) =>
-    _wotx.fetchActivityTagsFromProfiles(limit: limit);
+    final cacheDb = CacheDatabaseService();
+    final lastSyncDate = await _storageService.getLastP3Sync();
+    final since = lastSyncDate != null ? lastSyncDate.millisecondsSinceEpoch ~/ 1000 : null;
+
+    final completer = Completer<int>();
+    int syncedCount = 0;
+    final subscriptionId = 'gossip_${DateTime.now().millisecondsSinceEpoch}';
+    final eventsBatch = <Map<String, dynamic>>[];
+    const int batchSize = 100;
+
+    Future<void> flushBatch() async {
+      if (eventsBatch.isNotEmpty) {
+        final batchToWrite = List<Map<String, dynamic>>.from(eventsBatch);
+        eventsBatch.clear();
+        await cacheDb.saveGossipEventsBatch(batchToWrite);
+      }
+    }
+
+    connection.registerHandler(subscriptionId, (message) async {
+      try {
+        if (message[0] == 'EVENT' && message.length >= 3) {
+          final event = message[2] as Map<String, dynamic>;
+          eventsBatch.add(event);
+          syncedCount++;
+          
+          if (eventsBatch.length >= batchSize) {
+            await flushBatch();
+          }
+        } else if (message[0] == 'EOSE') {
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.removeHandler(subscriptionId);
+          await flushBatch();
+          if (!completer.isCompleted) {
+            completer.complete(syncedCount);
+          }
+        }
+      } catch (e) {
+        Logger.error('NostrService', 'Erreur parsing gossip event', e);
+      }
+    });
+
+    final filter = <String, dynamic>{
+      'kinds': [0, 1, 3, 5, 7, 30303, 30304, 30305, 30502, 30503],
+    };
+    if (since != null) {
+      filter['since'] = since;
+    }
+
+    final request = jsonEncode(['REQ', subscriptionId, filter]);
+    connection.sendMessage(request);
+
+    Timer? fallbackTimer;
+    fallbackTimer = Timer(const Duration(seconds: 30), () async {
+      connection.removeHandler(subscriptionId);
+      await flushBatch();
+      if (!completer.isCompleted) {
+        connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+        completer.complete(syncedCount);
+      }
+    });
+
+    final result = await completer.future;
+    fallbackTimer.cancel();
+    return result;
+  }
   
   // ============================================================
   // DU (Dividende Universel) - Kind 30305
@@ -500,7 +367,7 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      return await _connection.sendEventAndWait(eventId, message);
+      return await connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication DU: $e');
       return false;
@@ -511,7 +378,7 @@ class NostrService {
   Future<double> computeAvailableDu(String npub) async {
     final cacheDb = CacheDatabaseService();
     
-    if (!_connection.isConnected) {
+    if (!connection.isConnected) {
       // En offline, retourner la dernière valeur en cache
       return await cacheDb.getTotalDuIncrements(npub);
     }
@@ -561,7 +428,7 @@ class NostrService {
 
   /// Récupère la moyenne des incréments DU récents sur le réseau
   Future<double?> fetchAverageRecentDu() async {
-    if (!_connection.isConnected) return null;
+    if (!connection.isConnected) return null;
     try {
       final events = await _fetchEvents(kind: NostrConstants.kindDuIncrement, limit: 50);
       if (events.isEmpty) return null;
@@ -597,20 +464,20 @@ class NostrService {
     List<String>? authors,
     int limit = 1000,
   }) async {
-    if (!_connection.isConnected) return [];
+    if (!connection.isConnected) return [];
 
     final completer = Completer<List<Map<String, dynamic>>>();
     final events = <Map<String, dynamic>>[];
     final subscriptionId = 'fetch_${kind}_${DateTime.now().millisecondsSinceEpoch}';
 
-    _connection.registerHandler(subscriptionId, (message) {
+    connection.registerHandler(subscriptionId, (message) {
       try {
         if (message[0] == 'EVENT' && message.length >= 3) {
           final event = message[2] as Map<String, dynamic>;
           events.add(event);
         } else if (message[0] == 'EOSE') {
-          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
-          _connection.removeHandler(subscriptionId);
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.removeHandler(subscriptionId);
           if (!completer.isCompleted) {
             completer.complete(events);
           }
@@ -629,13 +496,13 @@ class NostrService {
     }
 
     final request = jsonEncode(['REQ', subscriptionId, filter]);
-    _connection.sendMessage(request);
+    connection.sendMessage(request);
 
     Timer? fallbackTimer;
     fallbackTimer = Timer(const Duration(seconds: 10), () {
-      _connection.removeHandler(subscriptionId);
+      connection.removeHandler(subscriptionId);
       if (!completer.isCompleted) {
-        _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+        connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
         completer.complete(events);
       }
     });
@@ -645,99 +512,6 @@ class NostrService {
     return result;
   }
 
-  // ============================================================
-  // PROFILS UTILISATEUR & AUTRES (À conserver temporairement)
-  // ============================================================
-  
-  /// Publie un profil utilisateur (kind 0)
-  Future<bool> publishUserProfile({
-    required String npub,
-    required String nsec,
-    required String name,
-    String? displayName,
-    String? about,
-    String? picture,
-    String? banner,
-    String? picture64,
-    String? banner64,
-    String? website,
-    String? g1pub,
-    List<String>? tags,
-    String? activity,
-    String? profession,
-    Map<String, dynamic>? economicData,
-  }) async {
-    final registered = await _market.ensurePubkeyRegistered(npub);
-    if (!registered) {
-      Logger.warn('NostrService', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
-    }
-
-    try {
-      final profile = NostrProfile(
-        npub: npub,
-        name: name,
-        displayName: displayName,
-        about: about,
-        picture: picture,
-        banner: banner,
-        picture64: picture64,
-        banner64: banner64,
-        website: website,
-        g1pub: g1pub,
-        tags: tags,
-        activity: activity,
-        profession: profession,
-        economicData: economicData,
-      );
-
-      final nostrTags = <List<String>>[];
-      
-      if (tags != null && tags.isNotEmpty) {
-        for (final tag in tags) {
-          final normalizedTag = tag.toLowerCase().trim();
-          if (normalizedTag.isNotEmpty) {
-            nostrTags.add(['t', normalizedTag]);
-          }
-        }
-      }
-      
-      if (activity != null && activity.trim().isNotEmpty) {
-        nostrTags.add(['t', activity.toLowerCase().trim()]);
-      }
-      
-      if (profession != null && profession.trim().isNotEmpty) {
-        nostrTags.add(['t', profession.toLowerCase().trim()]);
-      }
-
-      final event = {
-        'kind': NostrConstants.kindMetadata,
-        'pubkey': npub,
-        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        'tags': nostrTags,
-        'content': jsonEncode(profile.toJson()),
-      };
-
-      final eventId = NostrUtils.calculateEventId(event);
-      event['id'] = eventId;
-      Uint8List nsecBytes;
-      try {
-        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
-      } catch (e) {
-        throw Exception('Clé privée invalide (non hexadécimale)');
-      }
-      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
-      event['sig'] = signature;
-
-      final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-      
-      Logger.log('NostrService', 'Profil publié avec ${nostrTags.length} tags');
-      return true;
-    } catch (e) {
-      onError?.call('Erreur publication profil: $e');
-      return false;
-    }
-  }
   
   /// Récupère l'historique des transferts d'un bon (kind 1)
   Future<List<Map<String, dynamic>>> fetchBonTransfers(String bonId) async {
@@ -746,7 +520,7 @@ class NostrService {
 
   /// Récupère l'historique des transferts pour plusieurs bons (kind 1)
   Future<List<Map<String, dynamic>>> fetchBonsTransfers(List<String> bonIds) async {
-    if (!_connection.isConnected || bonIds.isEmpty) {
+    if (!connection.isConnected || bonIds.isEmpty) {
       if (bonIds.isNotEmpty) Logger.error('NostrService', 'Non connecté');
       return [];
     }
@@ -757,7 +531,7 @@ class NostrService {
       
       final subscriptionId = 'transfers_${DateTime.now().millisecondsSinceEpoch}';
       
-      _connection.registerHandler(subscriptionId, (message) {
+      connection.registerHandler(subscriptionId, (message) {
         try {
           if (message[0] == 'EVENT' && message.length >= 3) {
             final event = message[2] as Map<String, dynamic>;
@@ -770,8 +544,8 @@ class NostrService {
               Logger.error('NostrService', 'Transfert invalide ignoré');
             }
           } else if (message[0] == 'EOSE') {
-            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
-            _connection.removeHandler(subscriptionId);
+            connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            connection.removeHandler(subscriptionId);
             if (!completer.isCompleted) {
               completer.complete(transfers);
             }
@@ -790,13 +564,13 @@ class NostrService {
         }
       ]);
       
-      _connection.sendMessage(request);
+      connection.sendMessage(request);
       
       Timer? fallbackTimer;
       fallbackTimer = Timer(const Duration(seconds: 10), () {
-        _connection.removeHandler(subscriptionId);
+        connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
-          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(transfers);
         }
       });
@@ -820,7 +594,7 @@ class NostrService {
     required double value,
     required String marketName,
   }) async {
-    final registered = await _market.ensurePubkeyRegistered(bonId);
+    final registered = await market.ensurePubkeyRegistered(bonId);
     if (!registered) {
       Logger.error('NostrService', 'Publication transfert annulée');
       return false;
@@ -868,7 +642,7 @@ class NostrService {
       _cryptoService.secureZeroiseBytes(p3Bytes);
 
       final message = jsonEncode(['EVENT', event]);
-      return await _connection.sendEventAndWait(eventId, message);
+      return await connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication transfert: $e');
       return false;
@@ -882,7 +656,7 @@ class NostrService {
     required String reason,
     required String marketName,
   }) async {
-    final registered = await _market.ensurePubkeyRegistered(bonId);
+    final registered = await market.ensurePubkeyRegistered(bonId);
     if (!registered) {
       Logger.error('NostrService', 'Publication burn annulée');
       return false;
@@ -908,16 +682,136 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      return await _connection.sendEventAndWait(eventId, message);
+      return await connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication burn: $e');
       return false;
     }
   }
   
+  /// Récupère plusieurs profils utilisateurs (kind 0) en une seule requête
+  Future<List<NostrProfile>> fetchUserProfilesBatch(List<String> npubs) async {
+    if (npubs.isEmpty) return [];
+    
+    final cacheDb = CacheDatabaseService();
+    final profiles = <NostrProfile>[];
+    final npubsToFetch = <String>[];
+    
+    // 1. Vérifier le cache d'abord
+    for (final npub in npubs) {
+      final cachedData = await cacheDb.getUserProfileCache(npub);
+      if (cachedData != null) {
+        profiles.add(NostrProfile(
+          npub: npub,
+          name: (cachedData['name'] as String?) ?? npub.substring(0, 8),
+          displayName: cachedData['display_name'] as String?,
+          about: cachedData['about'] as String?,
+          picture: cachedData['picture'] as String?,
+          banner: cachedData['banner'] as String?,
+          picture64: cachedData['picture64'] as String?,
+          banner64: cachedData['banner64'] as String?,
+          website: cachedData['website'] as String?,
+        ));
+      } else {
+        npubsToFetch.add(npub);
+      }
+    }
+    
+    if (npubsToFetch.isEmpty || !connection.isConnected) {
+      return profiles;
+    }
+    
+    try {
+      final completer = Completer<List<NostrProfile>>();
+      final fetchedProfiles = <NostrProfile>[];
+      final subscriptionId = 'profiles_batch_${DateTime.now().millisecondsSinceEpoch}';
+      
+      connection.registerHandler(subscriptionId, (message) {
+        try {
+          if (message[0] == 'EVENT' && message.length >= 3) {
+            final event = message[2] as Map<String, dynamic>;
+            final content = event['content'] as String?;
+            final pubkey = event['pubkey'] as String?;
+            if (content != null && pubkey != null) {
+              final contentJson = jsonDecode(content);
+              final profile = NostrProfile(
+                npub: pubkey,
+                name: (contentJson['name'] as String?) ?? pubkey.substring(0, 8),
+                displayName: contentJson['display_name'] as String?,
+                about: contentJson['about'] as String?,
+                picture: contentJson['picture'] as String?,
+                banner: contentJson['banner'] as String?,
+                picture64: contentJson['picture64'] as String?,
+                banner64: contentJson['banner64'] as String?,
+                website: contentJson['website'] as String?,
+              );
+              fetchedProfiles.add(profile);
+              
+              // Sauvegarder en cache
+              cacheDb.saveUserProfileCache(pubkey, contentJson);
+            }
+          } else if (message[0] == 'EOSE') {
+            connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            connection.removeHandler(subscriptionId);
+            if (!completer.isCompleted) {
+              completer.complete(fetchedProfiles);
+            }
+          }
+        } catch (e) {
+          Logger.error('NostrService', 'Erreur parsing profile batch', e);
+        }
+      });
+      
+      final request = jsonEncode([
+        'REQ',
+        subscriptionId,
+        {
+          'authors': npubsToFetch,
+          'kinds': [0],
+        }
+      ]);
+      
+      connection.sendMessage(request);
+      
+      Timer? fallbackTimer;
+      fallbackTimer = Timer(const Duration(seconds: 10), () {
+        connection.removeHandler(subscriptionId);
+        if (!completer.isCompleted) {
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          completer.complete(fetchedProfiles);
+        }
+      });
+      
+      final result = await completer.future;
+      fallbackTimer.cancel();
+      
+      profiles.addAll(result);
+      return profiles;
+    } catch (e) {
+      Logger.error('NostrService', 'Erreur récupération profils batch', e);
+      return [];
+    }
+  }
+
   /// Récupère un profil utilisateur (kind 0)
   Future<NostrProfile?> fetchUserProfile(String npub) async {
-    if (!_connection.isConnected) {
+    final cacheDb = CacheDatabaseService();
+    final cachedData = await cacheDb.getUserProfileCache(npub);
+    if (cachedData != null) {
+      return NostrProfile(
+        npub: npub,
+        name: (cachedData['name'] as String?) ?? npub.substring(0, 8),
+        displayName: cachedData['display_name'] as String?,
+        about: cachedData['about'] as String?,
+        picture: cachedData['picture'] as String?,
+        banner: cachedData['banner'] as String?,
+        picture64: cachedData['picture64'] as String?,
+        banner64: cachedData['banner64'] as String?,
+        website: cachedData['website'] as String?,
+      );
+    }
+
+    if (!connection.isConnected) {
       return null;
     }
     
@@ -925,7 +819,7 @@ class NostrService {
       final completer = Completer<NostrProfile?>();
       final subscriptionId = 'profile_${DateTime.now().millisecondsSinceEpoch}';
       
-      _connection.registerHandler(subscriptionId, (message) {
+      connection.registerHandler(subscriptionId, (message) {
         try {
           if (message[0] == 'EVENT' && message.length >= 3) {
             final event = message[2] as Map<String, dynamic>;
@@ -943,13 +837,17 @@ class NostrService {
                 banner64: contentJson['banner64'] as String?,
                 website: contentJson['website'] as String?,
               );
+              
+              // Sauvegarder en cache
+              cacheDb.saveUserProfileCache(npub, contentJson);
+              
               if (!completer.isCompleted) {
                 completer.complete(profile);
               }
             }
           } else if (message[0] == 'EOSE') {
-            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
-            _connection.removeHandler(subscriptionId);
+            connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            connection.removeHandler(subscriptionId);
             if (!completer.isCompleted) {
               completer.complete(null);
             }
@@ -969,13 +867,13 @@ class NostrService {
         }
       ]);
       
-      _connection.sendMessage(request);
+      connection.sendMessage(request);
       
       Timer? fallbackTimer;
       fallbackTimer = Timer(const Duration(seconds: 10), () {
-        _connection.removeHandler(subscriptionId);
+        connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
-          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(null);
         }
       });
@@ -995,7 +893,7 @@ class NostrService {
     required String nsec,
     required List<String> contactsNpubs,
   }) async {
-    final registered = await _market.ensurePubkeyRegistered(npub);
+    final registered = await market.ensurePubkeyRegistered(npub);
     if (!registered) {
       return false;
     }
@@ -1023,7 +921,7 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      return await _connection.sendEventAndWait(eventId, message);
+      return await connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication contacts: $e');
       return false;
@@ -1032,21 +930,21 @@ class NostrService {
   
   /// Récupère les followers (ceux qui m'ont dans leur kind 3)
   Future<List<String>> fetchFollowers(String myNpub) async {
-    if (!_connection.isConnected) return [];
+    if (!connection.isConnected) return [];
 
     try {
       final completer = Completer<List<String>>();
       final followers = <String>{};
       final subscriptionId = 'followers_${DateTime.now().millisecondsSinceEpoch}';
       
-      _connection.registerHandler(subscriptionId, (message) {
+      connection.registerHandler(subscriptionId, (message) {
         try {
           if (message[0] == 'EVENT' && message.length >= 3) {
             final event = message[2] as Map<String, dynamic>;
             followers.add(event['pubkey'].toString());
           } else if (message[0] == 'EOSE') {
-            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
-            _connection.removeHandler(subscriptionId);
+            connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            connection.removeHandler(subscriptionId);
             if (!completer.isCompleted) {
               completer.complete(followers.toList());
             }
@@ -1065,13 +963,13 @@ class NostrService {
         }
       ]);
       
-      _connection.sendMessage(request);
+      connection.sendMessage(request);
       
       Timer? fallbackTimer;
       fallbackTimer = Timer(const Duration(seconds: 10), () {
-        _connection.removeHandler(subscriptionId);
+        connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
-          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(followers.toList());
         }
       });
@@ -1087,14 +985,14 @@ class NostrService {
 
   /// Récupère les listes de contacts de plusieurs npubs
   Future<Map<String, List<String>>> fetchMultipleContactLists(List<String> npubs) async {
-    if (!_connection.isConnected || npubs.isEmpty) return {};
+    if (!connection.isConnected || npubs.isEmpty) return {};
 
     try {
       final completer = Completer<Map<String, List<String>>>();
       final result = <String, List<String>>{};
       final subscriptionId = 'multi_contacts_${DateTime.now().millisecondsSinceEpoch}';
       
-      _connection.registerHandler(subscriptionId, (message) {
+      connection.registerHandler(subscriptionId, (message) {
         try {
           if (message[0] == 'EVENT' && message.length >= 3) {
             final event = message[2] as Map<String, dynamic>;
@@ -1111,8 +1009,8 @@ class NostrService {
               result[pubkey] = contacts;
             }
           } else if (message[0] == 'EOSE') {
-            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
-            _connection.removeHandler(subscriptionId);
+            connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            connection.removeHandler(subscriptionId);
             if (!completer.isCompleted) {
               completer.complete(result);
             }
@@ -1131,13 +1029,13 @@ class NostrService {
         }
       ]);
       
-      _connection.sendMessage(request);
+      connection.sendMessage(request);
       
       Timer? fallbackTimer;
       fallbackTimer = Timer(const Duration(seconds: 10), () {
-        _connection.removeHandler(subscriptionId);
+        connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
-          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(result);
         }
       });
@@ -1153,7 +1051,7 @@ class NostrService {
 
   /// Récupère une liste de contacts (kind 3)
   Future<List<String>> fetchContactList(String npub) async {
-    if (!_connection.isConnected) {
+    if (!connection.isConnected) {
       return [];
     }
 
@@ -1162,7 +1060,7 @@ class NostrService {
       final contacts = <String>[];
       final subscriptionId = 'contacts_${DateTime.now().millisecondsSinceEpoch}';
       
-      _connection.registerHandler(subscriptionId, (message) {
+      connection.registerHandler(subscriptionId, (message) {
         try {
           if (message[0] == 'EVENT' && message.length >= 3) {
             final event = message[2] as Map<String, dynamic>;
@@ -1175,8 +1073,8 @@ class NostrService {
               }
             }
           } else if (message[0] == 'EOSE') {
-            _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
-            _connection.removeHandler(subscriptionId);
+            connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+            connection.removeHandler(subscriptionId);
             if (!completer.isCompleted) {
               completer.complete(contacts);
             }
@@ -1196,13 +1094,13 @@ class NostrService {
         }
       ]);
       
-      _connection.sendMessage(request);
+      connection.sendMessage(request);
       
       Timer? fallbackTimer;
       fallbackTimer = Timer(const Duration(seconds: 10), () {
-        _connection.removeHandler(subscriptionId);
+        connection.removeHandler(subscriptionId);
         if (!completer.isCompleted) {
-          _connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
+          connection.sendMessage(jsonEncode(['CLOSE', subscriptionId]));
           completer.complete(contacts);
         }
       });
@@ -1222,7 +1120,7 @@ class NostrService {
     required String nsec,
     required List<String> relays,
   }) async {
-    final registered = await _market.ensurePubkeyRegistered(npub);
+    final registered = await market.ensurePubkeyRegistered(npub);
     if (!registered) {
       return false;
     }
@@ -1258,7 +1156,7 @@ class NostrService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      return await _connection.sendEventAndWait(eventId, message);
+      return await connection.sendEventAndWait(eventId, message);
     } catch (e) {
       onError?.call('Erreur publication relay list: $e');
       return false;
@@ -1284,7 +1182,7 @@ class NostrService {
           if (kind == 0) {
             _handleMetadataEvent(event);
           } else if (kind == 30303 || kind == 1) {
-            _market.handleP3Event(event);
+            market.handleP3Event(event);
           } else if (kind == NostrConstants.kindDuIncrement) {
             _handleDuIncrementEvent(event);
           }

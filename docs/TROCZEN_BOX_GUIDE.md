@@ -132,7 +132,24 @@ cd ~/strfry-data
 strfry init
 ```
 
-3. Créez un service Systemd pour qu'il démarre tout seul :
+3. **Configuration du Rate Limiting (Architecture Pollinisateur)** :
+Pour permettre aux "Capitaines" (Alchimistes) de synchroniser massivement l'historique d'autres marchés (Gossip Push) sans être bannis pour spam, il faut désactiver ou augmenter les limites de `strfry` pour les IP locales.
+Éditez le fichier `strfry.conf` généré dans `~/strfry-data/` :
+```bash
+nano ~/strfry-data/strfry.conf
+```
+Trouvez la section `rate_limiting` et ajustez les valeurs pour le réseau local (ex: `10.42.0.0/24`) :
+```ini
+rate_limiting {
+    # Désactiver le rate limiting pour les IP du portail captif
+    whitelist = ["10.42.0.0/24", "127.0.0.1"]
+    
+    # Ou augmenter considérablement les limites globales
+    max_events_per_second = 5000
+}
+```
+
+4. Créez un service Systemd pour qu'il démarre tout seul :
 ```bash
 sudo nano /etc/systemd/system/strfry.service
 ```

@@ -360,7 +360,6 @@ class DuCalculationService {
       // Vérifier si l'utilisateur a encore un Bon Zéro actif dans son portefeuille
       final bons = await _storageService.getBons();
       final hasActiveBootstrap = bons.any((b) =>
-        b.cardType == 'bootstrap' &&
         b.value == 0.0 &&
         b.status == BonStatus.active &&
         !b.isExpired
@@ -419,8 +418,6 @@ class DuCalculationService {
       p2: p2Hex,
       p3: p3Hex,
       marketName: market.name,
-      rarity: 'bootstrap', // Rareté spéciale pour le bon de bootstrap
-      cardType: 'bootstrap',
       duAtCreation: 0.0, // Pas de DU à la création
       picture: user.picture,
       logoUrl: user.picture,
@@ -449,7 +446,7 @@ class DuCalculationService {
       );
       final nsecBonHex = HEX.encode(nsecBonBytes);
       
-      await _nostrService.publishUserProfile(
+      await _nostrService.market.publishUserProfile(
         npub: bonId,
         nsec: nsecBonHex,
         name: user.displayName,
@@ -469,7 +466,7 @@ class DuCalculationService {
     }
 
     // Publier sur Nostr
-    await _nostrService.publishP3(
+    await _nostrService.market.publishP3(
       bonId: bonId,
       issuerNsecHex: user.nsec,
       p3Hex: p3Hex,

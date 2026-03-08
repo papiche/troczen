@@ -109,6 +109,16 @@ class NostrConnectionService {
       _connectionChangeController.add(true);
       Logger.log('NostrConnection', 'Connecté à $relayUrl');
       
+      // Vérifier si on se connecte à un nouveau relais pour le Gossip
+      final cacheDb = CacheDatabaseService();
+      final lastRelay = await cacheDb.getLastRelayUrl();
+      
+      if (lastRelay != null && lastRelay != relayUrl) {
+        Logger.info('NostrConnection', 'Nouveau relais détecté ($relayUrl). Déclenchement du Push Gossip.');
+        _flushGossipEvents();
+      }
+      await cacheDb.saveLastRelayUrl(relayUrl);
+
       // Déclencher le flush automatiquement
       flushPendingEvents();
       
@@ -201,6 +211,30 @@ class NostrConnectionService {
     }
     
     return syncedCount;
+  }
+
+  /// Tente de synchroniser tous les événements gossip collectés
+  Future<void> _flushGossipEvents() async {
+    if (!_isConnected) return;
+    
+    final cacheDb = CacheDatabaseService();
+    final gossipEvents = await cacheDb.getGossipEvents();
+    
+    if (gossipEvents.isEmpty) return;
+    
+    Logger.info('NostrConnection', 'Push Gossip de ${gossipEvents.length} événements...');
+    
+    for (final event in gossipEvents) {
+      if (!_isConnected) break;
+      final message = jsonEncode(['EVENT', event]);
+      send(message);
+      // On n'attend pas l'acquittement pour le gossip pour aller plus vite
+      await Future.delayed(const Duration(milliseconds: 10)); // Petit délai pour ne pas spammer
+    }
+    
+    // Vider la table après l'envoi
+    await cacheDb.clearGossipEvents();
+    Logger.success('NostrConnection', 'Push Gossip terminé');
   }
 
   /// Envoie un événement et attend l'acquittement (OK) du relais

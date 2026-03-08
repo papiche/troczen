@@ -187,7 +187,14 @@ C’est un passage d’une **confiance hiérarchique** à une **confiance distri
 *   **Confidentialité** : Les transferts sont visibles localement mais pas sur Nostr. Seule la création (`P3`) est publique (mais chiffrée). La vie privée des transactions est préservée.
 *   **Invariance d'échelle TRM** : L'utilisation de `√N2` au dénominateur et pour pondérer `M_n2` garantit que si toute la masse double, le DU double aussi. C'est le principe fondamental de la Théorie Relative de la Monnaie.
 
-### 3.4. Gestion Simplifiée de la Clé de Marché : La Graine Quotidienne
+### 3.4. L'Architecture "Pollinisateur" (Gossip Protocol)
+
+Pour relier des marchés isolés (ZenBOX) sans connexion Internet globale, TrocZen implémente une architecture "Pollinisateur" :
+*   **Les Alchimistes (Capitaines)** agissent comme des "Light Nodes". Lors de leur synchronisation, ils aspirent l'intégralité des événements d'un marché (profils, transferts, attestations) et les stockent localement dans une table `outbox_gossip`.
+*   Lorsqu'ils se déplacent physiquement vers un autre marché et se connectent à une nouvelle ZenBOX, leur application détecte le changement et "vomit" (Push) silencieusement tout l'historique collecté vers le nouveau relais.
+*   **Résultat** : Les graphes sociaux et économiques s'unifient organiquement, portés par le mouvement des humains.
+
+### 3.5. Gestion Simplifiée de la Clé de Marché : La Graine Quotidienne
 
 Dans la version initiale, la clé du marché (`K_market`) changeait chaque jour, ce qui obligeait les smartphones à se synchroniser quotidiennement pour obtenir la nouvelle clé, complexifiant la gestion du cache et la disponibilité hors ligne. Pour simplifier tout en conservant une sécurité forte, nous introduisons une **graine de marché** (`seed_market`).
 

@@ -298,7 +298,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           final nostrService = context.read<NostrService>();
           
           if (await nostrService.connect(state.relayUrl)) {
-            await nostrService.publishUserProfile(
+            await nostrService.market.publishUserProfile(
               npub: updatedUser.npub,
               nsec: updatedUser.nsec,
               name: updatedUser.displayName,
@@ -344,7 +344,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen> wit
           for (final tag in skillTags) {
             try {
               // ✅ WOTX: Émettre les requêtes d'attestation (Kind 30501) pour chaque savoir-faire
-              final success = await bgNostrService.publishSkillRequest(
+              final success = await bgNostrService.wotx.publishSkillRequest(
                 npub: npub,
                 nsec: nsec,
                 skill: tag,
@@ -471,7 +471,7 @@ Future<void> _completeOnboarding() async {
         final nostrService = context.read<NostrService>();
         await nostrService.connect(state.relayUrl);
         
-        await nostrService.publishUserProfile(
+        await nostrService.market.publishUserProfile(
           npub: user.npub,
           nsec: user.nsec,
           name: user.displayName,

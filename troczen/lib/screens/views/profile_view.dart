@@ -1133,7 +1133,6 @@ class _ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClient
           'status': bon.status.name,
           'createdAt': bon.createdAt.toIso8601String(),
           'transferCount': bon.transferCount,
-          'rarity': bon.rarity,
         }).toList(),
         'statistics': {
           'totalBons': bons.length,

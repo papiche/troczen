@@ -73,7 +73,7 @@ class _MainShellState extends State<MainShell> {
     // Activer la sync P3 automatique en arrière-plan
     final market = await _storageService.getMarket();
     if (market != null) {
-      _nostrService.enableAutoSync(
+      _nostrService.market.enableAutoSync(
         interval: const Duration(minutes: 5),
         initialMarket: market,
       );
@@ -83,7 +83,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void dispose() {
     _pendingEventsTimer?.cancel();
-    _nostrService.disableAutoSync();
+    _nostrService.market.disableAutoSync();
     super.dispose();
   }
 
@@ -709,10 +709,19 @@ class _MainShellState extends State<MainShell> {
       await _nostrService.triggerImmediateSync(market);
     }
     
+    // Si Alchimiste, lancer la sync Gossip
+    final modeIndex = await _storageService.getAppMode();
+    final mode = AppMode.fromIndex(modeIndex);
+    int gossipCount = 0;
+    if (mode.isAlchimiste) {
+      gossipCount = await _nostrService.syncGossipData();
+    }
+    
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$syncedCount événement(s) synchronisé(s) avec le réseau'),
+          content: Text('$syncedCount événement(s) envoyé(s)' +
+            (mode.isAlchimiste ? ', $gossipCount événement(s) gossip collecté(s)' : '')),
           backgroundColor: Colors.green,
         ),
       );

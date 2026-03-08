@@ -81,14 +81,7 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
 
   void _initAnimations() {
     // Animation shimmer pour les bons rares
-    if (widget.bon.isRare) {
-      _shimmerController = AnimationController(
-        vsync: this,
-        duration: const Duration(seconds: 3),
-      );
-    } else {
-      _shimmerController = AnimationController(vsync: this);
-    }
+    _shimmerController = AnimationController(vsync: this);
     
     // Animation de scale pour le feedback tactile
     _scaleController = AnimationController(
@@ -173,23 +166,12 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final color = _cardColor;
-    final isRare = widget.bon.isRare;
-    final rarity = widget.bon.rarity ?? 'common';
+    final isRare = false;
+    final rarity = 'common';
 
     return VisibilityDetector(
       key: Key('panini-card-${widget.bon.bonId}'),
       onVisibilityChanged: (info) {
-        if (widget.bon.isRare) {
-          if (info.visibleFraction > 0) {
-            if (!_shimmerController.isAnimating) {
-              _shimmerController.repeat();
-            }
-          } else {
-            if (_shimmerController.isAnimating) {
-              _shimmerController.stop();
-            }
-          }
-        }
       },
       child: GestureDetector(
         onTapDown: _handleTapDown,
@@ -223,9 +205,6 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
                       // Fond de carte
                       _buildCardBackground(color, rarity),
                       
-                      // Effet holographique pour bons rares
-                      if (isRare)
-                        HolographicEffect(animation: _shimmerController),
 
                       // Contenu (Recto ou Verso)
                       isBackVisible
@@ -318,9 +297,8 @@ class PaniniCardState extends State<PaniniCard> with TickerProviderStateMixin {
           const Divider(color: Colors.white30),
           const SizedBox(height: 8),
           _buildStatRow(Icons.swap_horiz, 'Nombre de hops', '${widget.bon.transferCount ?? 0}'),
-          _buildStatRow(Icons.fingerprint, 'ID Unique', widget.bon.uniqueId ?? 'N/A'),
+          _buildStatRow(Icons.fingerprint, 'ID Unique', widget.bon.bonId.substring(0, 8)),
           _buildStatRow(Icons.event, 'Expiration', widget.bon.getDurationRemaining()),
-          _buildStatRow(Icons.star, 'Rareté', (widget.bon.rarity ?? 'common').toUpperCase()),
           if (widget.bon.wish != null && widget.bon.wish!.isNotEmpty) ...[
             const SizedBox(height: 8),
             const Text(
@@ -433,10 +411,8 @@ Widget _buildCardBackground(Color color, String rarity) {
           decoration: BoxDecoration(
             gradient: CardGradientHelper.getGradient(gradientColor, rarity, widget.bon.isExpired),
             border: Border.all(
-              color: widget.bon.isRare 
-                  ? RarityHelper.getColor(rarity) 
-                  : Colors.white,
-              width: widget.bon.isRare ? 3 : 8,
+              color: Colors.white,
+              width: 8,
             ),
             borderRadius: BorderRadius.circular(16),
           ),

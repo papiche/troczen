@@ -263,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         await nostrService.connect(AppConfig.defaultRelayUrl);
         
-        await nostrService.publishUserProfile(
+        await nostrService.market.publishUserProfile(
           npub: user.npub,
           nsec: user.nsec,
           name: user.displayName,

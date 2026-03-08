@@ -1,20 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/bon.dart';
 
-/// Extension pour les helpers de rareté des bons
-extension BonRarityExtension on Bon {
-  /// Retourne true si le bon est légendaire
-  bool get isLegendary => rarity == 'legendary';
-  
-  /// Retourne true si le bon est rare
-  bool get isRareType => rarity == 'rare';
-  
-  /// Retourne true si le bon est peu commun
-  bool get isUncommon => rarity == 'uncommon';
-  
-  /// Retourne true si le bon est commun
-  bool get isCommon => rarity == null || rarity == 'common';
-}
 
 /// Helper statique pour les données de rareté
 class RarityHelper {

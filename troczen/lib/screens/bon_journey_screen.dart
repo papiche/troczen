@@ -502,7 +502,7 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
 
       final connected = await _nostrService.connect(market.relayUrl!);
       if (connected) {
-        final success = await _nostrService.publishSkillReview(
+        final success = await _nostrService.wotx.publishSkillReview(
           myNpub: user.npub,
           myNsec: user.nsec,
           targetNpub: artisanNpub,

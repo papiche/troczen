@@ -25,6 +25,7 @@ class CacheDatabaseService {
   static const String _skillReactionsTable = 'skill_reactions';
   static const String _duIncrementsTable = 'du_increments';
   static const String _pendingEventsTable = 'pending_events';
+  static const String _outboxGossipTable = 'outbox_gossip';
 
   // Stream pour notifier les insertions (Vigilance Alchimiste)
   final _insertionsController = StreamController<Map<String, dynamic>>.broadcast();
@@ -44,7 +45,7 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await _createAllTables(db);
       },
@@ -139,6 +140,15 @@ class CacheDatabaseService {
           await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_skill_reaction_target ON $_skillReactionsTable(target_npub, skill_tag)',
           );
+        }
+        if (oldVersion < 7) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_outboxGossipTable (
+              id TEXT PRIMARY KEY,
+              event_json TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            )
+          ''');
         }
       },
     );
@@ -297,6 +307,15 @@ class CacheDatabaseService {
         event_json TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         attempts INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
+    // Table pour le gossip (Alchimistes/Capitaines)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_outboxGossipTable (
+        id TEXT PRIMARY KEY,
+        event_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
       )
     ''');
   }
@@ -1014,6 +1033,69 @@ class CacheDatabaseService {
   // MÉTHODES SYNC METADATA
   // ============================================================
 
+  /// Sauvegarder un profil utilisateur en cache
+  Future<void> saveUserProfileCache(String npub, Map<String, dynamic> profileData) async {
+    final db = await database;
+    final dataToSave = {
+      'profile': profileData,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+    await db.execute(
+      'INSERT OR REPLACE INTO $_syncMetadataTable (key, value) VALUES (?, ?)',
+      ['profile_$npub', jsonEncode(dataToSave)],
+    );
+  }
+
+  /// Récupérer un profil utilisateur depuis le cache (TTL 7 jours)
+  Future<Map<String, dynamic>?> getUserProfileCache(String npub) async {
+    try {
+      final db = await database;
+      final result = await db.rawQuery(
+        'SELECT value FROM $_syncMetadataTable WHERE key = ?',
+        ['profile_$npub'],
+      );
+      if (result.isEmpty) return null;
+      
+      final data = jsonDecode(result.first['value'] as String);
+      final timestamp = data['timestamp'] as int;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      
+      // TTL de 7 jours (7 * 24 * 60 * 60 * 1000 ms)
+      if (now - timestamp > 604800000) {
+        // Expiré
+        return null;
+      }
+      
+      return data['profile'] as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Sauvegarder la dernière URL de relais connectée
+  Future<void> saveLastRelayUrl(String url) async {
+    final db = await database;
+    await db.execute(
+      'INSERT OR REPLACE INTO $_syncMetadataTable (key, value) VALUES (?, ?)',
+      ['last_relay_url', url],
+    );
+  }
+
+  /// Récupérer la dernière URL de relais connectée
+  Future<String?> getLastRelayUrl() async {
+    try {
+      final db = await database;
+      final result = await db.rawQuery(
+        'SELECT value FROM $_syncMetadataTable WHERE key = ?',
+        ['last_relay_url'],
+      );
+      if (result.isEmpty) return null;
+      return result.first['value'] as String;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Sauvegarder le timestamp de dernière sync P3
   Future<void> saveLastP3Sync() async {
     final db = await database;
@@ -1442,6 +1524,59 @@ class CacheDatabaseService {
   }
 
   // ============================================================
+  // MÉTHODES OUTBOX GOSSIP
+  // ============================================================
+
+  /// Sauvegarder un événement brut pour le gossip
+  Future<void> saveGossipEvent(Map<String, dynamic> event) async {
+    final db = await database;
+    await db.insert(
+      _outboxGossipTable,
+      {
+        'id': event['id'],
+        'event_json': jsonEncode(event),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// Sauvegarder un lot d'événements bruts pour le gossip
+  Future<void> saveGossipEventsBatch(List<Map<String, dynamic>> events) async {
+    if (events.isEmpty) return;
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction((txn) async {
+      for (final event in events) {
+        await txn.insert(
+          _outboxGossipTable,
+          {
+            'id': event['id'],
+            'event_json': jsonEncode(event),
+            'created_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    });
+  }
+
+  /// Récupérer tous les événements gossip
+  Future<List<Map<String, dynamic>>> getGossipEvents() async {
+    final db = await database;
+    final results = await db.query(_outboxGossipTable);
+    return results.map((row) {
+      return jsonDecode(row['event_json'] as String) as Map<String, dynamic>;
+    }).toList();
+  }
+
+  /// Vider la table gossip
+  Future<void> clearGossipEvents() async {
+    final db = await database;
+    await db.delete(_outboxGossipTable);
+  }
+
+  // ============================================================
   // MÉTHODES DE GESTION
   // ============================================================
 
@@ -1459,6 +1594,7 @@ class CacheDatabaseService {
     await db.delete(_skillAttestationsTable);
     await db.delete(_duIncrementsTable);
     await db.delete(_pendingEventsTable);
+    await db.delete(_outboxGossipTable);
   }
 
   /// Exécute la maintenance automatique de la base de données

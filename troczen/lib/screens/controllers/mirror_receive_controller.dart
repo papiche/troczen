@@ -180,8 +180,6 @@ class MirrorReceiveController extends ChangeNotifier {
         banner64: marketBonData?['banner64'] as String?,
         logoUrl: marketBonData?['picture'] as String?,
         wish: marketBonData?['wish'] as String?,
-        rarity: marketBonData?['rarity'] as String? ?? 'common',
-        cardType: marketBonData?['category'] as String? ?? 'generic',
       );
 
       final updatedBon = existingBon != null

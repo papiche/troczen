@@ -232,12 +232,26 @@ class MirrorOfferController extends ChangeNotifier {
         throw Exception('Challenge invalide (non hexadécimal)');
       }
       final challengeHash = sha256.convert(challengeBytes);
-      final challengeHashHex = challengeHash.toString();
+      final challengeHashBytes = Uint8List.fromList(challengeHash.bytes);
       
-      final isValid = _cryptoService.verifySignature(
-        challengeHashHex,
-        ackData['signature'],
-        bon.bonId,
+      Uint8List signatureBytes;
+      try {
+        signatureBytes = Uint8List.fromList(HEX.decode(ackData['signature']));
+      } catch (e) {
+        throw Exception('Signature invalide (non hexadécimale)');
+      }
+
+      Uint8List bonIdBytes;
+      try {
+        bonIdBytes = Uint8List.fromList(HEX.decode(bon.bonId));
+      } catch (e) {
+        throw Exception('ID de bon invalide (non hexadécimal)');
+      }
+
+      final isValid = _cryptoService.verifySignatureBytesDirect(
+        challengeHashBytes,
+        signatureBytes,
+        bonIdBytes,
       );
 
       if (!isValid) throw Exception('Signature invalide');

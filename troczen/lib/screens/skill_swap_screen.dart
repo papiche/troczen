@@ -180,7 +180,7 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
     final nostrService = context.read<NostrService>();
 
     if (result == 'kind7') {
-      success = await nostrService.publishSkillReaction(
+      success = await nostrService.wotx.publishSkillReaction(
         myNpub: widget.user.npub,
         myNsec: widget.user.nsec,
         artisanNpub: targetNpub,
@@ -189,7 +189,7 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
         isPositive: true,
       );
     } else if (result == 'kind30502') {
-      success = await nostrService.publishSkillAttestation(
+      success = await nostrService.wotx.publishSkillAttestation(
         myNpub: widget.user.npub,
         myNsec: widget.user.nsec,
         requestId: permitEventId, // On utilise le permitId comme requestId par défaut
@@ -384,7 +384,7 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
       if (!mounted) return;
       final nostrService = context.read<NostrService>();
       // Publier le Kind 30503
-      final success = await nostrService.publishSkillAchievement(
+      final success = await nostrService.wotx.publishSkillAchievement(
         myNpub: widget.user.npub,
         myNsec: widget.user.nsec,
         skillTag: normalizedSkill,

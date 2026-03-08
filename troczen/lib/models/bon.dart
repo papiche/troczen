@@ -35,18 +35,6 @@ class Bon {
   final double? duAtCreation;   // Valeur du DU le jour de la création (pour calcul relativiste)
   final String? wish;           // Vœu attaché au bon (ex: "De la graine à l'assiette")
   
-  // ⚠️ DÉPRÉCIÉ v6: Champs Pokemon - gardés pour rétrocompatibilité uniquement
-  @Deprecated('Non conforme protocole v6 - Ne plus utiliser pour nouveaux bons')
-  final String? rarity;         // Ex: 'common', 'rare' - Plus généré depuis v6
-  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
-  final String? uniqueId;       // Ex: 'ZEN-ABC123'
-  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
-  final String? cardType;       // Ex: 'commerce', 'artisan'
-  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
-  final String? specialAbility; // Ex: 'Double valeur'
-  @Deprecated('Non conforme protocole v6 - Ne plus utiliser')
-  final Map<String, dynamic>? stats; // Ex: {"power": 5}
-  
   // ✅ WAL (Write-Ahead Log) pour protection contre double-dépense
   final DateTime? transferLockTimestamp; // Quand le bon a été verrouillé
   final String? transferLockChallenge;   // Challenge du transfert en cours
@@ -74,12 +62,6 @@ class Bon {
     this.issuerNostrProfile,
     this.duAtCreation,
     this.wish,
-    // ⚠️ DÉPRÉCIÉ: Paramètres Pokemon (rétrocompatibilité anciens bons)
-    this.rarity,
-    this.uniqueId,
-    this.cardType,
-    this.specialAbility,
-    this.stats,
     // ✅ WAL (Write-Ahead Log)
     this.transferLockTimestamp,
     this.transferLockChallenge,
@@ -88,7 +70,8 @@ class Bon {
 
   bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
   bool get isValid => status == BonStatus.active && !isExpired;
-  bool get isRare => rarity != null && rarity != 'common';
+  
+  // Fallbacks pour la compatibilité UI
   
   /// ✅ WAL: Vérifie si le bon est verrouillé pour un transfert en cours
   /// Un verrou expiré est considéré comme non actif
@@ -108,115 +91,6 @@ class Bon {
     return DateTime.now().isAfter(lockExpiry);
   }
   
-  // Probabilités de rareté (à utiliser lors de la création)
-  static String generateRarity() {
-    final random = DateTime.now().millisecondsSinceEpoch % 100;
-    if (random < 1) return 'legendary';  // 1%
-    if (random < 6) return 'rare';       // 5%
-    if (random < 21) return 'uncommon';  // 15%
-    return 'common';                     // 79%
-  }
-
-  // Générer un identifiant unique pour la carte (style Pokémon)
-  static String generateUniqueId(String bonId) {
-    final hash = bonId.substring(0, 6).toUpperCase();
-    return 'ZEN-$hash';
-  }
-
-  // Générer un type de carte aléatoire
-  static String generateCardType() {
-    final types = ['commerce', 'service', 'artisan', 'culture', 'technologie', 'alimentation'];
-    final random = DateTime.now().millisecondsSinceEpoch % types.length;
-    return types[random];
-  }
-
-  // Générer une capacité spéciale aléatoire
-  static String generateSpecialAbility(String rarity) {
-    final commonAbilities = [
-      'Résistant aux copies',
-      'Valable 2x plus longtemps',
-      'Accepté partout',
-    ];
-    
-    final uncommonAbilities = [
-      'Double valeur les week-ends',
-      'Résistant à l\'inflation',
-      'Transférable instantanément',
-      'Échangeable contre services',
-    ];
-    
-    final rareAbilities = [
-      'Triple valeur en période de fête',
-      'Création de bons illimitée',
-      'Accès VIP aux événements',
-      'Immunité aux frais',
-    ];
-    
-    final legendaryAbilities = [
-      'Multiplicateur de valeur x10',
-      'Création de marché autorisée',
-      'Statut de super-utilisateur',
-      'Bénéfices à vie',
-    ];
-    
-    final random = DateTime.now().millisecondsSinceEpoch % 100;
-    
-    switch (rarity) {
-      case 'legendary':
-        return legendaryAbilities[random % legendaryAbilities.length];
-      case 'rare':
-        return rareAbilities[random % rareAbilities.length];
-      case 'uncommon':
-        return uncommonAbilities[random % uncommonAbilities.length];
-      default:
-        return commonAbilities[random % commonAbilities.length];
-    }
-  }
-
-  // Générer des statistiques pour la carte
-  static Map<String, dynamic> generateStats(String rarity) {
-    final random = DateTime.now().millisecondsSinceEpoch;
-    
-    int basePower = 1;
-    int baseDefense = 1;
-    int baseSpeed = 1;
-    
-    switch (rarity) {
-      case 'legendary':
-        basePower = 10;
-        baseDefense = 8;
-        baseSpeed = 5;
-        break;
-      case 'rare':
-        basePower = 7;
-        baseDefense = 5;
-        baseSpeed = 3;
-        break;
-      case 'uncommon':
-        basePower = 4;
-        baseDefense = 3;
-        baseSpeed = 2;
-        break;
-      default:
-        basePower = 2;
-        baseDefense = 2;
-        baseSpeed = 1;
-    }
-    
-    // Ajouter une variation aléatoire
-    final power = (basePower + (random % 3)).clamp(1, 15);
-    final defense = (baseDefense + (random % 2)).clamp(1, 10);
-    final speed = (baseSpeed + (random % 2)).clamp(1, 7);
-    
-    return {
-      'power': power,
-      'defense': defense,
-      'speed': speed,
-      'durability': (power + defense) ~/ 2,
-      'valueMultiplier': 1.0 + (power * 0.1),
-    };
-  }
-
   // Calculer la durée restante du bon
   String getDurationRemaining() {
     if (expiresAt == null) return 'Illimité';
@@ -245,13 +119,9 @@ class Bon {
   // Obtenir les caractéristiques pour l'affichage
   Map<String, String> getCharacteristics() {
     return {
-      'ID Unique': uniqueId ?? 'Non défini',
-      'Type': cardType ?? 'Standard',
-      'Rareté': rarity ?? 'common',
       'Valeur': '${value.toStringAsFixed(0)} ẐEN',
       'Durée': getDurationRemaining(),
       'Transfers': '${transferCount ?? 0}',
-      'Capacité': specialAbility ?? 'Aucune',
       'Émetteur': issuerName,
       if (wish != null && wish!.isNotEmpty) 'Vœu': wish!,
     };
@@ -312,13 +182,8 @@ class Bon {
     String? banner,
     String? banner64,
     int? color,
-    String? rarity,
     int? transferCount,
     String? issuerNostrProfile,
-    String? uniqueId,
-    String? cardType,
-    String? specialAbility,
-    Map<String, dynamic>? stats,
     double? duAtCreation,
     String? wish,
     // ✅ WAL (Write-Ahead Log)
@@ -344,13 +209,8 @@ class Bon {
       banner: banner ?? this.banner,
       banner64: banner64 ?? this.banner64,
       color: color ?? this.color,
-      rarity: rarity ?? this.rarity,
       transferCount: transferCount ?? this.transferCount,
       issuerNostrProfile: issuerNostrProfile ?? this.issuerNostrProfile,
-      uniqueId: uniqueId ?? this.uniqueId,
-      cardType: cardType ?? this.cardType,
-      specialAbility: specialAbility ?? this.specialAbility,
-      stats: stats ?? this.stats,
       duAtCreation: duAtCreation ?? this.duAtCreation,
       wish: wish ?? this.wish,
       // ✅ WAL
@@ -379,17 +239,10 @@ class Bon {
       'banner': banner,
       'banner64': banner64,
       'color': color,
-      'rarity': rarity,
       'transferCount': transferCount,
       'issuerNostrProfile': issuerNostrProfile,
       'duAtCreation': duAtCreation,
       'wish': wish,
-      // uniqueId, cardType, specialAbility, stats exclus du JSON (générés à la volée)
-      // mais on les garde pour compatibilité si présents
-      'uniqueId': uniqueId,
-      'cardType': cardType,
-      'specialAbility': specialAbility,
-      'stats': stats,
       // WAL (Write-Ahead Log)
       'transferLockTimestamp': transferLockTimestamp?.toIso8601String(),
       'transferLockChallenge': transferLockChallenge,
@@ -419,17 +272,10 @@ class Bon {
       banner: json['banner'],
       banner64: json['banner64'],
       color: json['color'],
-      rarity: json['rarity'] ?? 'common',
       transferCount: json['transferCount'] ?? 0,
       issuerNostrProfile: json['issuerNostrProfile'],
       duAtCreation: json['duAtCreation']?.toDouble(),
       wish: json['wish'],
-      uniqueId: json['uniqueId'],
-      cardType: json['cardType'],
-      specialAbility: json['specialAbility'],
-      stats: json['stats'] != null
-          ? Map<String, dynamic>.from(json['stats'])
-          : null,
       // WAL (Write-Ahead Log)
       transferLockTimestamp: json['transferLockTimestamp'] != null
           ? DateTime.parse(json['transferLockTimestamp'])

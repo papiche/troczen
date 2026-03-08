@@ -105,6 +105,28 @@ Utilisée pour le handshake ACK : le receveur signe le challenge avec `nsec_bon`
 
 ---
 
+## Architecture "Pollinisateur" (Gossip Protocol)
+
+Pour permettre la synchronisation entre des marchés isolés (ZenBOX) sans connexion Internet globale, TrocZen implémente une architecture "Pollinisateur" basée sur le protocole Gossip :
+
+1. **Rôles différenciés (AppMode)** :
+   - **Flâneurs / Artisans** : Comportement standard (Lazy Loading). Ils ne requêtent que ce qui les concerne (P3, contacts N1, transferts).
+   - **Alchimistes / Capitaines** : Agissent comme des "Light Nodes". Ils aspirent l'intégralité des événements d'un marché (Kinds 0, 1, 3, 5, 7, 30303 à 30503) lors d'une synchronisation manuelle.
+
+2. **Stockage et Push (Gossip)** :
+   - Les événements aspirés sont stockés temporairement dans une table SQLite dédiée (`outbox_gossip`).
+   - Lors de la connexion à une **nouvelle ZenBOX** (changement d'URL de relais), l'application détecte le changement et "vomit" (Push) silencieusement tout le contenu de `outbox_gossip` vers le nouveau relais, unifiant ainsi les graphes sociaux et économiques des différents marchés.
+
+3. **Optimisation du Graphe Social (N2)** :
+   - La récupération des profils (Kind 0) est optimisée par des requêtes par lots (batch) via des filtres Nostr (`{"kinds": [0], "authors": [...]}`).
+   - Les profils sont mis en cache dans SQLite (`sync_metadata_table`) avec un TTL de 7 jours pour un accès instantané hors-ligne.
+
+4. **Alliances de Marchés** :
+   - Les Capitaines peuvent générer un "QR Code d'Alliance" contenant la `seed_market` et une liste de relais.
+   - Le scan de ce QR Code permet à d'autres utilisateurs de rejoindre l'alliance et de partager la même base cryptographique pour les P3.
+
+---
+
 ## Modèle de données
 
 ### User

@@ -41,10 +41,14 @@ sequenceDiagram
 
     %% ÉTAPE 2 : SYNCHRONISATION
     rect rgb(30, 25, 45)
-    Note over Alice, Nostr: 2. Synchronisation Quotidienne
+    Note over Alice, Nostr: 2. Synchronisation Quotidienne (Gossip)
     Alice->>App: Ouvre l'application (matin)
     App->>Nostr: REQ Kind 3 (Contacts) & Kind 30303 (Bons)
     Nostr-->>App: Retourne graphe social + masses monétaires
+    
+    Note over Alice, Nostr: Si Alice est Capitaine (Alchimiste) :
+    App->>Nostr: REQ global (Kinds 0,1,3,5,7,30303-30503)
+    Nostr-->>App: Stockage dans outbox_gossip (Light Node)
 
     App->>App: Calcule N1 (follows réciproques directs)
     App->>App: Calcule N2 (amis d'amis réciproques, sans doublon)
@@ -86,9 +90,17 @@ sequenceDiagram
     Note over App: expires_at inchangé — le TTL continue de s'écouler
     end
 
-    %% ÉTAPE 6 : VIE DU BON
+    %% ÉTAPE 6 : DISSÉMINATION (POLLINISATEUR)
+    rect rgb(25, 30, 45)
+    Note over Alice, Nostr: 6. Dissémination (Gossip Push)
+    Alice->>Nostr: Se déplace vers un nouveau marché (Nouvelle ZenBOX)
+    App->>Nostr: Détecte le changement de relais
+    App->>Nostr: Push silencieux de outbox_gossip (Unification des graphes)
+    end
+
+    %% ÉTAPE 7 : VIE DU BON
     rect rgb(30, 25, 45)
-    Note over Alice, Nostr: 6. Cycle de vie du Bon
+    Note over Alice, Nostr: 7. Cycle de vie du Bon
     alt TTL résiduel < seuil (défaut 3j)
         App->>Charlie: "⚠️ Bon expire dans Xj — proposer rachat à l'émetteur ?"
         Charlie->>App: Accepte → DM Nostr (Kind 4) à Alice

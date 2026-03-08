@@ -68,7 +68,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   void _loadProfile() {
     _titleController.text = widget.bon.issuerName;
     _descriptionController.text = widget.bon.wish ?? '';
-    var category = widget.bon.cardType ?? 'generic';
+    var category = 'generic';
     if (!_categories.containsKey(category)) {
       category = 'generic'; // Fallback sûr
     }
@@ -161,7 +161,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             final nsecHex = HEX.encode(nsecBonBytes);
             
             // 1. Publication Kind 0
-            await nostrService.publishUserProfile(
+            await nostrService.market.publishUserProfile(
               npub: widget.bon.bonId,
               nsec: nsecHex,
               name: _titleController.text,
@@ -179,7 +179,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             _crypto.secureZeroiseBytes(p3Bytes);
 
             // 2. Republier P3
-            await nostrService.publishP3(
+            await nostrService.market.publishP3(
               bonId: widget.bon.bonId,
               issuerNsecHex: widget.user.nsec,
               p3Hex: widget.bon.p3 ?? (await _storage.getP3FromCache(widget.bon.bonId))!,
@@ -188,7 +188,6 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               marketName: market.name,
               value: widget.bon.value,
               category: _selectedCategory,
-              rarity: widget.bon.rarity,
               wish: _descriptionController.text, // Sauvegarde du vœu sur le réseau
             );
             await nostrService.disconnect();
@@ -200,7 +199,6 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           final updatedBon = widget.bon.copyWith(
             issuerName: _titleController.text,
             wish: _descriptionController.text,
-            cardType: _selectedCategory,
             picture: finalPictureUrl ?? widget.bon.picture,
             banner: finalBannerUrl ?? widget.bon.banner,
             logoUrl: finalPictureUrl ?? widget.bon.logoUrl, // Pour compatibilité

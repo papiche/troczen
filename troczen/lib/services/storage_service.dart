@@ -318,20 +318,6 @@ class StorageService {
   Future<List<Bon>> _getBonsInternal() async {
     try {
       final localBonsData = await _cacheService.getLocalBons();
-      if (localBonsData.isEmpty) {
-        // Migration depuis l'ancien stockage si nécessaire
-        final oldData = await _secureStorage.read(key: _bonsKey);
-        if (oldData != null) {
-          final List<dynamic> jsonList = jsonDecode(oldData);
-          final oldBons = jsonList.map((json) => Bon.fromJson(json)).toList();
-          if (oldBons.isNotEmpty) {
-            await _cacheService.saveLocalBonsBatch(oldBons.map((b) => b.toJson()).toList());
-            await _secureStorage.delete(key: _bonsKey); // Nettoyer l'ancien stockage
-            return oldBons;
-          }
-        }
-        return [];
-      }
       return localBonsData.map((json) => Bon.fromJson(json)).toList();
     } catch (e) {
       Logger.error('StorageService', 'Erreur _getBonsInternal', e);

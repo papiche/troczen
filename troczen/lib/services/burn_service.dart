@@ -79,7 +79,7 @@ class BurnService {
       // 6. ✅ NOUVEAU: Publier la Révélation du Circuit (Kind 30304)
       // Le Carnet de Voyage devient une preuve économique
       // ✅ SÉCURITÉ: Le contenu est chiffré avec la Seed du Marché
-      final circuitPublished = await nostrService.publishBonCircuit(
+      final circuitPublished = await nostrService.market.publishBonCircuit(
         bonId: bon.bonId,
         valueZen: bon.value,
         hopCount: hopCount,
@@ -88,9 +88,7 @@ class BurnService {
         issuerNpub: bon.issuerNpub,
         nsecBonBytes: nsecBonBytes,
         seedMarket: market?.seedMarket ?? '',  // ✅ SÉCURITÉ: Seed pour chiffrement
-        skillAnnotation: skillAnnotation ?? bon.specialAbility,  // Bonus: compétence associée
-        rarity: bon.rarity,
-        cardType: bon.cardType,
+        skillAnnotation: skillAnnotation,  // Bonus: compétence associée
       );
       
       if (circuitPublished) {
@@ -154,9 +152,6 @@ class BurnService {
       'hop_count': hopCount,
       'age_days': ageDays,
       'market': bon.marketName,
-      'rarity': bon.rarity ?? 'common',
-      'card_type': bon.cardType ?? 'commerce',
-      'skill': bon.specialAbility,
       'created_at': bon.createdAt.toIso8601String(),
     };
   }

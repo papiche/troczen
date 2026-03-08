@@ -104,7 +104,7 @@ class _OnboardingNostrSyncScreenState extends State<OnboardingNostrSyncScreen> {
       };
       
       // S'abonner aux événements du marché
-      await nostrService.subscribeToMarket(marketName);
+      await nostrService.market.subscribeToMarket(marketName);
       
       // Étape 3: Attendre la réception des événements (5 secondes)
       if (!mounted) {

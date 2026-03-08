@@ -22,15 +22,6 @@ void main() {
       expect(seed1.length, equals(32), reason: 'La seed doit faire 32 octets');
     });
 
-    test('deriveSeed et deriveNostrPrivateKey sont cohérents avec derivePrivateKey', () async {
-      // derivePrivateKey (legacy) doit être égal à SHA256(deriveSeed)
-      final legacyKey = await cryptoService.derivePrivateKey('bob', 'secret');
-      
-      final seed = await cryptoService.deriveSeed('bob', 'secret');
-      final nostrKey = await cryptoService.deriveNostrPrivateKey(seed);
-      
-      expect(legacyKey, equals(nostrKey), reason: 'La clé privée Nostr doit correspondre à l\'ancienne méthode');
-    });
 
     // --- TEST DUNITER G1 ---
 

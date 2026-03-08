@@ -5,6 +5,7 @@ import 'package:hex/hex.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/market.dart';
+import '../models/nostr_profile.dart';
 import '../utils/nostr_utils.dart';
 import 'crypto_service.dart';
 import 'storage_service.dart';
@@ -194,6 +195,100 @@ class NostrMarketService {
   }
   
   // ============================================================
+  // PROFILS UTILISATEUR & AUTRES (À conserver temporairement)
+  // ============================================================
+  
+  /// Publie un profil utilisateur (kind 0)
+  Future<bool> publishUserProfile({
+    required String npub,
+    required String nsec,
+    required String name,
+    String? displayName,
+    String? about,
+    String? picture,
+    String? banner,
+    String? picture64,
+    String? banner64,
+    String? website,
+    String? g1pub,
+    List<String>? tags,
+    String? activity,
+    String? profession,
+    Map<String, dynamic>? economicData,
+  }) async {
+    final registered = await ensurePubkeyRegistered(npub);
+    if (!registered) {
+      Logger.warn('NostrService', 'Pubkey non enregistrée sur l\'API, mais on tente la publication Nostr quand même');
+    }
+
+    try {
+      final profile = NostrProfile(
+        npub: npub,
+        name: name,
+        displayName: displayName,
+        about: about,
+        picture: picture,
+        banner: banner,
+        picture64: picture64,
+        banner64: banner64,
+        website: website,
+        g1pub: g1pub,
+        tags: tags,
+        activity: activity,
+        profession: profession,
+        economicData: economicData,
+      );
+
+      final nostrTags = <List<String>>[];
+      
+      if (tags != null && tags.isNotEmpty) {
+        for (final tag in tags) {
+          final normalizedTag = tag.toLowerCase().trim();
+          if (normalizedTag.isNotEmpty) {
+            nostrTags.add(['t', normalizedTag]);
+          }
+        }
+      }
+      
+      if (activity != null && activity.trim().isNotEmpty) {
+        nostrTags.add(['t', activity.toLowerCase().trim()]);
+      }
+      
+      if (profession != null && profession.trim().isNotEmpty) {
+        nostrTags.add(['t', profession.toLowerCase().trim()]);
+      }
+
+      final event = {
+        'kind': NostrConstants.kindMetadata,
+        'pubkey': npub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': nostrTags,
+        'content': jsonEncode(profile.toJson()),
+      };
+
+      final eventId = NostrUtils.calculateEventId(event);
+      event['id'] = eventId;
+      Uint8List nsecBytes;
+      try {
+        nsecBytes = Uint8List.fromList(HEX.decode(nsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      final signature = _cryptoService.signMessageBytes(eventId, nsecBytes);
+      event['sig'] = signature;
+
+      final message = jsonEncode(['EVENT', event]);
+      _connection.sendMessage(message);
+      
+      Logger.log('NostrService', 'Profil publié avec ${nostrTags.length} tags');
+      return true;
+    } catch (e) {
+      onError?.call('Erreur publication profil: $e');
+      return false;
+    }
+  }
+
+  // ============================================================
   // MISE À JOUR PROFIL BON (Kind 30303)
   // ============================================================
 
@@ -208,7 +303,6 @@ class NostrMarketService {
     required int expiryTimestamp,
     required Map<String, dynamic> profileData,
     String? category,
-    String? rarity,
     String? wish,
   }) async {
     try {
@@ -226,7 +320,7 @@ class NostrMarketService {
           ['value', value.toString()],
           ['issuer', issuerNpub],
           ['category', category ?? 'generic'],['expiration', expiryTimestamp.toString()],
-          ['rarity', rarity ?? 'common'],['p3_cipher', p3Cipher],
+          ['p3_cipher', p3Cipher],
           ['p3_nonce', p3Nonce],
           ['version', '1'],
           ['policy', '2of3-ssss'],
@@ -272,8 +366,6 @@ class NostrMarketService {
     required Uint8List nsecBonBytes,
     required String seedMarket,
     String? skillAnnotation,
-    String? rarity,
-    String? cardType,
   }) async {
     final registered = await ensurePubkeyRegistered(bonId);
     if (!registered) {
@@ -292,8 +384,6 @@ class NostrMarketService {
         'timestamp': DateTime.now().toIso8601String(),
         if (skillAnnotation != null && skillAnnotation.isNotEmpty)
           'skill_annotation': skillAnnotation,
-        if (rarity != null) 'rarity': rarity,
-        if (cardType != null) 'cardType': cardType,
       };
       
       // Chiffrer le contenu
@@ -556,7 +646,6 @@ class NostrMarketService {
       String? issuerName;
       double? value;
       String? category;
-      String? rarity;
       int? expiryTimestamp;
       String? wish;
 
@@ -593,9 +682,6 @@ class NostrMarketService {
               break;
             case 'category':
               category = tag[1].toString();
-              break;
-            case 'rarity':
-              rarity = tag[1].toString();
               break;
             case 'expiration':
               expiryTimestamp = int.tryParse(tag[1].toString());
@@ -668,7 +754,6 @@ class NostrMarketService {
         'issuerName': issuerName ?? 'Commerçant',
         'value': value ?? 0.0,
         'category': category ?? 'generic',
-        'rarity': rarity ?? 'common',
         'marketName': marketName,
         'createdAt': eventDate.toIso8601String(),
         'expiresAt': expiryTimestamp != null

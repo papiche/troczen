@@ -33,8 +33,8 @@ class BonCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRare = bon.isRare;
-    final rarity = bon.rarity ?? 'common';
+    final isRare = false;
+    final rarity = 'common';
 
     return Container(
       padding: const EdgeInsets.all(12),

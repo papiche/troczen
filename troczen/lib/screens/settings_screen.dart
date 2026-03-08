@@ -9,6 +9,8 @@ import 'logs_screen.dart';
 import 'apk_share_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/audit_trail_service.dart';
+import 'alliance_qr_screen.dart';
+import 'alliance_scanner_screen.dart';
 
 /// Écran de paramètres pour configurer le marché, relais, etc.
 class SettingsScreen extends StatefulWidget {
@@ -177,6 +179,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
+              
+              // Section Alliance (visible pour Alchimistes/Capitaines)
+              if (_currentMode.isAlchimiste) ...[
+                const Text(
+                  'Alliance de Marchés',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Générez ou scannez un QR Code d\'Alliance pour unifier les marchés.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          if (_currentMarket != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AllianceQrScreen(market: _currentMarket!),
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0A7EA4),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.qr_code),
+                        label: const Text('Générer QR'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AllianceScannerScreen(),
+                            ),
+                          );
+                          if (result == true) {
+                            _loadSettings(); // Recharger les paramètres si l'alliance a été rejointe
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFB347),
+                          foregroundColor: Colors.black87,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Scanner QR'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 16),
+              ],
+
               const Text(
                 'Actions avancées',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

@@ -58,4 +58,11 @@ Lorsque les téléphones retrouvent une connexion internet (ou se reconnectent �
 *   En arrière-plan, les applications publient les événements **Kind 1** (Les historiques de transfert des bons échangés hors-ligne) pour mettre à jour la comptabilité globale et le Dashboard du marché.
 *   L'application télécharge les nouvelles parts P3 créées par d'autres pendant la coupure.
 
-**En résumé :** Le mode hors-ligne de TrocZen s'apparente exactement à l'usage d'un billet de banque physique. Tant que vous avez le billet (P2) et que l'autre sait le reconnaître (P3 en cache), l'échange est immédiat et définitif. Le réseau ne sert qu'à l'audit a posteriori.
+### 5. L'Architecture "Pollinisateur" (Gossip)
+
+Pour les utilisateurs en mode **Alchimiste / Capitaine**, l'application va plus loin et agit comme un pont entre les marchés isolés :
+*   **Aspiration (Light Node)** : Lors de la synchronisation, l'application aspire l'intégralité des événements du marché (profils, transferts, attestations) et les stocke dans une table `outbox_gossip`.
+*   **Dissémination (Push)** : Lorsque le Capitaine se déplace et se connecte à une **nouvelle ZenBOX** (nouveau marché), son téléphone détecte le changement de réseau et "vomit" silencieusement tout l'historique collecté vers le nouveau relais.
+*   **Résultat** : Les graphes sociaux et économiques des différents marchés s'unifient organiquement, portés par le mouvement physique des humains, sans nécessiter de connexion Internet globale.
+
+**En résumé :** Le mode hors-ligne de TrocZen s'apparente exactement à l'usage d'un billet de banque physique. Tant que vous avez le billet (P2) et que l'autre sait le reconnaître (P3 en cache), l'échange est immédiat et définitif. Le réseau ne sert qu'à l'audit a posteriori, et la résilience globale est assurée par le protocole Gossip des Capitaines.
