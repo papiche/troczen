@@ -61,7 +61,8 @@ Un premier lancement est détecté si :
 
 ---
 
-## 📱 Les 6 Étapes du Parcours
+
+## 📱 Les 6 Étapes du Parcours (Code Actuel)
 
 ### Étape 1️⃣ : Création du Compte (Identifiants Cryptographiques)
 
@@ -171,46 +172,9 @@ final market = await storageService.initializeDefaultMarket(name: 'Marché Libre
 2. **Upload IPFS Synchrone/Asynchrone** des images (Avatar et Bannière) via `ApiService`.
 3. Publication du profil sur Nostr (`kind 0`) avec les URL IPFS finales.
 4. Publication des demandes d'attestation de compétences (`kind 30501`) en arrière-plan.
-5. **Génération du Bon Zéro** (0 ẐEN, TTL 28 jours) pour le bootstrap social
-
----
-
-## 📊 Gestion de l'État
-
-### OnboardingState
-
-Modèle centralisé pour tout le parcours :
-
-```dart
-class OnboardingState {
-  String? seedMarket;        // Seed du marché (hex 64 chars)
-  String? seedMode;          // 'scanned', 'generated', 'mode000'
-  String relayUrl;           // URL du relais Nostr
-  String apiUrl;             // URL de l'API REST
-  String ipfsGateway;        // URL de la passerelle IPFS
-  int p3Count;               // Nombre de P3 synchronisés
-  bool syncCompleted;        // Flag de synchronisation
-  String? displayName;       // Nom affiché
-  String? about;             // Description
-  List<String> activityTags; // Tags d'activité
-  String? g1PublicKey;       // Clé publique Ğ1 (optionnelle, interopérabilité)
-  String? marketName;        // Nom du marché
-  // DU Nostr P2P : calculé dynamiquement via le graphe social (follows réciproques)
-}
-```
-
-### OnboardingNotifier (ChangeNotifier)
-
-Provider pour la gestion d'état réactif :
-
-```dart
-class OnboardingNotifier extends ChangeNotifier {
-  void setSeedMarket(String seed, String mode);
-  void setAdvancedConfig({String? relayUrl, ...});
-  void setSyncCompleted(int p3Count);
-  void setProfile({required String displayName, ...});
-}
-```
+5. **Génération du Bon Zéro** (0 ẐEN, TTL 28 jours) pour le bootstrap social.
+6. Vérification du presse-papier : si un `npub` est détecté (via un lien d'invitation), la personne est suivie automatiquement (`kind 3`).
+7. Marquage de l'onboarding comme terminé et redirection vers `MainShell`.
 
 ---
 

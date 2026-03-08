@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/user.dart';
@@ -34,6 +35,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   bool _isGridView = false;
   final _searchController = TextEditingController();
 
+  StreamSubscription? _cacheSub;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -43,10 +46,14 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     _loadBons();
     _loadAvailableDu();
     _searchController.addListener(_filterBons);
+    _cacheSub = StorageService().cacheInsertionsStream.listen((_) {
+      if (mounted) _loadBons();
+    });
   }
 
   @override
   void dispose() {
+    _cacheSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }

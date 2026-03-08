@@ -236,6 +236,31 @@ class CryptoService {
     };
   }
 
+  /// Génère une paire de clés Nostr (secp256k1)
+  /// Retourne la clé privée sous forme de Uint8List pour éviter les fuites mémoire
+  Map<String, dynamic> generateNostrKeyPairBytes() {
+    final keyPair = _generateSecp256k1KeyPair();
+    var privateKey = (keyPair.privateKey as ECPrivateKey).d!;
+    var publicKey = (keyPair.publicKey as ECPublicKey).Q!;
+    
+    // BIP-340: Normaliser pour avoir y pair
+    final domainParams = ECDomainParameters('secp256k1');
+    final n = domainParams.n;
+    final yBigInt = publicKey.y!.toBigInteger()!;
+    
+    if (yBigInt.isOdd) {
+      // Si y est impair, utiliser -privateKey (qui donnera le point opposé avec y pair)
+      privateKey = n - privateKey;
+      publicKey = (domainParams.G * privateKey)!;
+    }
+    
+    return {
+      'privateKeyBytes': _bigIntToBytes(privateKey, 32), // Uint8List
+      'publicKeyHex': _pointToHex(publicKey),
+      'npub': encodeNpub(_pointToHex(publicKey)),
+    };
+  }
+
   // ==================== MARKET IDENTITY DERIVATION ====================
   
   /// ✅ v2.0.1: Dérive l'identité Nostr du marché de manière déterministe et sécurisée
@@ -802,6 +827,11 @@ class CryptoService {
   String _bigIntToHex(BigInt value, int length) {
     final hex = value.toRadixString(16).padLeft(length * 2, '0');
     return hex;
+  }
+
+  Uint8List _bigIntToBytes(BigInt value, int length) {
+    final hex = value.toRadixString(16).padLeft(length * 2, '0');
+    return Uint8List.fromList(HEX.decode(hex));
   }
 
   /// ✅ CORRECTION: Retourne seulement la coordonnée X (format Nostr standard)

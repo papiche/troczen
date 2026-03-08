@@ -279,10 +279,10 @@ class NostrMarketService {
       event['sig'] = signature;
 
       final message = jsonEncode(['EVENT', event]);
-      _connection.sendMessage(message);
-      
-      Logger.log('NostrService', 'Profil publié avec ${nostrTags.length} tags');
-      return true;
+      Logger.log('NostrService', 'Profil publié/mis en attente avec ${nostrTags.length} tags');
+      // ✅ Utilise sendEventAndWait pour router vers la Outbox (pending_events) si hors-ligne
+      return await _connection.sendEventAndWait(eventId, message);      
+
     } catch (e) {
       onError?.call('Erreur publication profil: $e');
       return false;

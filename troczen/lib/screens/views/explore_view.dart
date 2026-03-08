@@ -6,6 +6,7 @@ import '../../models/bon.dart';
 import '../../models/market.dart';
 import '../../models/nostr_profile.dart';
 import '../../services/storage_service.dart';
+import '../../services/image_compression_service.dart';
 import '../../services/nostr_service.dart';
 import '../../services/crypto_service.dart';
 import '../../services/logger_service.dart';
@@ -408,130 +409,212 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   }
 
   Widget _buildIssuedBonCard(Bon bon) {
+    // Vérifier si une bannière est disponible
+    final hasBanner = bon.banner != null || bon.banner64 != null;
+    
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24, width: 1),
+        boxShadow:[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      bon.issuerName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      bon.marketName,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[400],
-                      ),
-                    ),
-                  ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15), // Un peu moins que 16 pour rester dans la bordure
+        child: Stack(
+          children:[
+            // 1. Bannière en fond (si disponible)
+            if (hasBanner)
+              Positioned.fill(
+                child: ImageCompressionService.buildImage(
+                  uri: bon.banner,
+                  fallbackUri: bon.banner64,
+                  fit: BoxFit.cover,
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${bon.value.toStringAsFixed(2)} Ẑ',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFFFB347),
+            
+            // 2. Overlay assombrissant (Gradient) pour garantir la lisibilité du texte par-dessus
+            if (hasBanner)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors:[
+                        const Color(0xFF1E1E1E).withValues(alpha: 0.95), // Très sombre à gauche (textes)
+                        const Color(0xFF1E1E1E).withValues(alpha: 0.6),  // Plus clair à droite (montant)
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(bon.status).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      bon.status.name,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: _getStatusColor(bon.status),
+                ),
+              ),
+              
+            // 3. Contenu textuel et actions
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children:[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children:[
+                      // Avatar / Logo du Bon
+                      Container(
+                        width: 52,
+                        height: 52,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFFFB347), width: 2),
+                          color: const Color(0xFF2A2A2A),
+                          boxShadow:[
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: (bon.picture != null || bon.picture64 != null || bon.logoUrl != null)
+                              ? ImageCompressionService.buildImage(
+                                  uri: bon.picture ?? bon.logoUrl,
+                                  fallbackUri: bon.picture64,
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(Icons.store, color: Color(0xFFFFB347)),
+                        ),
                       ),
-                    ),
+                      
+                      // Nom et Marché
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children:[
+                            Text(
+                              bon.issuerName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              bon.marketName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[300],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Valeur et Statut
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children:[
+                          Text(
+                            '${bon.value.toStringAsFixed(2)} Ẑ',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFFB347),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(bon.status).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              bon.status.name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _getStatusColor(bon.status),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Métadonnées (Date, Transferts)
+                  Row(
+                    children:[
+                      Icon(Icons.calendar_today, size: 14, color: Colors.grey[400]),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatDate(bon.createdAt),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[300]),
+                      ),
+                      const SizedBox(width: 16),
+                      if (bon.transferCount != null && bon.transferCount! > 0) ...[
+                        Icon(Icons.swap_horiz, size: 14, color: Colors.grey[400]),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${bon.transferCount} transferts',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[300]),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Boutons d'action
+                  Row(
+                    children:[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _editBonProfile(bon),
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('Modifier'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFFFB347),
+                            side: const BorderSide(color: Color(0xFFFFB347)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (bon.p2 != null && bon.status == BonStatus.active && !bon.isExpired && bon.status != BonStatus.expired) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _giveBon(bon),
+                            icon: const Icon(Icons.send, size: 16),
+                            label: const Text('Donner'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFFB347),
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
-              const SizedBox(width: 6),
-              Text(
-                _formatDate(bon.createdAt),
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              const SizedBox(width: 16),
-              if (bon.transferCount != null && bon.transferCount! > 0) ...[
-                Icon(Icons.swap_horiz, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 6),
-                Text(
-                  '${bon.transferCount} transferts',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _editBonProfile(bon),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Modifier'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFFFB347),
-                    side: const BorderSide(color: Color(0xFFFFB347)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              if (bon.p2 != null && bon.status == BonStatus.active && !bon.isExpired && bon.status != BonStatus.expired) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _giveBon(bon),
-                    icon: const Icon(Icons.send, size: 16),
-                    label: const Text('Donner'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFB347),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

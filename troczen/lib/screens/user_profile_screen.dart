@@ -135,123 +135,107 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
-  Future<void> _saveProfile() async {
+Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
     try {
-      // Upload IPFS si de nouvelles images ont été sélectionnées
-      String? ipfsPictureUrl;
-      String? ipfsBannerUrl;
-      
-      if (_selectedPictureFile != null) {
-        final result = await _apiService.uploadImage(
-          npub: widget.user.npub,
-          imageFile: _selectedPictureFile!,
-          type: 'avatar',
-        );
-        if (result != null) {
-          ipfsPictureUrl = result['ipfs_url'] ?? result['url'];
-        }
-      }
-      
-      if (_selectedBannerFile != null) {
-        final result = await _apiService.uploadImage(
-          npub: widget.user.npub,
-          imageFile: _selectedBannerFile!,
-          type: 'banner',
-        );
-        if (result != null) {
-          ipfsBannerUrl = result['ipfs_url'] ?? result['url'];
-        }
-      }
-
-      // Ne pas mettre de base64 dans picture/banner (NIP-01)
-      String? finalPictureUrl = ipfsPictureUrl ?? (widget.user.picture != null && !widget.user.picture!.startsWith('data:') ? widget.user.picture : null);
-      String? finalBannerUrl = ipfsBannerUrl ?? (widget.user.banner != null && !widget.user.banner!.startsWith('data:') ? widget.user.banner : null);
-
-      // 3. Publier sur Nostr (kind 0)
       final market = await _storageService.getMarket();
       final relayUrl = market?.relayUrl ?? AppConfig.defaultRelayUrl;
-      
       final nostrService = context.read<NostrService>();
 
-      final connected = await nostrService.connect(relayUrl);
-      
-      if (connected) {
-        // Publier le profil utilisateur (kind 0)
-        await nostrService.market.publishUserProfile(
-          npub: widget.user.npub,
-          nsec: widget.user.nsec,
-          name: _nameController.text.trim(),
-          displayName: _displayNameController.text.trim().isNotEmpty
-              ? _displayNameController.text.trim()
-              : null,
-          about: _aboutController.text.trim().isNotEmpty
-              ? _aboutController.text.trim()
-              : null,
-          picture: finalPictureUrl,
-          banner: finalBannerUrl,
-          picture64: _base64Picture ?? widget.user.picture64,
-          banner64: _base64Banner ?? widget.user.banner64,
-          website: _websiteController.text.trim().isNotEmpty
-              ? _websiteController.text.trim()
-              : null,
-          g1pub: _g1pubController.text.trim().isNotEmpty
-              ? _g1pubController.text.trim()
-              : null,
-        );
+      // 1. Capturer les valeurs des champs (évite les erreurs si le widget est détruit)
+      final nameText = _nameController.text.trim();
+      final displayNameText = _displayNameController.text.trim().isNotEmpty
+          ? _displayNameController.text.trim()
+          : widget.user.displayName;
+      final aboutText = _aboutController.text.trim().isNotEmpty
+          ? _aboutController.text.trim()
+          : null;
+      final websiteText = _websiteController.text.trim().isNotEmpty
+          ? _websiteController.text.trim()
+          : null;
+      final g1pubText = _g1pubController.text.trim().isNotEmpty
+          ? _g1pubController.text.trim()
+          : null;
+      final currentTags = List<String>.from(_activityTags);
 
-        // Publier la liste des relais (kind 10002)
-        final relays = _relaysController.text.trim().split(',').map((r) => r.trim()).where((r) => r.isNotEmpty).toList();
-        if (relays.isNotEmpty) {
-          await nostrService.publishRelayList(
-            npub: widget.user.npub,
-            nsec: widget.user.nsec,
-            relays: relays,
-          );
-        }
-
-        await nostrService.disconnect();
-      }
-
-      // 4. Mettre à jour l'utilisateur local avec les URLs des images
-      final updatedUser = User(
-        npub: widget.user.npub,
-        nsec: widget.user.nsec,
-        displayName: _displayNameController.text.trim().isNotEmpty
-            ? _displayNameController.text.trim()
-            : widget.user.displayName,
-        createdAt: widget.user.createdAt,
-        website: _websiteController.text.trim().isNotEmpty
-            ? _websiteController.text.trim()
-            : widget.user.website,
-        g1pub: _g1pubController.text.trim().isNotEmpty
-            ? _g1pubController.text.trim()
-            : widget.user.g1pub,
-        about: _aboutController.text.trim().isNotEmpty
-            ? _aboutController.text.trim()
-            : widget.user.about,
-        // ✅ NOUVEAU: Sauvegarder les URLs des images
-        picture: finalPictureUrl ?? widget.user.picture,
-        banner: finalBannerUrl ?? widget.user.banner,
+      // 2. Mettre à jour l'utilisateur local avec les images actuelles ou Base64
+      // L'UI est fluide car on n'attend pas IPFS
+      final updatedUser = widget.user.copyWith(
+        displayName: displayNameText,
+        about: aboutText,
+        website: websiteText,
+        g1pub: g1pubText,
+        // On conserve l'ancienne URL IPFS si elle existait, sinon on garde null
         picture64: _base64Picture ?? widget.user.picture64,
         banner64: _base64Banner ?? widget.user.banner64,
+        activityTags: currentTags,
+        relayUrl: relayUrl,
       );
+
       await _storageService.saveUser(updatedUser);
+
+      // 3. Publier immédiatement sur Nostr (Kind 0)
+      await nostrService.connect(relayUrl);
+      
+      // ✅ PUBLIER DANS TOUS LES CAS (la mise en file d'attente se fera automatiquement si hors-ligne)
+      await nostrService.market.publishUserProfile(
+        npub: updatedUser.npub,
+        nsec: updatedUser.nsec,
+        name: nameText,
+        displayName: updatedUser.displayName,
+        about: updatedUser.about,
+        picture: updatedUser.picture,
+        banner: updatedUser.banner,
+        picture64: updatedUser.picture64,
+        banner64: updatedUser.banner64,
+        website: updatedUser.website,
+        g1pub: updatedUser.g1pub,
+        tags: updatedUser.activityTags,
+      );
+
+      // Publier la liste des relais
+      final relays = _relaysController.text.trim().split(',').map((r) => r.trim()).where((r) => r.isNotEmpty).toList();
+      if (relays.isNotEmpty) {
+        await nostrService.publishRelayList(
+          npub: updatedUser.npub,
+          nsec: updatedUser.nsec,
+          relays: relays,
+        );
+      }
+      await nostrService.disconnect();
 
       if (!mounted) return;
 
+      // 4. Débloquer l'UI et afficher le succès
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Profil mis à jour localement et sur Nostr !'),
+        SnackBar(
+          content: Text(
+            _selectedPictureFile != null || _selectedBannerFile != null
+                ? '✅ Profil sauvegardé ! Upload IPFS en arrière-plan...'
+                : '✅ Profil mis à jour avec succès !'
+          ),
           backgroundColor: Colors.green,
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context); // Rendre la main à l'utilisateur
+
+      // 5. 🔥 Lancer l'upload IPFS en arrière-plan (Fire-and-forget)
+      if (_selectedPictureFile != null || _selectedBannerFile != null) {
+        _uploadImagesToIPFSInBackground(
+          user: updatedUser,
+          name: nameText,
+          relayUrl: relayUrl,
+          pictureFile: _selectedPictureFile,
+          bannerFile: _selectedBannerFile,
+        );
+      }
+
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erreur: $e'),
@@ -277,6 +261,78 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  /// Tâche en arrière-plan pour ne pas bloquer l'UI pendant le polling IPFS
+  void _uploadImagesToIPFSInBackground({
+    required User user,
+    required String name,
+    required String relayUrl,
+    File? pictureFile,
+    File? bannerFile,
+  }) async {
+    try {
+      debugPrint('Démarrage upload IPFS en arrière-plan...');
+      String? newPictureUrl;
+      String? newBannerUrl;
+      bool isUpdated = false;
+
+      if (pictureFile != null) {
+        final result = await _apiService.uploadImage(
+          npub: user.npub,
+          imageFile: pictureFile,
+          type: 'avatar',
+          waitForIpfs: true,
+        );
+        if (result != null) {
+          newPictureUrl = result['ipfs_url'] ?? result['url'];
+          isUpdated = true;
+        }
+      }
+
+      if (bannerFile != null) {
+        final result = await _apiService.uploadImage(
+          npub: user.npub,
+          imageFile: bannerFile,
+          type: 'banner',
+          waitForIpfs: true,
+        );
+        if (result != null) {
+          newBannerUrl = result['ipfs_url'] ?? result['url'];
+          isUpdated = true;
+        }
+      }
+
+      if (isUpdated) {
+        // 1. Mettre à jour l'utilisateur avec les vraies URL IPFS
+        final updatedUser = user.copyWith(
+          picture: newPictureUrl ?? user.picture,
+          banner: newBannerUrl ?? user.banner,
+        );
+        await _storageService.saveUser(updatedUser);
+
+        // 2. Republier silencieusement sur Nostr
+        final nostrService = context.read<NostrService>();
+        await nostrService.market.publishUserProfile(
+          npub: updatedUser.npub,
+          nsec: updatedUser.nsec,
+          name: name,
+          displayName: updatedUser.displayName,
+          about: updatedUser.about,
+          picture: updatedUser.picture,
+          banner: updatedUser.banner,
+          picture64: updatedUser.picture64,
+          banner64: updatedUser.banner64,
+          website: updatedUser.website,
+          g1pub: updatedUser.g1pub,
+          tags: updatedUser.activityTags,
+        );
+        await nostrService.disconnect();
+        debugPrint('✅ Profil Nostr mis à jour silencieusement avec les URLs IPFS');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur upload IPFS arrière-plan: $e');
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

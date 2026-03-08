@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../models/user.dart';
 import '../../services/image_compression_service.dart';
 import '../../models/bon.dart';
@@ -1319,8 +1320,50 @@ class _QRScannerScreen extends StatefulWidget {
   @override
   State<_QRScannerScreen> createState() => _QRScannerScreenState();
 }
-
 class _QRScannerScreenState extends State<_QRScannerScreen> {
+  MobileScannerController? _scannerController;
+  bool _hasPermission = false;
+  bool _isCheckingPermission = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initScannerAndPermissions();
+  }
+
+  Future<void> _initScannerAndPermissions() async {
+    // 1. Demander explicitement la permission à l'OS
+    final status = await Permission.camera.request();
+    
+    if (status.isGranted) {
+      if (mounted) {
+        setState(() {
+          _hasPermission = true;
+          _isCheckingPermission = false;
+          // 2. Initialiser le contrôleur uniquement si on a la permission
+          _scannerController = MobileScannerController(
+            facing: CameraFacing.back,
+            detectionSpeed: DetectionSpeed.noDuplicates,
+          );
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _hasPermission = false;
+          _isCheckingPermission = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    // 3. Purger le contrôleur pour éteindre la caméra proprement
+    _scannerController?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1334,7 +1377,7 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
         ),
       ),
       body: Column(
-        children: [
+        children:[
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -1350,17 +1393,7 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
             child: Center(
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
-                child: FutureBuilder<void>(
-                  future: _checkCameraPermission(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const CircularProgressIndicator();
-                    }
-                    
-                    // Import dynamique pour éviter les dépendances manquantes
-                    return _buildScanner();
-                  },
-                ),
+                child: _buildScannerContent(),
               ),
             ),
           ),
@@ -1369,43 +1402,40 @@ class _QRScannerScreenState extends State<_QRScannerScreen> {
     );
   }
 
-  Future<void> _checkCameraPermission() async {
-    // Permission déjà gérée par mobile_scanner
-    return;
-  }
+  Widget _buildScannerContent() {
+    if (_isCheckingPermission) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+      );
+    }
 
-  Widget _buildScanner() {
-    // Utiliser mobile_scanner si disponible
-    try {
-      // ignore: unnecessary_import
-      return const _MobileScannerWidget();
-    } catch (e) {
+    if (!_hasPermission || _scannerController == null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.qr_code_scanner, size: 64, color: Colors.white54),
-              const SizedBox(height: 16),
-              Text(
-                'Scanner non disponible',
-                style: TextStyle(color: Colors.grey[400], fontSize: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children:[
+            const Icon(Icons.videocam_off, size: 64, color: Colors.white54),
+            const SizedBox(height: 16),
+            const Text(
+              'Permission caméra requise',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => openAppSettings(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB347),
               ),
-            ],
-          ),
+              child: const Text(
+                'Ouvrir les paramètres',
+                style: TextStyle(color: Colors.black),
+              ),
+            )
+          ],
         ),
       );
     }
-  }
-}
 
-/// Widget wrapper pour mobile_scanner
-class _MobileScannerWidget extends StatelessWidget {
-  const _MobileScannerWidget();
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -1413,15 +1443,22 @@ class _MobileScannerWidget extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: MobileScanner(
+        controller: _scannerController!,
         onDetect: (capture) {
           final List<Barcode> barcodes = capture.barcodes;
           for (final barcode in barcodes) {
             if (barcode.rawValue != null) {
               String code = barcode.rawValue!;
+              
+              // Nettoyage du préfixe Nostr
               if (code.startsWith('nostr:')) {
                 code = code.substring(6);
               }
-              Navigator.pop(context, code);
+              
+              // 4. Protection contre le multiple pop
+              if (mounted) {
+                Navigator.pop(context, code);
+              }
               break;
             }
           }

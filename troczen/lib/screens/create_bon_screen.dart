@@ -269,25 +269,19 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
 
     try {
       // 1. Générer la paire de clés du bon
-      final bonKeys = _cryptoService.generateNostrKeyPair();
-      final bonNsecHex = bonKeys['privateKeyHex']!;  // Format hex pour shamirSplit
+      final bonKeys = _cryptoService.generateNostrKeyPairBytes();
       final bonNpubHex = bonKeys['publicKeyHex']!;   // Format hex pour les identifiants
 
       // 2. Découper en 3 parts avec SSSS (utilise le format bytes)
-      Uint8List? bonNsecBytes;
+      Uint8List? bonNsecBytes = bonKeys['privateKeyBytes'] as Uint8List;
       String p1, p2, p3;
       try {
-        try {
-          bonNsecBytes = Uint8List.fromList(HEX.decode(bonNsecHex));
-        } catch (e) {
-          throw Exception('Clé privée du bon invalide (non hexadécimale)');
-        }
         final partsBytes = _cryptoService.shamirSplitBytes(bonNsecBytes);
         p1 = HEX.encode(partsBytes[0]); // Ancre (reste chez l'émetteur)
         p2 = HEX.encode(partsBytes[1]); // Voyageur (part active)
         p3 = HEX.encode(partsBytes[2]); // Témoin (à publier)
       } finally {
-        if (bonNsecBytes != null) _cryptoService.secureZeroiseBytes(bonNsecBytes);
+        _cryptoService.secureZeroiseBytes(bonNsecBytes);
       }
 
       // 3. Stocker P3 dans le cache local (utilise le format hex comme identifiant)

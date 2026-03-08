@@ -42,7 +42,7 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentTab = 0;
   final _storageService = StorageService();
   late final NostrService _nostrService;
@@ -52,6 +52,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _nostrService = context.read<NostrService>();
     _initAutoSync();
     _updatePendingEventsCount();
@@ -82,6 +83,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);    
     _pendingEventsTimer?.cancel();
     _nostrService.market.disableAutoSync();
     super.dispose();
@@ -92,7 +94,15 @@ class _MainShellState extends State<MainShell> {
     // ✅ PROGRESSIVE DISCLOSURE : Écoute du provider
     final appModeProvider = context.watch<AppModeProvider>();
     final appMode = appModeProvider.currentMode;
-
+    final maxTabs = appMode.navigationTabsCount;
+    if (_currentTab >= maxTabs) {
+      // PostFrameCallback pour éviter une erreur setState durant le build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _currentTab = maxTabs - 1);
+      });
+      // On force temporairement l'affichage du dernier onglet valide
+      _currentTab = maxTabs - 1; 
+    }
     return Scaffold(
       // ✅ CORRECTION: Ajout d'un AppBar pour permettre l'accès au Drawer
       appBar: AppBar(
@@ -790,5 +800,14 @@ class _MainShellState extends State<MainShell> {
       ],
     );
   }
-
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _storageService.reconcileBonsState(_nostrService).then((count) {
+        if (count > 0 && mounted) {
+          // Déclencher un rafraîchissement global ou une notification
+        }
+      });
+    }
+  }
 }
