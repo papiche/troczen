@@ -175,10 +175,10 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     final showUpgradeBanner = appMode == AppMode.flaneur && bons.length >= 5;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Mon Wallet'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('Mon Wallet'),
         actions: [
           // Bouton bascule vue grille/liste
           IconButton(
@@ -188,7 +188,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
           ),
           // Bouton rafraîchir
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: () => _loadBons(),
             tooltip: 'Actualiser',
           ),
@@ -221,7 +221,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [Color(0xFF0A7EA4), Color(0xFF054A61)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -237,13 +237,13 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       ),
       child: Row(
         children: [
-          const Icon(Icons.stars, color: Colors.amber, size: 32),
+          Icon(Icons.stars, color: Colors.amber, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Félicitations !',
                   style: TextStyle(
                     color: Colors.white,
@@ -283,7 +283,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Évoluer',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -298,8 +298,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E1E1E), Color(0xFF2A2A2A)],
+        gradient: LinearGradient(
+          colors: [Theme.of(context).colorScheme.surface, Color(0xFF2A2A2A)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -325,7 +325,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
           const SizedBox(height: 8),
           Text(
             '${_totalActiveBalance.toStringAsFixed(2)} Ẑ',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.bold,
               color: Color(0xFFFFB347),
@@ -369,7 +369,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.add_circle_outline,
                   size: 16,
                   color: Color(0xFF0A7EA4),
@@ -377,7 +377,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                 const SizedBox(width: 6),
                 Text(
                   'DU disponible à émettre: ${_availableDu.toStringAsFixed(2)} ẐEN',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     color: Color(0xFF0A7EA4),
                     fontWeight: FontWeight.bold,
@@ -397,21 +397,21 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
       child: SearchBar(
         controller: _searchController,
         hintText: 'Rechercher par nom, valeur, type...',
-        leading: const Icon(Icons.search),
+        leading: Icon(Icons.search),
         trailing: _searchController.text.isNotEmpty
             ? [
                 IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
                   },
                 )
               ]
             : null,
-        backgroundColor: WidgetStateProperty.all(const Color(0xFF1E1E1E)),
+        backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.surface),
         elevation: WidgetStateProperty.all(0),
         side: WidgetStateProperty.all(
-          const BorderSide(color: Colors.white24, width: 1),
+          BorderSide(color: Colors.white24, width: 1),
         ),
       ),
     );
@@ -592,7 +592,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   void _showContextMenu(Bon bon) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -615,7 +615,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
             // Titre
             Text(
               bon.issuerName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -625,24 +625,24 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
             
             // Options
             ListTile(
-              leading: const Icon(Icons.qr_code, color: Color(0xFFFFB347)),
-              title: const Text('Afficher QR P2', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.qr_code, color: Color(0xFFFFB347)),
+              title: Text('Afficher QR P2', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _showP2QRCode(bon);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.history, color: Color(0xFF0A7EA4)),
-              title: const Text('Voir historique', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.history, color: Color(0xFF0A7EA4)),
+              title: Text('Voir historique', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _showBonHistory(bon);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.delete_outline, color: Colors.red),
+              title: Text('Supprimer', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDeleteBon(bon);
@@ -668,8 +668,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           'QR Code P2',
           style: TextStyle(color: Colors.white),
         ),
@@ -701,7 +701,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
+            child: Text('Fermer'),
           ),
         ],
       ),
@@ -712,8 +712,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           'Historique du bon',
           style: TextStyle(color: Colors.white),
         ),
@@ -739,7 +739,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
+            child: Text('Fermer'),
           ),
         ],
       ),
@@ -759,7 +759,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               children: [
                 Text(
                   count != null ? '$label ($count fois)' : label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -784,19 +784,19 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           'Supprimer le bon ?',
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
           'Voulez-vous vraiment supprimer ce bon de ${bon.issuerName} (${bon.value} Ẑ) ?',
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('Annuler'),
           ),
           TextButton(
             onPressed: () async {
@@ -804,7 +804,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               await _deleteBon(bon);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: Text('Supprimer'),
           ),
         ],
       ),
@@ -868,7 +868,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
   void _showBonDetails(Bon bon) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -900,7 +900,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               // Nom de l'émetteur
               Text(
                 bon.issuerName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -931,8 +931,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                       ),
                     );
                   },
-                  icon: const Icon(Icons.map, color: Color(0xFF0A7EA4)),
-                  label: const Text(
+                  icon: Icon(Icons.map, color: Color(0xFF0A7EA4)),
+                  label: Text(
                     'Carnet de Voyage',
                     style: TextStyle(
                       color: Color(0xFF0A7EA4),
@@ -940,7 +940,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF0A7EA4)),
+                    side: BorderSide(color: Color(0xFF0A7EA4)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -993,8 +993,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () => _confirmBurnBon(bon),
-                    icon: const Icon(Icons.celebration, color: Colors.white),
-                    label: const Text(
+                    icon: Icon(Icons.celebration, color: Colors.white),
+                    label: Text(
                       '🎉 BOUCLER LE CIRCUIT',
                       style: TextStyle(
                         color: Colors.white,
@@ -1028,8 +1028,8 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                         ),
                       );
                     },
-                    icon: const Icon(Icons.qr_code, color: Colors.black),
-                    label: const Text(
+                    icon: Icon(Icons.qr_code, color: Colors.black),
+                    label: Text(
                       'Donner ce bon',
                       style: TextStyle(
                         color: Colors.black,
@@ -1055,13 +1055,13 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFFB347),
-                    side: const BorderSide(color: Color(0xFFFFB347)),
+                    side: BorderSide(color: Color(0xFFFFB347)),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Fermer',
                     style: TextStyle(
                       fontSize: 16,
@@ -1092,12 +1092,12 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.celebration, color: Colors.orange.shade400),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Boucler le circuit ?',
               style: TextStyle(color: Colors.white),
             ),
@@ -1109,7 +1109,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
           children: [
             Text(
               'Vous êtes sur le point de révéler le parcours de ce bon de ${bon.value.toStringAsFixed(2)} ẐEN.',
-              style: const TextStyle(color: Colors.white70),
+              style: TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 12),
             Container(
@@ -1121,7 +1121,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.celebration, color: Colors.green, size: 20),
+                  Icon(Icons.celebration, color: Colors.green, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1140,15 +1140,15 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('Annuler'),
           ),
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(context);
               await _burnBon(bon);
             },
-            icon: const Icon(Icons.celebration, color: Colors.white),
-            label: const Text(
+            icon: Icon(Icons.celebration, color: Colors.white),
+            label: Text(
               'BOUCLER',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
@@ -1243,7 +1243,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFFFFB347),
@@ -1253,7 +1253,7 @@ class _WalletViewState extends State<WalletView> with AutomaticKeepAliveClientMi
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: Colors.white,
               ),

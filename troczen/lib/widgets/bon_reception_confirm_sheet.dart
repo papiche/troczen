@@ -22,8 +22,8 @@ class BonReceptionConfirmSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -51,7 +51,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
               color: const Color(0xFFFFB347).withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.card_giftcard,
               size: 40,
               color: Color(0xFFFFB347),
@@ -61,7 +61,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Titre
-          const Text(
+          Text(
             'Recevoir ce bon ?',
             style: TextStyle(
               color: Colors.white,
@@ -85,7 +85,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
             ),
             child: Text(
               '${value.toStringAsFixed(2)} ẐEN',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFFFFB347),
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -106,7 +106,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Émis par',
                   style: TextStyle(
                     color: Colors.white70,
@@ -116,7 +116,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   issuerName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -125,7 +125,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   '${issuerNpub.substring(0, 16)}...${issuerNpub.substring(issuerNpub.length - 8)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white60,
                     fontSize: 12,
                     fontFamily: 'monospace',
@@ -145,13 +145,13 @@ class BonReceptionConfirmSheet extends StatelessWidget {
                   onPressed: onDecline,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white70,
-                    side: const BorderSide(color: Colors.white30),
+                    side: BorderSide(color: Colors.white30),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Refuser',
                     style: TextStyle(
                       fontSize: 16,
@@ -174,7 +174,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Accepter',
                     style: TextStyle(
                       fontSize: 16,
@@ -198,7 +198,7 @@ class BonReceptionConfirmSheet extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.info_outline,
                   color: Colors.blue,
                   size: 16,

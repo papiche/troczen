@@ -13,13 +13,13 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
-        title: const Text('Aide & Documentation'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text('Aide & Documentation'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           IconButton(
-            icon: const Icon(Icons.bug_report),
+            icon: Icon(Icons.bug_report),
             onPressed: () {
               Navigator.push(
                 context,
@@ -123,7 +123,7 @@ class HelpScreen extends StatelessWidget {
           // Sécurité
           _buildSectionTitle('🔐 Sécurité'),
           
-          _buildInfoCard(
+          _buildInfoCard(context, 
             icon: Icons.security,
             title: 'Cryptographie',
             content: '''
@@ -135,7 +135,7 @@ class HelpScreen extends StatelessWidget {
             ''',
           ),
           
-          _buildInfoCard(
+          _buildInfoCard(context, 
             icon: Icons.lock,
             title: 'Vos identifiants',
             content: '''
@@ -155,7 +155,7 @@ Si vous les perdez, vos bons sont perdus !
           // Concepts
           _buildSectionTitle('💡 Concepts Clés'),
           
-          _buildInfoCard(
+          _buildInfoCard(context, 
             icon: Icons.category,
             title: 'Les 3 Parts (P1, P2, P3)',
             content: '''
@@ -174,7 +174,7 @@ N'importe quelles 2 parts permettent de reconstituer le bon temporairement en RA
             ''',
           ),
           
-          _buildInfoCard(
+          _buildInfoCard(context, 
             icon: Icons.stars,
             title: 'Rareté des Bons',
             content: '''
@@ -189,7 +189,7 @@ Les bons rares ont des animations spéciales !
             ''',
           ),
           
-          _buildInfoCard(
+          _buildInfoCard(context, 
             icon: Icons.offline_bolt,
             title: 'Offline-First',
             content: '''
@@ -211,7 +211,7 @@ Internet requis seulement pour:
           // Dépannage
           _buildSectionTitle('🔧 Dépannage'),
           
-          _buildTroubleshootCard(
+          _buildTroubleshootCard(context, 
             question: 'Le scan ne fonctionne pas',
             answer: '''
 • Vérifiez la permission caméra
@@ -222,7 +222,7 @@ Internet requis seulement pour:
             ''',
           ),
           
-          _buildTroubleshootCard(
+          _buildTroubleshootCard(context, 
             question: 'Erreur "P3 non trouvée"',
             answer: '''
 • Synchronisez avec le marché (⟳)
@@ -232,7 +232,7 @@ Internet requis seulement pour:
             ''',
           ),
           
-          _buildTroubleshootCard(
+          _buildTroubleshootCard(context, 
             question: 'QR code expiré',
             answer: '''
 • Les QR expirent après 30 secondes
@@ -249,7 +249,7 @@ Internet requis seulement pour:
           const SizedBox(height: 16),
           
           // Informations
-          _buildAboutCard(),
+          _buildAboutCard(context),
         ],
       ),
     );
@@ -266,9 +266,9 @@ Internet requis seulement pour:
       ),
       child: Column(
         children: [
-          const Icon(Icons.help_center, size: 64, color: Colors.white),
+          Icon(Icons.help_center, size: 64, color: Colors.white),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Bienvenue dans TrocZen',
             style: TextStyle(
               color: Colors.white,
@@ -294,7 +294,7 @@ Internet requis seulement pour:
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           color: Color(0xFFFFB347),
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -311,14 +311,14 @@ Internet requis seulement pour:
     required List<String> steps,
   }) {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         leading: Icon(icon, color: const Color(0xFFFFB347)),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -351,13 +351,13 @@ Internet requis seulement pour:
     );
   }
 
-  Widget _buildInfoCard({
+  Widget _buildInfoCard(BuildContext context, {
     required IconData icon,
     required String title,
     required String content,
   }) {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -371,7 +371,7 @@ Internet requis seulement pour:
                 const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -393,19 +393,19 @@ Internet requis seulement pour:
     );
   }
 
-  Widget _buildTroubleshootCard({
+  Widget _buildTroubleshootCard(BuildContext context, {
     required String question,
     required String answer,
   }) {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
-        leading: const Icon(Icons.help_outline, color: Colors.orange),
+        leading: Icon(Icons.help_outline, color: Colors.orange),
         title: Text(
           question,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w500,
           ),
@@ -436,8 +436,8 @@ Internet requis seulement pour:
           ),
         );
       },
-      icon: const Icon(Icons.feedback),
-      label: const Text('Envoyer un feedback ou signaler un bug'),
+      icon: Icon(Icons.feedback),
+      label: Text('Envoyer un feedback ou signaler un bug'),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.green,
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -447,16 +447,16 @@ Internet requis seulement pour:
     );
   }
 
-  Widget _buildAboutCard() {
+  Widget _buildAboutCard(BuildContext context) {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'À propos',
               style: TextStyle(
                 color: Colors.white,
@@ -480,7 +480,7 @@ Internet requis seulement pour:
                     const SnackBar(content: Text('Lien copié !')),
                   );
                 },
-                child: const Text(
+                child: Text(
                   'GitHub: github.com/papiche/troczen',
                   style: TextStyle(
                     color: Color(0xFF0A7EA4),

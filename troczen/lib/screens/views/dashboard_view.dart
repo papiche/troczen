@@ -150,9 +150,9 @@ class _DashboardViewState extends State<DashboardView>
     super.build(context);
     
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text('Dashboard Alchimiste'),
         actions: [
           IconButton(
@@ -446,7 +446,7 @@ class _DashboardViewState extends State<DashboardView>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
@@ -487,7 +487,7 @@ class _DashboardViewState extends State<DashboardView>
           height: 300,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white10),
           ),
@@ -552,7 +552,7 @@ class _DashboardViewState extends State<DashboardView>
                             radius: 4,
                             color: const Color(0xFFFFB347),
                             strokeWidth: 2,
-                            strokeColor: const Color(0xFF1E1E1E),
+                            strokeColor: Theme.of(context).colorScheme.surface,
                           ),
                         ),
                         belowBarData: BarAreaData(
@@ -595,7 +595,7 @@ class _DashboardViewState extends State<DashboardView>
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -676,7 +676,7 @@ class _DashboardViewState extends State<DashboardView>
       itemBuilder: (context, index) {
         final issuer = _metrics!.topIssuers[index];
         return Card(
-          color: const Color(0xFF1E1E1E),
+          color: Theme.of(context).colorScheme.surface,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
@@ -750,7 +750,7 @@ class _DashboardViewState extends State<DashboardView>
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  dropdownColor: const Color(0xFF1E1E1E),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: const [
                     DropdownMenuItem(value: 0.0, child: Text('> 0 ẐEN')),
                     DropdownMenuItem(value: 10.0, child: Text('> 10 ẐEN')),
@@ -773,7 +773,7 @@ class _DashboardViewState extends State<DashboardView>
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  dropdownColor: const Color(0xFF1E1E1E),
+                  dropdownColor: Theme.of(context).colorScheme.surface,
                   items: const [
                     DropdownMenuItem(value: 'Toutes', child: Text('Toutes')),
                     DropdownMenuItem(value: 'common', child: Text('Commune')),
@@ -843,7 +843,7 @@ class _DashboardViewState extends State<DashboardView>
                   final rarity = event['rarity'] as String? ?? 'common';
                   
                   return Card(
-                    color: const Color(0xFF1E1E1E),
+                    color: Theme.of(context).colorScheme.surface,
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       leading: Icon(

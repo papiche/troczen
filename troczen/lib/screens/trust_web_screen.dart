@@ -173,10 +173,10 @@ class _TrustWebScreenState extends State<TrustWebScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('Toile de Confiance'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFFFFB347),
@@ -315,7 +315,7 @@ class _TrustWebScreenState extends State<TrustWebScreen> with SingleTickerProvid
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white12),
       ),

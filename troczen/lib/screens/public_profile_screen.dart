@@ -76,7 +76,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -151,7 +151,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E1E1E),
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.white12),
                               ),
@@ -170,7 +170,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E1E1E),
+                              color: Theme.of(context).colorScheme.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Colors.white12),
                             ),

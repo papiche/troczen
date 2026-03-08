@@ -336,10 +336,10 @@ Future<void> _saveProfile() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('Mon Profil'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           if (!_isSaving)
             IconButton(
@@ -389,7 +389,7 @@ Future<void> _saveProfile() async {
 
   Widget _buildImagesSection() {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -473,7 +473,7 @@ Future<void> _saveProfile() async {
 
   Widget _buildInfoSection() {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -540,7 +540,7 @@ Future<void> _saveProfile() async {
 
   Widget _buildSkillsSection() {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -623,7 +623,7 @@ Future<void> _saveProfile() async {
 
   Widget _buildNostrSection() {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

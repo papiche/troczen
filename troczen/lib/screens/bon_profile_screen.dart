@@ -264,10 +264,10 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
   Widget build(BuildContext context) {
     if (!_canEdit) {
       return Scaffold(
-        backgroundColor: const Color(0xFF121212),
+        
         appBar: AppBar(
           title: const Text('Profil du Bon'),
-          backgroundColor: const Color(0xFF1E1E1E),
+          backgroundColor: Theme.of(context).colorScheme.surface,
         ),
         body: Center(
           child: Padding(
@@ -299,10 +299,10 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('Éditer le Profil du Bon'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           if (!_isSaving)
             IconButton(

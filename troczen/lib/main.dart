@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding/onboarding_flow.dart';
 import 'providers/app_mode_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -35,6 +36,9 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => AppModeProvider(storageService),
         ),
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+        ),
         Provider<StorageService>.value(
           value: storageService,
         ),
@@ -55,15 +59,51 @@ class TrocZenApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       title: 'TrocZen',
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
+        brightness: Brightness.light,
+        primaryColor: const Color(0xFFFFB347),
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFFFFB347),
+          secondary: Color(0xFF0A7EA4),
+          surface: Colors.white,
+          onSurface: Colors.black,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          iconTheme: IconThemeData(color: Colors.black),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: Color(0xFFFFB347),
+          unselectedItemColor: Colors.grey,
+        ),
+      ),
+      darkTheme: ThemeData(
         brightness: Brightness.dark,
         primaryColor: const Color(0xFFFFB347),
         scaffoldBackgroundColor: const Color(0xFF121212),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFFFB347),
           secondary: Color(0xFF0A7EA4),
+          surface: Color(0xFF1E1E1E),
+          onSurface: Colors.white,
+        ),
+        appBarTheme: const AppBarTheme(
+          
+          foregroundColor: Colors.white,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Color(0xFF1E1E1E),
+          selectedItemColor: Color(0xFFFFB347),
+          unselectedItemColor: Colors.grey,
         ),
       ),
       home: const LoginScreen(),
@@ -131,21 +171,21 @@ class _LoginScreenState extends State<LoginScreen> {
             context: context,
             barrierDismissible: false,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
-              title: const Text('Transfert interrompu', style: TextStyle(color: Colors.white)),
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              title: Text('Transfert interrompu', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
               content: Text(
                 'Un transfert de ${bon.value} ẐEN a été interrompu.\n\nL\'avez-vous finalisé avec le receveur ?',
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Non, annulé', style: TextStyle(color: Colors.grey)),
+                  child: Text('Non, annulé', style: TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFB347)),
-                  child: const Text('Oui, finalisé', style: TextStyle(color: Colors.black)),
+                  child: Text('Oui, finalisé', style: TextStyle(color: Colors.black)),
                 ),
               ],
             ),
@@ -299,19 +339,19 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           'Erreur',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         content: Text(
           message,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text('OK'),
           ),
         ],
       ),
@@ -330,13 +370,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF121212),
+        
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -347,14 +387,14 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Logo / Titre
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 const Icon(
                   Icons.wallet,
                   size: 72,
                   color: Color(0xFFFFB347),
                 ),
-                const SizedBox(height: 12),
-                const Text(
+                SizedBox(height: 12),
+                Text(
                   'TrocZen',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -363,7 +403,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Color(0xFFFFB347),
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   'Le troc local, simple et zen',
                   textAlign: TextAlign.center,
@@ -372,12 +412,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.grey[400],
                   ),
                 ),
-                const SizedBox(height: 36),
+                SizedBox(height: 36),
 
                 // Formulaire
                 TextFormField(
                   controller: _loginController,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   keyboardType: TextInputType.text,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
@@ -417,12 +457,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
                   autofillHints: const ['newPassword'],
@@ -461,11 +501,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 TextFormField(
                   controller: _displayNameController,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
                   textInputAction: TextInputAction.done,
                   autocorrect: false,
                   autofillHints: const ['name'],
@@ -488,7 +528,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 28),
+                SizedBox(height: 28),
 
                 // Bouton créer
                 SizedBox(
@@ -503,15 +543,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     child: _isProcessing
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           )
-                        : const Text(
+                        : Text(
                             'Créer mon compte',
                             style: TextStyle(
                               fontSize: 17,
@@ -522,7 +562,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // Info box
                 Container(
@@ -535,7 +575,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Row(
                     children: [
                       Icon(Icons.info_outline, color: Colors.blue[300], size: 20),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Votre login et mot de passe génèrent votre identité cryptographique. Ne les perdez pas !',

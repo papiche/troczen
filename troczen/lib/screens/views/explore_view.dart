@@ -101,9 +101,9 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text('Explorer'),
         actions: [
           IconButton(
@@ -346,7 +346,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
       height: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24, width: 1),
       ),
@@ -414,7 +414,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
     
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24, width: 1),
         boxShadow:[
@@ -448,8 +448,8 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors:[
-                        const Color(0xFF1E1E1E).withValues(alpha: 0.95), // Très sombre à gauche (textes)
-                        const Color(0xFF1E1E1E).withValues(alpha: 0.6),  // Plus clair à droite (montant)
+                        Theme.of(context).colorScheme.surface.withValues(alpha: 0.95), // Très sombre à gauche (textes)
+                        Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),  // Plus clair à droite (montant)
                       ],
                     ),
                   ),
@@ -819,7 +819,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
               onSelected: (selected) {
                 // TODO: Implémenter le filtrage
               },
-              backgroundColor: const Color(0xFF1E1E1E),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               selectedColor: const Color(0xFFFFB347),
               labelStyle: TextStyle(
                 color: isSelected ? Colors.black : Colors.white,
@@ -869,7 +869,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   Widget _buildProfileCard(NostrProfile profile) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24, width: 1),
       ),
@@ -1095,7 +1095,7 @@ class _ExploreViewState extends State<ExploreView> with AutomaticKeepAliveClient
   void _showProfileDetails(NostrProfile profile) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

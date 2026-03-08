@@ -221,7 +221,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
           children: [
             DropdownButton<GraphMode>(
               value: _currentMode,
-              dropdownColor: const Color(0xFF1E1E1E),
+              dropdownColor: Theme.of(context).colorScheme.surface,
               style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               underline: const SizedBox(),
               isDense: true,
@@ -534,7 +534,7 @@ class _CircuitsGraphViewState extends State<CircuitsGraphView> with SingleTicker
     }
 
     return Card(
-      color: const Color(0xFF1E1E1E).withValues(alpha: 0.9),
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 8,
       child: Padding(

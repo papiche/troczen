@@ -39,10 +39,10 @@ class TimeFilterBar extends StatelessWidget {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
+            colorScheme: ColorScheme.dark(
               primary: Color(0xFFFFB347),
               onPrimary: Colors.black,
-              surface: Color(0xFF1E1E1E),
+              surface: Theme.of(context).colorScheme.surface,
               onSurface: Colors.white,
             ),
           ),
@@ -61,8 +61,8 @@ class TimeFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF121212),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(color: Colors.white12, width: 1),
         ),
@@ -95,7 +95,7 @@ class TimeFilterBar extends StatelessWidget {
                   }
                 },
                 selectedColor: const Color(0xFFFFB347),
-                backgroundColor: const Color(0xFF1E1E1E),
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(

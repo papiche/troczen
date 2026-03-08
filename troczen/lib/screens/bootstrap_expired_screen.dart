@@ -13,7 +13,7 @@ class BootstrapExpiredScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -80,7 +80,7 @@ class BootstrapExpiredScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Row(
           children: [
             Icon(Icons.warning_amber, color: Colors.orange.shade600),

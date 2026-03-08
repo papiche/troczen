@@ -44,7 +44,7 @@ class _MirrorReceiveScreenState extends State<MirrorReceiveScreen> {
       backgroundColor: _controller.isSuccess ? Colors.green : Colors.black,
       appBar: AppBar(
         title: const Text('Recevoir (Mode Miroir)'),
-        backgroundColor: _controller.isSuccess ? Colors.green[700] : const Color(0xFF1E1E1E),
+        backgroundColor: _controller.isSuccess ? Colors.green[700] : Theme.of(context).colorScheme.surface,
         elevation: 0,
       ),
       body: _controller.isSuccess ? _buildSuccessView() : _buildMirrorView(),

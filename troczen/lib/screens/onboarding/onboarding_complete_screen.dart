@@ -11,7 +11,6 @@ import '../../services/logger_service.dart';
 import '../../config/app_config.dart';
 import '../../models/market.dart';
 import '../../models/user.dart';
-import '../../models/onboarding_state.dart';
 import '../main_shell.dart';
 import 'onboarding_flow.dart';
 

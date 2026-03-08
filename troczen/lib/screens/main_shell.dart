@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../models/app_mode.dart';
 import '../config/app_config.dart';
 import '../providers/app_mode_provider.dart';
+import '../providers/theme_provider.dart';
 import 'help_screen.dart';
 import 'views/wallet_view.dart';
 import 'views/explore_view.dart';
@@ -106,11 +107,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     return Scaffold(
       // ✅ CORRECTION: Ajout d'un AppBar pour permettre l'accès au Drawer
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Color(0xFFFFB347)),
+            icon: Icon(Icons.menu, color: Color(0xFFFFB347)),
             tooltip: 'Menu',
             onPressed: () {
               Scaffold.of(context).openDrawer();
@@ -119,13 +120,30 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         ),
         title: Text(
           _getTabTitle(appMode),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
         actions: [
+          // Theme Toggle
+          Builder(
+            builder: (context) {
+              final themeProvider = Provider.of<ThemeProvider>(context);
+              final isDark = themeProvider.themeMode == ThemeMode.dark;
+              return IconButton(
+                icon: Icon(
+                  isDark ? Icons.light_mode : Icons.dark_mode,
+                  color: const Color(0xFFFFB347),
+                ),
+                onPressed: () {
+                  themeProvider.toggleTheme();
+                },
+                tooltip: isDark ? 'Passer au thème clair' : 'Passer au thème sombre',
+              );
+            },
+          ),
           // Notifications
           StreamBuilder<List<MarketNotification>>(
             stream: NotificationService().notificationsStream,
@@ -138,7 +156,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 children: [
                   Builder(
                     builder: (context) => IconButton(
-                      icon: const Icon(Icons.notifications, color: Color(0xFFFFB347)),
+                      icon: Icon(Icons.notifications, color: Color(0xFFFFB347)),
                       onPressed: () {
                         Scaffold.of(context).openEndDrawer();
                       },
@@ -166,8 +184,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                             ),
                             child: Text(
                               '$unreadCount',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 10,
                               ),
                               textAlign: TextAlign.center,
@@ -191,7 +209,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             ),
             child: Text(
               appMode.label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFFFFB347),
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -355,8 +373,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         case 0: // Wallet
           return FloatingActionButton.extended(
             onPressed: () => _navigateToScan(),
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Scanner / Recevoir'),
+            icon: Icon(Icons.qr_code_scanner),
+            label: Text('Scanner / Recevoir'),
             backgroundColor: const Color(0xFFFFB347),
           );
         case 1: // Profil
@@ -367,45 +385,27 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
     
     // Mode Artisan et Alchimiste
-    switch (_currentTab) {
-      case 0: // Wallet - ✅ Action universelle de la caisse
-        return FloatingActionButton.extended(
-          onPressed: () => _navigateToScan(),
-          heroTag: 'receive_bon',
-          icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('Scanner / Recevoir'),
-          backgroundColor: const Color(0xFFFFB347),
-        );
-      
-      case 1: // Explorer
-        // Le bouton "Créer un bon" a été déplacé dans la vue ExploreView
-        // pour ne pas cacher le contenu en bas de l'écran
-        return null;
-      
-      case 2: // Dashboard (Simple ou Avancé)
-        // Masqué tant que non implémenté
-        return null;
-      
-      case 3: // Profil
-        // Pas de FAB sur le profil
-        return null;
-      
-      default:
-        return null;
-    }
+    // ✅ Action universelle de la caisse sur tous les onglets
+    return FloatingActionButton.extended(
+      onPressed: () => _navigateToScan(),
+      heroTag: 'receive_bon',
+      icon: Icon(Icons.qr_code_scanner),
+      label: Text('Scanner / Recevoir'),
+      backgroundColor: const Color(0xFFFFB347),
+    );
   }
 
   /// Drawer — Paramètres avancés uniquement
   Widget _buildSettingsDrawer(AppMode appMode) {
     return Drawer(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: SafeArea(
         child: Column(
           children: [
             // En-tête
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
                   begin: Alignment.topLeft,
@@ -415,22 +415,22 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.settings, size: 48, color: Colors.white),
+                  Icon(Icons.settings, size: 48, color: Theme.of(context).colorScheme.onSurface),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Paramètres avancés',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     widget.user.displayName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white70,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -438,14 +438,14 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       appMode.label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -466,9 +466,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                         color: const Color(0xFFFFB347).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.share, color: Color(0xFFFFB347)),
+                      child: Icon(Icons.share, color: Color(0xFFFFB347)),
                     ),
-                    title: const Text(
+                    title: Text(
                       '📤 Partager TrocZen',
                       style: TextStyle(
                         color: Color(0xFFFFB347),
@@ -476,45 +476,45 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                         fontSize: 16,
                       ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Diffuser l\'app à un smartphone proche (QR Code)',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFB347), size: 16),
+                    trailing: Icon(Icons.arrow_forward_ios, color: Color(0xFFFFB347), size: 16),
                     onTap: () => _navigateToApkShare(),
                   ),
                   
-                  const Divider(color: Colors.white24),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
                   
                   
                   // ✅ FEEDBACK : Accessible à TOUS les modes (priorité utilisateur)
                   ListTile(
-                    leading: const Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
-                    title: const Text('💬 Envoyer un feedback', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                    subtitle: const Text('Signaler un bug ou suggérer une amélioration', style: TextStyle(color: Colors.white70)),
+                    leading: Icon(Icons.feedback_outlined, color: Color(0xFF4CAF50)),
+                    title: Text('💬 Envoyer un feedback', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500)),
+                    subtitle: Text('Signaler un bug ou suggérer une amélioration', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                     onTap: () => _navigateToFeedback(),
                   ),
                   
-                  const Divider(color: Colors.white24),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
                   
                   // ✅ LOGS : Accessible à TOUS les modes (debugging)
                   ListTile(
-                    leading: const Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
-                    title: const Text('📋 Logs de l\'application', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                    leading: Icon(Icons.article_outlined, color: Color(0xFFFFB347)),
+                    title: Text('📋 Logs de l\'application', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500)),
                     subtitle: Text(
                       'Voir les événements techniques (${Logger.logCount} entrées)',
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                     ),
                     onTap: () => _navigateToLogs(),
                   ),
                   
-                  const Divider(color: Colors.white24),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
                   
                   // ✅ SYNCHRONISATION MANUELLE
                   ListTile(
                     leading: Stack(
                       children: [
-                        const Icon(Icons.sync, color: Color(0xFF0A7EA4)),
+                        Icon(Icons.sync, color: Color(0xFF0A7EA4)),
                         if (_pendingEventsCount > 0)
                           Positioned(
                             right: 0,
@@ -522,7 +522,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                             child: Container(
                               width: 10,
                               height: 10,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: Colors.orange,
                                 shape: BoxShape.circle,
                               ),
@@ -530,33 +530,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                           ),
                       ],
                     ),
-                    title: const Text('Synchroniser', style: TextStyle(color: Colors.white)),
+                    title: Text('Synchroniser', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                     subtitle: Text(
                       _pendingEventsCount > 0
                           ? '$_pendingEventsCount événement(s) en attente'
                           : 'Réseau à jour',
-                      style: const TextStyle(color: Colors.white70),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                     ),
                     onTap: () => _triggerManualSync(),
                   ),
                   
-                  const Divider(color: Colors.white24),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
 
                   // Paramètres (tous modes)
                   ListTile(
-                    leading: const Icon(Icons.settings, color: Color(0xFFFFB347)),
-                    title: const Text('Paramètres', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Mode, réseau, cache...', style: TextStyle(color: Colors.white70)),
+                    leading: Icon(Icons.settings, color: Color(0xFFFFB347)),
+                    title: Text('Paramètres', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                    subtitle: Text('Mode, réseau, cache...', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                     onTap: () => _navigateToSettings(),
                   ),
                   
-                  const Divider(color: Colors.white24),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
                   
                   // Guide / Tutoriel
                   ListTile(
-                    leading: const Icon(Icons.help_outline, color: Color(0xFF0A7EA4)),
-                    title: const Text('Guide & Tutoriel', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Comment utiliser TrocZen', style: TextStyle(color: Colors.white70)),
+                    leading: Icon(Icons.help_outline, color: Color(0xFF0A7EA4)),
+                    title: Text('Guide & Tutoriel', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                    subtitle: Text('Comment utiliser TrocZen', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -566,13 +566,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     },
                   ),
                   
-                  const Divider(color: Colors.white24),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
                   
                   // À propos (tous modes)
                   ListTile(
-                    leading: const Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
-                    title: const Text('À propos', style: TextStyle(color: Colors.white)),
-                    subtitle: const Text('Version et informations', style: TextStyle(color: Colors.white70)),
+                    leading: Icon(Icons.info_outline, color: Color(0xFF0A7EA4)),
+                    title: Text('À propos', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                    subtitle: Text('Version et informations', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                     onTap: () => _showAboutDialog(),
                   ),
                 ],
@@ -587,29 +587,29 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   /// Drawer — Notifications
   Widget _buildNotificationDrawer() {
     return Drawer(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: SafeArea(
         child: Column(
           children: [
             // En-tête
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.white24)),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Notifications',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.clear_all, color: Colors.grey),
+                    icon: Icon(Icons.clear_all, color: Colors.grey),
                     onPressed: () {
                       NotificationService().clearNotifications();
                       Navigator.pop(context);
@@ -627,10 +627,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   final notifications = snapshot.data ?? [];
                   
                   if (notifications.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
                         'Aucune notification pour le moment.',
-                        style: TextStyle(color: Colors.white54),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
                       ),
                     );
                   }
@@ -666,10 +666,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                           backgroundColor: color.withValues(alpha: 0.2),
                           child: Icon(icon, color: color),
                         ),
-                        title: Text(notif.message, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        title: Text(notif.message, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14)),
                         subtitle: Text(
                           DateFormat('dd/MM/yyyy HH:mm').format(notif.timestamp),
-                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12),
                         ),
                       );
                     },
@@ -785,7 +785,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       context: context,
       applicationName: AppConfig.appName,
       applicationVersion: AppConfig.appVersion,
-      applicationIcon: const Icon(
+      applicationIcon: Icon(
         Icons.wallet,
         size: 64,
         color: Color(0xFFFFB347),
@@ -793,7 +793,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       applicationLegalese: '© 2026 TrocZen\nMonnaie locale ẐEN\nProtocole Nostr P3',
       children: [
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Application de gestion de bons locaux basée sur le protocole Nostr.',
           style: TextStyle(fontSize: 14),
         ),

@@ -68,7 +68,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           }
         },
         child: Scaffold(
-          backgroundColor: const Color(0xFF121212),
+          
           body: SafeArea(
             child: Column(
               children: [

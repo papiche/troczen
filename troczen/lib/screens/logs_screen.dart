@@ -123,10 +123,10 @@ class _LogsScreenState extends State<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('🐛 Logs'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           IconButton(
             icon: const Icon(Icons.copy),
@@ -183,7 +183,7 @@ class _LogsScreenState extends State<LogsScreen> {
           // Filtres
           Container(
             padding: const EdgeInsets.all(8),
-            color: const Color(0xFF1E1E1E),
+            color: Theme.of(context).colorScheme.surface,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -233,7 +233,7 @@ class _LogsScreenState extends State<LogsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
                 top: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
               ),

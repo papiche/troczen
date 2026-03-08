@@ -455,7 +455,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text(
           'Erreur',
           style: TextStyle(color: Colors.white),
@@ -477,10 +477,10 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('Créer un bon'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -771,7 +771,7 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
                   runSpacing: 8,
                   children: _suggestedTags.map((tag) => ActionChip(
                     label: Text(tag),
-                    backgroundColor: const Color(0xFF1E1E1E),
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     labelStyle: const TextStyle(color: Colors.orange, fontSize: 12),
                     side: const BorderSide(color: Colors.orange),
                     onPressed: () {

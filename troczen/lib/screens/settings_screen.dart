@@ -422,7 +422,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: const Text('Changer de mode', style: TextStyle(color: Colors.white)),
           content: Text(
             'Passer en mode ${newMode.label} masquera certaines fonctionnalités avancées. Continuer ?',
@@ -480,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final period = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text('Exporter l\'audit', style: TextStyle(color: Colors.white)),
         content: const Text('Quelle période souhaitez-vous exporter ?', style: TextStyle(color: Colors.white70)),
         actions: [

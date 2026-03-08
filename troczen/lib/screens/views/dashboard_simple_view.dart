@@ -106,10 +106,10 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
     super.build(context);
     
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('📊 Ma Caisse', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         actions: [
           IconButton(
@@ -221,7 +221,7 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
@@ -314,7 +314,7 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
@@ -385,7 +385,7 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
       return Container(
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFF2A2A2A)),
         ),
@@ -448,7 +448,7 @@ class _DashboardSimpleViewState extends State<DashboardSimpleView>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF2A2A2A)),
       ),

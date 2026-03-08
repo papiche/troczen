@@ -24,7 +24,7 @@ class AllianceQrScreen extends StatelessWidget {
         title: const Text('QR Code d\'Alliance'),
         backgroundColor: const Color(0xFF0A7EA4),
       ),
-      backgroundColor: const Color(0xFF121212),
+      
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

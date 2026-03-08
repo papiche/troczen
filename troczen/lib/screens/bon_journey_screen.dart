@@ -83,10 +83,10 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('Carnet de Voyage'),
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.orange))
@@ -277,7 +277,7 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white24),
             ),
@@ -383,7 +383,7 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF121212), width: 3),
+                      border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
                     ),
                   ),
                 ),
@@ -398,7 +398,7 @@ class _BonJourneyScreenState extends State<BonJourneyScreen> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white12),
                 ),

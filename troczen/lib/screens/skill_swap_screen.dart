@@ -239,7 +239,7 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      
       appBar: AppBar(
         title: const Text('Échange de Savoir-Faire'),
         backgroundColor: Colors.indigo,
