@@ -121,6 +121,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
     setState(() => _isSaving = true);
 
     try {
+      bool uploadFailed = false;
       final market = await _storage.getMarket();
       if (market != null && widget.bon.p2 != null) {
         
@@ -138,6 +139,8 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             );
             if (result != null) {
               ipfsUrl = result['ipfs_url'] ?? result['url'];
+            } else {
+              uploadFailed = true;
             }
           }
 
@@ -147,7 +150,11 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
           String? ipfsBannerUrl;
           if (_selectedBannerFile != null) {
             final res = await _apiService.uploadImage(npub: widget.bon.bonId, imageFile: _selectedBannerFile!, type: 'banner');
-            if (res != null) ipfsBannerUrl = res['ipfs_url'] ?? res['url'];
+            if (res != null) {
+              ipfsBannerUrl = res['ipfs_url'] ?? res['url'];
+            } else {
+              uploadFailed = true;
+            }
           }
 
           String? finalLogoUrl = ipfsUrl ?? (widget.bon.picture != null && !widget.bon.picture!.startsWith('data:') ? widget.bon.picture : null);
@@ -178,7 +185,7 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
             _crypto.secureZeroiseBytes(p2Bytes);
             _crypto.secureZeroiseBytes(p3Bytes);
 
-            // 2. Republier P3
+            // 2. Republier P3 avec les nouvelles métadonnées
             await nostrService.market.publishP3(
               bonId: widget.bon.bonId,
               issuerNsecHex: widget.user.nsec,
@@ -189,6 +196,15 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
               value: widget.bon.value,
               category: _selectedCategory,
               wish: _descriptionController.text, // Sauvegarde du vœu sur le réseau
+              profileData: {
+                'display_name': _titleController.text,
+                'about': _descriptionController.text,
+                'picture': finalLogoUrl,
+                'banner': finalBannerUrl,
+                'picture64': _base64Image ?? widget.bon.picture64,
+                'banner64': _base64Banner ?? widget.bon.banner64,
+                'design': 'panini-standard',
+              },
             );
             await nostrService.disconnect();
           } finally {
@@ -210,9 +226,18 @@ class _BonProfileScreenState extends State<BonProfileScreen> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Profil mis à jour !'), backgroundColor: Colors.green),
-      );
+      if (uploadFailed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Profil mis à jour (mode hors-ligne/base64)'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Profil mis à jour !'), backgroundColor: Colors.green),
+        );
+      }
       Navigator.pop(context);
       
     } on ShamirReconstructionException catch (e) {

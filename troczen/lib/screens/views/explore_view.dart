@@ -1951,12 +1951,15 @@ class _EditBonProfileSheetState extends State<_EditBonProfileSheet> {
       final relayUrl = widget.user.relayUrl ?? AppConfig.defaultRelayUrl;
       
       if (await nostrService.connect(relayUrl)) {
-        // Construire les métadonnées du profil
+        // Construire les métadonnées du profil en préservant les champs existants
         final profileData = {
           'display_name': _nameController.text,
           'about': _aboutController.text,
           'website': _websiteController.text,
           'picture': _pictureController.text,
+          'banner': widget.bon.banner,
+          'picture64': widget.bon.picture64,
+          'banner64': widget.bon.banner64,
           'design': 'panini-standard',
         };
         

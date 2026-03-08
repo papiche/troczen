@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../models/market.dart';
 import '../services/storage_service.dart';
 
 class AllianceScannerScreen extends StatefulWidget {

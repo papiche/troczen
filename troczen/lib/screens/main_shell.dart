@@ -720,8 +720,7 @@ class _MainShellState extends State<MainShell> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$syncedCount événement(s) envoyé(s)' +
-            (mode.isAlchimiste ? ', $gossipCount événement(s) gossip collecté(s)' : '')),
+          content: Text('$syncedCount événement(s) envoyé(s)${mode.isAlchimiste ? ', $gossipCount événement(s) gossip collecté(s)' : ''}'),
           backgroundColor: Colors.green,
         ),
       );

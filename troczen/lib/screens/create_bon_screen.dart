@@ -404,6 +404,20 @@ class _CreateBonScreenState extends State<CreateBonScreen> {
           value: bonValue,
           category: isBootstrap ? 'bootstrap' : 'DU',
           wish: _wishController.text.trim().isNotEmpty ? _wishController.text.trim() : null,
+          profileData: {
+            'display_name': _issuerNameController.text,
+            'about': _wishController.text.trim().isNotEmpty
+                ? _wishController.text.trim()
+                : 'Bon ${bonValue.toString()} ẐEN - ${_selectedMarket!.name}',
+            'picture': logoUrl,
+            'banner': bannerUrl,
+            'picture64': logoBase64,
+            'banner64': bannerBase64,
+            'website': _websiteController.text.trim().isNotEmpty
+                ? _websiteController.text.trim()
+                : widget.user.website,
+            'design': 'panini-standard',
+          },
         );
 
         if (published) {

@@ -121,6 +121,7 @@ class NostrMarketService {
     String? rarity,
     String? wish,
     int? duIndex, // ✅ AJOUT : Paramètre pour gérer de multiples DUs émis le même jour
+    Map<String, dynamic>? profileData, // ✅ AJOUT : Métadonnées du bon (picture, banner, etc.)
   }) async {
     try {
       // 1. Chiffrer P3 avec K_day
@@ -164,7 +165,7 @@ class NostrMarketService {
           ['version', '1'],['policy', '2of3-ssss'],
           if (wish != null && wish.isNotEmpty) ['wish', wish],
         ],
-        'content': jsonEncode({
+        'content': jsonEncode(profileData ?? {
           'display_name': 'Bon ${value.toStringAsFixed(0)} ẐEN',
           'design': 'panini-standard',
         }),
@@ -737,10 +738,9 @@ class NostrMarketService {
         if (content != null && content is String) {
           final contentJson = jsonDecode(content);
           
+          issuerName = contentJson['display_name'] as String?;
           pictureUrl = contentJson['picture'] as String?;
-          
           bannerUrl = contentJson['banner'] as String?;
-          
           picture64 = contentJson['picture64'] as String?;
           banner64 = contentJson['banner64'] as String?;
         }
