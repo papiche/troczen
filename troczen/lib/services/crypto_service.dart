@@ -61,15 +61,6 @@ class CryptoService {
   static final Uint8List HACKATHON_SEED = Uint8List(32); // 32 octets à zéro
   static final Uint8List GLOBAL_MARKET_SEED = Uint8List(32); // Alias sémantique
   
-  /// Retourne true si la seed correspond au Marché Global (seed à zéro = transparence publique)
-  bool _isHackathonSeed(String seedHex) {
-    final globalMarketSeedHex = '0' * 64; // 32 octets à zéro en hex
-    return seedHex == globalMarketSeedHex;
-  }
-  
-  /// Alias sémantique pour _isHackathonSeed
-  bool _isGlobalMarketSeed(String seedHex) => _isHackathonSeed(seedHex);
-  
   /// ✅ SÉCURITÉ: Nettoyage sécurisé de la mémoire pour Uint8List
   /// Remplit le tableau d'octets avec des zéros de manière sécurisée
   /// Utiliser cette méthode pour effacer les clés privées de la mémoire
@@ -998,26 +989,13 @@ class CryptoService {
   }
 
   /// ✅ Chiffre P3 avec K_day (clé du jour dérivée de la graine)
-  /// En mode HACKATHON (seed à zéro), retourne P3 non chiffré pour lisibilité JSON
   Future<Map<String, String>> encryptP3WithSeed(String p3Hex, String seedHex, DateTime date) async {
-    // Mode HACKATHON: P3 reste en clair pour faciliter les tests et la lisibilité Nostr
-    if (_isHackathonSeed(seedHex)) {
-      return {
-        'ciphertext': p3Hex, // P3 non chiffré
-        'nonce': '0' * 24,   // Nonce factice (12 octets à zéro en hex)
-      };
-    }
     final kDay = getDailyMarketKey(seedHex, date);
     return encryptP3(p3Hex, kDay);
   }
 
   /// ✅ Déchiffre P3 avec K_day (clé du jour dérivée de la graine)
-  /// En mode HACKATHON (seed à zéro), retourne le ciphertext tel quel (P3 non chiffré)
   Future<String> decryptP3WithSeed(String ciphertextHex, String nonceHex, String seedHex, DateTime date) async {
-    // Mode HACKATHON: P3 était en clair, le ciphertext EST le P3
-    if (_isHackathonSeed(seedHex)) {
-      return ciphertextHex; // Retourne directement le "ciphertext" qui est en fait P3 en clair
-    }
     final kDay = getDailyMarketKey(seedHex, date);
     return decryptP3(ciphertextHex, nonceHex, kDay);
   }
@@ -1050,14 +1028,6 @@ class CryptoService {
   /// - 'ciphertext': contenu chiffré en hexadécimal
   /// - 'nonce': nonce AES-GCM en hexadécimal (24 caractères)
   Map<String, String> encryptWoTxContent(String content, String seedHex) {
-    // Mode HACKATHON: transparence totale, contenu en clair
-    if (_isHackathonSeed(seedHex)) {
-      return {
-        'ciphertext': content, // Contenu non chiffré
-        'nonce': '', // Pas de nonce en mode clair
-      };
-    }
-    
     try {
       // Convertir la seed en clé de 32 octets
       final keyBytes = Uint8List.fromList(HEX.decode(seedHex));
@@ -1099,11 +1069,6 @@ class CryptoService {
   ///
   /// Retourne le contenu déchiffré en texte (JSON)
   String decryptWoTxContent(String ciphertextHex, String nonceHex, String seedHex) {
-    // Mode HACKATHON: le contenu était en clair
-    if (_isHackathonSeed(seedHex) || nonceHex.isEmpty) {
-      return ciphertextHex; // C'est déjà le contenu en clair
-    }
-    
     try {
       // Convertir la seed en clé de 32 octets
       final keyBytes = Uint8List.fromList(HEX.decode(seedHex));
