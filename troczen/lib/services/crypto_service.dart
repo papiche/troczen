@@ -54,7 +54,7 @@ class CryptoService {
   /// ✅ MARCHÉ LIBRE: Seed constante (32 octets à zéro) - UPLANET ORIGIN
   /// 0000000000000000000000000000000000000000000000000000000000000000
   /// Utilisée pour le Marché Libre (transparence totale et auditabilité publique)
-  /// Ce n'est PAS une faille de sécurité, c'est une FEATURE : tout le monde peut auditer
+  /// Ce n'est PAS une faille de sécurité, c'est une FEATURE : cela procure un marché "bien commun"
   /// les transactions (comme une blockchain publique). Équivalence : 1 ẐEN ≈ 0.1 Ğ1
   ///
   /// Alias: HACKATHON_SEED (rétrocompatibilité)
