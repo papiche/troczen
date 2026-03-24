@@ -1,10 +1,266 @@
-# Flux d'Émission du Dividende Universel (DU) via Nostr P2P
+# Flux du Dividende Universel (DU) — Boucles, Distribution, Valeur
 
-Ce document décrit le flux de calcul et d'émission d'un Dividende Universel (DU) local, basé sur le graphe social Nostr (follows réciproques). La monnaie est portée par des **Bons ẐEN à durée de vie choisie**, détruits à leur retour à l'émetteur et révélant leur parcours. Elle n'est pas enregistrée sur une blockchain globale.
+> **Note architecturale :** TrocZen peut fonctionner en deux modes.
+> **Mode Hybride** : Boucle ④ via UPlanet/Ğ1 Love Ledger (Kind 30305 émis par ZEN.ECONOMY.sh).
+> **Mode Autonome** : Boucle ④ auto-générée par l'activité du marché lui-même (aucune dépendance Ğ1).
+> Les Boucles ①②③ sont **identiques dans les deux modes** — elles n'utilisent que NOSTR.
+
+> « Ğ1 apporte la Liberté · Ẑen apporte l'Égalité · ❤️ apporte la Fraternité »  
+> *car 1 ❤️ = 1 DU — le don bénévole est la valeur co-créée par la communauté*
+
+Ce document décrit **comment la valeur naît, circule et revient** dans TrocZen. La monnaie est portée par des **Bons ẐEN à durée de vie choisie**, détruits à leur retour à l'émetteur et révélant leur parcours. Elle n'est pas enregistrée sur une blockchain globale mais naît **du graphe social Nostr** (follows réciproques).
 
 ---
 
-## Schéma de Flux Principal (Mermaid)
+## 🏛️ Architecture : Indépendance de Ğ1
+
+```
+CE QUI EST DÉJÀ 100% INDÉPENDANT DE Ğ1 :
+  ✅ Boucle ① (Sociale)    = Kind 3 NOSTR réciproques → N1 → DU → Bons
+  ✅ Boucle ② (Monétaire)  = Bons P2P cryptographiques (SSSS, Kind 30303/30304)
+  ✅ Boucle ③ (Information)= HMAC anonymisation, Gossip strfry
+  ✅ Formule DU            = graphe social NOSTR pur, pas de blockchain
+  ✅ WoT seuil N1 ≥ 5      = follows réciproques NOSTR, pas Ğ1 WoT
+  ✅ "Ẑen" dans TrocZen    = unité locale arbitraire, pas (Ğ1-1)×10
+
+CE QUI PEUT ÊTRE DÉCOUPLÉ (Boucle ④) :
+  Mode Hybride : ZEN.ECONOMY.sh → LOVE_DONATION → Kind 30305 (via UPlanet)
+  Mode Autonome: Activité marché → auto-génération Kind 30305 (locale, aucun Ğ1)
+```
+
+### Mode Autonome — Règles d'Auto-Génération (sans Ğ1)
+
+En mode autonome, la Box TrocZen génère elle-même les Kind 30305 basés sur l'activité du marché :
+
+| Déclencheur | Formule amount | Signification |
+|-------------|---------------|---------------|
+| Boucle fermée confirmée | `amount = valeur_bon × 0.1` | Le circuit récompense l'opérateur |
+| Transferts / jour | `amount = transferts_j × C²` | Vélocité récompensée |
+| Membres actifs (N1≥5) | `amount = membres_actifs × DU_base` | Communauté récompensée |
+| Bootstrap (premier boot) | `amount = DU(0) initial` | Amorce de la monnaie locale |
+
+```bash
+# Exemple auto-génération Kind 30305 par la TrocZen Box
+# (sans ZEN.ECONOMY.sh, sans Ğ1)
+
+BOUCLES_FERMEES=$(strfry scan '{"kinds":[30304]}' | wc -l)
+DU_INCREMENT=$(echo "scale=2; $BOUCLES_FERMEES * 0.5" | bc)
+DU_DATE=$(date +%Y-%m-%d)
+TAGS="[[\"d\",\"du-$DU_DATE\"],[\"amount\",\"$DU_INCREMENT\"]]"
+
+nostr_send_note.py \
+    --keyfile "$BOX_OPERATOR_KEYFILE" \
+    --kind 30305 \
+    --content "" \
+    --tags "$TAGS" \
+    --relays "ws://127.0.0.1:7777"
+```
+
+**Invariant clé :** peu importe la source du Kind 30305 (UPlanet Ğ1 ou Box autonome), TrocZen app lit le **tag `amount` identiquement** — la logique DU est la même.
+
+---
+
+## Vue d'Ensemble : 4 Boucles Fondamentales
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    LES 4 BOUCLES TROCZEN                            │
+│                                                                     │
+│  ① SOCIAL          ② MONÉTAIRE         ③ INFORMATION    ④ LOVE    │
+│  ────────          ─────────────        ─────────────    ──────────│
+│  Alice ↔ Bob       Bon ẐEN émis         Bon: anonyme     Capitaine │
+│  follows récip.    transferts P2P        circuit: public  bénévole  │
+│  → N1++           → hops++             émetteur:        Kind 30305 │
+│  → N1≥5 → DU      → retour → détruit   partiel révélé   → DU      │
+│  → DU → Bon       → boucle fermée      → santé réseau   → Bons    │
+│                                                          → marché   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Boucle ① — Sociale : La Confiance crée la Monnaie
+
+**Principe :** La monnaie ne naît pas d'une banco centrale ou d'un algorithme. Elle naît de la confiance mutuelle entre humains.
+
+```
+Alice suit Bob (Kind 3 NOSTR)
+        ↓
+Bob suit Alice (Kind 3 NOSTR)
+        ↓
+Lien RÉCIPROQUE établi ← seul ce lien compte
+        ↓
+N1 d'Alice increment de 1
+        ↓
+Quand N1 ≥ 5 : DU quotidien activé
+        ↓
+DU disponible s'accumule chaque jour
+        ↓
+Alice émet des Bons ẐEN librement
+        ↓
+Bons circulent → nouveaux membres → N2 plus dense
+        ↓
+N2 plus dense → DU plus élevé ─────────────────────┐
+                                                     │
+← ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+```
+
+**Résistance Sybil naturelle :** créer de faux comptes *dilue* sa propre création monétaire (ils augmentent le dénominateur `N1 + √N2` plus vite que le numérateur). Il est économiquement non rentable de tricher.
+
+**Formule TRM locale :**
+```
+DU_i(t+1) = DU_i(t) + C² × (M_n1 + M_n2/√N2) / (N1 + √N2)
+
+C²    = Constante de croissance calibrée localement
+M_n1  = Masse ẐEN active des amis directs
+M_n2  = Masse ẐEN active des amis d'amis
+N1    = Liens réciproques directs (≥5 pour activer)
+√N2   = Amortissement réseau étendu (anti-explosion)
+```
+
+---
+
+## Boucle ② — Monétaire : Le Bon Voyage et Revient
+
+**Principe :** chaque bon a une durée de vie. À son retour à l'émetteur, le circuit est révélé et le bon est détruit. La monnaie est *vivante*.
+
+```
+1. ÉMISSION (manuelle, par choix)
+   ─────────────────────────────
+   DU disponible ≥ Z ẐEN ?
+         ↓ oui
+   Alice choisit : montant Z, TTL (7j–365j)
+   App génère : bon_id, SSSS(P1,P2,P3), path[HMAC(Alice, bon_id)]
+   Publie Kind 30303 (P3 chiffré sur strfry)
+   DU disponible -= Z
+
+2. TRANSFERT P2P (hors-ligne, double scan)
+   ──────────────────────────────────────
+   Alice → Bob :
+     Scan 1 : Bob voit valeur + TTL résiduel (peut refuser)
+     Scan 2 : ACK signé de Bob
+     Résultat : hop++, path[].append(HMAC(Bob, bon_id))
+              expires_at INCHANGÉ (TTL continue de s'écouler)
+   
+   Bob → Charlie → ... (mêmes étapes)
+
+3. TROIS DESTINS POSSIBLES
+   ────────────────────────
+   A. BOUCLE FERMÉE (retour à Alice)
+      Alice reçoit le bon → détection issued_by == ma_pubkey
+      → Destruction immédiate
+      → Révélation partielle du parcours (contacts connus)
+      → Publication Kind 30304 (BonCircuit)
+      → Notification : "🎉 X ẐEN · Y hops · Z jours"
+   
+   B. RACHAT (TTL résiduel < 3 jours)
+      App alerte le porteur actuel
+      → DM Nostr (Kind 4) à Alice : "Veux-tu racheter ?"
+      → Double scan → Alice reçoit son bon, émet un frais
+   
+   C. EXPIRATION (TTL = 0)
+      Archivage silencieux
+      Log : "Bon expiré — diagnostic de confiance insuffisante"
+```
+
+**Effet :** la vélocité de retour des bons mesure la *santé* du réseau. Les bons qui expirent indiquent les zones à renforcer.
+
+---
+
+## Boucle ③ — Information : Transparence Collective, Vie Privée Individuelle
+
+**Principe :** le réseau sait *qu'un bon a circulé*, mais pas *qui l'a porté*.
+
+### Qui peut voir quoi ?
+
+```
+Information                    Public  Porteurs  Émetteur  Personne
+─────────────────────────────  ──────  ────────  ────────  ────────
+bon_id, valeur, nb hops, TTL   ✅       ✅         ✅
+Qu'Alice a émis un bon         ✅       ✅         ✅
+Masse monétaire agrégée M_n1   ✅*                ✅
+Qui a porté le bon             ❌       ❌         Partiel*  ——
+Parcours complet               ❌       ❌         ❌        ✅
+Porteurs hors W N1+N2          ❌       ❌         ❌        ✅
+
+* = Émetteur peut tenter HMAC(pubkey_connue, bon_id) pour ses contacts
+```
+
+### Anatomie de l'anonymisation (HMAC)
+
+```
+path[i] = HMAC-SHA256(pubkey_porteur_i, bon_id)
+
+→ Vérifiable par l'émetteur si il connaît le porteur
+→ Opaque pour tout autre observateur
+→ Le bon_id est nécessaire pour dériver → jamais transmis sans consentement
+```
+
+### Distribution de l'Information sur le réseau
+
+```
+TrocZen Box locale (strfry)
+├── Kind 3 : graphe social de confiance (public, réciproque)
+├── Kind 30303 : P3 chiffré des bons (pseudo-anonyme)
+├── Kind 30304 : circuits fermés (anonymisés, santé réseau)
+├── Kind 30305 : DU Love Ledger (depuis UPlanet, public)
+└── Kind 30503 : Credentials Oracle UPlanet (permis validés)
+
+Gossip Push (Capitaine/Alchimiste entre marchés)
+└── Synchronise les graphes de confiance entre TrocZen Box voisines
+    → Un Passeur de marché en marché unifie les N2
+    → DU plus élevé pour tous les membres interconnectés
+```
+
+---
+
+## Boucle ④ — Love Ledger : Le Bénévolat devient Monnaie Locale
+
+**Principe :** le Capitaine UPlanet qui héberge la TrocZen Box bénévolement est récompensé en DU TrocZen via le protocole Love Ledger.
+
+```
+Capitaine héberge TrocZen Box gratuitement
+         ↓
+ZEN.ECONOMY.sh constate : CASH insuffisant pour payer NODE
+         ↓
+Comptabilise dans love_ledger.json :
+  total_donated_zen += LOVE_DONATION_THIS_WEEK
+  weeks_on_volunteer++
+         ↓
+Émet Kind 1 NOSTR (gratitude publique) :
+  "❤️ L'Astroport héberge grâce au bénévolat ! 1❤️=1DU"
+         ↓
+Émet Kind 30305 (DU TrocZen, format exact) :
+  tags: [["d","du-2026-03-24"],["amount","28.00"]]
+  content: "" (toujours vide — TrocZen lit le tag amount)
+         ↓
+TrocZen app du Capitaine :
+  computeAvailableDu(captain_npub)
+  = Σ amount(Kind 30305) - Σ value(Kind 30303 émis)
+         ↓
+Capitaine peut émettre Bons ẐEN fondants (28j TTL)
+         ↓
+Bons échangés sur le marché local → services/biens
+         ↓
+Nouveaux membres → loyers MULTIPASS → CASH UPlanet rechargé
+         ↓ ─────────────────────────────────────────────────┐
+                                                             │
+Boucle fermée :                                             │
+sacrifice bénévole → monnaie locale → économie → CASH ←────┘
+```
+
+**Équivalence :**
+```
+1 ❤️ offert (sacrifice Ẑen bénévole)
+= 1 DU TrocZen (Kind 30305, "amount" = sacrifice en Ẑen)
+= 1 Bon TrocZen de 1 Ẑen (28j fondant)
+= 1 acte de confiance locale
+= 1 acte de fraternité concrète
+```
+
+---
+
+## Séquence Complète (Mermaid)
 
 ```mermaid
 sequenceDiagram
@@ -13,354 +269,112 @@ sequenceDiagram
     actor Alice
     actor Bob
     actor Charlie
-    participant App as TrocZen App (Local)
-    participant Nostr as Relais Nostr (TrocZen Box)
+    actor Capitaine as Capitaine (UPlanet + TrocZen)
+    participant Box as TrocZen Box (strfry)
+    participant UPlanet as ZEN.ECONOMY.sh
 
-    %% ÉTAPE 0 : AMORCE SOCIALE
+    %% BOUCLE ④ : Love Ledger → DU
+    rect rgb(40, 20, 60)
+    Note over Capitaine, UPlanet: ④ Love Ledger (Fraternité)
+    UPlanet->>UPlanet: CASH insuffisant → bénévolat
+    UPlanet->>Box: Kind 30305 [["d","du-DATE"],["amount","28.00"]]
+    Note over Box: DU Capitaine += 28 Ẑen
+    Capitaine->>Box: Émet Bon Z ẐEN (Kind 30303)
+    end
+
+    %% BOUCLE ① : Social → DU
     rect rgb(20, 35, 30)
-    Note over Alice, Nostr: 0. Bootstrap — Bon Zéro (0 ẐEN, TTL 28j)
-    Alice->>App: Finalise l'onboarding
-    App->>App: Génère le Bon Zéro (valeur = 0 ẐEN, TTL = 28j, kind: zero_bond)
-    Alice->>Bob: Présente QR du Bon Zéro au marché
-    App->>App: Propose à Bob de suivre Alice (Kind 3)
-    Bob->>App: Accepte le follow — lien réciproque en cours
-    Bob->>Charlie: Transfert du Bon Zéro → propose follow Alice & Bob
-    Note over Nostr: Graph social se construit hop par hop
-    App->>Alice: "N1 = 4/5 — encore 1 lien pour activer ton DU"
-    end
-
-    %% ÉTAPE 1 : CONSTRUCTION DU GRAPHE
-    rect rgb(25, 30, 45)
-    Note over Alice, Nostr: 1. Toile de Confiance (WoT) — liens réciproques
-    Alice->>App: Scan QR Profil Bob
-    App->>Nostr: Publie Kind 3 (Contact List) : Follow Bob
-    Bob->>App: Scan QR Profil Alice
-    App->>Nostr: Publie Kind 3 (Contact List) : Follow Alice
-    Note over Nostr: Lien réciproque établi (Alice ↔ Bob) — compte pour N1
-    end
-
-    %% ÉTAPE 2 : SYNCHRONISATION
-    rect rgb(30, 25, 45)
-    Note over Alice, Nostr: 2. Synchronisation Quotidienne (Gossip)
-    Alice->>App: Ouvre l'application (matin)
-    App->>Nostr: REQ Kind 3 (Contacts) & Kind 30303 (Bons)
-    Nostr-->>App: Retourne graphe social + masses monétaires
-    
-    Note over Alice, Nostr: Si Alice est Capitaine (Alchimiste) :
-    App->>Nostr: REQ global (Kinds 0,1,3,5,7,30303-30503)
-    Nostr-->>App: Stockage dans outbox_gossip (Light Node)
-
-    App->>App: Calcule N1 (follows réciproques directs)
-    App->>App: Calcule N2 (amis d'amis réciproques, sans doublon)
-
+    Note over Alice, Box: ① Social (Confiance → Monnaie)
+    Alice->>Box: Kind 3 : Follow Bob
+    Bob->>Box: Kind 3 : Follow Alice
+    Note over Box: Lien réciproque → N1++
     alt N1 < 5
-        App->>Alice: "Confiance insuffisante (N1 = X/5) — continue à tisser des liens"
+        Box-->>Alice: "N1 = 4/5 — encore 1 lien"
     else N1 ≥ 5
-        App->>App: Calcule M_n1 (masse ẐEN active des N1)
-        App->>App: Calcule M_n2 (masse ẐEN active des N2)
+        Box-->>Alice: "✅ DU activé → +X ẐEN/jour disponible"
     end
     end
 
-    %% ÉTAPE 3 : CALCUL DU DU
-    rect rgb(20, 35, 30)
-    Note over App: 3. Calcul du DU_i(t+1)
-    App->>App: DU = DU_current + C² × (M_n1 + M_n2/√N2) / (N1 + √N2)
-    App->>App: Conseil TTL & coupures selon historique personnel
-    App->>App: Vérifie horodatage (1 DU/jour max)
-    end
-
-    %% ÉTAPE 4 : ÉMISSION
+    %% BOUCLE ② : Bon → Transferts → Retour
     rect rgb(30, 25, 45)
-    Note over Alice, Nostr: 4. Émission Manuelle des Bons ẐEN
-    App->>App: Incrémente le "DU disponible à émettre"
-    App->>Alice: "Nouveau DU : +X ẐEN disponible (Total: Y ẐEN)"
-    Alice->>App: Choisit d'émettre un bon de Z ẐEN avec TTL choisi
-    App->>App: SSSS(nsec_bon) → P1, P2, P3
-    App->>App: path[] initialisé : [HMAC(Alice.pubkey, bon_id)]
-    App->>Nostr: Publie Kind 30303 (P3 chiffré + preuve WoT)
-    App->>App: Déduit Z ẐEN du "DU disponible à émettre"
+    Note over Alice, Charlie: ② Monétaire (Bon circule)
+    Alice->>Box: Émet Bon Z ẐEN TTL=28j (Kind 30303)
+    Alice->>Bob: Scan 1 (offre) + Scan 2 (ACK)
+    Note over Alice: hop++, path[HMAC(Bob, bon_id)]
+    Bob->>Charlie: Scanner offre + ACK
+    Note over Bob: hop++, path[HMAC(Charlie, bon_id)]
+
+    alt Retour à Alice (boucle fermée)
+        Charlie->>Alice: Double scan rachat
+        Note over Alice: 🎉 Détruit bon · révèle circuit
+        Alice->>Box: Kind 30304 (BonCircuit, anonymisé)
+    else TTL critique (< 3j)
+        Box-->>Charlie: "⚠️ Bon expire — contacter Alice ?"
+        Charlie->>Alice: DM Kind 4 → négociation rachat
+    else Expiration TTL = 0
+        Box->>Box: Archivage silencieux — diagnostic
+    end
     end
 
-    %% ÉTAPE 5 : TRANSFERT P2P
-    rect rgb(20, 35, 30)
-    Note over Alice, Charlie: 5. Transfert P2P hors-ligne (Double Scan)
-    Alice->>Charlie: Scan 1 — Offre (QR bon + TTL résiduel visible)
-    Charlie->>Alice: Scan 2 — ACK signé (Charlie voit TTL avant d'accepter)
-    App->>App: hop_count++ · path[].append(HMAC(Charlie.pubkey, bon_id))
-    Note over App: expires_at inchangé — le TTL continue de s'écouler
-    end
-
-    %% ÉTAPE 6 : DISSÉMINATION (POLLINISATEUR)
-    rect rgb(25, 30, 45)
-    Note over Alice, Nostr: 6. Dissémination (Gossip Push)
-    Alice->>Nostr: Se déplace vers un nouveau marché (Nouvelle ZenBOX)
-    App->>Nostr: Détecte le changement de relais
-    App->>Nostr: Push silencieux de outbox_gossip (Unification des graphes)
-    end
-
-    %% ÉTAPE 7 : VIE DU BON
-    rect rgb(30, 25, 45)
-    Note over Alice, Nostr: 7. Cycle de vie du Bon
-    alt TTL résiduel < seuil (défaut 3j)
-        App->>Charlie: "⚠️ Bon expire dans Xj — proposer rachat à l'émetteur ?"
-        Charlie->>App: Accepte → DM Nostr (Kind 4) à Alice
-        Alice->>Charlie: Double scan rachat → Alice reçoit son bon, émet nouveau bon frais
-    else Retour organique à Alice
-        App->>Alice: "🎉 Boucle fermée ! X ẐEN · Y hops · Z jours · parcours révélé"
-        App->>App: Détruit le bon · publie Kind 30304 (BonCircuit)
-    else TTL = 0 (expiration)
-        App->>App: Archivage silencieux · log "bon expiré sans retour"
-    end
+    %% BOUCLE ③ : Information
+    rect rgb(45, 20, 20)
+    Note over Box: ③ Information (Gossip)
+    Capitaine->>Box: Push outbox_gossip (nouveau marché)
+    Note over Box: Graphes sociaux fusionnés
+    Note over Box: N2 de tous les membres ++
+    Note over Box: DU de tous ++ (réseau plus dense)
     end
 ```
 
 ---
 
-## Explication des Étapes
+## Métriques de Santé du Réseau
 
-### 0. Bootstrap — Le Bon Zéro
-
-Il n'y a pas de création monétaire artificielle au démarrage. Un nouvel utilisateur reçoit un **Bon à 0 ẐEN** — objet cryptographique complet mais sans valeur monétaire, dont la seule fonction est de **propager le graphe social** nécessaire à l'activation du DU.
-
-Le Bon Zéro est le bien le plus précieux du système à l'amorçage : il ne crée pas de richesse artificielle, il crée la **topologie** qui rendra toute richesse future possible.
-
-**Mécanique de propagation :**
-
-- Alice émet le Bon Zéro à l'issue de l'onboarding (`value = 0`, `TTL = 28j`, `kind: zero_bond`)
-- À chaque transfert X→Y, l'app propose à Y de suivre X, et de suivre Alice (l'émettrice originale)
-- Le follow reste une **invitation, jamais un péage** — on peut recevoir et retransmettre le Bon Zéro sans suivre personne
-- Dès que Alice atteint `N1 ≥ 5` liens réciproques, le DU quotidien s'active automatiquement
-- **Régénération** : Si Alice a transféré son Bon Zéro et elle peut en régénérer un nouveau Bon Zéro (toujours à 0 ẐEN) avec la **même date d'expiration** que le Bon Zéro initial.- À expiration (28j) ou retour à Alice, le Bon Zéro est détruit et son parcours révèle la **carte des premiers liens** de la communauté naissante
-
-```mermaid
-sequenceDiagram
-    actor A as Alice (émettrice)
-    actor X
-    actor Y
-    participant App as TrocZen App
-
-    A->>App: Finalise l'onboarding
-    App->>App: Génère Bon Zéro (0 ẐEN, TTL 28j)
-    A->>X: Présente QR au marché
-    App->>X: "Veux-tu suivre Alice ? (1 lien → son DU se rapproche)"
-    X->>App: Suit Alice (Kind 3 réciproque)
-    X->>Y: Retransmet le Bon Zéro
-    App->>Y: "Veux-tu suivre X ? Et Alice, l'émettrice ?"
-    App->>A: "N1 = 3/5 — encore 2 liens pour activer ton DU"
-    Note over A: À N1=5 : premier DU émis automatiquement le lendemain matin
-```
-
-**Messages UX recommandés :**
-
-| Moment | Message |
-|---|---|
-| Réception Bon Zéro | *"[Nom] t'invite dans son réseau de confiance. Veux-tu le suivre ? (Ton DU se rapproche)"* |
-| Re-transfert X→Y | *"[X] t'a transmis ce bon. Veux-tu suivre [X] ? Et [Alice], l'émettrice ?"* |
-| N1 = 4 (presque) | *"Il te manque 1 lien réciproque. Qui veux-tu inviter ?"* |
-| N1 = 5 atteint | *"🎉 Ton réseau est actif — tu reçois ton premier DU demain matin."* |
+| Métrique | Formule | Seuil sain | Signal |
+|----------|---------|------------|--------|
+| **Vélocité** | Transferts / masse totale / jour | > 0.05 | La monnaie circule |
+| **Ratio santé** | Boucles fermées / expirations | > 1.0× | Confiance se régénère |
+| **Profondeur** | Hops moyens / boucle | 3–7 | < 3 = trop local, > 10 = fragile |
+| **Taux rachat** | Rachats / avis TTL critique | > 20% | Communauté prend soin |
+| **Activation DU** | Membres N1≥5 / total | > 60% | Bootstrap réussi |
+| **DU Love Ledger** | Kind 30305 émis / semaine | ≥ 1 | Capitaine bénévole actif |
 
 ---
 
-### 1. Construction de la Toile de Confiance (WoT)
+## Rôles Émergents (Sans Hiérarchie)
 
-Les relations sociales sont portées par les événements `Kind 3` (Contact List) de Nostr. Un lien n'est valide pour la création monétaire que s'il est **réciproque** : Alice suit Bob ET Bob suit Alice. Cela encode une certification mutuelle sans autorité centrale.
+| Rôle | Ce que le réseau mesure | Récompense naturelle |
+|------|-------------------------|----------------------|
+| **Tisseurs** | Ponts entre communautés (N2/N1 élevé) | DU amplifié |
+| **Animateurs** | Fort N1 local dense | DU stable et régulier |
+| **Gardiens** | Peu d'expirations, boucles longues | Ratio santé élevé |
+| **Passeurs** | Gossip entre marchés | N2 de tous augmente |
+| **Capitaines** | Love Ledger (Kind 30305, bénévolat) | DU TrocZen + Bons fondants |
 
-- **N1** : liens directs réciproques (amis)
-- **N2** : liens des amis (amis d'amis), sans double comptage
-- **Seuil d'activation** : `N1 ≥ 5` — protection contre les attaques Sybil
-
-La résistance Sybil est assurée par la formule elle-même : créer des faux comptes augmente le dénominateur `(N1 + √N2)` plus vite que le numérateur, rendant l'attaque économiquement non rentable.
-
----
-
-### 2. Synchronisation Quotidienne
-
-Chaque matin, l'application se synchronise avec le relais local (TrocZen Box). Elle calcule :
-
-- **M_n1** : somme des masses ẐEN *actives* (bons non expirés) des N1
-- **M_n2** : somme des masses ẐEN actives des N2
-
-Seuls les bons dont le TTL résiduel est positif entrent dans le calcul — la thésaurisation de bons quasi-expirés ne gonfle pas artificiellement la masse.
+> *Ces rôles ne sont pas nommés — ils sont **révélés** par les flux de confiance réels.*
 
 ---
 
-### 3. Calcul Mathématique du DU
-
-Si `N1 ≥ 5`, l'application calcule le DU selon la formule TRM adaptée au réseau local :
-
-```
-DU_i(t+1) = DU_i(t) + C² × (M_n1 + M_n2 / √N2) / (N1 + √N2)
-```
-
-**Propriétés mathématiques :**
-
-| Terme | Rôle |
-|---|---|
-| `C²` | Constante de croissance (calibrée localement) |
-| `M_n1 / N1` | Richesse moyenne du réseau proche — dilue l'avantage des "riches" |
-| `M_n2 / √N2` | Réseau étendu amorti — évite l'explosion exponentielle |
-| `√N2` au dénominateur | Invariance d'échelle : si toute la masse double, le DU double |
-
-*Ce n'est pas la richesse de tes contacts qui compte — c'est la **densité de leurs interconnexions**.*
-
-**Conseil TTL & coupures :** l'app analyse l'historique personnel (âge moyen de retour des bons, taux d'expiration) et suggère un TTL cohérent avec la liquidité réelle du réseau. Ce conseil est affiché de façon non-bloquante — l'utilisateur reste libre.
-
----
-
-### 4. Émission Manuelle des Bons ẐEN
-
-L'application ne génère pas automatiquement les bons chaque jour. Au lieu de cela, elle **cumule l'incrément quotidien** dans une jauge de "DU disponible à émettre".
-
-L'utilisateur est libre de :
-- Émettre des petits bons tous les jours.
-- Attendre plusieurs jours/semaines pour accumuler assez de droits d'émission et créer un bon de plus grande valeur.
-- Choisir le montant exact et le TTL (Time To Live) de chaque bon émis, en fonction de son besoin réel d'échange.
-
-Pour chaque bon généré manuellement :
-
-1. L'utilisateur choisit le montant (limité par son DU disponible) et le TTL.
-2. `SSSS(nsec_bon) → P1, P2, P3` (partage de secret de Shamir)
-3. `path[]` initialisé avec `HMAC(émetteur.pubkey, bon_id)` — **anonymisation dès la création**
-4. `expires_at = now() + TTL_choisi` — **immuable**, ne sera jamais modifié
-5. Publication sur Nostr : `Kind 30303` (P3 chiffré + preuve de calcul WoT)
-6. Le montant du bon est déduit de la jauge de "DU disponible à émettre".
-
-**Structure d'un Bon ẐEN :**
-
-| Champ | Type | Description |
-|---|---|---|
-| `bon_id` | uuid | Identifiant unique — sert de clé HMAC |
-| `issued_by` | pubkey | Émetteur (pour détection de retour) |
-| `issued_at` | timestamp | Date d'émission UTC |
-| `expires_at` | timestamp | `issued_at + TTL` — **immuable après création** |
-| `value_zen` | float | Valeur nominale en ẐEN |
-| `hop_count` | int | Nombre de transferts depuis émission |
-| `path[]` | array | `[HMAC(pubkey_i, bon_id)]` — parcours anonymisé |
-| `p3_encrypted` | NIP-44 | Part 3 SSSS publiée sur le relais |
-
----
-
-### 5. Transfert P2P hors-ligne (Double Scan Atomique)
-
-Le transfert se fait entre deux appareils sans connexion réseau requise :
-
-1. **Scan 1 (Offre)** — Alice présente le QR de son bon. Bob voit : valeur, TTL résiduel, nombre de hops. Il peut **refuser sans conséquence** si le TTL est trop faible.
-2. **ACK (Accusé)** — L'app de Bob génère un QR d'accusé signé.
-3. **Scan 2 (Confirmation)** — Alice scanne l'ACK. Transfert effectif :
-   - `hop_count++`
-   - `path[].append(HMAC(Bob.pubkey, bon_id))`
-   - `expires_at` **inchangé** — le TTL continue de s'écouler depuis l'émission
-
-> **Règle fondamentale :** le passeur ne peut pas modifier le TTL. Le TTL est une déclaration de confiance signée par l'émetteur — l'allonger emprunterait une confiance non émise, le réduire forcerait une urgence non consentie.
-
-La synchronisation avec la TrocZen Box se fait en différé, à la prochaine connexion réseau.
-
----
-
-### 6. Cycle de Vie du Bon — Les Trois Destins
-
-#### 6a. Rachat Volontaire (TTL critique)
-
-Quand le TTL résiduel passe sous le seuil d'alerte (défaut : 3 jours, configurable par la communauté) :
-
-- L'app affiche une alerte visuelle (bon en rouge dans le portefeuille)
-- Propose au porteur de contacter l'émetteur via DM Nostr chiffré (Kind 4)
-- Si l'émetteur accepte : double scan → il reçoit son bon (boucle fermée, parcours révélé), émet un nouveau bon frais au porteur
-- Si l'émetteur refuse ou ne répond pas (délai 24h) : aucune pénalité, le bon continue son TTL
-
-Le rachat est toujours **volontaire et bilatéral**. Il n'est pas une garantie — il est une négociation sociale assistée par l'app.
-
-#### 6b. Retour Organique à l'Émetteur (Boucle fermée)
-
-Quand un bon revient au portefeuille de sa clé d'émission (`issued_by == ma_pubkey`) :
-
-- **Destruction immédiate**
-- Révélation du parcours : l'émetteur tente `HMAC(pubkey_connue, bon_id)` pour chaque contact N1+N2 — les correspondances identifient les porteurs *dans son réseau*. Les porteurs hors réseau restent anonymes même pour l'émetteur.
-- Notification : *"🎉 Boucle fermée ! X ẐEN · Y hops · Z jours · [parcours partiel]"*
-- Publication `Kind 30304` (BonCircuit) — preuve cryptographique de la boucle, sans révéler les identités
-
-#### 6c. Expiration (TTL = 0)
-
-Archivage silencieux. La valeur est perdue. Log local : *"Bon de X ẐEN expiré sans retour — J+Z"*.
-
-L'expiration n'est pas un échec moral — c'est un **diagnostic** : elle indique où la confiance ne circule pas encore.
-
----
-
-### Affichage Relativiste
-
-Chaque bon est affiché avec ses deux valeurs :
-
-- **Quantitative** : `10 ẐEN` — pour le calcul mental au marché
-- **Relativiste** : `0.94 DU` — calculée dynamiquement (`value_zen / du_du_jour`), recalculée chaque matin, jamais mise en cache plus de 24h
-
-L'affichage relativiste permet de percevoir sa position dans l'économie locale sans référence à une monnaie externe. La valeur en DU déplace la question de *"combien j'ai ?"* vers *"quelle part de la création collective est-ce ?"*
-
----
-
-## Anatomie de l'Anonymisation (HMAC)
-
-```
-path[i] = HMAC-SHA256(pubkey_porteur_i, bon_id)
-```
-
-| Qui | Peut voir | Ne peut pas voir |
-|---|---|---|
-| N'importe qui | Nombre de hops, TTL consommé, valeur, bon_id | Qui a porté le bon |
-| Un porteur quelconque | Son propre hop | Les autres porteurs |
-| L'émetteur uniquement | Porteurs dans son N1+N2 (par dérivation HMAC) | Porteurs hors de son réseau |
-
-La **transparence** du circuit (a circulé, X hops, Y jours) est préservée pour la santé du réseau. La **vie privée** des porteurs est préservée par défaut.
-
----
-
-## Métriques de Santé Communautaire
-
-Ces métriques sont calculées par la TrocZen Box et affichées de façon agrégée et anonymisée :
-
-| Métrique | Formule | Seuil sain | Signification |
-|---|---|---|---|
-| **Ratio de santé** | Boucles fermées / ẐEN expirés (mensuel) | > 1.0× | La confiance se régénère plus vite qu'elle ne s'érode |
-| **Vélocité** | Transferts / masse totale / jour | > 0.05 | La monnaie circule, elle ne dort pas |
-| **Profondeur** | Hops moyens par boucle | 3–7 | < 3 = réseau trop local, > 10 = fragilité |
-| **Taux de rachat** | Rachats / expirations imminentes | > 20% | La communauté prend soin de ses bons |
-| **Taux d'activation DU** | Membres N1≥5 / total membres | > 60% | Le bootstrap a bien fonctionné |
-
----
-
-## Rôles Sociaux Émergents
-
-Le système ne nomme pas ces rôles — il les fait **émerger** de l'activité ordinaire, sans statut ni pouvoir :
-
-| Rôle | Ce que le système mesure | Récompense implicite |
-|---|---|---|
-| **Tisseurs** | Ponts entre groupes distincts (N2/N1 élevé) | DU plus élevé via réseau étendu dense |
-| **Animateurs** | Fort N1 local | DU stable et régulier |
-| **Gardiens** | Liens durables, peu d'expirations | Ratio santé élevé |
-| **Passeurs** | Boucles longues et riches en hops | Révélation de circuits profonds |
-
-Ces rôles, identifiés après 6 à 12 mois de circulation, dessinent organiquement les contours d'une **coopérative de production**. La gouvernance n'est pas imposée — elle est révélée par les flux de confiance réels.
-
----
-
-## Règles Protocolaires — Référence Rapide
+## Règles Protocolaires (Référence)
 
 | # | Règle | Implémentation |
-|---|---|---|
-| **R1** | TTL min 7j, max 365j | `assert 604800 ≤ ttl_seconds ≤ 31536000` à la création |
-| **R2** | `expires_at` immuable après création | Pas de setter exposé, même en interne |
-| **R3** | Hop → `hop_count++` uniquement | `expires_at` jamais modifié en transit |
-| **R4** | TTL résiduel = `expires_at − now()` | Calculé à la volée, jamais stocké |
-| **R5** | Alerte si résiduel < 3j (configurable) | `ALERT_THRESHOLD_SECONDS = 259200` |
-| **R6** | Retour émetteur = destruction + révélation | `issued_by == ma_pubkey` vérifié à chaque réception |
-| **R7** | Expiration = archivage silencieux | Job horaire : archiver les bons où `expires_at < now()` |
-| **R8** | Valeur DU recalculée chaque matin | Ne pas mettre en cache plus de 24h |
-| **R9** | Pas de fractionnement | Un bon est atomique — la découpe se fait à la création |
-| **R10** | path[] = HMAC, jamais de pubkeys brutes | `path[i] = HMAC-SHA256(pubkey_i, bon_id)` |
+|---|-------|----------------|
+| **R1** | TTL min 7j, max 365j | `assert 604800 ≤ ttl ≤ 31536000` |
+| **R2** | `expires_at` immuable | Pas de setter exposé, jamais modifié en transit |
+| **R3** | Hop → `hop_count++` uniquement | `expires_at` inchangé à chaque transfert |
+| **R4** | TTL résiduel calculé à la volée | Jamais stocké, jamais mis en cache |
+| **R5** | Alerte TTL < 3j (configurable) | `ALERT_THRESHOLD_SECONDS = 259200` |
+| **R6** | Retour émetteur = destruction | `issued_by == ma_pubkey` vérifié à réception |
+| **R7** | Expiration = archivage silencieux | Job horaire : archiver `expires_at < now()` |
+| **R8** | Ratio DU recalculé chaque matin | Cache < 24h obligatoire |
+| **R9** | Pas de fractionnement | Bon est atomique — découpe à la création |
+| **R10** | path[] = HMAC, jamais pubkeys brutes | `path[i] = HMAC-SHA256(pubkey_i, bon_id)` |
+| **R11** | Kind 30305 content toujours vide | TrocZen lit `["amount","XX.XX"]` seulement |
+| **R12** | DU TrocZen = sacrifice Love Ledger | `amount = LOVE_DONATION_ZEN` en Ẑen ≈ € |
 
 ---
 
-## Phrases Clés
+## Phrases Fondatrices
 
 > **"Ce n'est pas la richesse qui crée la confiance — c'est la confiance qui crée la richesse."**
 
@@ -368,6 +382,8 @@ Ces rôles, identifiés après 6 à 12 mois de circulation, dessinent organiquem
 
 > **"La coopérative n'est pas fondée. Elle est révélée."**
 
+> **"1 ❤️ = 1 DU — le don bénévole est la valeur co-créée par la communauté."**
+
 ---
 
-> *Protocole TrocZen · Bons ẐEN v2 · Nostr Kind 30303/30304 · Fév. 2026*
+> *Protocole TrocZen · Bons ẐEN v2 · NOSTR Kinds 30303/30304/30305 · UPlanet Love Ledger · AGPL-3.0*
