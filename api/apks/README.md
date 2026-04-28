@@ -19,13 +19,13 @@ Si vous avez un nœud IPFS local :
 ipfs get QmSh5CF7WkPNAs9oRA4vkCNRdCHrRGskxSmEpqyyZ8Z8NH/troczen-3.6.1.apk
 ```
 
-### Via d'autres passerelles
+### Via d'autres passerelles UPlanet ORIGIN (http://qo-op.com)
 Vous pouvez remplacer `ipfs.copylaradio.com` par d'autres passerelles :
-- `ipfs.io`
-- `dweb.link`
-- `cloudflare-ipfs.com`
+- `ipfs.paratge.copylaradio.com`
+- `ipfs.guenoel.fr`
+- ... 
 
-Exemple : `https://ipfs.io/ipfs/QmSh5CF7WkPNAs9oRA4vkCNRdCHrRGskxSmEpqyyZ8Z8NH/troczen-3.6.1.apk`
+NB: Notre constellation est isolé du réseau IPFS public - `ipfs.io`, `cloudflare-ipfs.com`, ...
 
 ## Vérification
 
