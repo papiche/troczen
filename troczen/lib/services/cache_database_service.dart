@@ -23,6 +23,7 @@ class CacheDatabaseService {
   static const String _followersCacheTable = 'followers_cache';
   static const String _skillAttestationsTable = 'skill_attestations';
   static const String _skillReactionsTable = 'skill_reactions';
+  static const String _skillAchievementsTable = 'skill_achievements';
   static const String _duIncrementsTable = 'du_increments';
   static const String _pendingEventsTable = 'pending_events';
   static const String _outboxGossipTable = 'outbox_gossip';
@@ -45,7 +46,7 @@ class CacheDatabaseService {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await _createAllTables(db);
       },
@@ -149,6 +150,24 @@ class CacheDatabaseService {
               created_at INTEGER NOT NULL
             )
           ''');
+        }
+        if (oldVersion < 8) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS $_skillAchievementsTable (
+              event_id TEXT PRIMARY KEY,
+              holder_npub TEXT NOT NULL,
+              skill TEXT NOT NULL,
+              level INTEGER NOT NULL,
+              justification_events TEXT NOT NULL,
+              issuer_npub TEXT NOT NULL,
+              is_self_issued INTEGER NOT NULL DEFAULT 1,
+              created_at INTEGER NOT NULL,
+              raw_data TEXT NOT NULL
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_sa_holder ON $_skillAchievementsTable(holder_npub, skill)',
+          );
         }
       },
     );
@@ -309,6 +328,24 @@ class CacheDatabaseService {
         attempts INTEGER NOT NULL DEFAULT 0
       )
     ''');
+
+    // Table pour les accomplissements de savoir-faire (kind 30503)
+    await db.execute('''
+      CREATE TABLE $_skillAchievementsTable (
+        event_id TEXT PRIMARY KEY,
+        holder_npub TEXT NOT NULL,
+        skill TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        justification_events TEXT NOT NULL,
+        issuer_npub TEXT NOT NULL,
+        is_self_issued INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        raw_data TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_sa_holder ON $_skillAchievementsTable(holder_npub, skill)',
+    );
 
     // Table pour le gossip (Alchimistes/Capitaines)
     await db.execute('''
@@ -1311,63 +1348,220 @@ class CacheDatabaseService {
     }).toList();
   }
 
-  /// Vérifie si l'utilisateur peut monter de niveau pour un skill donné
-  /// Retourne un Map avec 'canUpgrade': bool, 'newLevel': int, 'justificationEvents': List<String>
+  /// Vérifie si l'utilisateur peut monter de niveau pour un skill donné.
+  /// Règle B (Adoubement) : 1 Kind 30502 d'un pair de niveau > currentLevel.
+  /// Règle A (Consensus)  : 3 Kind 7 positifs distincts.
   Future<Map<String, dynamic>> checkLevelUpgrade(String npub, String skill, int currentLevel) async {
     final db = await database;
-    
-    // Règle B : Adoubement (Kind 30502)
-    // On cherche une attestation d'un utilisateur de niveau > currentLevel + 1
-    // Note: Dans une implémentation complète, il faudrait vérifier le niveau de l'attestateur.
-    // Ici on suppose que si on a reçu un 30502 valide, c'est un adoubement.
+
+    // Règle B : Adoubement — l'attestateur doit avoir un niveau supérieur
     final attestations = await db.query(
       _skillAttestationsTable,
       where: 'subject_npub = ? AND skill = ?',
       whereArgs: [npub, skill],
     );
-    
-    if (attestations.isNotEmpty) {
-      // On prend la première attestation comme justification
-      final eventId = attestations.first['event_id'] as String;
-      return {
-        'canUpgrade': true,
-        'newLevel': currentLevel + 1,
-        'justificationEvents': [eventId],
-        'rule': 'B', // Adoubement
-      };
+
+    for (final attestation in attestations) {
+      final attesterNpub = attestation['attester_npub'] as String;
+      final attesterLevel = await getMySkillLevel(attesterNpub, skill);
+      if (attesterLevel > currentLevel) {
+        return {
+          'canUpgrade': true,
+          'newLevel': currentLevel + 1,
+          'justificationEvents': [attestation['event_id'] as String],
+          'rule': 'B',
+        };
+      }
     }
-    
-    // Règle A : Consensus des pairs (Kind 7)
-    // 3 réactions positives de 3 utilisateurs distincts
+
+    // Règle A : Consensus — 3 réactions positives de 3 pairs distincts
     final reactions = await db.query(
       _skillReactionsTable,
       where: 'target_npub = ? AND skill_tag = ? AND is_positive = 1',
       whereArgs: [npub, skill],
     );
-    
-    final distinctReactors = <String, String>{}; // reactor_npub -> event_id
+
+    final distinctReactors = <String, String>{};
     for (final row in reactions) {
       final reactor = row['reactor_npub'] as String;
-      final eventId = row['event_id'] as String;
       if (!distinctReactors.containsKey(reactor)) {
-        distinctReactors[reactor] = eventId;
+        distinctReactors[reactor] = row['event_id'] as String;
       }
     }
-    
+
     if (distinctReactors.length >= 3) {
       return {
         'canUpgrade': true,
         'newLevel': currentLevel + 1,
         'justificationEvents': distinctReactors.values.take(3).toList(),
-        'rule': 'A', // Consensus
+        'rule': 'A',
       };
     }
-    
+
     return {
       'canUpgrade': false,
       'newLevel': currentLevel,
       'justificationEvents': [],
     };
+  }
+
+  // ============================================================
+  // MÉTHODES SKILL ACHIEVEMENT (KIND 30503)
+  // ============================================================
+
+  /// Sauvegarder un accomplissement de compétence (Kind 30503)
+  Future<void> saveSkillAchievement(Map<String, dynamic> event) async {
+    final db = await database;
+    final eventId = event['id'] as String?;
+    if (eventId == null) return;
+
+    final tags = event['tags'] as List? ?? [];
+    String skill = '';
+    int level = 1;
+    final justifications = <String>[];
+
+    for (final tag in tags) {
+      if (tag is List && tag.length > 1) {
+        if (tag[0] == 't' && skill.isEmpty) skill = tag[1].toString();
+        if (tag[0] == 'level') level = int.tryParse(tag[1].toString()) ?? 1;
+        if (tag[0] == 'e') justifications.add(tag[1].toString());
+      }
+    }
+
+    final issuerNpub = event['pubkey'] as String? ?? '';
+    final isSelfIssued = (() {
+      // Auto-signé : issuer == holder (WoTx2)
+      // Sinon : signé par l'Oracle
+      try {
+        final content = jsonDecode(event['content'] as String? ?? '{}');
+        return content['type'] == 'skill_achievement' ? 1 : 0;
+      } catch (_) {
+        return 1;
+      }
+    })();
+
+    await db.insert(
+      _skillAchievementsTable,
+      {
+        'event_id': eventId,
+        'holder_npub': issuerNpub,
+        'skill': skill,
+        'level': level,
+        'justification_events': jsonEncode(justifications),
+        'issuer_npub': issuerNpub,
+        'is_self_issued': isSelfIssued,
+        'created_at': event['created_at'] ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'raw_data': jsonEncode(event),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    _insertionsController.add({'type': 'n30503_achievement', 'data': event});
+  }
+
+  /// Retourne le niveau maximum atteint pour un skill donné.
+  /// Retourne 0 si aucun achievement.
+  Future<int> getMySkillLevel(String npub, String skill) async {
+    final db = await database;
+    final results = await db.query(
+      _skillAchievementsTable,
+      columns: ['level'],
+      where: 'holder_npub = ? AND skill = ?',
+      whereArgs: [npub, skill],
+      orderBy: 'level DESC',
+      limit: 1,
+    );
+    if (results.isEmpty) return 0;
+    return results.first['level'] as int;
+  }
+
+  /// Retourne tous les skills avec leur niveau max pour un utilisateur.
+  Future<Map<String, int>> getAllMySkillLevels(String npub) async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT skill, MAX(level) as max_level
+      FROM $_skillAchievementsTable
+      WHERE holder_npub = ?
+      GROUP BY skill
+    ''', [npub]);
+
+    return {for (final row in results) row['skill'] as String: row['max_level'] as int};
+  }
+
+  /// Détecte un fork de confiance sur un skill :
+  /// deux camps émergent quand des dislikers s'entre-certifient.
+  /// Retourne {'hasFork': bool, 'campA': npubs supporters, 'campB': npubs dislikers certifiés}
+  Future<Map<String, dynamic>> checkDislikeFork(String npub, String skill) async {
+    final db = await database;
+
+    final dislikes = await db.query(
+      _skillReactionsTable,
+      where: 'target_npub = ? AND skill_tag = ? AND is_positive = 0',
+      whereArgs: [npub, skill],
+    );
+
+    if (dislikes.length < 2) {
+      return {'hasFork': false, 'campA': <String>[], 'campB': <String>[]};
+    }
+
+    // Un camp B existe si ≥2 dislikers ont eux-mêmes un achievement pour ce skill
+    final campB = <String>[];
+    for (final row in dislikes) {
+      final dislikerNpub = row['reactor_npub'] as String;
+      final level = await getMySkillLevel(dislikerNpub, skill);
+      if (level > 0) campB.add(dislikerNpub);
+    }
+
+    if (campB.length >= 2) {
+      final likes = await db.query(
+        _skillReactionsTable,
+        where: 'target_npub = ? AND skill_tag = ? AND is_positive = 1',
+        whereArgs: [npub, skill],
+      );
+      final campA = [npub, ...likes.map((r) => r['reactor_npub'] as String)];
+      return {'hasFork': true, 'campA': campA, 'campB': campB, 'skill': skill};
+    }
+
+    return {'hasFork': false, 'campA': <String>[], 'campB': <String>[]};
+  }
+
+  /// Retourne tous les holders de compétences avec leur niveau max.
+  Future<List<Map<String, dynamic>>> getAllSkillHolders() async {
+    final db = await database;
+    final results = await db.rawQuery('''
+      SELECT holder_npub, skill, MAX(level) as max_level
+      FROM $_skillAchievementsTable
+      GROUP BY holder_npub, skill
+      ORDER BY skill ASC, max_level DESC
+    ''');
+    return results.map((r) => Map<String, dynamic>.from(r)).toList();
+  }
+
+  /// Score de confiance subjectif pour un (targetNpub, skill) depuis le point de vue du viewer.
+  /// Les réactions de n1Npubs (contacts directs) comptent double.
+  /// Retourne un entier signé : positif = fiable, négatif = contesté par les pairs.
+  Future<int> getSubjectiveTrustScore(
+    List<String> n1Npubs,
+    String targetNpub,
+    String skill,
+  ) async {
+    final db = await database;
+    final reactions = await db.query(
+      _skillReactionsTable,
+      where: 'target_npub = ? AND skill_tag = ?',
+      whereArgs: [targetNpub, skill],
+    );
+    int score = 0;
+    for (final row in reactions) {
+      final reactor = row['reactor_npub'] as String;
+      final isPositive = (row['is_positive'] as int) == 1;
+      if (n1Npubs.contains(reactor)) {
+        score += isPositive ? 2 : -2;
+      } else {
+        score += isPositive ? 1 : -1;
+      }
+    }
+    return score;
   }
 
   // ============================================================

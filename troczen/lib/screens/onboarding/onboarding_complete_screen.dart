@@ -11,7 +11,7 @@ import '../../services/logger_service.dart';
 import '../../config/app_config.dart';
 import '../../models/market.dart';
 import '../../models/user.dart';
-import '../main_shell.dart';
+import '../pin_setup_screen.dart';
 import 'onboarding_flow.dart';
 
 /// Étape 7: Écran de Bienvenue et Récapitulatif
@@ -426,25 +426,7 @@ Future<void> _completeOnboarding() async {
       
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => MainShell(user: user)),
-        (route) => false,
-      );
-      
-      // 6. Marquer l'onboarding comme complété
-      await storageService.markOnboardingComplete();
-      
-      // Vérifier le presse-papier pour un parrain
-      await _checkClipboardForReferrer();
-      
-      setState(() => _isCreatingAccount = false);
-      
-      // 7. Navigation vers l'écran principal
-      if (!mounted) return;
-      
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => MainShell(user: user),
-        ),
+        MaterialPageRoute(builder: (context) => PinSetupScreen(user: user)),
         (route) => false,
       );
       

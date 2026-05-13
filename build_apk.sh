@@ -55,6 +55,35 @@ IPFS_GATEWAY="ipfs.copylaradio.com"
 IPFS_FALLBACK_GATEWAYS="ipfs.paratge.copylaradio.com ipfs.guenoel.fr"
 
 # ============================================
+# Constellation UPLANET — lecture de ~/.ipfs/swarm.key
+# ============================================
+SWARM_KEY_FILE="$HOME/.ipfs/swarm.key"
+DART_DEFINES=""
+
+# Nom d'affichage (override via env: APP_DISPLAY_NAME=MonApp ./build_apk.sh)
+_APP_DISPLAY_NAME="${APP_DISPLAY_NAME:-}"
+
+if [ -f "$SWARM_KEY_FILE" ]; then
+    # Format swarm.key : ligne 1 = /key/swarm/psk/1.0.0/
+    #                    ligne 2 = /base16/
+    #                    ligne 3 = <hex64>
+    UPLANET_KEY=$(sed -n '3p' "$SWARM_KEY_FILE" | tr -d '[:space:]')
+    if [ ${#UPLANET_KEY} -eq 64 ]; then
+        DART_DEFINES="--dart-define=UPLANET_KEY=$UPLANET_KEY"
+        echo "🔑 Constellation: swarm.key détectée (${UPLANET_KEY:0:8}...${UPLANET_KEY:56:8})"
+    else
+        echo "⚠️  swarm.key malformée, clé ORIGIN par défaut"
+    fi
+else
+    echo "ℹ️  ~/.ipfs/swarm.key absente — clé ORIGIN (0xFFFF...) par défaut"
+fi
+
+if [ -n "$_APP_DISPLAY_NAME" ]; then
+    DART_DEFINES="$DART_DEFINES --dart-define=APP_DISPLAY_NAME=$_APP_DISPLAY_NAME"
+    echo "🏷️  App name: $_APP_DISPLAY_NAME"
+fi
+
+# ============================================
 # Nettoyage et Build
 # ============================================
 echo "🔧 Nettoyage du projet Flutter..."
@@ -63,24 +92,29 @@ cd troczen && flutter clean
 # Extraire la version depuis pubspec.yaml
 VERSION=$(grep "^version:" pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
 
+# Préfixe APK (utilise APP_DISPLAY_NAME en minuscules si défini)
+APK_PREFIX=$(echo "${_APP_DISPLAY_NAME:-troczen}" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+
 if [ "$DEBUG_MODE" = true ]; then
     echo "📦 Build de l'APK debug..."
-    flutter build apk --debug
-    
+    # shellcheck disable=SC2086
+    flutter build apk --debug $DART_DEFINES
+
     # Chemin du APK généré
     APK_SRC="build/app/outputs/flutter-apk/app-debug.apk"
-    
-    # Nom de l'APK avec le préfixe troczen et la version
-    APK_NAME="troczen-$VERSION-debug.apk"
+
+    # Nom de l'APK avec le préfixe et la version
+    APK_NAME="$APK_PREFIX-$VERSION-debug.apk"
 else
     echo "📦 Build de l'APK release..."
-    flutter build apk --release
-    
+    # shellcheck disable=SC2086
+    flutter build apk --release $DART_DEFINES
+
     # Chemin du APK généré
     APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
-    
-    # Nom de l'APK avec le préfixe troczen et la version
-    APK_NAME="troczen-$VERSION.apk"
+
+    # Nom de l'APK avec le préfixe et la version
+    APK_NAME="$APK_PREFIX-$VERSION.apk"
 fi
 
 # Dossier de destination dans l'API

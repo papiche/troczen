@@ -28,17 +28,36 @@ class SkillSwapScreen extends StatefulWidget {
 class _SkillSwapScreenState extends State<SkillSwapScreen> {
   final _qrService = QRService();
   final _cacheService = CacheDatabaseService();
-  
+
   MobileScannerController? _scannerController;
   bool _isScanning = false;
   bool _isProcessing = false;
   bool _showCelebration = false;
   String _celebrationMessage = '';
 
+  int _myLevel = 0;
+  bool _levelLoading = true;
+
   @override
   void initState() {
     super.initState();
     _initScanner();
+    _syncAndLoadLevel();
+  }
+
+  Future<void> _syncAndLoadLevel() async {
+    setState(() => _levelLoading = true);
+    final nostrService = context.read<NostrService>();
+    final normalizedSkill = NostrUtils.normalizeSkillTag(widget.skillTag);
+
+    // Synchronise les achievements depuis le relay puis charge le niveau local
+    final events = await nostrService.wotx.fetchMyAchievements(widget.user.npub);
+    for (final event in events) {
+      await _cacheService.saveSkillAchievement(event);
+    }
+
+    final level = await _cacheService.getMySkillLevel(widget.user.npub, normalizedSkill);
+    if (mounted) setState(() { _myLevel = level; _levelLoading = false; });
   }
 
   void _initScanner() {
@@ -108,26 +127,20 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
   }
 
   Future<void> _showValidationDialog(String targetNpub, String targetName, String targetSkill) async {
-    // Vérifier le niveau de l'utilisateur courant pour ce skill
-    // Dans une vraie implémentation, on devrait récupérer le profil complet
-    // Pour l'instant on suppose niveau 1 par défaut
-    final myLevel = 1; // TODO: Récupérer le vrai niveau
-    
-    // On suppose que la cible est au moins X1
-    // Dans une vraie implémentation, on pourrait inclure le niveau de la cible dans le QR
-    
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
         title: Text(
-          'Valider le savoir-faire de $targetName en $targetSkill ?',
+          'Évaluer $targetName en $targetSkill ?',
           style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          'Choisissez le type de validation à émettre.',
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          _myLevel > 0
+              ? 'Votre niveau : X$_myLevel. Choisissez votre type de validation.'
+              : 'Choisissez votre type de validation.',
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -135,19 +148,28 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
             child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, 'kind7_negative'),
+            icon: const Icon(Icons.thumb_down),
+            label: const Text('Dislike'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[900],
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
             onPressed: () => Navigator.pop(context, 'kind7'),
             icon: const Icon(Icons.thumb_up),
-            label: const Text('Pouce levé'),
+            label: const Text('Like'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.indigo,
               foregroundColor: Colors.white,
             ),
           ),
-          if (myLevel > 1) // Règle B: Adoubement possible si niveau > 1
+          if (_myLevel > 0) // Règle B : Adoubement si l'utilisateur a lui-même un niveau
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context, 'kind30502'),
               icon: const Icon(Icons.workspace_premium),
-              label: const Text('Badge Expert'),
+              label: const Text('Adoubement'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.amber,
                 foregroundColor: Colors.black,
@@ -179,24 +201,24 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
     if (!mounted) return;
     final nostrService = context.read<NostrService>();
 
-    if (result == 'kind7') {
+    if (result == 'kind7' || result == 'kind7_negative') {
       success = await nostrService.wotx.publishSkillReaction(
         myNpub: widget.user.npub,
         myNsec: widget.user.nsec,
         artisanNpub: targetNpub,
         eventId: permitEventId,
         skillTag: targetSkill,
-        isPositive: true,
+        isPositive: result == 'kind7',
       );
     } else if (result == 'kind30502') {
       success = await nostrService.wotx.publishSkillAttestation(
         myNpub: widget.user.npub,
         myNsec: widget.user.nsec,
-        requestId: permitEventId, // On utilise le permitId comme requestId par défaut
+        requestId: permitEventId,
         requesterNpub: targetNpub,
         permitId: permitId,
         seedMarket: NostrConstants.globalMarketKey,
-        motivation: 'Adoubement par un pair de niveau $myLevel',
+        motivation: 'Adoubement par un pair de niveau X$_myLevel',
       );
     }
 
@@ -303,7 +325,22 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 4),
+          _levelLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white38),
+                )
+              : Text(
+                  _myLevel > 0 ? 'Niveau X$_myLevel' : 'Niveau X0 (en cours)',
+                  style: TextStyle(
+                    color: _myLevel > 0 ? Colors.amber : Colors.white38,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+          const SizedBox(height: 28),
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -368,22 +405,21 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
   }
 
   Future<void> _checkMyUpgrades() async {
-    final currentLevel = 1; // TODO: Récupérer le vrai niveau
     final normalizedSkill = NostrUtils.normalizeSkillTag(widget.skillTag);
-    
+
     final upgradeInfo = await _cacheService.checkLevelUpgrade(
       widget.user.npub,
       normalizedSkill,
-      currentLevel,
+      _myLevel,
     );
 
     if (upgradeInfo['canUpgrade'] == true) {
       final newLevel = upgradeInfo['newLevel'] as int;
       final justifications = (upgradeInfo['justificationEvents'] as List).cast<String>();
-      
+      final rule = upgradeInfo['rule'] as String? ?? 'A';
+
       if (!mounted) return;
       final nostrService = context.read<NostrService>();
-      // Publier le Kind 30503
       final success = await nostrService.wotx.publishSkillAchievement(
         myNpub: widget.user.npub,
         myNsec: widget.user.nsec,
@@ -393,19 +429,56 @@ class _SkillSwapScreenState extends State<SkillSwapScreen> {
       );
 
       if (success && mounted) {
+        // Persister localement le nouvel achievement
+        await _cacheService.saveSkillAchievement({
+          'id': 'local_${DateTime.now().millisecondsSinceEpoch}',
+          'pubkey': widget.user.npub,
+          'kind': 30503,
+          'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          'tags': [
+            ['t', normalizedSkill],
+            ['level', newLevel.toString()],
+            for (final j in justifications) ['e', j],
+          ],
+          'content': '{"type":"skill_achievement","skill":"$normalizedSkill","level":$newLevel}',
+        });
+
+        final ruleLabel = rule == 'B' ? 'adoubement' : 'consensus de vos pairs';
         setState(() {
-          _celebrationMessage = 'Bravo ! Vous êtes maintenant reconnu comme Expert X$newLevel en ${widget.skillTag} par vos pairs !';
+          _myLevel = newLevel;
+          _celebrationMessage =
+              'Bravo ! Vous atteignez le niveau X$newLevel en ${widget.skillTag} par $ruleLabel !';
           _showCelebration = true;
         });
+
+        // Vérifier si un fork de confiance est détecté
+        final fork = await _cacheService.checkDislikeFork(widget.user.npub, normalizedSkill);
+        if (fork['hasFork'] == true && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Bifurcation détectée sur "$normalizedSkill" : ${(fork['campB'] as List).length} pairs alternatifs.',
+              ),
+              backgroundColor: Colors.orange[800],
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pas encore assez de validations pour monter de niveau.'),
+      final reactions = await _cacheService.getSkillReactionsForSubject(widget.user.npub, normalizedSkill);
+      final positives = reactions.where((r) => r['content'] == '+').length;
+      final needed = 3 - positives;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            needed > 0
+                ? 'Encore $needed like(s) de pairs distincts pour monter de niveau.'
+                : 'Pas encore assez de validations pour monter de niveau.',
           ),
-        );
-      }
+        ),
+      );
     }
   }
 }

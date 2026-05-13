@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import '../../services/storage_service.dart';
 import '../../services/crypto_service.dart';
 import '../../models/user.dart';
-import 'onboarding_flow.dart'; 
+import 'onboarding_flow.dart';
+import 'onboarding_multipass_import_screen.dart';
 
 
 // Fonction top-level pour l'Isolate
@@ -398,6 +399,37 @@ class _OnboardingAccountScreenState extends State<OnboardingAccountScreen> with 
                         color: Colors.black,
                       ),
                     ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Bouton secondaire : import MULTIPASS existant
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isCreatingAccount
+                  ? null
+                  : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => OnboardingMultipassImportScreen(
+                            onImported: widget.onNext,
+                          ),
+                        ),
+                      ),
+              icon: const Icon(Icons.qr_code_scanner, color: Color(0xFFFFB347)),
+              label: const Text(
+                'Importer un MULTIPASS existant',
+                style: TextStyle(color: Color(0xFFFFB347)),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFFFB347)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
         ],

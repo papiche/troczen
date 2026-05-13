@@ -10,9 +10,9 @@ class NostrConstants {
   static String get localApiUrl => AppConfig.localApiUrl;
   static String get localRelayUrl => AppConfig.localRelayUrl;
   
-  // Marché global (si pas de marché spécifique)
+  // Marché global — clé de constellation baked at build time (voir AppConfig.constellationKey)
   static const String globalMarketName = 'troczen-global';
-  static const String globalMarketKey = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+  static const String globalMarketKey = AppConfig.constellationKey;
   
   // Types d'events Nostr
   static const int kindMetadata = 0;        // Profil utilisateur

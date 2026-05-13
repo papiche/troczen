@@ -623,6 +623,95 @@ class NostrWoTxService {
   }
 
   // ============================================================
+  // FETCH ACHIEVEMENTS (KIND 30503)
+  // ============================================================
+
+  /// Récupère les accomplissements de compétence de tout le réseau.
+  /// Retourne les événements bruts (l'appelant les persiste via CacheDatabaseService).
+  Future<List<Map<String, dynamic>>> fetchAllSkillAchievements({int limit = 500}) async {
+    if (!_connection.isConnected) return [];
+
+    try {
+      final completer = Completer<List<Map<String, dynamic>>>();
+      final List<Map<String, dynamic>> achievements = [];
+      final subId = 'all_ach_${DateTime.now().millisecondsSinceEpoch}';
+
+      _connection.registerHandler(subId, (message) {
+        if (message[0] == 'EVENT') {
+          achievements.add(message[2] as Map<String, dynamic>);
+        } else if (message[0] == 'EOSE') {
+          _connection.sendMessage(jsonEncode(['CLOSE', subId]));
+          _connection.removeHandler(subId);
+          if (!completer.isCompleted) completer.complete(achievements);
+        }
+      });
+
+      _connection.sendMessage(jsonEncode([
+        'REQ', subId,
+        {'kinds': [NostrConstants.kindSkillCredential], 'limit': limit}
+      ]));
+
+      Timer(const Duration(seconds: 15), () {
+        _connection.removeHandler(subId);
+        if (!completer.isCompleted) completer.complete(achievements);
+      });
+
+      final result = await completer.future;
+      Logger.log('NostrWoTx', 'Achievements réseau récupérés: ${result.length}');
+      return result;
+    } catch (e) {
+      Logger.error('NostrWoTx', 'Erreur fetchAllSkillAchievements', e);
+      return [];
+    }
+  }
+
+  /// Récupère les accomplissements de compétence d'un utilisateur depuis le relay.
+  /// Retourne les événements bruts (l'appelant les persiste via CacheDatabaseService).
+  Future<List<Map<String, dynamic>>> fetchMyAchievements(String npub) async {
+    if (!_connection.isConnected) return [];
+
+    try {
+      final completer = Completer<List<Map<String, dynamic>>>();
+      final List<Map<String, dynamic>> achievements = [];
+      final subId = 'achievements_${DateTime.now().millisecondsSinceEpoch}';
+
+      _connection.registerHandler(subId, (message) {
+        if (message[0] == 'EVENT') {
+          final event = message[2] as Map<String, dynamic>;
+          if (event['pubkey'] == npub) {
+            achievements.add(event);
+          }
+        } else if (message[0] == 'EOSE') {
+          _connection.sendMessage(jsonEncode(['CLOSE', subId]));
+          _connection.removeHandler(subId);
+          if (!completer.isCompleted) completer.complete(achievements);
+        }
+      });
+
+      _connection.sendMessage(jsonEncode([
+        'REQ', subId,
+        {
+          'kinds': [NostrConstants.kindSkillCredential],
+          'authors': [npub],
+          'limit': 200,
+        }
+      ]));
+
+      Timer(const Duration(seconds: 10), () {
+        _connection.removeHandler(subId);
+        if (!completer.isCompleted) completer.complete(achievements);
+      });
+
+      final result = await completer.future;
+      Logger.log('NostrWoTx', 'Achievements récupérés: ${result.length}');
+      return result;
+    } catch (e) {
+      Logger.error('NostrWoTx', 'Erreur fetchMyAchievements', e);
+      return [];
+    }
+  }
+
+  // ============================================================
   // EXTRACTION DES TAGS D'ACTIVITÉ
   // ============================================================
   

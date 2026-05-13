@@ -4,9 +4,22 @@ class AppConfig {
   // ==================== VERSION ====================
   /// Version de l'application (doit correspondre à pubspec.yaml)
   static const String appVersion = '3.6.1';
-  
-  /// Nom de l'application
-  static const String appName = 'TrocZen';
+
+  /// Nom de l'application (rebranding via --dart-define=APP_DISPLAY_NAME=MonApp)
+  static const String appName = String.fromEnvironment(
+    'APP_DISPLAY_NAME',
+    defaultValue: 'TrocZen',
+  );
+
+  // ==================== CONSTELLATION UPLANET ====================
+  /// Clé de marché de la constellation UPlanet associée à cette build.
+  /// Baked at compile time via `build_apk.sh` (lit ~/.ipfs/swarm.key ligne 3).
+  /// Override manuel : `flutter build apk --dart-define=UPLANET_KEY=hex64`
+  /// Par défaut : clé ORIGIN (0xFF*32) = marché de développement global.
+  static const String constellationKey = String.fromEnvironment(
+    'UPLANET_KEY',
+    defaultValue: '0000000000000000000000000000000000000000000000000000000000000000',
+  );
   
   // ==================== FEATURE FLAGS ====================
   /// Active/désactive les fonctionnalités NFC expérimentales

@@ -10,7 +10,9 @@ import 'services/audit_trail_service.dart';
 import 'services/cache_database_service.dart';
 import 'package:provider/provider.dart';
 import 'screens/main_shell.dart';
+import 'screens/pin_screen.dart';
 import 'screens/onboarding/onboarding_flow.dart';
+import 'services/pin_service.dart';
 import 'providers/app_mode_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/notification_service.dart';
@@ -240,10 +242,13 @@ class _LoginScreenState extends State<LoginScreen> {
     // Sinon, vérifier l'utilisateur existant
     final user = await _storageService.getUser();
     if (user != null && mounted) {
+      final pinService = PinService();
+      final hasPin = await pinService.hasPin();
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => MainShell(user: user),
+          builder: (_) => hasPin ? PinScreen(user: user) : MainShell(user: user),
         ),
       );
     } else {
