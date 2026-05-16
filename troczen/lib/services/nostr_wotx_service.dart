@@ -809,12 +809,167 @@ class NostrWoTxService {
       
       Logger.log('NostrWoTx', 'Tags extraits: ${result.length} tags uniques');
       onTagsReceived?.call(result);
-      
+
       return result;
     } catch (e) {
       onError?.call('Erreur récupération tags: $e');
       Logger.error('NostrWoTx', 'Erreur fetchActivityTagsFromProfiles', e);
       return [];
+    }
+  }
+
+  // ============================================================
+  // COMPOSITE PERMITS (Kind 30500 + tag "composite")
+  // ============================================================
+
+  Future<List<Map<String, dynamic>>> fetchCompositePermits() async {
+    if (!_connection.isConnected) return [];
+
+    try {
+      final completer = Completer<List<Map<String, dynamic>>>();
+      final List<Map<String, dynamic>> permits = [];
+      final subId = 'composite_permits_${DateTime.now().millisecondsSinceEpoch}';
+
+      _connection.registerHandler(subId, (message) {
+        if (message[0] == 'EVENT') {
+          final event = message[2] as Map<String, dynamic>;
+          final tags = event['tags'] as List;
+          final isComposite = tags.any((tag) =>
+              tag is List && tag.length >= 2 && tag[0] == 't' && tag[1] == 'composite');
+          if (!isComposite) return;
+
+          String id = event['id']?.toString() ?? '';
+          String name = '';
+          String description = '';
+          String skillTag = '';
+          final List<Map<String, dynamic>> recipe = [];
+
+          for (final tag in tags) {
+            if (tag is! List || tag.isEmpty) continue;
+            final key = tag[0].toString();
+            if (key == 'd' && tag.length > 1) id = tag[1].toString();
+            if (key == 'name' && tag.length > 1) name = tag[1].toString();
+            if (key == 'description' && tag.length > 1) description = tag[1].toString();
+            if (key == 't' && tag.length > 1 && tag[1] != 'composite') skillTag = tag[1].toString();
+            if (key == 'requires' && tag.length >= 3) {
+              recipe.add({
+                'skill': tag[1].toString(),
+                'min_level': int.tryParse(tag[2].toString()) ?? 1,
+              });
+            }
+          }
+
+          if (recipe.isEmpty) {
+            try {
+              final content = jsonDecode(event['content']?.toString() ?? '{}');
+              if (content is Map && content.containsKey('recipe')) {
+                final rawRecipe = content['recipe'] as List;
+                for (final item in rawRecipe) {
+                  if (item is Map) {
+                    recipe.add({
+                      'skill': item['skill']?.toString() ?? '',
+                      'min_level': (item['min_level'] as num?)?.toInt() ?? 1,
+                    });
+                  }
+                }
+              }
+              if (name.isEmpty && content is Map) name = content['name']?.toString() ?? '';
+              if (description.isEmpty && content is Map) description = content['description']?.toString() ?? '';
+            } catch (_) {}
+          }
+
+          permits.add({
+            'id': id,
+            'name': name,
+            'description': description,
+            'skill_tag': skillTag,
+            'recipe': recipe,
+          });
+        } else if (message[0] == 'EOSE') {
+          _connection.sendMessage(jsonEncode(['CLOSE', subId]));
+          _connection.removeHandler(subId);
+          if (!completer.isCompleted) completer.complete(permits);
+        }
+      });
+
+      _connection.sendMessage(jsonEncode([
+        'REQ', subId,
+        {'kinds': [NostrConstants.kindSkillPermit], '#t': ['composite'], 'limit': 200}
+      ]));
+
+      Timer(const Duration(seconds: 10), () {
+        _connection.removeHandler(subId);
+        if (!completer.isCompleted) completer.complete(permits);
+      });
+
+      final result = await completer.future;
+      Logger.log('NostrWoTx', 'Composite permits récupérés: ${result.length}');
+      return result;
+    } catch (e) {
+      Logger.error('NostrWoTx', 'Erreur fetchCompositePermits', e);
+      return [];
+    }
+  }
+
+  // ============================================================
+  // COMPOSITE ACHIEVEMENT (Kind 30503 + tag "composite")
+  // ============================================================
+
+  Future<bool> publishCompositeAchievement({
+    required String myNpub,
+    required String myNsec,
+    required String compositePermitId,
+    required String skillTag,
+    required int level,
+    required List<String> ingredientEventIds,
+  }) async {
+    try {
+      final normalizedSkill = NostrUtils.normalizeSkillTag(skillTag);
+
+      final tags = <List<String>>[
+        ['d', compositePermitId],
+        ['t', normalizedSkill],
+        ['t', 'composite'],
+        ['level', level.toString()],
+      ];
+
+      for (final eventId in ingredientEventIds) {
+        tags.add(['e', eventId]);
+      }
+
+      final plaintextContent = jsonEncode({
+        'type': 'skill_composite',
+        'skill': normalizedSkill,
+        'level': level,
+        'recipe_satisfied': ingredientEventIds,
+      });
+
+      final event = {
+        'kind': NostrConstants.kindSkillCredential,
+        'pubkey': myNpub,
+        'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'tags': tags,
+        'content': plaintextContent,
+      };
+
+      final eventId = NostrUtils.calculateEventId(event);
+      event['id'] = eventId;
+      Uint8List myNsecBytes;
+      try {
+        myNsecBytes = Uint8List.fromList(HEX.decode(myNsec));
+      } catch (e) {
+        throw Exception('Clé privée invalide (non hexadécimale)');
+      }
+      event['sig'] = _cryptoService.signMessageBytes(eventId, myNsecBytes);
+
+      final success = await _connection.sendEventAndWait(eventId, jsonEncode(['EVENT', event]));
+      if (success) {
+        Logger.success('NostrWoTx', 'Composite Achievement publié: $normalizedSkill L$level');
+      }
+      return success;
+    } catch (e) {
+      Logger.error('NostrWoTx', 'Erreur publishCompositeAchievement', e);
+      return false;
     }
   }
 }

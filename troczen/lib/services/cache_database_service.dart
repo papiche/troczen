@@ -1488,6 +1488,53 @@ class CacheDatabaseService {
     return {for (final row in results) row['skill'] as String: row['max_level'] as int};
   }
 
+  // ============================================================
+  // COMPOSITE ELIGIBILITY
+  // ============================================================
+
+  Future<List<Map<String, dynamic>>> checkCompositeEligibility(
+    String npub,
+    List<Map<String, dynamic>> compositePermits,
+  ) async {
+    final skillLevels = await getAllMySkillLevels(npub);
+    final List<Map<String, dynamic>> results = [];
+
+    for (final permit in compositePermits) {
+      final permitId = permit['id']?.toString() ?? '';
+      final skillTag = permit['skill_tag']?.toString() ?? '';
+      final recipe = (permit['recipe'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
+      final List<String> missing = [];
+      final List<Map<String, dynamic>> ingredients = [];
+
+      for (final ingredient in recipe) {
+        final requiredSkill = ingredient['skill']?.toString() ?? '';
+        final requiredLevel = (ingredient['min_level'] as num?)?.toInt() ?? 1;
+        final currentLevel = skillLevels[requiredSkill] ?? 0;
+
+        ingredients.add({
+          'skill': requiredSkill,
+          'required_level': requiredLevel,
+          'current_level': currentLevel,
+        });
+
+        if (currentLevel < requiredLevel) {
+          missing.add(requiredSkill);
+        }
+      }
+
+      results.add({
+        'permit_id': permitId,
+        'skill_tag': skillTag,
+        'eligible': missing.isEmpty,
+        'missing': missing,
+        'ingredients': ingredients,
+      });
+    }
+
+    return results;
+  }
+
   /// Détecte un fork de confiance sur un skill :
   /// deux camps émergent quand des dislikers s'entre-certifient.
   /// Retourne {'hasFork': bool, 'campA': npubs supporters, 'campB': npubs dislikers certifiés}
