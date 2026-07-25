@@ -1,0 +1,22 @@
+TrocZen creates, transfers, and redeems ẐEN vouchers — a local cooperative
+currency — fully offline, for local markets and communities.
+
+Key features:
+
+* Offline-first: works without internet after the morning sync
+* SSSS polynomial secret sharing (2-of-3) to split each voucher's private
+  key across issuer, holder and network, preventing double-spending
+* Atomic handshake: a double QR scan (Offer → ACK) with a random challenge
+  and signature, so a voucher can never be redeemed twice
+* Compact binary QR codes (v2, 240 bytes, fully offline)
+* Collectible-card-style voucher display
+* Circuit reveal: vouchers returned to the issuer publish an encrypted
+  economic proof (NOSTR Kind 30304) instead of being silently destroyed
+* Decentralized sync via the NOSTR protocol (kinds 0, 1, 3, 5, 7, 30303,
+  30304, 30305, 30500+)
+* NFC tap-to-transfer support
+
+Cryptography: SSSS (2-of-3), AES-GCM, Schnorr/secp256k1 (BIP-340), Scrypt,
+in-memory secure zeroisation.
+
+Privacy: no tracking, no ads, no Google Play Services.
