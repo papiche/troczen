@@ -3,7 +3,7 @@
 class AppConfig {
   // ==================== VERSION ====================
   /// Version de l'application (doit correspondre à pubspec.yaml)
-  static const String appVersion = '3.6.1';
+  static const String appVersion = '3.6.2';
 
   /// Nom de l'application (rebranding via --dart-define=APP_DISPLAY_NAME=MonApp)
   static const String appName = String.fromEnvironment(
