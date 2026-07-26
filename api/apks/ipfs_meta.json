@@ -6,6 +6,13 @@
       "checksum": "7ae8319385bea188187c44e03b356811618b6ecffe3b9705726adc890aec2476",
       "uploaded_at": "2026-05-14T01:02:27+02:00",
       "version": "3.6.1"
+    },
+    "troczen-3.6.2.apk": {
+      "cid": "Qmd6AQELxTnd3YCYX5u8Gd8KQ77ybZgN3sQPuvtZB4ZhhP",
+      "size": 83960953,
+      "checksum": "5c55703bed8f345b9f74cb79d412b065256d837742e816f07f2a49722cd87155",
+      "uploaded_at": "2026-07-26T15:49:52+02:00",
+      "version": "3.6.2"
     }
   }
 }

@@ -89,6 +89,27 @@ fi
 echo "🔧 Nettoyage du projet Flutter..."
 cd troczen && flutter clean
 
+## Signing configuration pour release
+if [ "$DEBUG_MODE" != true ]; then
+    KP="android/key.properties"
+    if [ ! -f "$KP" ]; then
+        PROD_JKS="$HOME/.zen/keystores/troczen-prod.jks"
+        if [ -f "$HOME/.ipfs/swarm.key" ] && [ -f "$PROD_JKS" ]; then
+            echo "⚙️  Keystore production détecté — configuration automatique..."
+            KEYSTORE_PWD=$(cat ~/.ipfs/swarm.key | sha256sum | awk '{print $1}' | head -c 24)
+            cat > "$KP" <<EOF
+storePassword=$KEYSTORE_PWD
+keyPassword=$KEYSTORE_PWD
+keyAlias=upload
+storeFile=$PROD_JKS
+EOF
+            echo "✅ key.properties configuré (keystore production)"
+        else
+            echo "⚠️  Keystore production absent — build release non signé (clé debug)"
+        fi
+    fi
+fi
+
 # Extraire la version depuis pubspec.yaml
 VERSION=$(grep "^version:" pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
 

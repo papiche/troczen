@@ -6,7 +6,7 @@ Les APK sont hébergés sur IPFS pour un accès décentralisé et résilient.
 
 | Version | Lien IPFS |
 |---------|-----------|
-| TrocZen 3.6.1 | [Télécharger](https://ipfs.copylaradio.com/ipfs/QmcjW6P7MZxEa1eVZ3VSkbzug4PGjyS27YnKddvJSj1SkP/troczen-3.6.1.apk) |
+| TrocZen 3.6.2 | [Télécharger](https://ipfs.copylaradio.com/ipfs/Qmd6AQELxTnd3YCYX5u8Gd8KQ77ybZgN3sQPuvtZB4ZhhP/troczen-3.6.2.apk) |
 
 ## Comment télécharger
 
@@ -16,7 +16,7 @@ Cliquez simplement sur le lien ci-dessus. La passerelle `ipfs.copylaradio.com` s
 ### Via IPFS en local
 Si vous avez un nœud IPFS local :
 ```bash
-ipfs get QmcjW6P7MZxEa1eVZ3VSkbzug4PGjyS27YnKddvJSj1SkP/troczen-3.6.1.apk
+ipfs get Qmd6AQELxTnd3YCYX5u8Gd8KQ77ybZgN3sQPuvtZB4ZhhP/troczen-3.6.2.apk
 ```
 
 ### Via d'autres passerelles
@@ -25,11 +25,11 @@ Vous pouvez remplacer `ipfs.copylaradio.com` par d'autres passerelles :
 - `dweb.link`
 - `cloudflare-ipfs.com`
 
-Exemple : `https://ipfs.io/ipfs/QmcjW6P7MZxEa1eVZ3VSkbzug4PGjyS27YnKddvJSj1SkP/troczen-3.6.1.apk`
+Exemple : `https://ipfs.io/ipfs/Qmd6AQELxTnd3YCYX5u8Gd8KQ77ybZgN3sQPuvtZB4ZhhP/troczen-3.6.2.apk`
 
 ## Vérification
 
 Les APK sont signés avec la clé de signature TrocZen. Vérifiez toujours la signature avant installation.
 
 ---
-*Dernière mise à jour : 2026-05-14 01:02:27*
+*Dernière mise à jour : 2026-07-26 15:49:52*
