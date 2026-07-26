@@ -5,6 +5,7 @@ api/apks/*.apk
 # Miscellaneous
 *.class
 *.lock
+!troczen/pubspec.lock
 *.log
 *.pyc
 *.swp
